@@ -1,0 +1,3 @@
+[submodule "RESTinCurl"]
+	path = RESTinCurl
+	url = https://github.com/jgaa/RESTinCurl.git
