@@ -4,3 +4,5 @@ project(crypto_platform)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_subdirectory(crypto)
+add_subdirectory(json)
+set(JSON_BuildTests OFF CACHE INTERNAL "")
