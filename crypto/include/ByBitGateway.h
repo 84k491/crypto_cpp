@@ -3,8 +3,6 @@
 #include "ohlc.h"
 #include "restincurl.h"
 
-#include <future>
-
 class ByBitGateway
 {
 public:

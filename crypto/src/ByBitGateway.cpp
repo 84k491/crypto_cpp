@@ -1,9 +1,7 @@
 #include "ByBitGateway.h"
 
 #include <chrono>
-#include <condition_variable>
-#include <mutex>
-#include <sstream>
+#include <future>
 #include <vector>
 
 struct OhlcResult
@@ -93,8 +91,6 @@ void ByBitGateway::get_klines(std::chrono::milliseconds start,
                 return std::string(ss.str());
             }();
 
-            long result_code = -1;
-
             std::cout << "REST request: " << url << std::endl;
             std::string string_result;
             client
@@ -102,7 +98,6 @@ void ByBitGateway::get_klines(std::chrono::milliseconds start,
                     ->Get(url)
                     .WithCompletion([&](const restincurl::Result & result) {
                         std::lock_guard lock(m);
-                        result_code = result.http_response_code;
                         string_result = result.body;
                         cv.notify_all();
                     })
@@ -110,7 +105,6 @@ void ByBitGateway::get_klines(std::chrono::milliseconds start,
 
             std::unique_lock lock(m);
             cv.wait(lock, [&] { return !string_result.empty(); });
-            std::cout << "Result code: " << result_code << std::endl;
 
             OhlcResponse response;
             const auto j = json::parse(string_result);

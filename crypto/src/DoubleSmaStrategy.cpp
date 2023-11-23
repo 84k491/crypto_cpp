@@ -1,18 +1,10 @@
 #include "DoubleSmaStrategy.h"
-
-#include <iostream>
-#include <ostream>
+#include "ScopeExit.h"
 
 DoubleSmaStrategy::DoubleSmaStrategy(std::chrono::milliseconds slow_interval, std::chrono::milliseconds fast_interval)
     : m_slow_interval(slow_interval)
     , m_fast_interval(fast_interval)
 {
-}
-
-std::ostream & operator<<(std::ostream & os, const Signal & signal)
-{
-    os << "Signal: " << (signal.side == Side::Buy ? "Buy" : "Sell") << "; timestamp_ms: " << signal.timestamp.count();
-    return os;
 }
 
 namespace {

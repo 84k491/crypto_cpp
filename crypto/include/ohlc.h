@@ -4,6 +4,7 @@
 
 #include <chrono>
 
+// BYBIT REST API
 struct OHLC
 {
     std::chrono::milliseconds timestamp{};

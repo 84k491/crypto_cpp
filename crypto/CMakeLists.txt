@@ -8,6 +8,8 @@ add_executable(${PROJECT_NAME}
     src/ByBitGateway.cpp
     src/ohlc.cpp
     src/DoubleSmaStrategy.cpp
+    src/ScopeExit.cpp
+    src/Signal.cpp
 )
 target_compile_options(crypto PRIVATE "-g" "-Og")
 

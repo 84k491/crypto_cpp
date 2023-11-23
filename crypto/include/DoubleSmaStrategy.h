@@ -1,36 +1,10 @@
 #pragma once
 
+#include "Signal.h"
+
 #include <chrono>
-#include <functional>
 #include <list>
 #include <optional>
-#include <ostream>
-
-enum class Side
-{
-    Buy,
-    Sell,
-};
-
-struct Signal
-{
-    Side side;
-    std::chrono::milliseconds timestamp;
-};
-std::ostream & operator<<(std::ostream & os, const Signal & signal);
-
-class ScopeExit
-{
-public:
-    ScopeExit(std::function<void()> && func)
-        : m_func(std::move(func))
-    {
-    }
-    ~ScopeExit() { m_func(); }
-
-private:
-    std::function<void()> m_func;
-};
 
 class DoubleSmaStrategy
 {
