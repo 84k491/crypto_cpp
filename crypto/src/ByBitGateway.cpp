@@ -1,15 +1,16 @@
 #include "ByBitGateway.h"
 
+#include <chrono>
 #include <condition_variable>
-#include <list>
 #include <mutex>
+#include <sstream>
 #include <vector>
 
 struct OhlcResult
 {
     std::string category;
     std::string symbol;
-    std::list<OHLC> ohlc_list;
+    std::vector<OHLC> ohlc_list;
 };
 
 OHLC from_strings(const std::string & timestamp,
@@ -20,7 +21,7 @@ OHLC from_strings(const std::string & timestamp,
                   const std::string & volume,
                   const std::string & turnover)
 {
-    return OHLC{std::stoull(timestamp),
+    return OHLC{std::chrono::milliseconds{std::stoull(timestamp)},
                 std::stod(open),
                 std::stod(high),
                 std::stod(low),
@@ -63,18 +64,40 @@ void from_json(const json & j, OhlcResponse & response)
     j2.get_to(response.result);
 }
 
-std::future<std::vector<OHLC>> ByBitGateway::get_klines()
+std::future<std::map<std::chrono::milliseconds, OHLC>> ByBitGateway::get_klines(std::chrono::milliseconds start,
+                                                                                std::optional<std::chrono::milliseconds> end)
 {
-    return std::async(std::launch::async, [&] {
+    return std::async(std::launch::async, [this, start, end]() {
         std::condition_variable cv;
         std::mutex m;
-        std::string string_result;
 
+        const std::string symbol = "BTCUSDT";
+        const std::string category = "spot";
+        const unsigned interval = 15;
+
+        const std::string url = [&]() {
+            std::stringstream ss;
+            ss << "https://api-testnet.bybit.com/v5/market/kline"
+               << "?symbol=" << symbol
+               << "&category=" << category
+               << "&interval=" << interval
+               << "&start=" << start.count();
+            if (end.has_value()) {
+                ss << "&end=" << end.value().count();
+            }
+            return std::string(ss.str());
+        }();
+
+        long result_code = -1;
+
+        std::cout << "REST request: " << url << std::endl;
+        std::string string_result;
         client
                 .Build()
-                ->Get("https://api-testnet.bybit.com/v5/market/kline?symbol=BTCUSDT&category=spot&interval=15")
+                ->Get(url)
                 .WithCompletion([&](const restincurl::Result & result) {
                     std::lock_guard lock(m);
+                    result_code = result.http_response_code;
                     string_result = result.body;
                     cv.notify_all();
                 })
@@ -82,12 +105,15 @@ std::future<std::vector<OHLC>> ByBitGateway::get_klines()
 
         std::unique_lock lock(m);
         cv.wait(lock, [&] { return !string_result.empty(); });
-        std::vector<OHLC> result;
+        std::cout << "Result code: " << result_code << std::endl;
+
         OhlcResponse response;
         const auto j = json::parse(string_result);
         from_json(j, response);
+
+        std::map<std::chrono::milliseconds, OHLC> result;
         for (const auto & ohlc : response.result.ohlc_list) {
-            result.push_back(ohlc);
+            result.try_emplace(ohlc.timestamp, ohlc);
         }
         return result;
     });

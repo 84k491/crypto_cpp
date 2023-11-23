@@ -3,7 +3,7 @@
 using json = nlohmann::json;
 void to_json(json & j, const OHLC & ohlc)
 {
-    j = json{{"timestamp", ohlc.timestamp},
+    j = json{{"timestamp", ohlc.timestamp.count()},
              {"open", ohlc.open},
              {"high", ohlc.high},
              {"low", ohlc.low},

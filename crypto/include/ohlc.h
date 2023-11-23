@@ -2,11 +2,11 @@
 
 #include <nlohmann/json.hpp>
 
-#include <cstdint>
+#include <chrono>
 
 struct OHLC
 {
-    uint64_t timestamp{};
+    std::chrono::milliseconds timestamp{};
     double open{};
     double high{};
     double low{};
@@ -16,7 +16,5 @@ struct OHLC
 };
 
 using json = nlohmann::json;
-
 void to_json(json & j, const OHLC & ohlc);
-
 std::ostream & operator<<(std::ostream & os, const OHLC & ohlc);
