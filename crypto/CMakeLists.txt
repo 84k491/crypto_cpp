@@ -7,6 +7,7 @@ add_executable(${PROJECT_NAME}
     src/main.cpp
     src/ByBitGateway.cpp
     src/ohlc.cpp
+    src/DoubleSmaStrategy.cpp
 )
 target_compile_options(crypto PRIVATE "-g" "-Og")
 
