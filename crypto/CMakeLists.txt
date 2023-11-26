@@ -23,5 +23,3 @@ target_link_libraries(${PROJECT_NAME}
     curl
     nlohmann_json::nlohmann_json
 )
-
-#add_library(foo ...)

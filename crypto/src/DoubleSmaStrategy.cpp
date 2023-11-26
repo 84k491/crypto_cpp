@@ -36,7 +36,9 @@ std::optional<Signal> DoubleSmaStrategy::push_price(std::pair<std::chrono::milli
     }
 
     const auto current_average_slow = get_average(m_slow_data);
+    m_slow_avg_history.emplace_back(ts_and_price.first, current_average_slow);
     const auto current_average_fast = get_average(m_fast_data);
+    m_fast_avg_history.emplace_back(ts_and_price.first, current_average_fast);
 
     ScopeExit scope_exit([&] {
         m_prev_slow_avg = current_average_slow;

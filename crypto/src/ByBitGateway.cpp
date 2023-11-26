@@ -19,6 +19,14 @@ OHLC from_strings(const std::string & timestamp,
                   const std::string & volume,
                   const std::string & turnover)
 {
+    std::cout <<
+        "timestamp: " << timestamp << 
+        " open: " << open <<
+        " high: " << high <<
+        " low: " << low <<
+        " close: " << close <<
+        " volume: " << volume <<
+        " turnover: " << turnover << std::endl;
     return OHLC{std::chrono::milliseconds{std::stoull(timestamp)},
                 std::stod(open),
                 std::stod(high),
@@ -75,8 +83,8 @@ void ByBitGateway::get_klines(std::chrono::milliseconds start,
             std::condition_variable cv;
             std::mutex m;
 
-            const std::string symbol = "BTCUSDT";
-            const std::string category = "spot";
+            const std::string symbol = "ETHUSDT";
+            const std::string category = "linear";
             const unsigned interval = 1;
             const unsigned limit = 1000;
 
