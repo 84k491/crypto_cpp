@@ -16,6 +16,8 @@ int main(int argc, char * argv[])
                     std::chrono::minutes{25},
                     std::chrono::minutes{5}},
             gateway);
+    instance.run();
+    std::cout << "Result depo: " << instance.get_strategy_result().profit << std::endl;
 
     return 0;
 }

@@ -30,22 +30,25 @@ void StrategyInstance::run()
     m_strategy_result.profit = m_deposit;
 }
 
-void StrategyInstance::move_position_to(double position_size, double price)
+void StrategyInstance::move_position_to(double to_position_size, double price)
 {
     // make price optional for market orders
+
     // actual trade here
-    m_deposit += position_size * price;
-    m_current_position_size = position_size;
+    const auto volume_delta = to_position_size - m_current_position_size;
+    m_deposit += volume_delta * price;
 
     // fee
 
+    m_current_position_size = to_position_size;
     m_strategy_result.trades++;
 }
 
 void StrategyInstance::on_signal(const Signal & signal)
 {
     const int size_sign = signal.side == Side::Buy ? 1 : -1;
-    move_position_to(size_sign * m_current_position_size, signal.price);
+    const auto default_pos_size = m_pos_currency_amount / signal.price;
+    move_position_to(size_sign * default_pos_size, signal.price);
     m_last_signal = signal;
     for (const auto & callback : m_signal_callbacks) {
         callback(signal);
@@ -61,4 +64,9 @@ std::map<std::string, std::vector<std::pair<std::chrono::milliseconds, double>>>
 StrategyInstance::get_strategy_internal_data_history() const
 {
     return m_strategy.get_internal_data_history();
+}
+
+const StrategyResult & StrategyInstance::get_strategy_result() const
+{
+    return m_strategy_result;
 }

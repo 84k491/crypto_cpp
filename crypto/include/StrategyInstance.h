@@ -18,6 +18,8 @@ public:
     std::map<std::string, std::vector<std::pair<std::chrono::milliseconds, double>>>
     get_strategy_internal_data_history() const;
 
+    const StrategyResult& get_strategy_result() const;
+
 private:
     void on_signal(const Signal & signal);
     void move_position_to(double position_size, double price);
@@ -32,9 +34,9 @@ private:
 
     std::vector<std::function<void(const Signal &)>> m_signal_callbacks;
 
-    double m_deposit = 0;
-    double m_default_position_size = 0;
-    double m_current_position_size = 0;
+    double m_deposit = 0.;
+    static constexpr double m_pos_currency_amount = 100.;
+    double m_current_position_size = 0.;
 
     const Timerange m_timerange;
 };
