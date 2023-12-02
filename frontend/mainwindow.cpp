@@ -28,7 +28,7 @@ MainWindow::MainWindow(QWidget * parent)
     sell_signals->setMarkerShape(QScatterSeries::MarkerShapeRectangle);
     sell_signals->setMarkerSize(11.0);
 
-    DoubleSmaStrategyConfig config{std::chrono::minutes{25}, std::chrono::minutes{5}};
+    DoubleSmaStrategyConfig config{std::chrono::minutes{55}, std::chrono::minutes{21}};
 
     StrategyInstance strategy_instance(
             Timerange{start, end},

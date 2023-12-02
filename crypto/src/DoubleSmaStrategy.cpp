@@ -2,49 +2,62 @@
 
 #include "ScopeExit.h"
 
+#include <iostream>
+
 DoubleSmaStrategyConfig::DoubleSmaStrategyConfig(std::chrono::milliseconds slow_interval, std::chrono::milliseconds fast_interval)
     : m_slow_interval(slow_interval)
     , m_fast_interval(fast_interval)
 {
 }
 
-DoubleSmaStrategy::DoubleSmaStrategy(const DoubleSmaStrategyConfig & conf)
-    : m_config(conf)
+bool DoubleSmaStrategyConfig::is_valid() const
+{
+    return m_slow_interval > m_fast_interval;
+}
+
+MovingAverage::MovingAverage(std::chrono::milliseconds interval)
+    : m_interval(interval)
 {
 }
 
-namespace {
-double get_average(const std::list<std::pair<std::chrono::milliseconds, double>> & data)
+std::optional<double> MovingAverage::push_price(std::pair<std::chrono::milliseconds, double> ts_and_price)
 {
-    auto sum = 0.;
-    for (const auto & [_, price] : data) {
-        sum += price;
+    m_data.push_back(ts_and_price);
+    m_sum += static_cast<size_t>(ts_and_price.second);
+
+    if ((m_data.back().first - m_data.front().first) < m_interval) {
+        return std::nullopt;
     }
-    return sum / static_cast<double>(data.size());
+
+    m_sum -= static_cast<size_t>(m_data.front().second);
+    m_data.pop_front();
+
+    return static_cast<double>(m_sum) / static_cast<double>(m_data.size());
 }
-} // namespace
+
+DoubleSmaStrategy::DoubleSmaStrategy(const DoubleSmaStrategyConfig & conf)
+    : m_config(conf)
+    , m_slow_avg(conf.m_slow_interval)
+    , m_fast_avg(conf.m_fast_interval)
+{
+}
 
 std::optional<Signal> DoubleSmaStrategy::push_price(std::pair<std::chrono::milliseconds, double> ts_and_price)
 {
-    m_fast_data.push_back(ts_and_price);
-    m_slow_data.push_back(ts_and_price);
-    if ((m_fast_data.back().first - m_fast_data.front().first) < m_config.m_fast_interval) {
-        return std::nullopt;
-    }
-    else {
-        m_fast_data.pop_front();
-    }
-    if ((m_slow_data.back().first - m_slow_data.front().first) < m_config.m_slow_interval) {
-        return std::nullopt;
-    }
-    else {
-        m_slow_data.pop_front();
-    }
+    const auto fast_avg = m_fast_avg.push_price(ts_and_price);
+    const auto slow_avg = m_slow_avg.push_price(ts_and_price);
 
-    const auto current_average_slow = get_average(m_slow_data);
-    m_slow_avg_history.emplace_back(ts_and_price.first, current_average_slow);
-    const auto current_average_fast = get_average(m_fast_data);
+    if (!fast_avg.has_value()) {
+        return std::nullopt;
+    }
+    const auto current_average_fast = fast_avg.value();
     m_fast_avg_history.emplace_back(ts_and_price.first, current_average_fast);
+
+    if (!slow_avg.has_value()) {
+        return std::nullopt;
+    }
+    const auto current_average_slow = slow_avg.value();
+    m_slow_avg_history.emplace_back(ts_and_price.first, current_average_slow);
 
     ScopeExit scope_exit([&] {
         m_prev_slow_avg = current_average_slow;
