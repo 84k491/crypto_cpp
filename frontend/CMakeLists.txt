@@ -23,12 +23,15 @@ set(PROJECT_SOURCES
         ../crypto/src/DoubleSmaStrategy.cpp
         ../crypto/src/ScopeExit.cpp
         ../crypto/src/Signal.cpp
+        ../crypto/src/Timerange.cpp
+        ../crypto/src/StrategyInstance.cpp
 )
 
 qt_add_executable(frontend
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
 )
+target_compile_options(frontend PRIVATE "-g" "-Og")
 
 target_include_directories(${PROJECT_NAME}
     PUBLIC

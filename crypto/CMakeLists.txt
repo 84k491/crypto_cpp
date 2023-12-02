@@ -10,6 +10,8 @@ add_executable(${PROJECT_NAME}
     src/DoubleSmaStrategy.cpp
     src/ScopeExit.cpp
     src/Signal.cpp
+    src/Timerange.cpp
+    src/StrategyInstance.cpp
 )
 target_compile_options(crypto PRIVATE "-g" "-Og")
 

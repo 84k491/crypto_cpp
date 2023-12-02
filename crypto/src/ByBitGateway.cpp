@@ -19,14 +19,6 @@ OHLC from_strings(const std::string & timestamp,
                   const std::string & volume,
                   const std::string & turnover)
 {
-    std::cout <<
-        "timestamp: " << timestamp << 
-        " open: " << open <<
-        " high: " << high <<
-        " low: " << low <<
-        " close: " << close <<
-        " volume: " << volume <<
-        " turnover: " << turnover << std::endl;
     return OHLC{std::chrono::milliseconds{std::stoull(timestamp)},
                 std::stod(open),
                 std::stod(high),
@@ -70,15 +62,28 @@ void from_json(const json & j, OhlcResponse & response)
     j2.get_to(response.result);
 }
 
-void ByBitGateway::get_klines(std::chrono::milliseconds start,
-                              std::chrono::milliseconds end)
+void ByBitGateway::receive_klines(const Timerange & timerange)
 {
-    const auto requested_interval = end - start;
-    std::cout << "Whole requested interval hours: " << std::chrono::duration_cast<std::chrono::hours>(requested_interval).count() << std::endl;
-    std::cout << start.count() << "-" << end.count() << std::endl;
+    auto it = m_ranges.find(timerange);
+    if (it == m_ranges.end()) {
+        auto [it1, success] = m_ranges.emplace(timerange, request_klines(timerange));
+        it = it1;
+    }
 
-    auto last_ts = start;
-    while (last_ts < end) {
+    for (const auto & [ts, ohlc] : it->second) {
+        for (const auto & cb : m_kline_callbacks) {
+            cb({ts, ohlc});
+        }
+    }
+}
+
+std::map<std::chrono::milliseconds, OHLC> ByBitGateway::request_klines(const Timerange &timerange)
+{
+    std::cout << "Whole requested interval hours: " << std::chrono::duration_cast<std::chrono::hours>(timerange.duration()).count() << std::endl;
+
+    std::map<std::chrono::milliseconds, OHLC> result = {};
+    auto last_ts = timerange.start();
+    while (last_ts < timerange.end()) {
         auto future = std::async(std::launch::async, [this, start = last_ts]() {
             std::condition_variable cv;
             std::mutex m;
@@ -118,33 +123,33 @@ void ByBitGateway::get_klines(std::chrono::milliseconds start,
             const auto j = json::parse(string_result);
             from_json(j, response);
 
-            std::map<std::chrono::milliseconds, OHLC> result;
+            std::map<std::chrono::milliseconds, OHLC> furure_result;
             for (const auto & ohlc : response.result.ohlc_list) {
-                result.try_emplace(ohlc.timestamp, ohlc);
+                furure_result.try_emplace(ohlc.timestamp, ohlc);
             }
 
-            return result;
+            return furure_result;
         });
         future.wait();
-        const auto result = future.get();
-        std::cout << "Got " << result.size() << " prices" << std::endl;
-        for (const auto & [ts, ohlc] : result) {
+        const std::map<std::chrono::milliseconds, OHLC> inter_result = future.get();
+        std::cout << "Got " << inter_result.size() << " prices" << std::endl;
+        for (const auto & [ts, ohlc] : inter_result) {
             if (ts < last_ts) {
                 std::cout << "Skipping out-of-order price: " << ts.count() << std::endl;
                 continue;
             }
-            if (m_on_kline_received_cb) {
-                m_on_kline_received_cb(std::make_pair(ts, ohlc));
-            }
+            result.emplace(ts, ohlc);
             last_ts = ts;
         }
     }
-    const auto received_interval = last_ts - start;
+    const auto received_interval = last_ts - timerange.start();
     std::cout << "Whole received interval hours: " << std::chrono::duration_cast<std::chrono::hours>(received_interval).count() << std::endl;
-    std::cout << start.count() << "-" << last_ts.count() << std::endl;
+    std::cout << timerange.start().count() << "-" << last_ts.count() << std::endl;
+
+    return result;
 }
 
-void ByBitGateway::set_on_kline_received(std::function<void(std::pair<std::chrono::milliseconds, OHLC>)> on_kline_received_cb)
+void ByBitGateway::subscribe_for_klines(std::function<void(std::pair<std::chrono::milliseconds, OHLC>)> on_kline_received_cb)
 {
-    m_on_kline_received_cb = std::move(on_kline_received_cb);
+    m_kline_callbacks.emplace_back(std::move(on_kline_received_cb));
 }

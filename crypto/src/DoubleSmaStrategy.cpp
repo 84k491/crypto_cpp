@@ -1,9 +1,15 @@
 #include "DoubleSmaStrategy.h"
+
 #include "ScopeExit.h"
 
-DoubleSmaStrategy::DoubleSmaStrategy(std::chrono::milliseconds slow_interval, std::chrono::milliseconds fast_interval)
+DoubleSmaStrategyConfig::DoubleSmaStrategyConfig(std::chrono::milliseconds slow_interval, std::chrono::milliseconds fast_interval)
     : m_slow_interval(slow_interval)
     , m_fast_interval(fast_interval)
+{
+}
+
+DoubleSmaStrategy::DoubleSmaStrategy(const DoubleSmaStrategyConfig & conf)
+    : m_config(conf)
 {
 }
 
@@ -22,13 +28,13 @@ std::optional<Signal> DoubleSmaStrategy::push_price(std::pair<std::chrono::milli
 {
     m_fast_data.push_back(ts_and_price);
     m_slow_data.push_back(ts_and_price);
-    if ((m_fast_data.back().first - m_fast_data.front().first) < m_fast_interval) {
+    if ((m_fast_data.back().first - m_fast_data.front().first) < m_config.m_fast_interval) {
         return std::nullopt;
     }
     else {
         m_fast_data.pop_front();
     }
-    if ((m_slow_data.back().first - m_slow_data.front().first) < m_slow_interval) {
+    if ((m_slow_data.back().first - m_slow_data.front().first) < m_config.m_slow_interval) {
         return std::nullopt;
     }
     else {
@@ -56,5 +62,14 @@ std::optional<Signal> DoubleSmaStrategy::push_price(std::pair<std::chrono::milli
     }
 
     const auto side = current_slow_above_fast ? Side::Sell : Side::Buy;
-    return Signal{.side = side, .timestamp = ts_and_price.first};
+    return Signal{.side = side, .timestamp = ts_and_price.first, .price = ts_and_price.second};
+}
+
+std::map<std::string, std::vector<std::pair<std::chrono::milliseconds, double>>>
+DoubleSmaStrategy::get_internal_data_history() const
+{
+    return {
+            {"slow_avg_history", m_slow_avg_history},
+            {"fast_avg_history", m_fast_avg_history},
+    };
 }

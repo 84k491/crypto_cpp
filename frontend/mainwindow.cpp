@@ -3,6 +3,7 @@
 #include "./ui_mainwindow.h"
 #include "ByBitGateway.h"
 #include "DoubleSmaStrategy.h"
+#include "StrategyInstance.h"
 
 #include <QScatterSeries>
 #include <QtCharts>
@@ -17,7 +18,7 @@ MainWindow::MainWindow(QWidget * parent)
     ByBitGateway gateway;
     const auto start = std::chrono::milliseconds{1700556200000};
     const auto end = std::chrono::milliseconds{1700735400000};
-    const auto md_interval = end - start;
+    Timerange timerange(start, end);
 
     auto * prices = new QLineSeries();
     auto * buy_signals = new QScatterSeries();
@@ -27,34 +28,42 @@ MainWindow::MainWindow(QWidget * parent)
     sell_signals->setMarkerShape(QScatterSeries::MarkerShapeRectangle);
     sell_signals->setMarkerSize(11.0);
 
-    DoubleSmaStrategy strategy(std::chrono::minutes{25}, std::chrono::minutes{5});
-    gateway.set_on_kline_received([&](std::pair<std::chrono::milliseconds, OHLC> ts_and_ohlc) {
+    DoubleSmaStrategyConfig config{std::chrono::minutes{25}, std::chrono::minutes{5}};
+
+    StrategyInstance strategy_instance(
+            Timerange{start, end},
+            DoubleSmaStrategyConfig{
+                    std::chrono::minutes{25},
+                    std::chrono::minutes{5}},
+            gateway);
+
+    gateway.subscribe_for_klines([&](std::pair<std::chrono::milliseconds, OHLC> ts_and_ohlc) {
         const auto & [ts, ohlc] = ts_and_ohlc;
-        const auto signal = strategy.push_price({ts, ohlc.close});
         prices->append(static_cast<double>(ts.count()), ohlc.close);
-        if (signal.has_value()) {
-            if (signal.value().side == Side::Buy) {
-                buy_signals->append(static_cast<double>(ts.count()), ohlc.close);
-            }
-            else {
-                sell_signals->append(static_cast<double>(ts.count()), ohlc.close);
-            }
+    });
+    strategy_instance.subscribe_for_signals([&](const Signal & signal) {
+        if (signal.side == Side::Buy) {
+            buy_signals->append(static_cast<double>(signal.timestamp.count()), signal.price);
+        }
+        else {
+            sell_signals->append(static_cast<double>(signal.timestamp.count()), signal.price);
         }
     });
-    gateway.get_klines(start, end);
+    strategy_instance.run();
 
+    std::cout << "Requesting internal data" << std::endl;
+    const auto internal_data = strategy_instance.get_strategy_internal_data_history();
     auto * slow_avg = new QLineSeries();
-    for (const auto & [ts, avg_slow] : strategy.get_slow_avg_history()) {
+    for (const auto & [ts, avg_slow] : internal_data.find("slow_avg_history")->second) {
         slow_avg->append(static_cast<double>(ts.count()), avg_slow);
     }
 
     auto * fast_avg = new QLineSeries();
-    for (const auto & [ts, avg_fast] : strategy.get_fast_avg_history()) {
+    for (const auto & [ts, avg_fast] : internal_data.find("fast_avg_history")->second) {
         fast_avg->append(static_cast<double>(ts.count()), avg_fast);
     }
 
     auto * chart = new QChart();
-
     chart->legend()->hide();
     chart->addSeries(prices);
     chart->addSeries(slow_avg);
@@ -81,6 +90,8 @@ MainWindow::MainWindow(QWidget * parent)
     chartView->setRenderHint(QPainter::Antialiasing);
 
     centralWidget()->layout()->addWidget(chartView);
+
+    std::cout << "End of mainwindow constructor" << std::endl;
 }
 
 MainWindow::~MainWindow()
