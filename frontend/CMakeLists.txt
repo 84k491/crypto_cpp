@@ -18,6 +18,7 @@ set(PROJECT_SOURCES
         mainwindow.cpp
         mainwindow.h
         mainwindow.ui
+        DragableChart.cpp
         ../crypto/src/ByBitGateway.cpp
         ../crypto/src/ohlc.cpp
         ../crypto/src/DoubleSmaStrategy.cpp

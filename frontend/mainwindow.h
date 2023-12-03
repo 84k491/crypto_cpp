@@ -18,6 +18,9 @@ public:
     ~MainWindow() override;
 
 private:
+    void updateChart();
+
+private:
     Ui::MainWindow * ui;
 };
 #endif // MAINWINDOW_H

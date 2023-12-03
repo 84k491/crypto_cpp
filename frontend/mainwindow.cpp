@@ -5,6 +5,8 @@
 #include "DoubleSmaStrategy.h"
 #include "StrategyInstance.h"
 
+#include "DragableChart.h"
+
 #include <QScatterSeries>
 #include <QtCharts>
 #include <qscatterseries.h>
@@ -85,13 +87,16 @@ MainWindow::MainWindow(QWidget * parent)
 
     chart->setTitle("Simple line chart example");
 
-    auto * chartView = new QChartView(chart);
-    chartView->setRubberBand(QChartView::RectangleRubberBand);
+    auto * chartView = new DragableChart(chart);
     chartView->setRenderHint(QPainter::Antialiasing);
 
-    centralWidget()->layout()->addWidget(chartView);
+    ui->verticalLayout_graph->addWidget(chartView);
 
     std::cout << "End of mainwindow constructor" << std::endl;
+}
+
+void updateChart()
+{
 }
 
 MainWindow::~MainWindow()
