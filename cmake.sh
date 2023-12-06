@@ -4,4 +4,4 @@ mkdir -p build
 cd build
 
 cmake ../
-cmake --build . -j2
+cmake --build . -j8

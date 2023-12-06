@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Signal.h"
+
 #include <QtCharts>
 
 class DragableChart : public QChartView
@@ -7,14 +9,36 @@ class DragableChart : public QChartView
     Q_OBJECT
 
 public:
-    DragableChart(QChart * chart, QWidget * parent = nullptr);
+    DragableChart(QWidget * parent = nullptr);
+
+    void push_price(std::chrono::milliseconds ts, double price);
+    void push_signal(Signal signal);
+    void push_strategy_internal(const std::string & name,
+                                std::chrono::milliseconds ts,
+                                double data);
 
 protected:
     void mousePressEvent(QMouseEvent * event) override;
     void mouseReleaseEvent(QMouseEvent * event) override;
     void mouseMoveEvent(QMouseEvent * event) override;
-    void wheelEvent(QWheelEvent *event) override;
+    void wheelEvent(QWheelEvent * event) override;
+
+private:
+    void update_axes(std::chrono::milliseconds x, double y);
 
 private:
     QPointF m_lastMousePos;
+
+    long x_min = std::numeric_limits<long>::max();
+    long x_max = std::numeric_limits<long>::min();
+
+    double y_min = std::numeric_limits<double>::max();
+    double y_max = std::numeric_limits<double>::min();
+
+    QDateTimeAxis * axisX = nullptr;
+    QLineSeries * prices = nullptr;
+    QScatterSeries * buy_signals = nullptr;
+    QScatterSeries * sell_signals = nullptr;
+    QLineSeries * slow_avg = nullptr;
+    QLineSeries * fast_avg = nullptr;
 };
