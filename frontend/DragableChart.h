@@ -3,6 +3,7 @@
 #include "Signal.h"
 
 #include <QtCharts>
+#include <qtmetamacros.h>
 
 class DragableChart : public QChartView
 {
@@ -11,11 +12,12 @@ class DragableChart : public QChartView
 public:
     DragableChart(QWidget * parent = nullptr);
 
-    void push_price(std::chrono::milliseconds ts, double price);
-    void push_signal(Signal signal);
-    void push_strategy_internal(const std::string & name,
-                                std::chrono::milliseconds ts,
-                                double data);
+public slots:
+    void on_push_price(std::chrono::milliseconds ts, double price);
+    void on_push_signal(Signal signal);
+    void on_push_strategy_internal(const std::string & name,
+                                   std::chrono::milliseconds ts,
+                                   double data);
 
 protected:
     void mousePressEvent(QMouseEvent * event) override;

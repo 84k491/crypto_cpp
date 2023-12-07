@@ -116,13 +116,7 @@ void DragableChart::update_axes(std::chrono::milliseconds x, double y)
     }
 }
 
-void DragableChart::push_price(std::chrono::milliseconds ts, double price)
-{
-    prices->append(static_cast<double>(ts.count()), price);
-    update_axes(ts, price);
-}
-
-void DragableChart::push_signal(Signal signal)
+void DragableChart::on_push_signal(Signal signal)
 {
     if (signal.side == Side::Buy) {
         buy_signals->append(static_cast<double>(signal.timestamp.count()), signal.price);
@@ -132,7 +126,7 @@ void DragableChart::push_signal(Signal signal)
     }
 }
 
-void DragableChart::push_strategy_internal(
+void DragableChart::on_push_strategy_internal(
         const std::string & name,
         std::chrono::milliseconds ts,
         double data)
@@ -146,4 +140,10 @@ void DragableChart::push_strategy_internal(
         return;
     }
     std::cout << "ERROR: Unknown internal data name: " << name << std::endl;
+}
+
+void DragableChart::on_push_price(std::chrono::milliseconds ts, double price)
+{
+    prices->append(static_cast<double>(ts.count()), price);
+    update_axes(ts, price);
 }
