@@ -13,12 +13,15 @@ public:
     StrategyInstance(const Timerange & timerange, const DoubleSmaStrategyConfig & conf, ByBitGateway & md_gateway);
 
     void subscribe_for_signals(std::function<void(const Signal &)> && on_signal_cb);
+    void subscribe_for_strategy_internal(std::function<void(std::string name,
+                                                            std::chrono::milliseconds ts,
+                                                            double data)> && cb);
     void run();
 
     std::map<std::string, std::vector<std::pair<std::chrono::milliseconds, double>>>
     get_strategy_internal_data_history() const;
 
-    const StrategyResult& get_strategy_result() const;
+    const StrategyResult & get_strategy_result() const;
 
 private:
     void on_signal(const Signal & signal);
@@ -33,6 +36,10 @@ private:
     StrategyResult m_strategy_result;
 
     std::vector<std::function<void(const Signal &)>> m_signal_callbacks;
+    std::vector<std::function<void(std::string name,
+                                   std::chrono::milliseconds ts,
+                                   double data)>>
+            m_strategy_internal_callbacks;
 
     double m_deposit = 0.;
     static constexpr double m_pos_currency_amount = 100.;

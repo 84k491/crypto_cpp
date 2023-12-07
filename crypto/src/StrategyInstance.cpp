@@ -15,6 +15,21 @@ StrategyInstance::StrategyInstance(
             on_signal(signal.value());
         }
     });
+    m_strategy.subscribe_for_strategy_internal([this](const std::string & name,
+                                                      std::chrono::milliseconds ts,
+                                                      double data) {
+        for (const auto & cb : m_strategy_internal_callbacks) {
+            cb(name, ts, data);
+        }
+    });
+}
+
+void StrategyInstance::subscribe_for_strategy_internal(
+        std::function<void(std::string name,
+                           std::chrono::milliseconds ts,
+                           double data)> && cb)
+{
+    m_strategy_internal_callbacks.emplace_back(std::move(cb));
 }
 
 void StrategyInstance::run()
@@ -58,12 +73,6 @@ void StrategyInstance::on_signal(const Signal & signal)
 void StrategyInstance::subscribe_for_signals(std::function<void(const Signal &)> && on_signal_cb)
 {
     m_signal_callbacks.emplace_back(std::move(on_signal_cb));
-}
-
-std::map<std::string, std::vector<std::pair<std::chrono::milliseconds, double>>>
-StrategyInstance::get_strategy_internal_data_history() const
-{
-    return m_strategy.get_internal_data_history();
 }
 
 const StrategyResult & StrategyInstance::get_strategy_result() const

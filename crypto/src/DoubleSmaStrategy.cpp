@@ -52,12 +52,18 @@ std::optional<Signal> DoubleSmaStrategy::push_price(std::pair<std::chrono::milli
     }
     const auto current_average_fast = fast_avg.value();
     m_fast_avg_history.emplace_back(ts_and_price.first, current_average_fast);
+    for (const auto & cb : m_strategy_internal_callbacks) {
+        cb("fast_avg_history", ts_and_price.first, current_average_fast);
+    }
 
     if (!slow_avg.has_value()) {
         return std::nullopt;
     }
     const auto current_average_slow = slow_avg.value();
     m_slow_avg_history.emplace_back(ts_and_price.first, current_average_slow);
+    for (const auto & cb : m_strategy_internal_callbacks) {
+        cb("slow_avg_history", ts_and_price.first, current_average_slow);
+    }
 
     ScopeExit scope_exit([&] {
         m_prev_slow_avg = current_average_slow;
@@ -85,4 +91,11 @@ DoubleSmaStrategy::get_internal_data_history() const
             {"slow_avg_history", m_slow_avg_history},
             {"fast_avg_history", m_fast_avg_history},
     };
+}
+
+void DoubleSmaStrategy::subscribe_for_strategy_internal(std::function<void(std::string name,
+                                                                           std::chrono::milliseconds ts,
+                                                                           double data)> && cb)
+{
+    m_strategy_internal_callbacks.emplace_back(std::move(cb));
 }

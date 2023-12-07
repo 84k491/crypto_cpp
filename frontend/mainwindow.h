@@ -29,12 +29,9 @@ private slots:
 signals:
     void signal_price(std::chrono::milliseconds ts, double price);
     void signal_signal(Signal signal);
-    void signal_strategy_internal(const std::string & name,
+    void signal_strategy_internal(const std::string name,
                                   std::chrono::milliseconds ts,
                                   double data);
-
-private:
-    void run_strategy();
 
 private:
     Ui::MainWindow * ui;

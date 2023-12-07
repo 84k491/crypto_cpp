@@ -39,35 +39,31 @@ MainWindow::MainWindow(QWidget * parent)
 
 void MainWindow::on_pushButton_clicked()
 {
-    std::thread t([&]() { run_strategy(); });
+    const auto start = std::chrono::milliseconds{1700556200000};
+    const auto end = std::chrono::milliseconds{1700735400000};
+    Timerange timerange{start, end};
+    DoubleSmaStrategyConfig config{std::chrono::minutes{55}, std::chrono::minutes{21}};
+
+    std::thread t([this, timerange, config]() {
+        StrategyInstance strategy_instance(
+                timerange,
+                config,
+                m_gateway);
+
+        strategy_instance.subscribe_for_signals([&](const Signal & signal) {
+            emit signal_signal(signal);
+        });
+
+        strategy_instance.subscribe_for_strategy_internal([this](std::string name, std::chrono::milliseconds ts, double data) {
+            emit signal_strategy_internal(name, ts, data);
+        });
+        strategy_instance.run();
+        std::cout << "strategy finished" << std::endl;
+    });
     t.detach();
 }
 
 MainWindow::~MainWindow()
 {
     delete ui;
-}
-
-void MainWindow::run_strategy()
-{
-    DoubleSmaStrategyConfig config{std::chrono::minutes{55}, std::chrono::minutes{21}};
-    const auto start = std::chrono::milliseconds{1700556200000};
-    const auto end = std::chrono::milliseconds{1700735400000};
-    StrategyInstance strategy_instance(
-            Timerange{start, end},
-            config,
-            m_gateway);
-
-    strategy_instance.subscribe_for_signals([&](const Signal & signal) {
-        emit signal_signal(signal);
-    });
-    strategy_instance.run();
-
-    const auto internal_data = strategy_instance.get_strategy_internal_data_history();
-    for (const auto & [name, data_vector] : internal_data) {
-        for (const auto & [ts, data] : data_vector) {
-            emit signal_strategy_internal(name, ts, data);
-        }
-    }
-    std::cout << "strategy finished" << std::endl;
 }

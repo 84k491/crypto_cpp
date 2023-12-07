@@ -3,6 +3,7 @@
 #include "Signal.h"
 
 #include <chrono>
+#include <functional>
 #include <list>
 #include <map>
 #include <optional>
@@ -42,6 +43,10 @@ public:
     std::map<std::string, std::vector<std::pair<std::chrono::milliseconds, double>>>
     get_internal_data_history() const;
 
+    void subscribe_for_strategy_internal(std::function<void(std::string name,
+                                                            std::chrono::milliseconds ts,
+                                                            double data)> && cb);
+
 private:
     const DoubleSmaStrategyConfig m_config;
 
@@ -53,4 +58,9 @@ private:
 
     std::optional<double> m_prev_slow_avg{};
     std::optional<double> m_prev_fast_avg{};
+
+    std::vector<std::function<void(std::string name,
+                                   std::chrono::milliseconds ts,
+                                   double data)>>
+            m_strategy_internal_callbacks;
 };
