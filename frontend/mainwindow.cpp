@@ -28,11 +28,6 @@ MainWindow::MainWindow(QWidget * parent)
             m_chartView,
             &DragableChart::on_push_strategy_internal);
 
-    m_gateway.subscribe_for_klines([&](std::pair<std::chrono::milliseconds, OHLC> ts_and_ohlc) {
-        const auto & [ts, ohlc] = ts_and_ohlc;
-        emit signal_price(ts, ohlc.close);
-    });
-
     ui->verticalLayout_graph->addWidget(m_chartView);
     std::cout << "End of mainwindow constructor" << std::endl;
 }
@@ -50,11 +45,16 @@ void MainWindow::on_pushButton_clicked()
                 config,
                 m_gateway);
 
+        strategy_instance.subscribe_for_klines([&](std::pair<std::chrono::milliseconds, OHLC> ts_and_ohlc) {
+            const auto & [ts, ohlc] = ts_and_ohlc;
+            emit signal_price(ts, ohlc.close);
+        });
+
         strategy_instance.subscribe_for_signals([&](const Signal & signal) {
             emit signal_signal(signal);
         });
 
-        strategy_instance.subscribe_for_strategy_internal([this](std::string name, std::chrono::milliseconds ts, double data) {
+        strategy_instance.subscribe_for_strategy_internal([this](const std::string & name, std::chrono::milliseconds ts, double data) {
             emit signal_strategy_internal(name, ts, data);
         });
         strategy_instance.run();

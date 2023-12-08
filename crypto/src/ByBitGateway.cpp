@@ -62,94 +62,87 @@ void from_json(const json & j, OhlcResponse & response)
     j2.get_to(response.result);
 }
 
-void ByBitGateway::receive_klines(const Timerange & timerange)
+void ByBitGateway::get_klines(const std::string & symbol, const Timerange & timerange, KlineCallback && kline_callback)
 {
-    auto it = m_ranges.find(timerange);
-    if (it == m_ranges.end()) {
-        auto [it1, success] = m_ranges.emplace(timerange, request_klines(timerange));
-        it = it1;
+    if (auto it = m_ranges.find(timerange); it != m_ranges.end()) {
+        for (const auto & [ts, ohlc] : it->second) {
+            kline_callback({ts, ohlc});
+        }
+        return;
     }
 
-    for (const auto & [ts, ohlc] : it->second) {
-        for (const auto & cb : m_kline_callbacks) {
-            cb({ts, ohlc});
+    request_klines(symbol, timerange, [this, timerange, kline_callback](std::map<std::chrono::milliseconds, OHLC> && ts_and_ohlc_map) {
+        auto & range = m_ranges[timerange];
+        for (const auto & ts_and_ohlc : ts_and_ohlc_map) {
+            kline_callback(ts_and_ohlc);
         }
-    }
+        range.merge(ts_and_ohlc_map);
+    });
 }
 
-std::map<std::chrono::milliseconds, OHLC> ByBitGateway::request_klines(const Timerange &timerange)
+void ByBitGateway::request_klines(const std::string & symbol, const Timerange & timerange, KlinePackCallback && pack_callback)
 {
     std::cout << "Whole requested interval hours: " << std::chrono::duration_cast<std::chrono::hours>(timerange.duration()).count() << std::endl;
 
-    std::map<std::chrono::milliseconds, OHLC> result = {};
     auto last_ts = timerange.start();
     while (last_ts < timerange.end()) {
-        auto future = std::async(std::launch::async, [this, start = last_ts]() {
-            std::condition_variable cv;
-            std::mutex m;
+        auto future = std::async(
+                std::launch::async,
+                [&symbol, this, start = last_ts]() {
+                    std::condition_variable cv;
+                    std::mutex m;
 
-            const std::string symbol = "ETHUSDT";
-            const std::string category = "linear";
-            const unsigned interval = 1;
-            const unsigned limit = 1000;
+                    const std::string symbol = "ETHUSDT";
+                    const std::string category = "linear";
+                    const unsigned interval = 1;
+                    const unsigned limit = 1000;
 
-            const std::string url = [&]() {
-                std::stringstream ss;
-                ss << "https://api-testnet.bybit.com/v5/market/kline"
-                   << "?symbol=" << symbol
-                   << "&category=" << category
-                   << "&interval=" << interval
-                   << "&limit=" << limit
-                   << "&start=" << start.count();
-                return std::string(ss.str());
-            }();
+                    const std::string url = [&]() {
+                        std::stringstream ss;
+                        ss << "https://api-testnet.bybit.com/v5/market/kline"
+                           << "?symbol=" << symbol
+                           << "&category=" << category
+                           << "&interval=" << interval
+                           << "&limit=" << limit
+                           << "&start=" << start.count();
+                        return std::string(ss.str());
+                    }();
 
-            std::cout << "REST request: " << url << std::endl;
-            std::string string_result;
-            client
-                    .Build()
-                    ->Get(url)
-                    .WithCompletion([&](const restincurl::Result & result) {
-                        std::lock_guard lock(m);
-                        string_result = result.body;
-                        cv.notify_all();
-                    })
-                    .Execute();
+                    std::cout << "REST request: " << url << std::endl;
+                    std::string string_result;
+                    client
+                            .Build()
+                            ->Get(url)
+                            .WithCompletion([&](const restincurl::Result & result) {
+                                std::lock_guard lock(m);
+                                string_result = result.body;
+                                cv.notify_all();
+                            })
+                            .Execute();
 
-            std::unique_lock lock(m);
-            cv.wait(lock, [&] { return !string_result.empty(); });
+                    std::unique_lock lock(m);
+                    cv.wait(lock, [&] { return !string_result.empty(); });
 
-            OhlcResponse response;
-            const auto j = json::parse(string_result);
-            from_json(j, response);
+                    OhlcResponse response;
+                    const auto j = json::parse(string_result);
+                    from_json(j, response);
 
-            std::map<std::chrono::milliseconds, OHLC> furure_result;
-            for (const auto & ohlc : response.result.ohlc_list) {
-                furure_result.try_emplace(ohlc.timestamp, ohlc);
-            }
+                    std::map<std::chrono::milliseconds, OHLC> furure_result;
+                    for (const auto & ohlc : response.result.ohlc_list) {
+                        furure_result.try_emplace(ohlc.timestamp, ohlc);
+                    }
 
-            return furure_result;
-        });
+                    return furure_result;
+                });
         future.wait();
-        const std::map<std::chrono::milliseconds, OHLC> inter_result = future.get();
+        std::map<std::chrono::milliseconds, OHLC> inter_result = future.get();
         std::cout << "Got " << inter_result.size() << " prices" << std::endl;
-        for (const auto & [ts, ohlc] : inter_result) {
-            if (ts < last_ts) {
-                std::cout << "Skipping out-of-order price: " << ts.count() << std::endl;
-                continue;
-            }
-            result.emplace(ts, ohlc);
-            last_ts = ts;
+        if (!inter_result.empty()) {
+            last_ts = inter_result.rbegin()->first;
         }
+        pack_callback(std::move(inter_result));
     }
     const auto received_interval = last_ts - timerange.start();
     std::cout << "Whole received interval hours: " << std::chrono::duration_cast<std::chrono::hours>(received_interval).count() << std::endl;
     std::cout << timerange.start().count() << "-" << last_ts.count() << std::endl;
-
-    return result;
-}
-
-void ByBitGateway::subscribe_for_klines(std::function<void(std::pair<std::chrono::milliseconds, OHLC>)> on_kline_received_cb)
-{
-    m_kline_callbacks.emplace_back(std::move(on_kline_received_cb));
 }

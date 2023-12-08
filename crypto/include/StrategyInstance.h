@@ -10,12 +10,15 @@
 class StrategyInstance
 {
 public:
+    using KlineCallback = std::function<void(std::pair<std::chrono::milliseconds, OHLC>)>;
+
     StrategyInstance(const Timerange & timerange, const DoubleSmaStrategyConfig & conf, ByBitGateway & md_gateway);
 
     void subscribe_for_signals(std::function<void(const Signal &)> && on_signal_cb);
     void subscribe_for_strategy_internal(std::function<void(std::string name,
                                                             std::chrono::milliseconds ts,
                                                             double data)> && cb);
+    void subscribe_for_klines(KlineCallback && on_kline_received_cb);
     void run();
 
     std::map<std::string, std::vector<std::pair<std::chrono::milliseconds, double>>>
@@ -46,4 +49,6 @@ private:
     double m_current_position_size = 0.;
 
     const Timerange m_timerange;
+
+    std::vector<KlineCallback> m_kline_callbacks;
 };

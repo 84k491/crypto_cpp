@@ -8,13 +8,6 @@ StrategyInstance::StrategyInstance(
     , m_timerange(timerange)
     , m_md_gateway(md_gateway)
 {
-    m_md_gateway.subscribe_for_klines([&](std::pair<std::chrono::milliseconds, OHLC> ts_and_ohlc) {
-        const auto & [ts, ohlc] = ts_and_ohlc;
-        const auto signal = m_strategy.push_price({ts, ohlc.close});
-        if (signal.has_value()) {
-            on_signal(signal.value());
-        }
-    });
     m_strategy.subscribe_for_strategy_internal([this](const std::string & name,
                                                       std::chrono::milliseconds ts,
                                                       double data) {
@@ -34,7 +27,16 @@ void StrategyInstance::subscribe_for_strategy_internal(
 
 void StrategyInstance::run()
 {
-    m_md_gateway.receive_klines(m_timerange);
+    m_md_gateway.get_klines("ETHUSDT", m_timerange, [this](std::pair<std::chrono::milliseconds, OHLC> ts_and_ohlc) {
+        const auto & [ts, ohlc] = ts_and_ohlc;
+        for (const auto & cb : m_kline_callbacks) {
+            cb(ts_and_ohlc);
+        }
+        const auto signal = m_strategy.push_price({ts, ohlc.close});
+        if (signal.has_value()) {
+            on_signal(signal.value());
+        }
+    });
 
     if (m_last_signal.has_value()) {
         move_position_to(0, m_last_signal->price);
@@ -78,4 +80,9 @@ void StrategyInstance::subscribe_for_signals(std::function<void(const Signal &)>
 const StrategyResult & StrategyInstance::get_strategy_result() const
 {
     return m_strategy_result;
+}
+
+void StrategyInstance::subscribe_for_klines(KlineCallback && on_kline_received_cb)
+{
+    m_kline_callbacks.emplace_back(std::move(on_kline_received_cb));
 }
