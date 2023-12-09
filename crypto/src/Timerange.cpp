@@ -28,3 +28,8 @@ std::chrono::milliseconds Timerange::duration() const
 {
     return m_end - m_start;
 }
+
+bool Timerange::contains(std::chrono::milliseconds timestamp) const
+{
+    return m_start <= timestamp && timestamp <= m_end;
+}

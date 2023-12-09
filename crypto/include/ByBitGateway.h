@@ -6,7 +6,6 @@
 
 #include <functional>
 #include <unordered_map>
-#include <vector>
 
 class ByBitGateway
 {

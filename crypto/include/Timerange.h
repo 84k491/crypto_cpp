@@ -13,6 +13,8 @@ public:
     auto & start() const { return m_start; }
     auto & end() const { return m_end; }
 
+    bool contains(std::chrono::milliseconds timestamp) const;
+
     std::chrono::milliseconds duration() const;
 
     bool operator==(const Timerange & other) const;

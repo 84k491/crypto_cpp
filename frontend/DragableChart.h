@@ -12,6 +12,8 @@ class DragableChart : public QChartView
 public:
     DragableChart(QWidget * parent = nullptr);
 
+    void clear();
+
 public slots:
     void on_push_price(std::chrono::milliseconds ts, double price);
     void on_push_signal(Signal signal);
@@ -31,8 +33,8 @@ private:
 private:
     QPointF m_lastMousePos;
 
-    long x_min = std::numeric_limits<long>::max();
-    long x_max = std::numeric_limits<long>::min();
+    int64_t x_min = std::numeric_limits<int64_t>::max();
+    int64_t x_max = std::numeric_limits<int64_t>::min();
 
     double y_min = std::numeric_limits<double>::max();
     double y_max = std::numeric_limits<double>::min();

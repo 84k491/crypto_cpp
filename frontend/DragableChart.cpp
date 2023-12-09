@@ -147,3 +147,18 @@ void DragableChart::on_push_price(std::chrono::milliseconds ts, double price)
     prices->append(static_cast<double>(ts.count()), price);
     update_axes(ts, price);
 }
+
+void DragableChart::clear()
+{
+    x_min = std::numeric_limits<int64_t>::max();
+    x_max = std::numeric_limits<int64_t>::min();
+    y_min = std::numeric_limits<double>::max();
+    y_max = std::numeric_limits<double>::min();
+
+    axisX->setRange(QDateTime::fromMSecsSinceEpoch(x_min), QDateTime::fromMSecsSinceEpoch(x_max));
+    prices->clear();
+    buy_signals->clear();
+    sell_signals->clear();
+    slow_avg->clear();
+    fast_avg->clear();
+}

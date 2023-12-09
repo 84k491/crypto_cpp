@@ -92,7 +92,7 @@ bool ByBitGateway::request_klines(const std::string & symbol, const Timerange & 
     while (last_ts < timerange.end()) {
         auto future = std::async(
                 std::launch::async,
-                [&symbol, this, min_interval, start = last_ts]() {
+                [&symbol, this, timerange, min_interval, start = last_ts]() {
                     std::condition_variable cv;
                     std::mutex m;
 
@@ -132,7 +132,9 @@ bool ByBitGateway::request_klines(const std::string & symbol, const Timerange & 
 
                     std::map<std::chrono::milliseconds, OHLC> furure_result;
                     for (const auto & ohlc : response.result.ohlc_list) {
-                        furure_result.try_emplace(ohlc.timestamp, ohlc);
+                        if (timerange.contains(ohlc.timestamp)) {
+                            furure_result.try_emplace(ohlc.timestamp, ohlc);
+                        }
                     }
 
                     return furure_result;

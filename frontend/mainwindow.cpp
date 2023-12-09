@@ -5,15 +5,7 @@
 #include "StrategyInstance.h"
 
 #include <qscatterseries.h>
-
-class SavedStateUi
-{
-public:
-    SavedStateUi() = default;
-
-    long m_start_ts_unix_time = {};
-    long m_end_ts_unix_time = {};
-};
+#include <qtypes.h>
 
 MainWindow::MainWindow(QWidget * parent)
     : QMainWindow(parent)
@@ -38,11 +30,17 @@ MainWindow::MainWindow(QWidget * parent)
             &DragableChart::on_push_strategy_internal);
 
     ui->verticalLayout_graph->addWidget(m_chartView);
+
+    ui->sb_work_hours->setValue(saved_state.m_work_hours);
+    if (saved_state.m_start_ts_unix_time != 0) {
+        ui->dt_from->setDateTime(QDateTime::fromMSecsSinceEpoch(static_cast<qint64>(saved_state.m_start_ts_unix_time)));
+    }
     std::cout << "End of mainwindow constructor" << std::endl;
 }
 
 void MainWindow::on_pushButton_clicked()
 {
+    m_chartView->clear();
     const auto start = std::chrono::milliseconds{ui->dt_from->dateTime().toMSecsSinceEpoch()};
     const auto work_hours = std::chrono::hours{ui->sb_work_hours->value()};
     const auto end = std::chrono::milliseconds{start + work_hours};
@@ -89,6 +87,9 @@ MainWindow::~MainWindow()
 {
     const auto start = std::chrono::milliseconds{ui->dt_from->dateTime().toMSecsSinceEpoch()};
     const auto work_hours = std::chrono::hours{ui->sb_work_hours->value()};
+
+    saved_state.m_start_ts_unix_time = start.count();
+    saved_state.m_work_hours = static_cast<int>(work_hours.count());
 
     delete ui;
 }
