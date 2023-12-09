@@ -6,6 +6,15 @@
 
 #include <qscatterseries.h>
 
+class SavedStateUi
+{
+public:
+    SavedStateUi() = default;
+
+    long m_start_ts_unix_time = {};
+    long m_end_ts_unix_time = {};
+};
+
 MainWindow::MainWindow(QWidget * parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -35,7 +44,8 @@ MainWindow::MainWindow(QWidget * parent)
 void MainWindow::on_pushButton_clicked()
 {
     const auto start = std::chrono::milliseconds{ui->dt_from->dateTime().toMSecsSinceEpoch()};
-    const auto end = std::chrono::milliseconds{ui->dt_to->dateTime().toMSecsSinceEpoch()};
+    const auto work_hours = std::chrono::hours{ui->sb_work_hours->value()};
+    const auto end = std::chrono::milliseconds{start + work_hours};
 
     if (start >= end) {
         std::cout << "ERROR Invalid timerange" << std::endl;
@@ -43,8 +53,6 @@ void MainWindow::on_pushButton_clicked()
     }
     Timerange timerange{start, end};
 
-    // 1700556200000
-    // 1700735400000
     const auto slow_interval = std::chrono::minutes{ui->sb_slow_interval->value()};
     const auto fast_interval = std::chrono::minutes{ui->sb_fast_interval->value()};
     DoubleSmaStrategyConfig config{slow_interval, fast_interval};
@@ -79,5 +87,8 @@ void MainWindow::on_pushButton_clicked()
 
 MainWindow::~MainWindow()
 {
+    const auto start = std::chrono::milliseconds{ui->dt_from->dateTime().toMSecsSinceEpoch()};
+    const auto work_hours = std::chrono::hours{ui->sb_work_hours->value()};
+
     delete ui;
 }

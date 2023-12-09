@@ -106,34 +106,20 @@
                   <item>
                    <widget class="QLabel" name="label_3">
                     <property name="text">
-                     <string>To datetime</string>
+                     <string>Hours to work:</string>
                     </property>
                    </widget>
                   </item>
                   <item>
-                   <widget class="QDateTimeEdit" name="dt_to">
-                    <property name="dateTime">
-                     <datetime>
-                      <hour>0</hour>
-                      <minute>0</minute>
-                      <second>0</second>
-                      <year>2023</year>
-                      <month>11</month>
-                      <day>23</day>
-                     </datetime>
+                   <widget class="QSpinBox" name="sb_work_hours">
+                    <property name="minimum">
+                     <number>1</number>
                     </property>
-                    <property name="date">
-                     <date>
-                      <year>2023</year>
-                      <month>11</month>
-                      <day>23</day>
-                     </date>
+                    <property name="maximum">
+                     <number>240</number>
                     </property>
-                    <property name="displayFormat">
-                     <string>M/d/yy h:mm</string>
-                    </property>
-                    <property name="timeSpec">
-                     <enum>Qt::LocalTime</enum>
+                    <property name="value">
+                     <number>24</number>
                     </property>
                    </widget>
                   </item>
