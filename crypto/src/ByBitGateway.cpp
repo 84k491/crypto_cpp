@@ -71,30 +71,33 @@ void ByBitGateway::get_klines(const std::string & symbol, const Timerange & time
         return;
     }
 
-    request_klines(symbol, timerange, [this, timerange, kline_callback](std::map<std::chrono::milliseconds, OHLC> && ts_and_ohlc_map) {
+    const bool success = request_klines(symbol, timerange, [this, timerange, kline_callback](std::map<std::chrono::milliseconds, OHLC> && ts_and_ohlc_map) {
         auto & range = m_ranges[timerange];
         for (const auto & ts_and_ohlc : ts_and_ohlc_map) {
             kline_callback(ts_and_ohlc);
         }
         range.merge(ts_and_ohlc_map);
     });
+    if (!success) {
+        std::cout << "ERROR: Failed to request klines" << std::endl;
+    }
 }
 
-void ByBitGateway::request_klines(const std::string & symbol, const Timerange & timerange, KlinePackCallback && pack_callback)
+bool ByBitGateway::request_klines(const std::string & symbol, const Timerange & timerange, KlinePackCallback && pack_callback)
 {
     std::cout << "Whole requested interval hours: " << std::chrono::duration_cast<std::chrono::hours>(timerange.duration()).count() << std::endl;
 
+    const auto min_interval = std::chrono::minutes{1};
     auto last_ts = timerange.start();
     while (last_ts < timerange.end()) {
         auto future = std::async(
                 std::launch::async,
-                [&symbol, this, start = last_ts]() {
+                [&symbol, this, min_interval, start = last_ts]() {
                     std::condition_variable cv;
                     std::mutex m;
 
                     const std::string symbol = "ETHUSDT";
                     const std::string category = "linear";
-                    const unsigned interval = 1;
                     const unsigned limit = 1000;
 
                     const std::string url = [&]() {
@@ -102,7 +105,7 @@ void ByBitGateway::request_klines(const std::string & symbol, const Timerange & 
                         ss << "https://api-testnet.bybit.com/v5/market/kline"
                            << "?symbol=" << symbol
                            << "&category=" << category
-                           << "&interval=" << interval
+                           << "&interval=" << min_interval.count()
                            << "&limit=" << limit
                            << "&start=" << start.count();
                         return std::string(ss.str());
@@ -138,6 +141,11 @@ void ByBitGateway::request_klines(const std::string & symbol, const Timerange & 
         std::map<std::chrono::milliseconds, OHLC> inter_result = future.get();
         std::cout << "Got " << inter_result.size() << " prices" << std::endl;
         if (!inter_result.empty()) {
+            if (const auto delta = inter_result.begin()->first - last_ts; delta > min_interval) {
+                std::cout << "ERROR inconsistent time delta: " << std::chrono::duration_cast<std::chrono::seconds>(delta).count() << "s. Stopping" << std::endl;
+                std::cout << "First timestamp: " << inter_result.begin()->first.count() << std::endl;
+                return false;
+            }
             last_ts = inter_result.rbegin()->first;
         }
         pack_callback(std::move(inter_result));
@@ -145,4 +153,6 @@ void ByBitGateway::request_klines(const std::string & symbol, const Timerange & 
     const auto received_interval = last_ts - timerange.start();
     std::cout << "Whole received interval hours: " << std::chrono::duration_cast<std::chrono::hours>(received_interval).count() << std::endl;
     std::cout << timerange.start().count() << "-" << last_ts.count() << std::endl;
+
+    return true;
 }

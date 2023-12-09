@@ -34,10 +34,24 @@ MainWindow::MainWindow(QWidget * parent)
 
 void MainWindow::on_pushButton_clicked()
 {
-    const auto start = std::chrono::milliseconds{1700556200000};
-    const auto end = std::chrono::milliseconds{1700735400000};
+    const auto start = std::chrono::milliseconds{ui->dt_from->dateTime().toMSecsSinceEpoch()};
+    const auto end = std::chrono::milliseconds{ui->dt_to->dateTime().toMSecsSinceEpoch()};
+
+    if (start >= end) {
+        std::cout << "ERROR Invalid timerange" << std::endl;
+        return;
+    }
     Timerange timerange{start, end};
-    DoubleSmaStrategyConfig config{std::chrono::minutes{55}, std::chrono::minutes{21}};
+
+    // 1700556200000
+    // 1700735400000
+    const auto slow_interval = std::chrono::minutes{ui->sb_slow_interval->value()};
+    const auto fast_interval = std::chrono::minutes{ui->sb_fast_interval->value()};
+    DoubleSmaStrategyConfig config{slow_interval, fast_interval};
+    if (!config.is_valid()) {
+        std::cout << "ERROR Invalid config" << std::endl;
+        return;
+    }
 
     std::thread t([this, timerange, config]() {
         StrategyInstance strategy_instance(

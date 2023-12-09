@@ -36,7 +36,7 @@
           <item>
            <widget class="QGroupBox" name="groupBox">
             <property name="title">
-             <string>GroupBox</string>
+             <string>Strategy</string>
             </property>
             <layout class="QVBoxLayout" name="verticalLayout_4">
              <item>
@@ -73,7 +73,31 @@
                    </widget>
                   </item>
                   <item>
-                   <widget class="QDateTimeEdit" name="dateTimeEdit"/>
+                   <widget class="QDateTimeEdit" name="dt_from">
+                    <property name="dateTime">
+                     <datetime>
+                      <hour>0</hour>
+                      <minute>0</minute>
+                      <second>0</second>
+                      <year>2023</year>
+                      <month>11</month>
+                      <day>21</day>
+                     </datetime>
+                    </property>
+                    <property name="date">
+                     <date>
+                      <year>2023</year>
+                      <month>11</month>
+                      <day>21</day>
+                     </date>
+                    </property>
+                    <property name="displayFormat">
+                     <string>M/d/yy h:mm</string>
+                    </property>
+                    <property name="timeSpec">
+                     <enum>Qt::LocalTime</enum>
+                    </property>
+                   </widget>
                   </item>
                  </layout>
                 </item>
@@ -87,7 +111,31 @@
                    </widget>
                   </item>
                   <item>
-                   <widget class="QDateTimeEdit" name="dateTimeEdit_2"/>
+                   <widget class="QDateTimeEdit" name="dt_to">
+                    <property name="dateTime">
+                     <datetime>
+                      <hour>0</hour>
+                      <minute>0</minute>
+                      <second>0</second>
+                      <year>2023</year>
+                      <month>11</month>
+                      <day>23</day>
+                     </datetime>
+                    </property>
+                    <property name="date">
+                     <date>
+                      <year>2023</year>
+                      <month>11</month>
+                      <day>23</day>
+                     </date>
+                    </property>
+                    <property name="displayFormat">
+                     <string>M/d/yy h:mm</string>
+                    </property>
+                    <property name="timeSpec">
+                     <enum>Qt::LocalTime</enum>
+                    </property>
+                   </widget>
                   </item>
                  </layout>
                 </item>
@@ -110,7 +158,11 @@
                    </widget>
                   </item>
                   <item>
-                   <widget class="QSpinBox" name="spinBox"/>
+                   <widget class="QSpinBox" name="sb_slow_interval">
+                    <property name="value">
+                     <number>25</number>
+                    </property>
+                   </widget>
                   </item>
                  </layout>
                 </item>
@@ -124,7 +176,11 @@
                    </widget>
                   </item>
                   <item>
-                   <widget class="QSpinBox" name="spinBox_2"/>
+                   <widget class="QSpinBox" name="sb_fast_interval">
+                    <property name="value">
+                     <number>10</number>
+                    </property>
+                   </widget>
                   </item>
                  </layout>
                 </item>

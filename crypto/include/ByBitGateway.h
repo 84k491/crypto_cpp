@@ -22,7 +22,7 @@ public:
 
 private:
     void merge_intersecting_ranges();
-    void request_klines(const std::string & symbol, const Timerange & timerange, KlinePackCallback && cb);
+    bool request_klines(const std::string & symbol, const Timerange & timerange, KlinePackCallback && cb);
 
     std::unordered_map<Timerange, std::map<std::chrono::milliseconds, OHLC>> m_ranges;
     restincurl::Client client;
