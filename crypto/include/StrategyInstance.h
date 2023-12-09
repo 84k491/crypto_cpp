@@ -11,6 +11,7 @@ class StrategyInstance
 {
 public:
     using KlineCallback = std::function<void(std::pair<std::chrono::milliseconds, OHLC>)>;
+    using DepoCallback = std::function<void(std::chrono::milliseconds ts, double value)>;
 
     StrategyInstance(const Timerange & timerange, const DoubleSmaStrategyConfig & conf, ByBitGateway & md_gateway);
 
@@ -19,6 +20,7 @@ public:
                                                             std::chrono::milliseconds ts,
                                                             double data)> && cb);
     void subscribe_for_klines(KlineCallback && on_kline_received_cb);
+    void subscribe_for_depo(DepoCallback && on_depo_cb);
     void run();
 
     std::map<std::string, std::vector<std::pair<std::chrono::milliseconds, double>>>
@@ -51,4 +53,5 @@ private:
     const Timerange m_timerange;
 
     std::vector<KlineCallback> m_kline_callbacks;
+    std::vector<DepoCallback> m_depo_callbacks;
 };

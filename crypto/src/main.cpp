@@ -34,16 +34,16 @@ int main(int argc, char * argv[])
                     conf,
                     gateway);
             instance.run();
-            std::cout << "Fast interval: " << fast_interval.count() << "; Slow interval: " << slow_interval.count() << "; Result depo: " << instance.get_strategy_result().profit << std::endl;
-            if (max_profit < instance.get_strategy_result().profit) {
-                max_profit = instance.get_strategy_result().profit;
+            std::cout << "Fast interval: " << fast_interval.count() << "; Slow interval: " << slow_interval.count() << "; Result depo: " << instance.get_strategy_result().final_profit << std::endl;
+            if (max_profit < instance.get_strategy_result().final_profit) {
+                max_profit = instance.get_strategy_result().final_profit;
                 best_fast_interval = static_cast<double>(fast_interval.count());
                 best_slow_interval = static_cast<double>(slow_interval.count());
             }
         }
     }
 
-    std::cout << "Best profit: " << max_profit << std::endl;
+    std::cout << "Best final_profit: " << max_profit << std::endl;
     std::cout << "Best fast interval: " << best_fast_interval << std::endl;
     std::cout << "Best slow interval: " << best_slow_interval << std::endl;
 

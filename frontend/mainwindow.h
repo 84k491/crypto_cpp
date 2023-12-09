@@ -3,6 +3,7 @@
 
 #include "ByBitGateway.h"
 #include "DragableChart.h"
+#include "StrategyResult.h"
 
 #include <QMainWindow>
 #include <QScatterSeries>
@@ -62,6 +63,7 @@ public:
 
 private slots:
     void on_pushButton_clicked();
+    void render_result(StrategyResult result);
 
 signals:
     void signal_price(std::chrono::milliseconds ts, double price);
@@ -69,6 +71,8 @@ signals:
     void signal_strategy_internal(const std::string name,
                                   std::chrono::milliseconds ts,
                                   double data);
+    void signal_depo(std::chrono::milliseconds ts, double depo);
+    void signal_result(StrategyResult result);
 
 private:
     Ui::MainWindow * ui;

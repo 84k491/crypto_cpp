@@ -3,6 +3,7 @@
 #include "Signal.h"
 
 #include <QtCharts>
+#include <chrono>
 #include <qtmetamacros.h>
 
 class DragableChart : public QChartView
@@ -20,6 +21,7 @@ public slots:
     void on_push_strategy_internal(const std::string & name,
                                    std::chrono::milliseconds ts,
                                    double data);
+    void on_push_depo(std::chrono::milliseconds ts, double depo);
 
 protected:
     void mousePressEvent(QMouseEvent * event) override;
@@ -28,7 +30,8 @@ protected:
     void wheelEvent(QWheelEvent * event) override;
 
 private:
-    void update_axes(std::chrono::milliseconds x, double y);
+    void update_main_axes(std::chrono::milliseconds x, double y);
+    void update_depo_axis(double y);
 
 private:
     QPointF m_lastMousePos;
@@ -39,10 +42,16 @@ private:
     double y_min = std::numeric_limits<double>::max();
     double y_max = std::numeric_limits<double>::min();
 
+    double depo_min = std::numeric_limits<double>::max();
+    double depo_max = std::numeric_limits<double>::min();
+
     QDateTimeAxis * axisX = nullptr;
+    QValueAxis * price_axis = nullptr;
+    QValueAxis * depo_axis = nullptr;
     QLineSeries * prices = nullptr;
     QScatterSeries * buy_signals = nullptr;
     QScatterSeries * sell_signals = nullptr;
     QLineSeries * slow_avg = nullptr;
     QLineSeries * fast_avg = nullptr;
+    QLineSeries * depo = nullptr;
 };

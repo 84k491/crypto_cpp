@@ -28,6 +28,14 @@ MainWindow::MainWindow(QWidget * parent)
             &MainWindow::signal_strategy_internal,
             m_chartView,
             &DragableChart::on_push_strategy_internal);
+    connect(this,
+            &MainWindow::signal_depo,
+            m_chartView,
+            &DragableChart::on_push_depo);
+    connect(this,
+            &MainWindow::signal_result,
+            this,
+            &MainWindow::render_result);
 
     ui->verticalLayout_graph->addWidget(m_chartView);
 
@@ -69,15 +77,18 @@ void MainWindow::on_pushButton_clicked()
             const auto & [ts, ohlc] = ts_and_ohlc;
             emit signal_price(ts, ohlc.close);
         });
-
         strategy_instance.subscribe_for_signals([&](const Signal & signal) {
             emit signal_signal(signal);
         });
-
         strategy_instance.subscribe_for_strategy_internal([this](const std::string & name, std::chrono::milliseconds ts, double data) {
             emit signal_strategy_internal(name, ts, data);
         });
+        strategy_instance.subscribe_for_depo([&](std::chrono::milliseconds ts, double value) {
+            emit signal_depo(ts, value);
+        });
         strategy_instance.run();
+        const auto result = strategy_instance.get_strategy_result();
+        emit signal_result(result);
         std::cout << "strategy finished" << std::endl;
     });
     t.detach();
@@ -92,4 +103,19 @@ MainWindow::~MainWindow()
     saved_state.m_work_hours = static_cast<int>(work_hours.count());
 
     delete ui;
+}
+
+void MainWindow::render_result(StrategyResult result)
+{
+    ui->lb_position_amount->setText(QString::number(result.position_currency_amount));
+    ui->lb_final_profit->setText(QString::number(result.final_profit));
+    ui->lb_trades_count->setText(QString::number(result.trades_count));
+    ui->lb_fees_paid->setText(QString::number(result.fees_paid));
+    ui->lb_profit_per_trade->setText(QString::number(result.profit_per_trade));
+    ui->lb_best_profit->setText(QString::number(result.best_profit_trade));
+    ui->lb_worst_loss->setText(QString::number(result.worst_loss_trade));
+    ui->lb_max_depo->setText(QString::number(result.max_depo));
+    ui->lb_min_depo->setText(QString::number(result.min_depo));
+    ui->lb_longest_profit_pos->setText(QString::number(result.longest_profit_trade_time.count()));
+    ui->lb_longest_loss_pos->setText(QString::number(result.longest_loss_trade_time.count()));
 }

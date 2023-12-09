@@ -12,6 +12,9 @@ DragableChart::DragableChart(QWidget * parent)
     , sell_signals(new QScatterSeries())
     , slow_avg(new QLineSeries())
     , fast_avg(new QLineSeries())
+    , depo(new QLineSeries())
+    , depo_axis(new QValueAxis)
+    , price_axis(new QValueAxis)
 {
     setDragMode(QGraphicsView::NoDrag);
     this->setMouseTracking(true);
@@ -25,7 +28,11 @@ DragableChart::DragableChart(QWidget * parent)
 
     axisX->setTickCount(10);
     axisX->setFormat("hh:mm:ss");
-    axisX->setTitleText("Date");
+    axisX->setTitleText("Time");
+    depo_axis->setTickCount(10);
+    depo_axis->setTitleText("Depo");
+    price_axis->setTickCount(10);
+    price_axis->setTitleText("Price");
 
     chart()->legend()->hide();
     // add series to chart before attaching axis
@@ -34,14 +41,27 @@ DragableChart::DragableChart(QWidget * parent)
     chart()->addSeries(fast_avg);
     chart()->addSeries(buy_signals);
     chart()->addSeries(sell_signals);
-    chart()->createDefaultAxes();
-    chart()->removeAxis(chart()->axisX());
+    //chart()->createDefaultAxes();
+    chart()->addSeries(depo);
+    //chart()->removeAxis(chart()->axes(Qt::Horizontal).at(0));
     chart()->addAxis(axisX, Qt::AlignBottom);
+    chart()->addAxis(depo_axis, Qt::AlignRight);
+    chart()->addAxis(price_axis, Qt::AlignLeft);
+
     prices->attachAxis(axisX);
+    prices->attachAxis(price_axis);
     slow_avg->attachAxis(axisX);
+    slow_avg->attachAxis(price_axis);
     fast_avg->attachAxis(axisX);
+    fast_avg->attachAxis(price_axis);
     buy_signals->attachAxis(axisX);
+    buy_signals->attachAxis(price_axis);
     sell_signals->attachAxis(axisX);
+    sell_signals->attachAxis(price_axis);
+    depo->attachAxis(axisX);
+    depo->attachAxis(depo_axis);
+
+    depo->setColor(QColor(240, 170, 240));
 
     chart()->setTitle("Simple line chart() example");
 }
@@ -93,7 +113,7 @@ void DragableChart::wheelEvent(QWheelEvent * event)
     QChartView::wheelEvent(event);
 }
 
-void DragableChart::update_axes(std::chrono::milliseconds x, double y)
+void DragableChart::update_main_axes(std::chrono::milliseconds x, double y)
 {
     if (x.count() < x_min || x.count() > x_max) {
         if (x.count() < x_min) {
@@ -112,7 +132,7 @@ void DragableChart::update_axes(std::chrono::milliseconds x, double y)
         if (y > y_max) {
             y_max = y;
         }
-        chart()->axisY()->setRange(y_min, y_max);
+        price_axis->setRange(y_min, y_max);
     }
 }
 
@@ -145,7 +165,7 @@ void DragableChart::on_push_strategy_internal(
 void DragableChart::on_push_price(std::chrono::milliseconds ts, double price)
 {
     prices->append(static_cast<double>(ts.count()), price);
-    update_axes(ts, price);
+    update_main_axes(ts, price);
 }
 
 void DragableChart::clear()
@@ -161,4 +181,23 @@ void DragableChart::clear()
     sell_signals->clear();
     slow_avg->clear();
     fast_avg->clear();
+}
+
+void DragableChart::on_push_depo(std::chrono::milliseconds ts, double value)
+{
+    depo->append(static_cast<double>(ts.count()), value);
+    update_depo_axis(value);
+}
+
+void DragableChart::update_depo_axis(double depo)
+{
+    if (depo < depo_min || depo > depo_max) {
+        if (depo < depo_min) {
+            depo_min = depo;
+        }
+        if (depo > depo_max) {
+            depo_max = depo;
+        }
+        depo_axis->setRange(depo_min, depo_max);
+    }
 }
