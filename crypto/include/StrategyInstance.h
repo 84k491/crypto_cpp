@@ -31,7 +31,6 @@ public:
 
 private:
     void on_signal(const Signal & signal);
-    void move_position_to(std::chrono::milliseconds ts, double to_position_size, double price);
 
 private:
     ByBitGateway & m_md_gateway;

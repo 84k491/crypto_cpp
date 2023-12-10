@@ -4,34 +4,57 @@
 
 #include <chrono>
 #include <optional>
+#include <utility>
 
 struct MarketOrder
 {
+    MarketOrder(double unsigned_volume, Side side);
     MarketOrder & operator+=(const MarketOrder & other);
 
-    double m_size{};
+private:
+    double m_unsigned_volume{};
     Side m_side = Side::Buy;
+};
+
+struct PositionResult
+{
+public:
+    double pnl = 0.;
+    std::chrono::milliseconds opened_time = {};
+};
+
+class OpenedPosition // TODO make it private to Position
+{
+public:
+    OpenedPosition(std::chrono::milliseconds ts, double absolute_volume, double price);
+
+    double absolute_volume() const { return m_absolute_volume; }
+    Side side() const;
+
+    double m_absolute_volume = 0.;
+    double m_open_price = 0.;
+    std::chrono::milliseconds m_open_ts = {};
 };
 
 class Position
 {
 public:
-    [[nodiscard]] MarketOrder open(std::chrono::milliseconds ts, Side side, double size, double price);
-    [[nodiscard]] MarketOrder close(std::chrono::milliseconds ts, double price);
+    using PnlType = double;
 
-    static Side side_from_absolute_volume(double absolute_volume);
+    [[nodiscard]] std::pair<std::optional<MarketOrder>, std::optional<PositionResult>> open_or_move(
+            std::chrono::milliseconds ts,
+            double target_volume,
+            double price);
+    [[nodiscard]] std::optional<std::pair<MarketOrder, PositionResult>> close(
+            std::chrono::milliseconds ts,
+            double price);
 
     double pnl() const;
-    double volume() const;
-    bool opened() const;
-    Side side() const;
+    OpenedPosition * opened() const;
 
 private:
-    Side m_side = Side::Buy;
+    std::optional<OpenedPosition> m_opened_position;
 
-    double m_size = 0.;
-    double m_open_price = 0.;
-    std::optional<double> m_close_price = {};
     std::chrono::milliseconds m_open_ts = {};
     std::chrono::milliseconds m_close_ts = {};
 };
