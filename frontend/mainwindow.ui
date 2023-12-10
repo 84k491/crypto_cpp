@@ -382,7 +382,7 @@
              <item>
               <widget class="QLabel" name="label_15">
                <property name="text">
-                <string>Longest profit position time:</string>
+                <string>Longest profit position time (s):</string>
                </property>
               </widget>
              </item>
@@ -400,7 +400,7 @@
              <item>
               <widget class="QLabel" name="label_16">
                <property name="text">
-                <string>Longest loss position time:</string>
+                <string>Longest loss position time (s):</string>
                </property>
               </widget>
              </item>

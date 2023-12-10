@@ -23,21 +23,25 @@ public:
     std::chrono::milliseconds opened_time = {};
 };
 
-class OpenedPosition // TODO make it private to Position
-{
-public:
-    OpenedPosition(std::chrono::milliseconds ts, double absolute_volume, double price);
-
-    double absolute_volume() const { return m_absolute_volume; }
-    Side side() const;
-
-    double m_absolute_volume = 0.;
-    double m_open_price = 0.;
-    std::chrono::milliseconds m_open_ts = {};
-};
-
 class Position
 {
+    class OpenedPosition
+    {
+    public:
+        OpenedPosition(std::chrono::milliseconds ts, double absolute_volume, double price);
+
+        Side side() const;
+
+        auto absolute_volume() const { return m_absolute_volume; }
+        auto open_price() const { return m_open_price; }
+        auto open_ts() const { return m_open_ts; }
+
+    private:
+        double m_absolute_volume = 0.;
+        double m_open_price = 0.;
+        std::chrono::milliseconds m_open_ts = {};
+    };
+
 public:
     using PnlType = double;
 
@@ -54,7 +58,4 @@ public:
 
 private:
     std::optional<OpenedPosition> m_opened_position;
-
-    std::chrono::milliseconds m_open_ts = {};
-    std::chrono::milliseconds m_close_ts = {};
 };

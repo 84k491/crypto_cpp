@@ -54,4 +54,7 @@ private:
 
     std::vector<KlineCallback> m_kline_callbacks;
     std::vector<DepoCallback> m_depo_callbacks;
+
+    double m_best_profit = std::numeric_limits<double>::lowest();
+    double m_worst_loss = 0.;
 };

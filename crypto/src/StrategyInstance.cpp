@@ -61,39 +61,8 @@ void StrategyInstance::run()
         std::cout << "ERROR no signal on end" << std::endl;
     }
     m_strategy_result.final_profit = m_deposit;
+    m_strategy_result.profit_per_trade = m_strategy_result.final_profit / m_strategy_result.trades_count;
 }
-
-// void StrategyInstance::move_position_to(std::chrono::milliseconds ts, double to_position_size, double price)
-// {
-//     const auto target_side = Position::side_from_absolute_volume(to_position_size); // TODO zero volume?
-//     MarketOrder order;
-//     if (m_position.opened()) {
-//         if (m_position.side() != target_side || to_position_size == 0.) {
-//             order += m_position.close(std::chrono::milliseconds(ts), price);
-//             m_deposit += m_position.pnl();
-//             for (const auto & depo_cb : m_depo_callbacks) {
-//                 depo_cb(ts, m_deposit);
-//             }
-//             m_position = Position();
-//             if (to_position_size != 0.) {
-//                 order += m_position.open(std::chrono::milliseconds(ts), target_side, std::abs(to_position_size), price);
-//             }
-//         }
-//         else {
-//             std::cout << "ERROR position movement unsupported. Target side: " << static_cast<int>(target_side) << ", to_size: " << to_position_size << std::endl;
-//         }
-//     }
-//     else {
-//         std::cout << "Opeining position" << std::endl;
-//         m_position = Position();
-//         order += m_position.open(std::chrono::milliseconds(ts), target_side, std::abs(to_position_size), price);
-//     }
-//
-//     // fee
-//
-//     // trade order
-//     m_strategy_result.trades_count++;
-// }
 
 void StrategyInstance::on_signal(const Signal & signal)
 {
@@ -110,7 +79,21 @@ void StrategyInstance::on_signal(const Signal & signal)
         for (const auto & depo_cb : m_depo_callbacks) {
             depo_cb(signal.timestamp, m_deposit);
         }
+        m_strategy_result.final_profit = m_deposit;
+        if (m_best_profit < position_result_opt.value().pnl) {
+            m_best_profit = position_result_opt.value().pnl;
+            m_strategy_result.best_profit_trade = position_result_opt.value().pnl;
+            m_strategy_result.longest_profit_trade_time =
+                    std::chrono::duration_cast<std::chrono::seconds>(position_result_opt.value().opened_time);
+        }
+        if (m_worst_loss > position_result_opt.value().pnl) {
+            m_worst_loss = position_result_opt.value().pnl;
+            m_strategy_result.worst_loss_trade = position_result_opt.value().pnl;
+            m_strategy_result.longest_loss_trade_time =
+                    std::chrono::duration_cast<std::chrono::seconds>(position_result_opt.value().opened_time);
+        }
     }
+
     if (order_opt.has_value()) {
         // m_md_gateway.place_order(order_opt.value());
         m_strategy_result.trades_count++;

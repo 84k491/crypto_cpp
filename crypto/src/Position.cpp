@@ -62,13 +62,13 @@ std::optional<std::pair<MarketOrder, PositionResult>> Position::close(
     auto & pos = m_opened_position.value();
 
     PositionResult res;
-    const auto pnl = (price - pos.m_open_price) * pos.m_absolute_volume;
+    const auto pnl = (price - pos.open_price()) * pos.absolute_volume();
     res.pnl = pnl;
-    res.opened_time = ts - m_open_ts;
+    res.opened_time = ts - pos.open_ts();
 
     const auto close_order = MarketOrder{
-            std::abs(pos.m_absolute_volume),
-            side_from_absolute_volume(-pos.m_absolute_volume)};
+            std::abs(pos.absolute_volume()),
+            side_from_absolute_volume(-pos.absolute_volume())};
 
     m_opened_position = {};
     return {{close_order, res}};
@@ -86,12 +86,12 @@ MarketOrder::MarketOrder(double unsigned_volume, Side side)
 {
 }
 
-Side OpenedPosition::side() const
+Side Position::OpenedPosition::side() const
 {
     return side_from_absolute_volume(m_absolute_volume);
 }
 
-OpenedPosition::OpenedPosition(std::chrono::milliseconds ts, double absolute_volume, double price)
+Position::OpenedPosition::OpenedPosition(std::chrono::milliseconds ts, double absolute_volume, double price)
     : m_absolute_volume(absolute_volume)
     , m_open_ts(ts)
     , m_open_price(price)
