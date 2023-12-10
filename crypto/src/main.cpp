@@ -5,8 +5,8 @@
 
 int main(int argc, char * argv[])
 {
-    const auto start = std::chrono::milliseconds{1700556200000};
-    const auto end = std::chrono::milliseconds{1700735400000};
+    const auto start = std::chrono::milliseconds{ 1700554320000};
+    const auto end = std::chrono::milliseconds{1700727120000};
 
     ByBitGateway gateway;
 

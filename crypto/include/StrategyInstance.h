@@ -2,6 +2,7 @@
 
 #include "ByBitGateway.h"
 #include "DoubleSmaStrategy.h"
+#include "Position.h"
 #include "Signal.h"
 #include "StrategyResult.h"
 
@@ -30,7 +31,7 @@ public:
 
 private:
     void on_signal(const Signal & signal);
-    void move_position_to(double position_size, double price);
+    void move_position_to(std::chrono::milliseconds ts, double to_position_size, double price);
 
 private:
     ByBitGateway & m_md_gateway;
@@ -46,9 +47,9 @@ private:
                                    double data)>>
             m_strategy_internal_callbacks;
 
-    double m_deposit = 0.;
+    double m_deposit = 0.; // TODO use result profit
     static constexpr double m_pos_currency_amount = 100.;
-    double m_current_position_size = 0.;
+    Position m_position;
 
     const Timerange m_timerange;
 

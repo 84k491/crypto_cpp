@@ -174,6 +174,8 @@ void DragableChart::clear()
     x_max = std::numeric_limits<int64_t>::min();
     y_min = std::numeric_limits<double>::max();
     y_max = std::numeric_limits<double>::min();
+    depo_min = std::numeric_limits<double>::max();
+    depo_max = std::numeric_limits<double>::min();
 
     axisX->setRange(QDateTime::fromMSecsSinceEpoch(x_min), QDateTime::fromMSecsSinceEpoch(x_max));
     prices->clear();
@@ -181,6 +183,7 @@ void DragableChart::clear()
     sell_signals->clear();
     slow_avg->clear();
     fast_avg->clear();
+    depo->clear();
 }
 
 void DragableChart::on_push_depo(std::chrono::milliseconds ts, double value)

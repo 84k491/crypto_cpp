@@ -1,5 +1,7 @@
 #include "StrategyInstance.h"
 
+#include "Position.h"
+
 #include <chrono>
 
 StrategyInstance::StrategyInstance(
@@ -46,7 +48,7 @@ void StrategyInstance::run()
             });
 
     if (m_last_signal.has_value()) {
-        move_position_to(0, m_last_signal->price);
+        move_position_to(m_last_signal->timestamp, 0, m_last_signal->price); // TODO incorrect timestamp and price
     }
     else {
         std::cout << "ERROR no signal on end" << std::endl;
@@ -54,17 +56,37 @@ void StrategyInstance::run()
     m_strategy_result.final_profit = m_deposit;
 }
 
-void StrategyInstance::move_position_to(double to_position_size, double price)
+void StrategyInstance::move_position_to(std::chrono::milliseconds ts, double to_position_size, double price)
 {
     // make price optional for market orders
 
-    // actual trade here
-    const auto volume_delta = to_position_size - m_current_position_size;
-    m_deposit += volume_delta * price;
+    const auto target_side = Position::side_from_absolute_volume(to_position_size); // TODO zero volume?
+    MarketOrder order;
+    if (m_position.opened()) {
+        if (m_position.side() != target_side || to_position_size == 0.) {
+            order += m_position.close(std::chrono::milliseconds(ts), price);
+            m_deposit += m_position.pnl();
+            for (const auto & depo_cb : m_depo_callbacks) {
+                depo_cb(ts, m_deposit);
+            }
+            if (to_position_size != 0.) {
+                m_position = Position();
+                order += m_position.open(std::chrono::milliseconds(ts), target_side, std::abs(to_position_size), price);
+            }
+        }
+        else {
+            std::cout << "ERROR position movement unsupported. Target side: " << static_cast<int>(target_side) << ", to_size: " << to_position_size << std::endl;
+        }
+    }
+    else {
+        std::cout << "Opeining position" << std::endl;
+        m_position = Position();
+        order += m_position.open(std::chrono::milliseconds(ts), target_side, std::abs(to_position_size), price);
+    }
 
     // fee
 
-    m_current_position_size = to_position_size;
+    // trade order
     m_strategy_result.trades_count++;
 }
 
@@ -72,11 +94,8 @@ void StrategyInstance::on_signal(const Signal & signal)
 {
     const int size_sign = signal.side == Side::Buy ? 1 : -1;
     const auto default_pos_size = m_pos_currency_amount / signal.price;
-    move_position_to(size_sign * default_pos_size, signal.price);
+    move_position_to(signal.timestamp, size_sign * default_pos_size, signal.price);
     m_last_signal = signal;
-    for (const auto & depo_cb : m_depo_callbacks) {
-        depo_cb(signal.timestamp, m_deposit);
-    }
     if (m_strategy_result.max_depo < m_deposit) {
         m_strategy_result.max_depo = m_deposit;
     }
@@ -103,7 +122,7 @@ void StrategyInstance::subscribe_for_klines(KlineCallback && on_kline_received_c
     m_kline_callbacks.emplace_back(std::move(on_kline_received_cb));
 }
 
-void StrategyInstance::subscribe_for_depo(DepoCallback && on_depo_cb) 
+void StrategyInstance::subscribe_for_depo(DepoCallback && on_depo_cb)
 {
     m_depo_callbacks.emplace_back(std::move(on_depo_cb));
 }

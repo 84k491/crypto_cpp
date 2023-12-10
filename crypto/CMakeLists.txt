@@ -12,6 +12,7 @@ add_executable(${PROJECT_NAME}
     src/Signal.cpp
     src/Timerange.cpp
     src/StrategyInstance.cpp
+    src/Position.cpp
 )
 target_compile_options(crypto PRIVATE "-g" "-Og")
 
