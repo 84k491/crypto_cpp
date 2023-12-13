@@ -1,0 +1,15 @@
+{
+    "strategy_name": "DoubleSma",
+    "parameters": [
+        {
+            "name": "fast_interval_m",
+            "min_value": 5,
+            "max_value": 100
+        },
+        {
+            "name": "slow_interval_m",
+            "min_value": 15,
+            "max_value": 100
+        }
+    ]
+}

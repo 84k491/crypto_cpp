@@ -63,6 +63,7 @@ public:
 
 private slots:
     void on_pushButton_clicked();
+    void on_pb_optimize_clicked();
     void render_result(StrategyResult result);
 
 signals:
@@ -73,6 +74,10 @@ signals:
                                   double data);
     void signal_depo(std::chrono::milliseconds ts, double depo);
     void signal_result(StrategyResult result);
+
+private:
+    void construct_optimizer_ui();
+    std::optional<Timerange> get_timerange();
 
 private:
     Ui::MainWindow * ui;

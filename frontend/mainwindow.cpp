@@ -2,8 +2,14 @@
 
 #include "./ui_mainwindow.h"
 #include "DoubleSmaStrategy.h"
+#include "Optimizer.h"
 #include "StrategyInstance.h"
 
+#include <nlohmann/json.hpp>
+
+#include <fstream>
+#include <memory>
+#include <qboxlayout.h>
 #include <qscatterseries.h>
 #include <qtypes.h>
 
@@ -49,15 +55,12 @@ MainWindow::MainWindow(QWidget * parent)
 void MainWindow::on_pushButton_clicked()
 {
     m_chartView->clear();
-    const auto start = std::chrono::milliseconds{ui->dt_from->dateTime().toMSecsSinceEpoch()};
-    const auto work_hours = std::chrono::hours{ui->sb_work_hours->value()};
-    const auto end = std::chrono::milliseconds{start + work_hours};
-
-    if (start >= end) {
+    const auto timerange_opt = get_timerange();
+    if (!timerange_opt) {
         std::cout << "ERROR Invalid timerange" << std::endl;
         return;
     }
-    Timerange timerange{start, end};
+    const auto & timerange = *timerange_opt;
 
     const auto slow_interval = std::chrono::minutes{ui->sb_slow_interval->value()};
     const auto fast_interval = std::chrono::minutes{ui->sb_fast_interval->value()};
@@ -118,4 +121,55 @@ void MainWindow::render_result(StrategyResult result)
     ui->lb_min_depo->setText(QString::number(result.min_depo));
     ui->lb_longest_profit_pos->setText(QString::number(result.longest_profit_trade_time.count()));
     ui->lb_longest_loss_pos->setText(QString::number(result.longest_loss_trade_time.count()));
+}
+
+std::optional<Timerange> MainWindow::get_timerange()
+{
+    const auto start = std::chrono::milliseconds{ui->dt_from->dateTime().toMSecsSinceEpoch()};
+    const auto work_hours = std::chrono::hours{ui->sb_work_hours->value()};
+    const auto end = std::chrono::milliseconds{start + work_hours};
+
+    if (start >= end) {
+        std::cout << "ERROR Invalid timerange" << std::endl;
+        return {};
+    }
+    return {{start, end}};
+}
+
+void MainWindow::on_pb_optimize_clicked()
+{
+    const auto timerange_opt = get_timerange();
+    if (!timerange_opt) {
+        std::cout << "ERROR Invalid timerange" << std::endl;
+        return;
+    }
+    const auto & timerange = *timerange_opt;
+
+    const auto json_data = [&]() -> std::optional<nlohmann::json> {
+        const std::string json_file_path = "./strategy_parameters/DoubleSma.json";
+        std::ifstream file(json_file_path);
+        if (file.is_open()) {
+            nlohmann::json json_data;
+            file >> json_data;
+            file.close();
+            return json_data;
+        }
+        std::cout << "ERROR: Failed to open JSON file: " << json_file_path << std::endl;
+        return {};
+    }();
+
+    if (!json_data) {
+        return;
+    }
+
+    std::thread t([this, timerange, json_data]() {
+        Optimizer<DoubleSmaStrategy> optimizer(m_gateway, timerange, *json_data);
+        optimizer.subscribe_for_passed_check([this](unsigned i, unsigned total) {
+            std::cout << "Passed check: " << i << "/" << total << std::endl;
+        });
+
+        const auto best_config = optimizer.optimize();
+        std::cout << "Best config: " << best_config.to_json() << std::endl;
+    });
+    t.detach();
 }

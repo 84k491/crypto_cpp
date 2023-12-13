@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Signal.h"
+#include "nlohmann/json.hpp"
 
 #include <chrono>
 #include <functional>
@@ -12,12 +13,15 @@
 class DoubleSmaStrategyConfig
 {
 public:
+    DoubleSmaStrategyConfig(const nlohmann::json& json);
     DoubleSmaStrategyConfig(std::chrono::milliseconds slow_interval, std::chrono::milliseconds fast_interval);
 
     bool is_valid() const;
 
-    std::chrono::milliseconds m_slow_interval;
-    std::chrono::milliseconds m_fast_interval;
+    nlohmann::json to_json() const;
+
+    std::chrono::milliseconds m_slow_interval = {};
+    std::chrono::milliseconds m_fast_interval = {};
 };
 
 class MovingAverage
@@ -36,6 +40,8 @@ private:
 class DoubleSmaStrategy
 {
 public:
+    using ConfigT = DoubleSmaStrategyConfig;
+
     DoubleSmaStrategy(const DoubleSmaStrategyConfig & conf);
 
     std::optional<Signal> push_price(std::pair<std::chrono::milliseconds, double> ts_and_price);

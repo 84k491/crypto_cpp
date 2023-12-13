@@ -27,6 +27,7 @@ set(PROJECT_SOURCES
         ../crypto/src/Timerange.cpp
         ../crypto/src/StrategyInstance.cpp
         ../crypto/src/Position.cpp
+        ../crypto/src/Optimizer.cpp
 )
 
 qt_add_executable(frontend
