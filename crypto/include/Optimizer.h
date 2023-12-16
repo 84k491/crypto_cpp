@@ -34,7 +34,7 @@ public:
     {
     }
 
-    [[nodiscard]] typename StrategyT::ConfigT optimize();
+    [[nodiscard]] nlohmann::json optimize();
 
     void subscribe_for_passed_check(std::function<void(int, int)> && on_passed_checks)
     {
@@ -52,7 +52,7 @@ private:
 };
 
 template <class StrategyT>
-typename StrategyT::ConfigT Optimizer<StrategyT>::optimize()
+nlohmann::json Optimizer<StrategyT>::optimize()
 {
     static_assert(std::is_constructible_v<typename StrategyT::ConfigT, nlohmann::json>);
 
@@ -75,5 +75,5 @@ typename StrategyT::ConfigT Optimizer<StrategyT>::optimize()
         }
         m_on_passed_check(i, configs.size());
     }
-    return best_config;
+    return best_config.to_json();
 }

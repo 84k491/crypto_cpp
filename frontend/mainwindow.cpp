@@ -42,6 +42,10 @@ MainWindow::MainWindow(QWidget * parent)
             &MainWindow::signal_result,
             this,
             &MainWindow::render_result);
+    connect(this,
+            &MainWindow::signal_optimized_config,
+            this,
+            &MainWindow::on_optimized_config);
 
     ui->verticalLayout_graph->addWidget(m_chartView);
 
@@ -123,6 +127,13 @@ void MainWindow::render_result(StrategyResult result)
     ui->lb_longest_loss_pos->setText(QString::number(result.longest_loss_trade_time.count()));
 }
 
+void MainWindow::on_optimized_config(nlohmann::json config)
+{
+    DoubleSmaStrategyConfig new_config(config);
+    ui->sb_slow_interval->setValue(std::chrono::duration_cast<std::chrono::minutes>(new_config.m_slow_interval).count());
+    ui->sb_fast_interval->setValue(std::chrono::duration_cast<std::chrono::minutes>(new_config.m_fast_interval).count());
+}
+
 std::optional<Timerange> MainWindow::get_timerange()
 {
     const auto start = std::chrono::milliseconds{ui->dt_from->dateTime().toMSecsSinceEpoch()};
@@ -165,11 +176,12 @@ void MainWindow::on_pb_optimize_clicked()
     std::thread t([this, timerange, json_data]() {
         Optimizer<DoubleSmaStrategy> optimizer(m_gateway, timerange, *json_data);
         optimizer.subscribe_for_passed_check([this](unsigned i, unsigned total) {
-            std::cout << "Passed check: " << i << "/" << total << std::endl;
+            // std::cout << "Passed check: " << i << "/" << total << std::endl;
         });
 
         const auto best_config = optimizer.optimize();
-        std::cout << "Best config: " << best_config.to_json() << std::endl;
+        emit signal_optimized_config(best_config);
+        std::cout << "Best config: " << best_config << std::endl;
     });
     t.detach();
 }
