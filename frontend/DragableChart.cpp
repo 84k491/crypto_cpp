@@ -41,9 +41,9 @@ DragableChart::DragableChart(QWidget * parent)
     chart()->addSeries(fast_avg);
     chart()->addSeries(buy_signals);
     chart()->addSeries(sell_signals);
-    //chart()->createDefaultAxes();
+    // chart()->createDefaultAxes();
     chart()->addSeries(depo);
-    //chart()->removeAxis(chart()->axes(Qt::Horizontal).at(0));
+    // chart()->removeAxis(chart()->axes(Qt::Horizontal).at(0));
     chart()->addAxis(axisX, Qt::AlignBottom);
     chart()->addAxis(depo_axis, Qt::AlignRight);
     chart()->addAxis(price_axis, Qt::AlignLeft);
@@ -64,6 +64,9 @@ DragableChart::DragableChart(QWidget * parent)
     depo->setColor(QColor(240, 170, 240));
 
     chart()->setTitle("Simple line chart() example");
+
+    connect(&m_axis_update_timer, &QTimer::timeout, this, &DragableChart::update_axes);
+    m_axis_update_timer.setSingleShot(true);
 }
 
 void DragableChart::mousePressEvent(QMouseEvent * event)
@@ -113,7 +116,7 @@ void DragableChart::wheelEvent(QWheelEvent * event)
     QChartView::wheelEvent(event);
 }
 
-void DragableChart::update_main_axes(std::chrono::milliseconds x, double y)
+void DragableChart::update_axes_values(std::chrono::milliseconds x, double y)
 {
     if (x.count() < x_min || x.count() > x_max) {
         if (x.count() < x_min) {
@@ -122,7 +125,6 @@ void DragableChart::update_main_axes(std::chrono::milliseconds x, double y)
         if (x.count() > x_max) {
             x_max = x.count();
         }
-        axisX->setRange(QDateTime::fromMSecsSinceEpoch(x_min), QDateTime::fromMSecsSinceEpoch(x_max));
     }
 
     if (y < y_min || y > y_max) {
@@ -132,8 +134,13 @@ void DragableChart::update_main_axes(std::chrono::milliseconds x, double y)
         if (y > y_max) {
             y_max = y;
         }
-        price_axis->setRange(y_min, y_max);
     }
+}
+
+void DragableChart::update_axes()
+{
+    axisX->setRange(QDateTime::fromMSecsSinceEpoch(x_min), QDateTime::fromMSecsSinceEpoch(x_max));
+    price_axis->setRange(y_min, y_max);
 }
 
 void DragableChart::on_push_signal(Signal signal)
@@ -165,7 +172,8 @@ void DragableChart::on_push_strategy_internal(
 void DragableChart::on_push_price(std::chrono::milliseconds ts, double price)
 {
     prices->append(static_cast<double>(ts.count()), price);
-    update_main_axes(ts, price);
+    update_axes_values(ts, price);
+    m_axis_update_timer.start(500);
 }
 
 void DragableChart::clear()

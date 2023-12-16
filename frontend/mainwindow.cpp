@@ -42,10 +42,11 @@ MainWindow::MainWindow(QWidget * parent)
             &MainWindow::signal_result,
             this,
             &MainWindow::render_result);
+
     connect(this,
             &MainWindow::signal_optimized_config,
             this,
-            &MainWindow::on_optimized_config);
+            &MainWindow::optimized_config_slot);
 
     ui->verticalLayout_graph->addWidget(m_chartView);
 
@@ -127,7 +128,7 @@ void MainWindow::render_result(StrategyResult result)
     ui->lb_longest_loss_pos->setText(QString::number(result.longest_loss_trade_time.count()));
 }
 
-void MainWindow::on_optimized_config(nlohmann::json config)
+void MainWindow::optimized_config_slot(const nlohmann::json & config)
 {
     DoubleSmaStrategyConfig new_config(config);
     ui->sb_slow_interval->setValue(std::chrono::duration_cast<std::chrono::minutes>(new_config.m_slow_interval).count());

@@ -8,8 +8,8 @@
 #include <QMainWindow>
 #include <QScatterSeries>
 #include <QtCharts>
-#include <qtypes.h>
 #include <fstream>
+#include <qtypes.h>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -65,7 +65,7 @@ private slots:
     void on_pushButton_clicked();
     void on_pb_optimize_clicked();
     void render_result(StrategyResult result);
-    void on_optimized_config(nlohmann::json config);
+    void optimized_config_slot(const nlohmann::json & config);
 
 signals:
     void signal_price(std::chrono::milliseconds ts, double price);

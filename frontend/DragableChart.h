@@ -23,6 +23,9 @@ public slots:
                                    double data);
     void on_push_depo(std::chrono::milliseconds ts, double depo);
 
+private slots:
+    void update_axes();
+
 protected:
     void mousePressEvent(QMouseEvent * event) override;
     void mouseReleaseEvent(QMouseEvent * event) override;
@@ -30,7 +33,7 @@ protected:
     void wheelEvent(QWheelEvent * event) override;
 
 private:
-    void update_main_axes(std::chrono::milliseconds x, double y);
+    void update_axes_values(std::chrono::milliseconds x, double y);
     void update_depo_axis(double y);
 
 private:
@@ -45,6 +48,7 @@ private:
     double depo_min = std::numeric_limits<double>::max();
     double depo_max = std::numeric_limits<double>::min();
 
+    QTimer m_axis_update_timer;
     QDateTimeAxis * axisX = nullptr;
     QValueAxis * price_axis = nullptr;
     QValueAxis * depo_axis = nullptr;
