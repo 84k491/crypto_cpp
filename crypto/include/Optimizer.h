@@ -5,6 +5,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include <limits>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -58,7 +59,7 @@ nlohmann::json Optimizer<StrategyT>::optimize()
 
     OptimizerParser parser(m_optimizer_data);
 
-    double max_profit = 0.;
+    double max_profit = -std::numeric_limits<double>::max();
     typename StrategyT::ConfigT best_config("");
     const auto configs = parser.get_possible_configs();
     for (unsigned i = 0; i < configs.size(); ++i) {
@@ -69,8 +70,9 @@ nlohmann::json Optimizer<StrategyT>::optimize()
         }
         StrategyInstance strategy_instance(m_timerange, config, m_gateway);
         strategy_instance.run();
-        if (max_profit < strategy_instance.get_strategy_result().final_profit) {
-            max_profit = strategy_instance.get_strategy_result().final_profit;
+        const auto profit = strategy_instance.get_strategy_result().final_profit;
+        if (max_profit < profit) {
+            max_profit = profit;
             best_config = config;
         }
         m_on_passed_check(i, configs.size());

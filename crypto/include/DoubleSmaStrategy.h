@@ -34,7 +34,7 @@ public:
 private:
     std::list<std::pair<std::chrono::milliseconds, double>> m_data;
     std::chrono::milliseconds m_interval;
-    size_t m_sum = 0;
+    double m_sum = 0;
 };
 
 class DoubleSmaStrategy

@@ -1,5 +1,6 @@
 #include "StrategyInstance.h"
 
+#include "ByBitGateway.h"
 #include "Position.h"
 
 #include <chrono>
@@ -34,7 +35,7 @@ void StrategyInstance::subscribe_for_strategy_internal(
 void StrategyInstance::run()
 {
     m_md_gateway.get_klines(
-            "ETHUSDT",
+            "DOGEUSDT",
             m_timerange,
             [this](std::pair<std::chrono::milliseconds, OHLC> ts_and_ohlc) {
                 const auto & [ts, ohlc] = ts_and_ohlc;
@@ -95,8 +96,11 @@ void StrategyInstance::on_signal(const Signal & signal)
     }
 
     if (order_opt.has_value()) {
-        // m_md_gateway.place_order(order_opt.value());
+        // m_tr_gateway.place_order(order_opt.value());
         m_strategy_result.trades_count++;
+        const auto fee_paid = ByBitGateway::get_taker_fee() * m_pos_currency_amount;
+        m_deposit -= fee_paid;
+        m_strategy_result.fees_paid += fee_paid;
     }
 
     m_last_signal = signal;

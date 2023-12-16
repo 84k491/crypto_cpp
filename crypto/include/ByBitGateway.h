@@ -9,6 +9,8 @@
 
 class ByBitGateway
 {
+    static constexpr double taker_fee = 0.0002; // 0.02%
+
 public:
     using KlineCallback = std::function<void(std::pair<std::chrono::milliseconds, OHLC>)>;
     using KlinePackCallback = std::function<void(std::map<std::chrono::milliseconds, OHLC> &&)>;
@@ -18,6 +20,7 @@ public:
     ByBitGateway() = default;
 
     void get_klines(const std::string & symbol, const Timerange & timerange, KlineCallback && cb);
+    static auto get_taker_fee()  { return taker_fee; }
 
 private:
     void merge_intersecting_ranges();

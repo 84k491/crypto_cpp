@@ -30,7 +30,8 @@ std::pair<std::optional<MarketOrder>, std::optional<PositionResult>> Position::o
                             side_from_absolute_volume(volume_delta)},
                     std::nullopt};
         }
-        // close current and open a new one
+
+        // close the current position and open a new one
         auto order_and_res_opt = close(ts, price);
         if (!order_and_res_opt.has_value()) {
             std::cout << "ERROR: no optional" << std::endl;

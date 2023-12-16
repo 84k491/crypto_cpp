@@ -2,6 +2,8 @@
 
 #include "ScopeExit.h"
 
+#include <iostream>
+
 DoubleSmaStrategyConfig::DoubleSmaStrategyConfig(const nlohmann::json & json)
 {
     if (json.contains("slow_interval_m")) {
@@ -39,16 +41,16 @@ MovingAverage::MovingAverage(std::chrono::milliseconds interval)
 std::optional<double> MovingAverage::push_price(std::pair<std::chrono::milliseconds, double> ts_and_price)
 {
     m_data.push_back(ts_and_price);
-    m_sum += static_cast<size_t>(ts_and_price.second);
+    m_sum += ts_and_price.second;
 
     if ((m_data.back().first - m_data.front().first) < m_interval) {
         return std::nullopt;
     }
 
-    m_sum -= static_cast<size_t>(m_data.front().second);
+    m_sum -= m_data.front().second;
     m_data.pop_front();
 
-    return static_cast<double>(m_sum) / static_cast<double>(m_data.size());
+    return m_sum / static_cast<double>(m_data.size());
 }
 
 DoubleSmaStrategy::DoubleSmaStrategy(const DoubleSmaStrategyConfig & conf)
@@ -60,7 +62,6 @@ DoubleSmaStrategy::DoubleSmaStrategy(const DoubleSmaStrategyConfig & conf)
 
 std::optional<Signal> DoubleSmaStrategy::push_price(std::pair<std::chrono::milliseconds, double> ts_and_price)
 {
-    // TODO no signal on prices from optimizer
     const auto fast_avg = m_fast_avg.push_price(ts_and_price);
     const auto slow_avg = m_slow_avg.push_price(ts_and_price);
 

@@ -96,7 +96,6 @@ bool ByBitGateway::request_klines(const std::string & symbol, const Timerange & 
                     std::condition_variable cv;
                     std::mutex m;
 
-                    const std::string symbol = "ETHUSDT";
                     const std::string category = "linear";
                     const unsigned limit = 1000;
 
