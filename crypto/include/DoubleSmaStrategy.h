@@ -2,10 +2,10 @@
 
 #include "Signal.h"
 #include "nlohmann/json.hpp"
+#include "SimpleMovingAverage.h"
 
 #include <chrono>
 #include <functional>
-#include <list>
 #include <map>
 #include <optional>
 #include <vector>
@@ -22,19 +22,6 @@ public:
 
     std::chrono::milliseconds m_slow_interval = {};
     std::chrono::milliseconds m_fast_interval = {};
-};
-
-class MovingAverage
-{
-public:
-    MovingAverage(std::chrono::milliseconds interval);
-
-    std::optional<double> push_price(std::pair<std::chrono::milliseconds, double> ts_and_price);
-
-private:
-    std::list<std::pair<std::chrono::milliseconds, double>> m_data;
-    std::chrono::milliseconds m_interval;
-    double m_sum = 0;
 };
 
 class DoubleSmaStrategy
