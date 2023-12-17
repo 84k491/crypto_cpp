@@ -129,50 +129,21 @@
               </widget>
              </item>
              <item>
-              <widget class="QGroupBox" name="groupBox_2">
+              <widget class="QGroupBox" name="gb_specific_parameters">
                <property name="title">
                 <string>Specific parameters</string>
                </property>
-               <layout class="QVBoxLayout" name="verticalLayout_2">
-                <item>
-                 <layout class="QHBoxLayout" name="horizontalLayout_5">
-                  <item>
-                   <widget class="QLabel" name="label_4">
-                    <property name="text">
-                     <string>Slow interval (min)</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QSpinBox" name="sb_slow_interval">
-                    <property name="value">
-                     <number>25</number>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-                <item>
-                 <layout class="QHBoxLayout" name="horizontalLayout_6">
-                  <item>
-                   <widget class="QLabel" name="label_5">
-                    <property name="text">
-                     <string>Fast interval (min)</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QSpinBox" name="sb_fast_interval">
-                    <property name="value">
-                     <number>12</number>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-               </layout>
               </widget>
              </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <widget class="QGroupBox" name="gb_optimizer">
+            <property name="title">
+             <string>Control</string>
+            </property>
+            <layout class="QVBoxLayout" name="verticalLayout_8">
              <item>
               <layout class="QHBoxLayout" name="horizontalLayout_7">
                <item>
@@ -202,7 +173,7 @@
                <item>
                 <widget class="QLabel" name="lb_optimizer_progress">
                  <property name="text">
-                  <string> </string>
+                  <string/>
                  </property>
                 </widget>
                </item>
@@ -216,13 +187,6 @@
               </layout>
              </item>
             </layout>
-           </widget>
-          </item>
-          <item>
-           <widget class="QGroupBox" name="gb_optimizer">
-            <property name="title">
-             <string>Optimizer</string>
-            </property>
            </widget>
           </item>
          </layout>

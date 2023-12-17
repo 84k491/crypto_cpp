@@ -8,9 +8,9 @@
 #include <nlohmann/json.hpp>
 
 #include <fstream>
-#include <memory>
 #include <qboxlayout.h>
 #include <qscatterseries.h>
+#include <qspinbox.h>
 #include <qtypes.h>
 
 MainWindow::MainWindow(QWidget * parent)
@@ -54,6 +54,12 @@ MainWindow::MainWindow(QWidget * parent)
     if (saved_state.m_start_ts_unix_time != 0) {
         ui->dt_from->setDateTime(QDateTime::fromMSecsSinceEpoch(static_cast<qint64>(saved_state.m_start_ts_unix_time)));
     }
+
+    const auto params_opt = get_strategy_parameters();
+    if (params_opt) {
+        setup_specific_parameters(*params_opt);
+    }
+
     std::cout << "End of mainwindow constructor" << std::endl;
 }
 
@@ -67,9 +73,7 @@ void MainWindow::on_pushButton_clicked()
     }
     const auto & timerange = *timerange_opt;
 
-    const auto slow_interval = std::chrono::minutes{ui->sb_slow_interval->value()};
-    const auto fast_interval = std::chrono::minutes{ui->sb_fast_interval->value()};
-    DoubleSmaStrategyConfig config{slow_interval, fast_interval};
+    DoubleSmaStrategyConfig config{get_config_from_ui()};
     if (!config.is_valid()) {
         std::cout << "ERROR Invalid config" << std::endl;
         return;
@@ -131,11 +135,12 @@ void MainWindow::render_result(StrategyResult result)
 void MainWindow::optimized_config_slot(const nlohmann::json & config)
 {
     DoubleSmaStrategyConfig new_config(config);
-    ui->sb_slow_interval->setValue(std::chrono::duration_cast<std::chrono::minutes>(new_config.m_slow_interval).count());
-    ui->sb_fast_interval->setValue(std::chrono::duration_cast<std::chrono::minutes>(new_config.m_fast_interval).count());
+    // TODO
+    // ui->sb_slow_interval->setValue(std::chrono::duration_cast<std::chrono::minutes>(new_config.m_slow_interval).count());
+    // ui->sb_fast_interval->setValue(std::chrono::duration_cast<std::chrono::minutes>(new_config.m_fast_interval).count());
 }
 
-std::optional<Timerange> MainWindow::get_timerange()
+std::optional<Timerange> MainWindow::get_timerange() const
 {
     const auto start = std::chrono::milliseconds{ui->dt_from->dateTime().toMSecsSinceEpoch()};
     const auto work_hours = std::chrono::hours{ui->sb_work_hours->value()};
@@ -150,29 +155,13 @@ std::optional<Timerange> MainWindow::get_timerange()
 
 void MainWindow::on_pb_optimize_clicked()
 {
+    const auto json_data = get_strategy_parameters();
     const auto timerange_opt = get_timerange();
-    if (!timerange_opt) {
-        std::cout << "ERROR Invalid timerange" << std::endl;
+    if (!timerange_opt || !json_data) {
+        std::cout << "ERROR no value in required optional" << std::endl;
         return;
     }
     const auto & timerange = *timerange_opt;
-
-    const auto json_data = [&]() -> std::optional<nlohmann::json> {
-        const std::string json_file_path = "./strategy_parameters/DoubleSma.json";
-        std::ifstream file(json_file_path);
-        if (file.is_open()) {
-            nlohmann::json json_data;
-            file >> json_data;
-            file.close();
-            return json_data;
-        }
-        std::cout << "ERROR: Failed to open JSON file: " << json_file_path << std::endl;
-        return {};
-    }();
-
-    if (!json_data) {
-        return;
-    }
 
     std::thread t([this, timerange, json_data]() {
         Optimizer<DoubleSmaStrategy> optimizer(m_gateway, timerange, *json_data);
@@ -185,4 +174,75 @@ void MainWindow::on_pb_optimize_clicked()
         std::cout << "Best config: " << best_config << std::endl;
     });
     t.detach();
+}
+
+void MainWindow::setup_specific_parameters(nlohmann::json strategy_parameters)
+{
+    m_last_set_strategy_parameters = strategy_parameters;
+    const auto params = strategy_parameters["parameters"].get<std::vector<nlohmann::json>>();
+    auto * top_layout = new QVBoxLayout();
+
+    auto * name_layout = new QHBoxLayout();
+    auto * strategy_name_label = new QLabel(strategy_parameters["strategy_name"].get<std::string>().c_str());
+    name_layout->addWidget(strategy_name_label);
+    top_layout->addItem(name_layout);
+    for (const auto & param : params) {
+        const auto name = param["name"].get<std::string>();
+        const auto max_value = param["max_value"].get<int>();
+        const auto min_value = param["min_value"].get<int>();
+
+        auto * layout = new QHBoxLayout();
+        auto * label = new QLabel(name.c_str());
+        auto * double_spin_box = new QDoubleSpinBox();
+        double_spin_box->setMinimum(min_value);
+        double_spin_box->setMaximum(max_value);
+
+        double_spin_box->setValue(min_value);
+        m_strategy_parameters_values[name] = min_value;
+        connect(
+                double_spin_box,
+                &QDoubleSpinBox::valueChanged,
+                this,
+                [this, name](double value) {
+                    on_strategy_parameters_changed(name, value);
+                });
+
+        label->setText(name.c_str());
+        layout->addWidget(label);
+        layout->addWidget(double_spin_box);
+        top_layout->addItem(layout);
+    }
+    ui->gb_specific_parameters->setLayout(top_layout);
+}
+
+nlohmann::json MainWindow::get_config_from_ui() const
+{
+    nlohmann::json config;
+    for (const auto & [name, value] : m_strategy_parameters_values) {
+        config[name] = value;
+    }
+    return config;
+}
+
+std::optional<nlohmann::json> MainWindow::get_strategy_parameters() const
+{
+    const auto json_data = [&]() -> std::optional<nlohmann::json> {
+        const std::string json_file_path = "./strategy_parameters/DoubleSma.json";
+        std::ifstream file(json_file_path);
+        if (file.is_open()) {
+            nlohmann::json json_data;
+            file >> json_data;
+            file.close();
+            return json_data;
+        }
+        std::cout << "ERROR: Failed to open JSON file: " << json_file_path << std::endl;
+        return {};
+    }();
+    return json_data;
+}
+
+void MainWindow::on_strategy_parameters_changed(const std::string & name, double value)
+{
+    std::cout << "on_strategy_parameters_changed: " << name << " " << value << std::endl;
+    m_strategy_parameters_values[name] = value;
 }
