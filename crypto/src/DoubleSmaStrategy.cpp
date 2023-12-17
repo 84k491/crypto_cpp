@@ -2,13 +2,13 @@
 
 #include "ScopeExit.h"
 
-DoubleSmaStrategyConfig::DoubleSmaStrategyConfig(const nlohmann::json & json)
+DoubleSmaStrategyConfig::DoubleSmaStrategyConfig(const JsonStrategyConfig& json)
 {
-    if (json.contains("slow_interval_m")) {
-        m_slow_interval = std::chrono::minutes{json.at("slow_interval_m").get<int>()};
+    if (json.get().contains("slow_interval_m")) {
+        m_slow_interval = std::chrono::minutes{json.get().at("slow_interval_m").get<int>()};
     }
-    if (json.contains("fast_interval_m")) {
-        m_fast_interval = std::chrono::minutes{json.at("fast_interval_m").get<int>()};
+    if (json.get().contains("fast_interval_m")) {
+        m_fast_interval = std::chrono::minutes{json.get().at("fast_interval_m").get<int>()};
     }
 }
 
@@ -23,7 +23,7 @@ bool DoubleSmaStrategyConfig::is_valid() const
     return m_slow_interval > m_fast_interval;
 }
 
-nlohmann::json DoubleSmaStrategyConfig::to_json() const
+JsonStrategyConfig DoubleSmaStrategyConfig::to_json() const
 {
     nlohmann::json json;
     json["slow_interval_m"] = std::chrono::duration_cast<std::chrono::minutes>(m_slow_interval).count();

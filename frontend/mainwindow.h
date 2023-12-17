@@ -4,6 +4,7 @@
 #include "ByBitGateway.h"
 #include "DragableChart.h"
 #include "StrategyResult.h"
+#include "JsonStrategyConfig.h"
 
 #include <QMainWindow>
 #include <QScatterSeries>
@@ -66,7 +67,7 @@ private slots:
     void on_pushButton_clicked();
     void on_pb_optimize_clicked();
     void render_result(StrategyResult result);
-    void optimized_config_slot(const nlohmann::json & config);
+    void optimized_config_slot(const JsonStrategyConfig & config);
     void on_strategy_parameters_changed(const std::string & name, double value);
 
 signals:
@@ -77,16 +78,16 @@ signals:
                                   double data);
     void signal_depo(std::chrono::milliseconds ts, double depo);
     void signal_result(StrategyResult result);
-    void signal_optimized_config(nlohmann::json config);
+    void signal_optimized_config(JsonStrategyConfig config);
     void signal_strategy_parameters_changed(std::string name, double value);
 
 private:
     void construct_optimizer_ui();
     std::optional<Timerange> get_timerange() const;
 
-    std::optional<nlohmann::json> get_strategy_parameters() const;
-    void setup_specific_parameters(nlohmann::json strategy_parameters);
-    nlohmann::json get_config_from_ui() const;
+    std::optional<JsonStrategyMetaInfo> get_strategy_parameters() const;
+    void setup_specific_parameters(JsonStrategyMetaInfo strategy_parameters);
+    JsonStrategyConfig get_config_from_ui() const;
 
 private:
     Ui::MainWindow * ui;
@@ -94,7 +95,7 @@ private:
     ByBitGateway m_gateway;
     DragableChart * m_chartView = nullptr;
 
-    nlohmann::json m_last_set_strategy_parameters;
+    std::optional<JsonStrategyMetaInfo> m_last_set_strategy_parameters;
     std::map<std::string, double> m_strategy_parameters_values;
 
     SavedStateUi saved_state;

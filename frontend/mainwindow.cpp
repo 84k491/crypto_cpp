@@ -2,6 +2,7 @@
 
 #include "./ui_mainwindow.h"
 #include "DoubleSmaStrategy.h"
+#include "JsonStrategyConfig.h"
 #include "Optimizer.h"
 #include "StrategyInstance.h"
 
@@ -132,7 +133,7 @@ void MainWindow::render_result(StrategyResult result)
     ui->lb_longest_loss_pos->setText(QString::number(result.longest_loss_trade_time.count()));
 }
 
-void MainWindow::optimized_config_slot(const nlohmann::json & config)
+void MainWindow::optimized_config_slot(const JsonStrategyConfig & config)
 {
     DoubleSmaStrategyConfig new_config(config);
     // TODO
@@ -170,20 +171,24 @@ void MainWindow::on_pb_optimize_clicked()
         });
 
         const auto best_config = optimizer.optimize();
-        emit signal_optimized_config(best_config);
-        std::cout << "Best config: " << best_config << std::endl;
+        if (!best_config.has_value()) {
+            std::cout << "ERROR no best config" << std::endl;
+            return;
+        }
+        emit signal_optimized_config(best_config.value());
+        std::cout << "Best config: " << best_config.value().get() << std::endl;
     });
     t.detach();
 }
 
-void MainWindow::setup_specific_parameters(nlohmann::json strategy_parameters)
+void MainWindow::setup_specific_parameters(JsonStrategyMetaInfo strategy_parameters)
 {
     m_last_set_strategy_parameters = strategy_parameters;
-    const auto params = strategy_parameters["parameters"].get<std::vector<nlohmann::json>>();
+    const auto params = strategy_parameters.get()["parameters"].get<std::vector<nlohmann::json>>();
     auto * top_layout = new QVBoxLayout();
 
     auto * name_layout = new QHBoxLayout();
-    auto * strategy_name_label = new QLabel(strategy_parameters["strategy_name"].get<std::string>().c_str());
+    auto * strategy_name_label = new QLabel(strategy_parameters.get()["strategy_name"].get<std::string>().c_str());
     name_layout->addWidget(strategy_name_label);
     top_layout->addItem(name_layout);
     for (const auto & param : params) {
@@ -215,7 +220,7 @@ void MainWindow::setup_specific_parameters(nlohmann::json strategy_parameters)
     ui->gb_specific_parameters->setLayout(top_layout);
 }
 
-nlohmann::json MainWindow::get_config_from_ui() const
+JsonStrategyConfig MainWindow::get_config_from_ui() const
 {
     nlohmann::json config;
     for (const auto & [name, value] : m_strategy_parameters_values) {
@@ -224,9 +229,9 @@ nlohmann::json MainWindow::get_config_from_ui() const
     return config;
 }
 
-std::optional<nlohmann::json> MainWindow::get_strategy_parameters() const
+std::optional<JsonStrategyMetaInfo> MainWindow::get_strategy_parameters() const
 {
-    const auto json_data = [&]() -> std::optional<nlohmann::json> {
+    const auto json_data = [&]() -> std::optional<JsonStrategyMetaInfo> {
         const std::string json_file_path = "./strategy_parameters/DoubleSma.json";
         std::ifstream file(json_file_path);
         if (file.is_open()) {

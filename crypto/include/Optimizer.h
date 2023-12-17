@@ -2,6 +2,7 @@
 
 #include "ByBitGateway.h"
 #include "StrategyInstance.h"
+#include "JsonStrategyConfig.h"
 
 #include <nlohmann/json.hpp>
 
@@ -13,7 +14,7 @@
 class OptimizerParser
 {
 public:
-    OptimizerParser(nlohmann::json optimizer_data)
+    OptimizerParser(JsonStrategyMetaInfo optimizer_data)
         : m_data(std::move(optimizer_data))
     {
     }
@@ -21,21 +22,21 @@ public:
     std::vector<nlohmann::json> get_possible_configs();
 
 private:
-    const nlohmann::json m_data;
+    const JsonStrategyMetaInfo m_data;
 };
 
 template <class StrategyT>
 class Optimizer
 {
 public:
-    Optimizer(ByBitGateway & gateway, Timerange timerange, nlohmann::json optimizer_data)
+    Optimizer(ByBitGateway & gateway, Timerange timerange, JsonStrategyMetaInfo optimizer_data)
         : m_gateway(gateway)
         , m_timerange(std::move(timerange))
         , m_optimizer_data(std::move(optimizer_data))
     {
     }
 
-    [[nodiscard]] nlohmann::json optimize();
+    [[nodiscard]] std::optional<JsonStrategyConfig> optimize();
 
     void subscribe_for_passed_check(std::function<void(int, int)> && on_passed_checks)
     {
@@ -48,19 +49,19 @@ public:
 private:
     ByBitGateway & m_gateway;
     Timerange m_timerange;
-    nlohmann::json m_optimizer_data;
+    JsonStrategyMetaInfo m_optimizer_data;
     std::function<void(unsigned, unsigned)> m_on_passed_check;
 };
 
 template <class StrategyT>
-nlohmann::json Optimizer<StrategyT>::optimize()
+std::optional<JsonStrategyConfig> Optimizer<StrategyT>::optimize()
 {
-    static_assert(std::is_constructible_v<typename StrategyT::ConfigT, nlohmann::json>);
+    static_assert(std::is_constructible_v<typename StrategyT::ConfigT, JsonStrategyConfig>);
 
     OptimizerParser parser(m_optimizer_data);
 
     double max_profit = -std::numeric_limits<double>::max();
-    typename StrategyT::ConfigT best_config("");
+    std::optional<typename StrategyT::ConfigT> best_config;
     const auto configs = parser.get_possible_configs();
     for (unsigned i = 0; i < configs.size(); ++i) {
         const auto & config_json = configs[i];
@@ -77,5 +78,8 @@ nlohmann::json Optimizer<StrategyT>::optimize()
         }
         m_on_passed_check(i, configs.size());
     }
-    return best_config.to_json();
+    if (!best_config.has_value()) {
+        return JsonStrategyConfig{best_config.value().to_json()};
+    }
+    return {};
 }

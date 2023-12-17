@@ -4,7 +4,7 @@
 
 std::vector<nlohmann::json> OptimizerParser::get_possible_configs()
 {
-    if (const auto strategy_name = m_data.find("strategy_name"); strategy_name != m_data.end()) {
+    if (const auto strategy_name = m_data.get().find("strategy_name"); strategy_name != m_data.get().end()) {
         std::cout << "Reading JSON file for " << strategy_name->get<std::string>() << std::endl;
     }
 
@@ -12,7 +12,7 @@ std::vector<nlohmann::json> OptimizerParser::get_possible_configs()
 
     std::map<std::string, std::pair<int, int>> limits_map;
     std::map<std::string, int> current_values_map;
-    const auto params = m_data["parameters"].get<std::vector<nlohmann::json>>();
+    const auto params = m_data.get()["parameters"].get<std::vector<nlohmann::json>>();
     for (const auto & param : params) {
         const auto name = param["name"].get<std::string>();
         const auto max_value = param["max_value"].get<int>();

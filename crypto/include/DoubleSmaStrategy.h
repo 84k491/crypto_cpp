@@ -3,6 +3,7 @@
 #include "Signal.h"
 #include "nlohmann/json.hpp"
 #include "SimpleMovingAverage.h"
+#include "JsonStrategyConfig.h"
 
 #include <chrono>
 #include <functional>
@@ -13,12 +14,12 @@
 class DoubleSmaStrategyConfig
 {
 public:
-    DoubleSmaStrategyConfig(const nlohmann::json& json);
+    DoubleSmaStrategyConfig(const JsonStrategyConfig& json);
     DoubleSmaStrategyConfig(std::chrono::milliseconds slow_interval, std::chrono::milliseconds fast_interval);
 
     bool is_valid() const;
 
-    nlohmann::json to_json() const;
+    JsonStrategyConfig to_json() const;
 
     std::chrono::milliseconds m_slow_interval = {};
     std::chrono::milliseconds m_fast_interval = {};
