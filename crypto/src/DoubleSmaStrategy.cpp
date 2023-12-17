@@ -2,7 +2,7 @@
 
 #include "ScopeExit.h"
 
-DoubleSmaStrategyConfig::DoubleSmaStrategyConfig(const JsonStrategyConfig& json)
+DoubleSmaStrategyConfig::DoubleSmaStrategyConfig(const JsonStrategyConfig & json)
 {
     if (json.get().contains("slow_interval_m")) {
         m_slow_interval = std::chrono::minutes{json.get().at("slow_interval_m").get<int>()};
@@ -94,4 +94,9 @@ void DoubleSmaStrategy::subscribe_for_strategy_internal(std::function<void(std::
                                                                            double data)> && cb)
 {
     m_strategy_internal_callbacks.emplace_back(std::move(cb));
+}
+
+bool DoubleSmaStrategy::is_valid() const
+{
+    return m_config.is_valid();
 }

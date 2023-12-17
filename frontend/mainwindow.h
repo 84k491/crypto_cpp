@@ -3,6 +3,7 @@
 
 #include "ByBitGateway.h"
 #include "DragableChart.h"
+#include "StrategyFactory.h"
 #include "StrategyResult.h"
 #include "JsonStrategyConfig.h"
 
@@ -91,6 +92,8 @@ private:
 
 private:
     Ui::MainWindow * ui;
+
+    StrategyFactory m_strategy_factory;
 
     ByBitGateway m_gateway;
     DragableChart * m_chartView = nullptr;

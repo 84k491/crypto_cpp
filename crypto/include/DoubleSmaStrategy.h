@@ -4,6 +4,7 @@
 #include "nlohmann/json.hpp"
 #include "SimpleMovingAverage.h"
 #include "JsonStrategyConfig.h"
+#include "StrategyInterface.h"
 
 #include <chrono>
 #include <functional>
@@ -25,21 +26,24 @@ public:
     std::chrono::milliseconds m_fast_interval = {};
 };
 
-class DoubleSmaStrategy
+class DoubleSmaStrategy final : public IStrategy
 {
 public:
     using ConfigT = DoubleSmaStrategyConfig;
 
     DoubleSmaStrategy(const DoubleSmaStrategyConfig & conf);
 
-    std::optional<Signal> push_price(std::pair<std::chrono::milliseconds, double> ts_and_price);
+    std::optional<Signal> push_price(std::pair<std::chrono::milliseconds, double> ts_and_price) override;
+
+    void subscribe_for_strategy_internal(std::function<void(std::string name,
+                                                            std::chrono::milliseconds ts,
+                                                            double data)> && cb) override;
+
+    bool is_valid() const override;
 
     std::map<std::string, std::vector<std::pair<std::chrono::milliseconds, double>>>
     get_internal_data_history() const;
 
-    void subscribe_for_strategy_internal(std::function<void(std::string name,
-                                                            std::chrono::milliseconds ts,
-                                                            double data)> && cb);
 
 private:
     const DoubleSmaStrategyConfig m_config;

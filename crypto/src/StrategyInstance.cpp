@@ -7,13 +7,13 @@
 
 StrategyInstance::StrategyInstance(
         const Timerange & timerange,
-        const DoubleSmaStrategyConfig & conf,
+        const std::shared_ptr<IStrategy>& strategy_ptr,
         ByBitGateway & md_gateway)
-    : m_strategy(conf)
+    : m_strategy(strategy_ptr)
     , m_timerange(timerange)
     , m_md_gateway(md_gateway)
 {
-    m_strategy.subscribe_for_strategy_internal([this](const std::string & name,
+    m_strategy->subscribe_for_strategy_internal([this](const std::string & name,
                                                       std::chrono::milliseconds ts,
                                                       double data) {
         for (const auto & cb : m_strategy_internal_callbacks) {
@@ -42,7 +42,7 @@ void StrategyInstance::run()
                 for (const auto & cb : m_kline_callbacks) {
                     cb(ts_and_ohlc);
                 }
-                const auto signal = m_strategy.push_price({ts, ohlc.close});
+                const auto signal = m_strategy->push_price({ts, ohlc.close});
                 if (signal.has_value()) {
                     on_signal(signal.value());
                 }

@@ -1,8 +1,9 @@
 #pragma once
 
 #include "ByBitGateway.h"
-#include "StrategyInstance.h"
 #include "JsonStrategyConfig.h"
+#include "StrategyFactory.h"
+#include "StrategyInstance.h"
 
 #include <nlohmann/json.hpp>
 
@@ -61,25 +62,25 @@ std::optional<JsonStrategyConfig> Optimizer<StrategyT>::optimize()
     OptimizerParser parser(m_optimizer_data);
 
     double max_profit = -std::numeric_limits<double>::max();
-    std::optional<typename StrategyT::ConfigT> best_config;
+    std::optional<JsonStrategyConfig> best_config;
     const auto configs = parser.get_possible_configs();
     for (unsigned i = 0; i < configs.size(); ++i) {
         const auto & config_json = configs[i];
-        typename StrategyT::ConfigT config(config_json);
-        if (!config.is_valid()) {
+        const auto strategy_opt = StrategyFactory::build_strategy("DoubleSma", config_json);
+        if (!strategy_opt.has_value() || !strategy_opt.value() || !strategy_opt.value()->is_valid()) {
             continue;
         }
-        StrategyInstance strategy_instance(m_timerange, config, m_gateway);
+        StrategyInstance strategy_instance(m_timerange, strategy_opt.value(), m_gateway);
         strategy_instance.run();
         const auto profit = strategy_instance.get_strategy_result().final_profit;
         if (max_profit < profit) {
             max_profit = profit;
-            best_config = config;
+            best_config = config_json;
         }
         m_on_passed_check(i, configs.size());
     }
     if (!best_config.has_value()) {
-        return JsonStrategyConfig{best_config.value().to_json()};
+        return JsonStrategyConfig{best_config.value()};
     }
     return {};
 }

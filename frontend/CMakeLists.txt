@@ -30,6 +30,7 @@ set(PROJECT_SOURCES
         ../crypto/src/Optimizer.cpp
         ../crypto/ta/src/SimpleMovingAverage.cpp
         ../crypto/src/BollingerBandsStrategy.cpp
+        ../crypto/src/StrategyFactory.cpp
 )
 
 qt_add_executable(frontend
@@ -40,6 +41,7 @@ target_compile_options(frontend PRIVATE "-g" "-Og")
 
 target_include_directories(${PROJECT_NAME}
     PUBLIC
+    ${PROJECT_SOURCE_DIR}/../crypto/interfaces
     ${PROJECT_SOURCE_DIR}/../crypto/include
     ${PROJECT_SOURCE_DIR}/../crypto/ta/include
     ${PROJECT_SOURCE_DIR}/../RESTinCurl/include/restincurl

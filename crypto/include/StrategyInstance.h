@@ -1,9 +1,9 @@
 #pragma once
 
 #include "ByBitGateway.h"
-#include "DoubleSmaStrategy.h"
 #include "Position.h"
 #include "Signal.h"
+#include "StrategyInterface.h"
 #include "StrategyResult.h"
 
 #include <optional>
@@ -14,7 +14,9 @@ public:
     using KlineCallback = std::function<void(std::pair<std::chrono::milliseconds, OHLC>)>;
     using DepoCallback = std::function<void(std::chrono::milliseconds ts, double value)>;
 
-    StrategyInstance(const Timerange & timerange, const DoubleSmaStrategyConfig & conf, ByBitGateway & md_gateway);
+    StrategyInstance(const Timerange & timerange,
+                     const std::shared_ptr<IStrategy> & strategy_ptr,
+                     ByBitGateway & md_gateway);
 
     void subscribe_for_signals(std::function<void(const Signal &)> && on_signal_cb);
     void subscribe_for_strategy_internal(std::function<void(std::string name,
@@ -34,7 +36,7 @@ private:
 
 private:
     ByBitGateway & m_md_gateway;
-    DoubleSmaStrategy m_strategy;
+    std::shared_ptr<IStrategy> m_strategy;
 
     std::optional<Signal> m_last_signal;
 

@@ -20,6 +20,7 @@ target_compile_options(crypto PRIVATE "-g" "-Og")
 
 target_include_directories(${PROJECT_NAME}
     PUBLIC
+    ${PROJECT_SOURCE_DIR}/interfaces
     ${PROJECT_SOURCE_DIR}/include
     ${PROJECT_SOURCE_DIR}/ta/include
     ${PROJECT_SOURCE_DIR}/../RESTinCurl/include/restincurl

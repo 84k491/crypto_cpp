@@ -74,16 +74,16 @@ void MainWindow::on_pushButton_clicked()
     }
     const auto & timerange = *timerange_opt;
 
-    DoubleSmaStrategyConfig config{get_config_from_ui()};
-    if (!config.is_valid()) {
-        std::cout << "ERROR Invalid config" << std::endl;
+    const auto strategy_ptr_opt = StrategyFactory::build_strategy("DoubleSma", get_config_from_ui());
+    if (!strategy_ptr_opt.has_value() || !strategy_ptr_opt.value() || !strategy_ptr_opt.value()->is_valid()) {
+        std::cout << "ERROR Failed to build strategy" << std::endl;
         return;
     }
 
-    std::thread t([this, timerange, config]() {
+    std::thread t([this, timerange, strategy = strategy_ptr_opt.value()]() {
         StrategyInstance strategy_instance(
                 timerange,
-                config,
+                strategy,
                 m_gateway);
 
         strategy_instance.subscribe_for_klines([&](std::pair<std::chrono::milliseconds, OHLC> ts_and_ohlc) {
