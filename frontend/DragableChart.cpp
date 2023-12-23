@@ -10,11 +10,6 @@ DragableChart::DragableChart(QWidget * parent)
     , prices(new QLineSeries())
     , buy_signals(new QScatterSeries())
     , sell_signals(new QScatterSeries())
-    , slow_avg(new QLineSeries())
-    , fast_avg(new QLineSeries())
-    , upper_bb(new QLineSeries())
-    , lower_bb(new QLineSeries())
-    , trend_bb(new QLineSeries())
     , depo(new QLineSeries())
     , depo_axis(new QValueAxis)
     , price_axis(new QValueAxis)
@@ -38,34 +33,16 @@ DragableChart::DragableChart(QWidget * parent)
     price_axis->setTitleText("Price");
 
     chart()->legend()->hide();
-    // add series to chart before attaching axis
-    chart()->addSeries(prices);
-    chart()->addSeries(slow_avg);
-    chart()->addSeries(fast_avg);
-    chart()->addSeries(upper_bb);
-    chart()->addSeries(lower_bb);
-    chart()->addSeries(trend_bb);
-    chart()->addSeries(buy_signals);
-    chart()->addSeries(sell_signals);
-    // chart()->createDefaultAxes();
-    chart()->addSeries(depo);
-    // chart()->removeAxis(chart()->axes(Qt::Horizontal).at(0));
     chart()->addAxis(axisX, Qt::AlignBottom);
     chart()->addAxis(depo_axis, Qt::AlignRight);
     chart()->addAxis(price_axis, Qt::AlignLeft);
 
-    prices->attachAxis(axisX);
-    prices->attachAxis(price_axis);
-    slow_avg->attachAxis(axisX);
-    slow_avg->attachAxis(price_axis);
-    fast_avg->attachAxis(axisX);
-    fast_avg->attachAxis(price_axis);
-    upper_bb->attachAxis(axisX);
-    upper_bb->attachAxis(price_axis);
-    lower_bb->attachAxis(axisX);
-    lower_bb->attachAxis(price_axis);
-    trend_bb->attachAxis(axisX);
-    trend_bb->attachAxis(price_axis);
+    setup_series(*prices);
+
+    chart()->addSeries(buy_signals);
+    chart()->addSeries(sell_signals);
+    chart()->addSeries(depo);
+
     buy_signals->attachAxis(axisX);
     buy_signals->attachAxis(price_axis);
     sell_signals->attachAxis(axisX);
@@ -74,11 +51,19 @@ DragableChart::DragableChart(QWidget * parent)
     depo->attachAxis(depo_axis);
 
     depo->setColor(QColor(240, 170, 240));
+    prices->setColor(QColor(0, 0, 0));
 
     chart()->setTitle("Simple line chart() example");
 
     connect(&m_axis_update_timer, &QTimer::timeout, this, &DragableChart::update_axes);
     m_axis_update_timer.setSingleShot(true);
+}
+
+void DragableChart::setup_series(QLineSeries & series)
+{
+    chart()->addSeries(&series);
+    series.attachAxis(axisX);
+    series.attachAxis(price_axis);
 }
 
 void DragableChart::mousePressEvent(QMouseEvent * event)
@@ -170,27 +155,16 @@ void DragableChart::on_push_strategy_internal(
         std::chrono::milliseconds ts,
         double data)
 {
-    if (name == "slow_avg_history") {
-        slow_avg->append(static_cast<double>(ts.count()), data);
-        return;
+    auto * new_series = new QLineSeries();
+    auto [it, success] = m_internal_series.try_emplace(name, new_series);
+    if (!success) {
+        delete new_series;
     }
-    if (name == "fast_avg_history") {
-        fast_avg->append(static_cast<double>(ts.count()), data);
-        return;
+    else {
+        setup_series(*new_series);
     }
-    if (name == "upper_band") {
-        upper_bb->append(static_cast<double>(ts.count()), data);
-        return;
-    }
-    if (name == "lower_band") {
-        lower_bb->append(static_cast<double>(ts.count()), data);
-        return;
-    }
-    if (name == "trend") {
-        trend_bb->append(static_cast<double>(ts.count()), data);
-        return;
-    }
-    std::cout << "ERROR: Unknown internal data name: " << name << std::endl;
+    auto & series = *it->second;
+    series.append(static_cast<double>(ts.count()), data);
 }
 
 void DragableChart::on_push_price(std::chrono::milliseconds ts, double price)
@@ -213,11 +187,10 @@ void DragableChart::clear()
     prices->clear();
     buy_signals->clear();
     sell_signals->clear();
-    slow_avg->clear();
-    fast_avg->clear();
-    upper_bb->clear();
-    lower_bb->clear();
-    trend_bb->clear();
+    for (auto & [_, series_ptr] : m_internal_series) {
+        delete series_ptr;
+    }
+    m_internal_series.clear();
     depo->clear();
 }
 

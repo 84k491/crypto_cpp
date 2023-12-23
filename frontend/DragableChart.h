@@ -35,6 +35,7 @@ protected:
 private:
     void update_axes_values(std::chrono::milliseconds x, double y);
     void update_depo_axis(double y);
+    void setup_series(QLineSeries & series);
 
 private:
     QPointF m_lastMousePos;
@@ -56,12 +57,7 @@ private:
     QScatterSeries * buy_signals = nullptr;
     QScatterSeries * sell_signals = nullptr;
 
-    QLineSeries * slow_avg = nullptr;
-    QLineSeries * fast_avg = nullptr;
-
-    QLineSeries * upper_bb = nullptr;
-    QLineSeries * trend_bb = nullptr;
-    QLineSeries * lower_bb = nullptr;
+    std::map<std::string, QLineSeries *> m_internal_series;
 
     QLineSeries * depo = nullptr;
 };
