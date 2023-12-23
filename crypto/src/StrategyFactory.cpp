@@ -1,6 +1,7 @@
 #include "StrategyFactory.h"
 
 #include "DoubleSmaStrategy.h"
+#include "BollingerBandsStrategy.h"
 #include "StrategyInterface.h"
 
 #include <fstream>
@@ -15,7 +16,10 @@ std::optional<JsonStrategyMetaInfo> StrategyFactory::get_meta_info(const std::st
                     "DoubleSma",
                     "DoubleSma.json",
             },
-    };
+            {
+                    "BollingerBands",
+                    "BollingerBands.json",
+            }};
 
     if (name_to_filename.find(strategy_name) == name_to_filename.end()) {
         std::cout << "ERROR: Unknown strategy name: " << strategy_name << std::endl;
@@ -45,6 +49,10 @@ std::optional<std::shared_ptr<IStrategy>> StrategyFactory::build_strategy(
 {
     if (strategy_name == "DoubleSma") {
         std::shared_ptr<IStrategy> res = std::make_shared<DoubleSmaStrategy>(config);
+        return res;
+    }
+    if (strategy_name == "BollingerBands") {
+        std::shared_ptr<IStrategy> res = std::make_shared<BollingerBandsStrategy>(config);
         return res;
     }
     std::cout << "ERROR: Unknown strategy name: " << strategy_name << std::endl;

@@ -15,7 +15,7 @@ private:
     std::list<std::pair<std::chrono::milliseconds, double>> m_values;
     std::chrono::milliseconds m_interval;
 
-    double m_sum_of_deviations = 0.;
-    std::list<double> m_deviations;
+    double m_sum_of_deviations_sq = 0.;
+    std::list<double> m_deviations_sq;
     double m_sum_for_average = 0.;
 };

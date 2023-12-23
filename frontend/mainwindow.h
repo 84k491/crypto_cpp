@@ -71,6 +71,8 @@ private slots:
     void optimized_config_slot(const JsonStrategyConfig & config);
     void on_strategy_parameters_changed(const std::string & name, double value);
 
+    void on_cb_strategy_currentTextChanged(const QString &arg1);
+
 signals:
     void signal_price(std::chrono::milliseconds ts, double price);
     void signal_signal(Signal signal);

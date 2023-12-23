@@ -55,7 +55,13 @@ private:
     QLineSeries * prices = nullptr;
     QScatterSeries * buy_signals = nullptr;
     QScatterSeries * sell_signals = nullptr;
+
     QLineSeries * slow_avg = nullptr;
     QLineSeries * fast_avg = nullptr;
+
+    QLineSeries * upper_bb = nullptr;
+    QLineSeries * trend_bb = nullptr;
+    QLineSeries * lower_bb = nullptr;
+
     QLineSeries * depo = nullptr;
 };

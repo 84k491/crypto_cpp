@@ -1,0 +1,15 @@
+{
+    "strategy_name": "BollingerBands",
+    "parameters": [
+        {
+            "name": "std_dev",
+            "min_value": 1,
+            "max_value": 4
+        },
+        {
+            "name": "interval_m",
+            "min_value": 5,
+            "max_value": 100
+        }
+    ]
+}

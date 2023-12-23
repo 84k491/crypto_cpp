@@ -15,6 +15,8 @@ add_executable(${PROJECT_NAME}
     src/Position.cpp
     ta/src/SimpleMovingAverage.cpp
     src/BollingerBandsStrategy.cpp
+    ta/src/BollingerBands.cpp
+    ta/src/StandardDeviation.cpp
 )
 target_compile_options(crypto PRIVATE "-g" "-Og")
 

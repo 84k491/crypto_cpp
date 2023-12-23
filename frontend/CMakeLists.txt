@@ -31,13 +31,15 @@ set(PROJECT_SOURCES
         ../crypto/ta/src/SimpleMovingAverage.cpp
         ../crypto/src/BollingerBandsStrategy.cpp
         ../crypto/src/StrategyFactory.cpp
+        ../crypto/ta/src/BollingerBands.cpp
+        ../crypto/ta/src/StandardDeviation.cpp
 )
 
 qt_add_executable(frontend
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
 )
-target_compile_options(frontend PRIVATE "-g" "-Og")
+target_compile_options(frontend PRIVATE "-g" "-O0")
 
 target_include_directories(${PROJECT_NAME}
     PUBLIC

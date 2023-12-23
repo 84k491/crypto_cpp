@@ -12,6 +12,9 @@ DragableChart::DragableChart(QWidget * parent)
     , sell_signals(new QScatterSeries())
     , slow_avg(new QLineSeries())
     , fast_avg(new QLineSeries())
+    , upper_bb(new QLineSeries())
+    , lower_bb(new QLineSeries())
+    , trend_bb(new QLineSeries())
     , depo(new QLineSeries())
     , depo_axis(new QValueAxis)
     , price_axis(new QValueAxis)
@@ -39,6 +42,9 @@ DragableChart::DragableChart(QWidget * parent)
     chart()->addSeries(prices);
     chart()->addSeries(slow_avg);
     chart()->addSeries(fast_avg);
+    chart()->addSeries(upper_bb);
+    chart()->addSeries(lower_bb);
+    chart()->addSeries(trend_bb);
     chart()->addSeries(buy_signals);
     chart()->addSeries(sell_signals);
     // chart()->createDefaultAxes();
@@ -54,6 +60,12 @@ DragableChart::DragableChart(QWidget * parent)
     slow_avg->attachAxis(price_axis);
     fast_avg->attachAxis(axisX);
     fast_avg->attachAxis(price_axis);
+    upper_bb->attachAxis(axisX);
+    upper_bb->attachAxis(price_axis);
+    lower_bb->attachAxis(axisX);
+    lower_bb->attachAxis(price_axis);
+    trend_bb->attachAxis(axisX);
+    trend_bb->attachAxis(price_axis);
     buy_signals->attachAxis(axisX);
     buy_signals->attachAxis(price_axis);
     sell_signals->attachAxis(axisX);
@@ -166,6 +178,18 @@ void DragableChart::on_push_strategy_internal(
         fast_avg->append(static_cast<double>(ts.count()), data);
         return;
     }
+    if (name == "upper_band") {
+        upper_bb->append(static_cast<double>(ts.count()), data);
+        return;
+    }
+    if (name == "lower_band") {
+        lower_bb->append(static_cast<double>(ts.count()), data);
+        return;
+    }
+    if (name == "trend") {
+        trend_bb->append(static_cast<double>(ts.count()), data);
+        return;
+    }
     std::cout << "ERROR: Unknown internal data name: " << name << std::endl;
 }
 
@@ -191,6 +215,9 @@ void DragableChart::clear()
     sell_signals->clear();
     slow_avg->clear();
     fast_avg->clear();
+    upper_bb->clear();
+    lower_bb->clear();
+    trend_bb->clear();
     depo->clear();
 }
 

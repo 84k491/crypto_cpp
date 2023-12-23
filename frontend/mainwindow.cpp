@@ -56,10 +56,8 @@ MainWindow::MainWindow(QWidget * parent)
         ui->dt_from->setDateTime(QDateTime::fromMSecsSinceEpoch(static_cast<qint64>(saved_state.m_start_ts_unix_time)));
     }
 
-    const auto params_opt = get_strategy_parameters();
-    if (params_opt) {
-        setup_specific_parameters(*params_opt);
-    }
+    ui->cb_strategy->addItem("DoubleSma");
+    ui->cb_strategy->addItem("BollingerBands");
 
     std::cout << "End of mainwindow constructor" << std::endl;
 }
@@ -74,7 +72,8 @@ void MainWindow::on_pushButton_clicked()
     }
     const auto & timerange = *timerange_opt;
 
-    const auto strategy_ptr_opt = StrategyFactory::build_strategy("DoubleSma", get_config_from_ui());
+    const auto strategy_name = ui->cb_strategy->currentText().toStdString();
+    const auto strategy_ptr_opt = StrategyFactory::build_strategy(strategy_name, get_config_from_ui());
     if (!strategy_ptr_opt.has_value() || !strategy_ptr_opt.value() || !strategy_ptr_opt.value()->is_valid()) {
         std::cout << "ERROR Failed to build strategy" << std::endl;
         return;
@@ -183,6 +182,8 @@ void MainWindow::on_pb_optimize_clicked()
 
 void MainWindow::setup_specific_parameters(JsonStrategyMetaInfo strategy_parameters)
 {
+    delete ui->gb_specific_parameters->layout();
+
     m_last_set_strategy_parameters = strategy_parameters;
     const auto params = strategy_parameters.get()["parameters"].get<std::vector<nlohmann::json>>();
     auto * top_layout = new QVBoxLayout();
@@ -217,6 +218,7 @@ void MainWindow::setup_specific_parameters(JsonStrategyMetaInfo strategy_paramet
         layout->addWidget(double_spin_box);
         top_layout->addItem(layout);
     }
+    qDeleteAll(ui->gb_specific_parameters->children());
     ui->gb_specific_parameters->setLayout(top_layout);
 }
 
@@ -231,18 +233,7 @@ JsonStrategyConfig MainWindow::get_config_from_ui() const
 
 std::optional<JsonStrategyMetaInfo> MainWindow::get_strategy_parameters() const
 {
-    const auto json_data = [&]() -> std::optional<JsonStrategyMetaInfo> {
-        const std::string json_file_path = "./strategy_parameters/DoubleSma.json";
-        std::ifstream file(json_file_path);
-        if (file.is_open()) {
-            nlohmann::json json_data;
-            file >> json_data;
-            file.close();
-            return json_data;
-        }
-        std::cout << "ERROR: Failed to open JSON file: " << json_file_path << std::endl;
-        return {};
-    }();
+    const auto json_data = StrategyFactory::get_meta_info(ui->cb_strategy->currentText().toStdString());
     return json_data;
 }
 
@@ -250,4 +241,12 @@ void MainWindow::on_strategy_parameters_changed(const std::string & name, double
 {
     std::cout << "on_strategy_parameters_changed: " << name << " " << value << std::endl;
     m_strategy_parameters_values[name] = value;
+}
+
+void MainWindow::on_cb_strategy_currentTextChanged(const QString & arg1)
+{
+    const auto params_opt = get_strategy_parameters();
+    if (params_opt) {
+        setup_specific_parameters(*params_opt);
+    }
 }
