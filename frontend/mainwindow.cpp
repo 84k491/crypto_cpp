@@ -197,13 +197,15 @@ void MainWindow::setup_specific_parameters(JsonStrategyMetaInfo strategy_paramet
     top_layout->addItem(name_layout);
     for (const auto & param : params) {
         const auto name = param["name"].get<std::string>();
-        const auto max_value = param["max_value"].get<int>();
-        const auto min_value = param["min_value"].get<int>();
+        const auto max_value = param["max_value"].get<double>();
+        const auto step = param["step"].get<double>();
+        const auto min_value = param["min_value"].get<double>();
 
         auto * layout = new QHBoxLayout();
         auto * label = new QLabel(name.c_str());
         auto * double_spin_box = new QDoubleSpinBox();
         double_spin_box->setMinimum(min_value);
+        double_spin_box->setSingleStep(step);
         double_spin_box->setMaximum(max_value);
 
         double_spin_box->setValue(min_value);

@@ -52,7 +52,7 @@ private:
     ByBitGateway & m_gateway;
     Timerange m_timerange;
     JsonStrategyMetaInfo m_optimizer_data;
-    std::function<void(unsigned, unsigned)> m_on_passed_check;
+    std::function<void(unsigned, unsigned)> m_on_passed_check = [](unsigned, unsigned) {};
 };
 
 template <class StrategyT>
