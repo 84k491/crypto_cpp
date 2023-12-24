@@ -1,19 +1,18 @@
 #include "DragableChart.h"
 
-#include <iostream>
 #include <qcoreevent.h>
 #include <qnamespace.h>
 
 DragableChart::DragableChart(QWidget * parent)
     : QChartView(new QChart(), parent)
     , axisX(new QDateTimeAxis)
+    , price_axis(new QValueAxis)
+    , depo_axis(new QValueAxis)
     , prices(new QLineSeries())
     , buy_signals(new QScatterSeries())
     , sell_signals(new QScatterSeries())
     , close_signals(new QScatterSeries())
     , depo(new QLineSeries())
-    , depo_axis(new QValueAxis)
-    , price_axis(new QValueAxis)
 {
     setDragMode(QGraphicsView::NoDrag);
     this->setMouseTracking(true);
@@ -215,14 +214,14 @@ void DragableChart::on_push_depo(std::chrono::milliseconds ts, double value)
     update_depo_axis(value);
 }
 
-void DragableChart::update_depo_axis(double depo)
+void DragableChart::update_depo_axis(double _depo)
 {
-    if (depo < depo_min || depo > depo_max) {
-        if (depo < depo_min) {
-            depo_min = depo;
+    if (_depo < depo_min || _depo > depo_max) {
+        if (_depo < depo_min) {
+            depo_min = _depo;
         }
-        if (depo > depo_max) {
-            depo_max = depo;
+        if (_depo > depo_max) {
+            depo_max = _depo;
         }
         depo_axis->setRange(depo_min, depo_max);
     }

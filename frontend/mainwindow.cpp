@@ -170,9 +170,6 @@ void MainWindow::on_pb_optimize_clicked()
 
     std::thread t([this, timerange, json_data]() {
         Optimizer<DoubleSmaStrategy> optimizer(m_gateway, timerange, *json_data);
-        optimizer.subscribe_for_passed_check([this](unsigned i, unsigned total) {
-            // std::cout << "Passed check: " << i << "/" << total << std::endl;
-        });
 
         const auto best_config = optimizer.optimize();
         if (!best_config.has_value()) {
@@ -248,7 +245,7 @@ void MainWindow::on_strategy_parameters_changed(const std::string & name, double
     m_strategy_parameters_values[name] = value;
 }
 
-void MainWindow::on_cb_strategy_currentTextChanged(const QString & arg1)
+void MainWindow::on_cb_strategy_currentTextChanged(const QString &)
 {
     const auto params_opt = get_strategy_parameters();
     if (params_opt) {

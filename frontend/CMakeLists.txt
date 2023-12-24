@@ -46,7 +46,6 @@ target_include_directories(${PROJECT_NAME}
     ${PROJECT_SOURCE_DIR}/../crypto/interfaces
     ${PROJECT_SOURCE_DIR}/../crypto/include
     ${PROJECT_SOURCE_DIR}/../crypto/ta/include
-    ${PROJECT_SOURCE_DIR}/../RESTinCurl/include/restincurl
 )
 
 target_link_libraries(frontend PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)

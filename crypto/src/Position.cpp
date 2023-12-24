@@ -81,9 +81,8 @@ MarketOrder & MarketOrder::operator+=(const MarketOrder & other)
     return *this;
 }
 
-MarketOrder::MarketOrder(double unsigned_volume, Side side)
+MarketOrder::MarketOrder(double unsigned_volume, Side)
     : m_unsigned_volume(unsigned_volume)
-    , m_side(side)
 {
 }
 
@@ -94,7 +93,7 @@ Side Position::OpenedPosition::side() const
 
 Position::OpenedPosition::OpenedPosition(std::chrono::milliseconds ts, double absolute_volume, double price)
     : m_absolute_volume(absolute_volume)
-    , m_open_ts(ts)
     , m_open_price(price)
+    , m_open_ts(ts)
 {
 }

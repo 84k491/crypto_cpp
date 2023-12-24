@@ -10,9 +10,9 @@ StrategyInstance::StrategyInstance(
         const Timerange & timerange,
         const std::shared_ptr<IStrategy> & strategy_ptr,
         ByBitGateway & md_gateway)
-    : m_strategy(strategy_ptr)
+    : m_md_gateway(md_gateway)
+    , m_strategy(strategy_ptr)
     , m_timerange(timerange)
-    , m_md_gateway(md_gateway)
 {
     m_strategy->subscribe_for_strategy_internal([this](const std::string & name,
                                                        std::chrono::milliseconds ts,

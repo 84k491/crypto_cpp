@@ -13,7 +13,7 @@ struct MarketOrder
 
 private:
     double m_unsigned_volume{};
-    Side m_side = Side::Buy;
+    // Side m_side = Side::Buy;
 };
 
 struct PositionResult

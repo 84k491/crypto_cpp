@@ -20,7 +20,6 @@ public:
     std::optional<BollingerBandsValue> push_value(std::pair<std::chrono::milliseconds, double> ts_and_price);
 
 private:
-    std::chrono::milliseconds m_interval;
     double m_std_deviation_coefficient = 0.;
 
     StandardDeviation m_standard_deviation;

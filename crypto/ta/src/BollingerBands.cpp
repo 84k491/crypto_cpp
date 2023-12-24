@@ -1,8 +1,7 @@
 #include "BollingerBands.h"
 
 BollingerBands::BollingerBands(std::chrono::milliseconds interval, double std_deviation_coefficient)
-    : m_interval(interval)
-    , m_std_deviation_coefficient(std_deviation_coefficient)
+    : m_std_deviation_coefficient(std_deviation_coefficient)
     , m_standard_deviation(interval)
     , m_trend(interval)
 {
@@ -10,7 +9,6 @@ BollingerBands::BollingerBands(std::chrono::milliseconds interval, double std_de
 
 std::optional<BollingerBandsValue> BollingerBands::push_value(std::pair<std::chrono::milliseconds, double> ts_and_price)
 {
-    const auto & [ts, price] = ts_and_price;
     const auto standard_deviation = m_standard_deviation.push_value(ts_and_price);
     const auto trend = m_trend.push_value(ts_and_price);
 

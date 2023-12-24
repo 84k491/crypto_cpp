@@ -87,12 +87,11 @@ bool ByBitGateway::request_klines(const std::string & symbol, const Timerange & 
 {
     std::cout << "Whole requested interval hours: " << std::chrono::duration_cast<std::chrono::hours>(timerange.duration()).count() << std::endl;
 
-    const auto min_interval = std::chrono::minutes{1};
     auto last_ts = timerange.start();
     while (last_ts < timerange.end()) {
         auto future = std::async(
                 std::launch::async,
-                [&symbol, this, timerange, min_interval, start = last_ts]() {
+                [&symbol, this, timerange, start = last_ts]() {
                     std::condition_variable cv;
                     std::mutex m;
 
