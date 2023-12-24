@@ -2,6 +2,7 @@
 
 enum class Side
 {
+    Close,
     Buy,
     Sell,
 };

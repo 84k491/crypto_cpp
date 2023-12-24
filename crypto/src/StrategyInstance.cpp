@@ -4,18 +4,19 @@
 #include "Position.h"
 
 #include <chrono>
+#include <optional>
 
 StrategyInstance::StrategyInstance(
         const Timerange & timerange,
-        const std::shared_ptr<IStrategy>& strategy_ptr,
+        const std::shared_ptr<IStrategy> & strategy_ptr,
         ByBitGateway & md_gateway)
     : m_strategy(strategy_ptr)
     , m_timerange(timerange)
     , m_md_gateway(md_gateway)
 {
     m_strategy->subscribe_for_strategy_internal([this](const std::string & name,
-                                                      std::chrono::milliseconds ts,
-                                                      double data) {
+                                                       std::chrono::milliseconds ts,
+                                                       double data) {
         for (const auto & cb : m_strategy_internal_callbacks) {
             cb(name, ts, data);
         }
@@ -48,7 +49,7 @@ void StrategyInstance::run()
                 }
             });
 
-    if (m_last_signal.has_value()) {
+    if (m_position.opened() != nullptr) {
         const auto order_and_res_opt = m_position.close(m_last_signal.value().timestamp, m_last_signal.value().price);
         if (order_and_res_opt.has_value()) {
             const auto [order, res] = order_and_res_opt.value();
@@ -58,22 +59,31 @@ void StrategyInstance::run()
             }
         }
     }
-    else {
-        std::cout << "ERROR no signal on end" << std::endl;
-    }
     m_strategy_result.final_profit = m_deposit;
     m_strategy_result.profit_per_trade = m_strategy_result.final_profit / m_strategy_result.trades_count;
 }
 
 void StrategyInstance::on_signal(const Signal & signal)
 {
-    const int size_sign = signal.side == Side::Buy ? 1 : -1;
-    const auto default_pos_size = m_pos_currency_amount / signal.price;
-    const auto [order_opt, position_result_opt] =
-            m_position.open_or_move(
-                    signal.timestamp,
-                    size_sign * default_pos_size,
-                    signal.price);
+    std::optional<MarketOrder> order_opt;
+    std::optional<PositionResult> position_result_opt;
+    if (Side::Close == signal.side) {
+        if (m_position.opened() != nullptr) {
+            const auto order_and_res_opt = m_position.close(signal.timestamp, signal.price);
+            if (order_and_res_opt.has_value()) {
+                std::tie(order_opt, position_result_opt) = order_and_res_opt.value();
+            }
+        }
+    }
+    else {
+        const int size_sign = signal.side == Side::Buy ? 1 : -1;
+        const auto default_pos_size = m_pos_currency_amount / signal.price;
+        std::tie(order_opt, position_result_opt) =
+                m_position.open_or_move(
+                        signal.timestamp,
+                        size_sign * default_pos_size,
+                        signal.price);
+    }
 
     if (position_result_opt.has_value()) {
         m_deposit += position_result_opt.value().pnl;

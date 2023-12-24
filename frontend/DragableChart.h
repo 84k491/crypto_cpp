@@ -56,6 +56,7 @@ private:
     QLineSeries * prices = nullptr;
     QScatterSeries * buy_signals = nullptr;
     QScatterSeries * sell_signals = nullptr;
+    QScatterSeries * close_signals = nullptr;
 
     std::map<std::string, QLineSeries *> m_internal_series;
 

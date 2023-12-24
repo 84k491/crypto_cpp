@@ -10,6 +10,7 @@ DragableChart::DragableChart(QWidget * parent)
     , prices(new QLineSeries())
     , buy_signals(new QScatterSeries())
     , sell_signals(new QScatterSeries())
+    , close_signals(new QScatterSeries())
     , depo(new QLineSeries())
     , depo_axis(new QValueAxis)
     , price_axis(new QValueAxis)
@@ -23,6 +24,8 @@ DragableChart::DragableChart(QWidget * parent)
     buy_signals->setMarkerSize(15.0);
     sell_signals->setMarkerShape(QScatterSeries::MarkerShapeRectangle);
     sell_signals->setMarkerSize(11.0);
+    close_signals->setMarkerShape(QScatterSeries::MarkerShapeStar);
+    close_signals->setMarkerSize(20.0);
 
     axisX->setTickCount(10);
     axisX->setFormat("hh:mm:ss");
@@ -41,12 +44,15 @@ DragableChart::DragableChart(QWidget * parent)
 
     chart()->addSeries(buy_signals);
     chart()->addSeries(sell_signals);
+    chart()->addSeries(close_signals);
     chart()->addSeries(depo);
 
     buy_signals->attachAxis(axisX);
     buy_signals->attachAxis(price_axis);
     sell_signals->attachAxis(axisX);
     sell_signals->attachAxis(price_axis);
+    close_signals->attachAxis(axisX);
+    close_signals->attachAxis(price_axis);
     depo->attachAxis(axisX);
     depo->attachAxis(depo_axis);
 
@@ -142,11 +148,19 @@ void DragableChart::update_axes()
 
 void DragableChart::on_push_signal(Signal signal)
 {
-    if (signal.side == Side::Buy) {
+    switch (signal.side) {
+    case Side::Buy: {
         buy_signals->append(static_cast<double>(signal.timestamp.count()), signal.price);
+        break;
     }
-    else {
+    case Side::Sell: {
         sell_signals->append(static_cast<double>(signal.timestamp.count()), signal.price);
+        break;
+    }
+    case Side::Close: {
+        close_signals->append(static_cast<double>(signal.timestamp.count()), signal.price);
+        break;
+    }
     }
 }
 
@@ -187,6 +201,7 @@ void DragableChart::clear()
     prices->clear();
     buy_signals->clear();
     sell_signals->clear();
+    close_signals->clear();
     for (auto & [_, series_ptr] : m_internal_series) {
         delete series_ptr;
     }

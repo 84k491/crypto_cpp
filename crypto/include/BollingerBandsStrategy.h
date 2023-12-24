@@ -40,6 +40,8 @@ private:
 
     BollingerBands m_bollinger_bands;
 
+    Side m_last_signal_side = Side::Close;
+
     std::vector<std::function<void(std::string name,
                                    std::chrono::milliseconds ts,
                                    double data)>>

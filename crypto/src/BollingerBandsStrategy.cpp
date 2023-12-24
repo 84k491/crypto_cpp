@@ -55,11 +55,38 @@ std::optional<Signal> BollingerBandsStrategy::push_price(std::pair<std::chrono::
         cb("trend", ts, bb_res.m_trend);
     }
 
-    if (price > bb_res.m_upper_band) {
-        return Signal{.side = Side::Sell, .timestamp = ts, .price = ts_and_price.second};
+    if (m_last_signal_side != Side::Close) {
+        switch (m_last_signal_side) {
+        case Side::Buy: {
+            if (price > bb_res.m_trend) {
+                const auto signal = Signal{.side = Side::Close, .timestamp = ts, .price = ts_and_price.second};
+                m_last_signal_side = signal.side;
+                return signal;
+            }
+            break;
+        }
+        case Side::Sell: {
+            if (price < bb_res.m_trend) {
+                const auto signal = Signal{.side = Side::Close, .timestamp = ts, .price = ts_and_price.second};
+                m_last_signal_side = signal.side;
+                return signal;
+            }
+            break;
+        }
+        case Side::Close: break;
+        }
     }
-    if (price < bb_res.m_lower_band) {
-        return Signal{.side = Side::Buy, .timestamp = ts, .price = ts_and_price.second};
+    else {
+        if (price > bb_res.m_upper_band) {
+            const auto signal = Signal{.side = Side::Sell, .timestamp = ts, .price = ts_and_price.second};
+            m_last_signal_side = signal.side;
+            return signal;
+        }
+        if (price < bb_res.m_lower_band) {
+            const auto signal = Signal{.side = Side::Buy, .timestamp = ts, .price = ts_and_price.second};
+            m_last_signal_side = signal.side;
+            return signal;
+        }
     }
     return std::nullopt;
 }

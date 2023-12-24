@@ -54,7 +54,10 @@ public:
             double price);
 
     double pnl() const;
-    OpenedPosition * opened() const;
+    const OpenedPosition * opened() const
+    {
+        return m_opened_position.has_value() ? &m_opened_position.value() : nullptr;
+    }
 
 private:
     std::optional<OpenedPosition> m_opened_position;
