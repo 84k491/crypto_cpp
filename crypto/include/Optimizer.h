@@ -21,6 +21,7 @@ public:
     }
 
     std::vector<nlohmann::json> get_possible_configs();
+    std::string get_strategy_name() const;
 
 private:
     const JsonStrategyMetaInfo m_data;
@@ -66,7 +67,7 @@ std::optional<JsonStrategyConfig> Optimizer<StrategyT>::optimize()
     const auto configs = parser.get_possible_configs();
     for (unsigned i = 0; i < configs.size(); ++i) {
         const auto & config_json = configs[i];
-        const auto strategy_opt = StrategyFactory::build_strategy("DoubleSma", config_json);
+        const auto strategy_opt = StrategyFactory::build_strategy(parser.get_strategy_name(), config_json);
         if (!strategy_opt.has_value() || !strategy_opt.value() || !strategy_opt.value()->is_valid()) {
             continue;
         }
@@ -80,7 +81,7 @@ std::optional<JsonStrategyConfig> Optimizer<StrategyT>::optimize()
         m_on_passed_check(i, configs.size());
     }
     if (!best_config.has_value()) {
-        return JsonStrategyConfig{best_config.value()};
+        return {};
     }
-    return {};
+    return JsonStrategyConfig{best_config.value()};
 }

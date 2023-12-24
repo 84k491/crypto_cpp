@@ -42,3 +42,12 @@ std::vector<nlohmann::json> OptimizerParser::get_possible_configs()
 
     return ouput_jsons;
 }
+
+std::string OptimizerParser::get_strategy_name() const
+{
+    if (!m_data.get().contains("strategy_name")) {
+        std::cout << "ERROR No strategy name in JSON file" << std::endl;
+        return "";
+    }
+    return m_data.get()["strategy_name"].get<std::string>();
+}

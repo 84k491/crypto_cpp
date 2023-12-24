@@ -135,9 +135,14 @@ void MainWindow::render_result(StrategyResult result)
 void MainWindow::optimized_config_slot(const JsonStrategyConfig & config)
 {
     DoubleSmaStrategyConfig new_config(config);
-    // TODO
-    // ui->sb_slow_interval->setValue(std::chrono::duration_cast<std::chrono::minutes>(new_config.m_slow_interval).count());
-    // ui->sb_fast_interval->setValue(std::chrono::duration_cast<std::chrono::minutes>(new_config.m_fast_interval).count());
+    for (auto it = config.get().begin(); it != config.get().end(); ++it) {
+        auto spinbox_it = m_strategy_parameters_spinboxes.find(it.key());
+        if (spinbox_it == m_strategy_parameters_spinboxes.end()) {
+            std::cout << "ERROR: Could not find spinbox for " << it.key() << std::endl;
+            continue;
+        }
+        m_strategy_parameters_spinboxes.at(it.key())->setValue(it.value().get<double>());
+    }
 }
 
 std::optional<Timerange> MainWindow::get_timerange() const
@@ -182,7 +187,8 @@ void MainWindow::on_pb_optimize_clicked()
 
 void MainWindow::setup_specific_parameters(JsonStrategyMetaInfo strategy_parameters)
 {
-    delete ui->gb_specific_parameters->layout();
+    qDeleteAll(ui->gb_specific_parameters->children());
+    m_strategy_parameters_spinboxes.clear();
 
     m_last_set_strategy_parameters = strategy_parameters;
     const auto params = strategy_parameters.get()["parameters"].get<std::vector<nlohmann::json>>();
@@ -205,6 +211,7 @@ void MainWindow::setup_specific_parameters(JsonStrategyMetaInfo strategy_paramet
 
         double_spin_box->setValue(min_value);
         m_strategy_parameters_values[name] = min_value;
+        m_strategy_parameters_spinboxes[name] = double_spin_box;
         connect(
                 double_spin_box,
                 &QDoubleSpinBox::valueChanged,
@@ -218,7 +225,6 @@ void MainWindow::setup_specific_parameters(JsonStrategyMetaInfo strategy_paramet
         layout->addWidget(double_spin_box);
         top_layout->addItem(layout);
     }
-    qDeleteAll(ui->gb_specific_parameters->children());
     ui->gb_specific_parameters->setLayout(top_layout);
 }
 
@@ -239,7 +245,6 @@ std::optional<JsonStrategyMetaInfo> MainWindow::get_strategy_parameters() const
 
 void MainWindow::on_strategy_parameters_changed(const std::string & name, double value)
 {
-    std::cout << "on_strategy_parameters_changed: " << name << " " << value << std::endl;
     m_strategy_parameters_values[name] = value;
 }
 

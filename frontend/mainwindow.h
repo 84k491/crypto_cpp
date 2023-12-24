@@ -3,9 +3,9 @@
 
 #include "ByBitGateway.h"
 #include "DragableChart.h"
+#include "JsonStrategyConfig.h"
 #include "StrategyFactory.h"
 #include "StrategyResult.h"
-#include "JsonStrategyConfig.h"
 
 #include <QMainWindow>
 #include <QScatterSeries>
@@ -71,7 +71,7 @@ private slots:
     void optimized_config_slot(const JsonStrategyConfig & config);
     void on_strategy_parameters_changed(const std::string & name, double value);
 
-    void on_cb_strategy_currentTextChanged(const QString &arg1);
+    void on_cb_strategy_currentTextChanged(const QString & arg1);
 
 signals:
     void signal_price(std::chrono::milliseconds ts, double price);
@@ -101,6 +101,7 @@ private:
     DragableChart * m_chartView = nullptr;
 
     std::optional<JsonStrategyMetaInfo> m_last_set_strategy_parameters;
+    std::map<std::string, QDoubleSpinBox *> m_strategy_parameters_spinboxes;
     std::map<std::string, double> m_strategy_parameters_values;
 
     SavedStateUi saved_state;
