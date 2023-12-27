@@ -7,12 +7,10 @@ DragableChart::DragableChart(QWidget * parent)
     : QChartView(new QChart(), parent)
     , axisX(new QDateTimeAxis)
     , price_axis(new QValueAxis)
-    , depo_axis(new QValueAxis)
     , prices(new QLineSeries())
     , buy_signals(new QScatterSeries())
     , sell_signals(new QScatterSeries())
     , close_signals(new QScatterSeries())
-    , depo(new QLineSeries())
 {
     setDragMode(QGraphicsView::NoDrag);
     this->setMouseTracking(true);
@@ -29,14 +27,11 @@ DragableChart::DragableChart(QWidget * parent)
     axisX->setTickCount(10);
     axisX->setFormat("hh:mm:ss");
     axisX->setTitleText("Time");
-    depo_axis->setTickCount(10);
-    depo_axis->setTitleText("Depo");
     price_axis->setTickCount(10);
-    price_axis->setTitleText("Price");
+    price_axis->setTitleText("Values");
 
     chart()->legend()->hide();
     chart()->addAxis(axisX, Qt::AlignBottom);
-    chart()->addAxis(depo_axis, Qt::AlignRight);
     chart()->addAxis(price_axis, Qt::AlignLeft);
 
     setup_series(*prices);
@@ -44,7 +39,6 @@ DragableChart::DragableChart(QWidget * parent)
     chart()->addSeries(buy_signals);
     chart()->addSeries(sell_signals);
     chart()->addSeries(close_signals);
-    chart()->addSeries(depo);
 
     buy_signals->attachAxis(axisX);
     buy_signals->attachAxis(price_axis);
@@ -52,13 +46,10 @@ DragableChart::DragableChart(QWidget * parent)
     sell_signals->attachAxis(price_axis);
     close_signals->attachAxis(axisX);
     close_signals->attachAxis(price_axis);
-    depo->attachAxis(axisX);
-    depo->attachAxis(depo_axis);
 
-    depo->setColor(QColor(240, 170, 240));
     prices->setColor(QColor(0, 0, 0));
 
-    chart()->setTitle("Simple line chart() example");
+    chart()->setTitle("Empty title");
 
     connect(&m_axis_update_timer, &QTimer::timeout, this, &DragableChart::update_axes);
     m_axis_update_timer.setSingleShot(true);
@@ -145,7 +136,7 @@ void DragableChart::update_axes()
     price_axis->setRange(y_min, y_max);
 }
 
-void DragableChart::on_push_signal(Signal signal)
+void DragableChart::push_signal(Signal signal)
 {
     switch (signal.side) {
     case Side::Buy: {
@@ -163,27 +154,24 @@ void DragableChart::on_push_signal(Signal signal)
     }
 }
 
-void DragableChart::on_push_strategy_internal(
-        const std::string & name,
+void DragableChart::push_series_value(
+        const std::string & series_name,
         std::chrono::milliseconds ts,
         double data)
 {
-    auto * new_series = new QLineSeries();
-    auto [it, success] = m_internal_series.try_emplace(name, new_series);
-    if (!success) {
-        delete new_series;
+    QLineSeries * series = nullptr;
+    auto it = m_internal_series.find(series_name);
+    if (it != m_internal_series.end()) {
+        series = it->second;
     }
     else {
-        setup_series(*new_series);
+        series = new QLineSeries();
+        setup_series(*series);
+        m_internal_series[series_name] = series;
     }
-    auto & series = *it->second;
-    series.append(static_cast<double>(ts.count()), data);
-}
 
-void DragableChart::on_push_price(std::chrono::milliseconds ts, double price)
-{
-    prices->append(static_cast<double>(ts.count()), price);
-    update_axes_values(ts, price);
+    series->append(static_cast<double>(ts.count()), data);
+    update_axes_values(ts, data);
     m_axis_update_timer.start(500);
 }
 
@@ -193,8 +181,6 @@ void DragableChart::clear()
     x_max = std::numeric_limits<int64_t>::min();
     y_min = std::numeric_limits<double>::max();
     y_max = std::numeric_limits<double>::min();
-    depo_min = std::numeric_limits<double>::max();
-    depo_max = std::numeric_limits<double>::min();
 
     axisX->setRange(QDateTime::fromMSecsSinceEpoch(x_min), QDateTime::fromMSecsSinceEpoch(x_max));
     prices->clear();
@@ -205,24 +191,9 @@ void DragableChart::clear()
         delete series_ptr;
     }
     m_internal_series.clear();
-    depo->clear();
 }
 
-void DragableChart::on_push_depo(std::chrono::milliseconds ts, double value)
+void DragableChart::set_title(const std::string & title)
 {
-    depo->append(static_cast<double>(ts.count()), value);
-    update_depo_axis(value);
-}
-
-void DragableChart::update_depo_axis(double _depo)
-{
-    if (_depo < depo_min || _depo > depo_max) {
-        if (_depo < depo_min) {
-            depo_min = _depo;
-        }
-        if (_depo > depo_max) {
-            depo_max = _depo;
-        }
-        depo_axis->setRange(depo_min, depo_max);
-    }
+    chart()->setTitle(title.c_str());
 }

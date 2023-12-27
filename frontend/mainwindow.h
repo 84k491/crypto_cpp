@@ -92,13 +92,18 @@ private:
     void setup_specific_parameters(JsonStrategyMetaInfo strategy_parameters);
     JsonStrategyConfig get_config_from_ui() const;
 
+    DragableChart & get_or_create_chart(const std::string & chart_name);
+
 private:
     Ui::MainWindow * ui;
 
     StrategyFactory m_strategy_factory;
 
     ByBitGateway m_gateway;
-    DragableChart * m_chartView = nullptr;
+
+    const std::string m_price_chart_name = "prices";
+    const std::string m_depo_chart_name = "depo";
+    std::map<std::string, DragableChart *> m_charts;
 
     std::optional<JsonStrategyMetaInfo> m_last_set_strategy_parameters;
     std::map<std::string, QDoubleSpinBox *> m_strategy_parameters_spinboxes;

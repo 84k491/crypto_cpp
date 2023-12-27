@@ -15,13 +15,12 @@ public:
 
     void clear();
 
-public slots:
-    void on_push_price(std::chrono::milliseconds ts, double price);
-    void on_push_signal(Signal signal);
-    void on_push_strategy_internal(const std::string & name,
-                                   std::chrono::milliseconds ts,
-                                   double data);
-    void on_push_depo(std::chrono::milliseconds ts, double depo);
+    void push_series_value(const std::string & series_name,
+                           std::chrono::milliseconds ts,
+                           double data);
+    void push_signal(Signal signal);
+
+    void set_title(const std::string & title);
 
 private slots:
     void update_axes();
@@ -34,7 +33,6 @@ protected:
 
 private:
     void update_axes_values(std::chrono::milliseconds x, double y);
-    void update_depo_axis(double y);
     void setup_series(QLineSeries & series);
 
 private:
@@ -46,19 +44,13 @@ private:
     double y_min = std::numeric_limits<double>::max();
     double y_max = std::numeric_limits<double>::min();
 
-    double depo_min = std::numeric_limits<double>::max();
-    double depo_max = std::numeric_limits<double>::min();
-
     QTimer m_axis_update_timer;
     QDateTimeAxis * axisX = nullptr;
     QValueAxis * price_axis = nullptr;
-    QValueAxis * depo_axis = nullptr;
     QLineSeries * prices = nullptr;
     QScatterSeries * buy_signals = nullptr;
     QScatterSeries * sell_signals = nullptr;
     QScatterSeries * close_signals = nullptr;
 
     std::map<std::string, QLineSeries *> m_internal_series;
-
-    QLineSeries * depo = nullptr;
 };

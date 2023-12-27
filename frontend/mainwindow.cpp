@@ -2,43 +2,55 @@
 
 #include "./ui_mainwindow.h"
 #include "DoubleSmaStrategy.h"
+#include "DragableChart.h"
 #include "JsonStrategyConfig.h"
 #include "Optimizer.h"
 #include "StrategyInstance.h"
 
 #include <nlohmann/json.hpp>
 
-#include <fstream>
 #include <qboxlayout.h>
 #include <qscatterseries.h>
 #include <qspinbox.h>
 #include <qtypes.h>
+#include <thread>
 
 MainWindow::MainWindow(QWidget * parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
-    , m_chartView(new DragableChart())
 {
     ui->setupUi(this);
 
     connect(this,
             &MainWindow::signal_price,
-            m_chartView,
-            &DragableChart::on_push_price);
+            this,
+            [this](std::chrono::milliseconds ts, double price) {
+                get_or_create_chart(m_price_chart_name).push_series_value("price", ts, price);
+            });
 
     connect(this,
             &MainWindow::signal_signal,
-            m_chartView,
-            &DragableChart::on_push_signal);
+            this,
+            [this](Signal signal) {
+                get_or_create_chart(m_price_chart_name).push_signal(signal);
+            });
 
     connect(this,
             &MainWindow::signal_strategy_internal,
-            m_chartView,
-            &DragableChart::on_push_strategy_internal);
+            this,
+            [this](const std::string & name,
+                   std::chrono::milliseconds ts,
+                   double data) {
+                get_or_create_chart(m_price_chart_name).push_series_value(name, ts, data);
+            });
+
     connect(this,
             &MainWindow::signal_depo,
-            m_chartView,
-            &DragableChart::on_push_depo);
+            this,
+            [this](std::chrono::milliseconds ts, double depo) {
+                get_or_create_chart(m_depo_chart_name).push_series_value("depo", ts, depo);
+            });
+
     connect(this,
             &MainWindow::signal_result,
             this,
@@ -48,8 +60,6 @@ MainWindow::MainWindow(QWidget * parent)
             &MainWindow::signal_optimized_config,
             this,
             &MainWindow::optimized_config_slot);
-
-    ui->verticalLayout_graph->addWidget(m_chartView);
 
     ui->sb_work_hours->setValue(saved_state.m_work_hours);
     if (saved_state.m_start_ts_unix_time != 0) {
@@ -64,7 +74,9 @@ MainWindow::MainWindow(QWidget * parent)
 
 void MainWindow::on_pushButton_clicked()
 {
-    m_chartView->clear();
+    for (auto & m_chart : m_charts) {
+        m_chart.second->clear();
+    }
     const auto timerange_opt = get_timerange();
     if (!timerange_opt) {
         std::cout << "ERROR Invalid timerange" << std::endl;
@@ -253,4 +265,16 @@ void MainWindow::on_cb_strategy_currentTextChanged(const QString &)
     if (params_opt) {
         setup_specific_parameters(*params_opt);
     }
+}
+
+DragableChart & MainWindow::get_or_create_chart(const std::string & chart_name)
+{
+    if (auto it = m_charts.find(chart_name); it != m_charts.end()) {
+        return *it->second;
+    }
+    auto * new_chart = new DragableChart();
+    new_chart->set_title(chart_name);
+    m_charts[chart_name] = new_chart;
+    ui->verticalLayout_graph->addWidget(new_chart);
+    return *new_chart;
 }
