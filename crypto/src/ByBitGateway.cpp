@@ -1,7 +1,10 @@
 #include "ByBitGateway.h"
 
+#include "ohlc.h"
+
 #include <chrono>
 #include <future>
+#include <string>
 #include <vector>
 
 struct OhlcResult
@@ -62,25 +65,68 @@ void from_json(const json & j, OhlcResponse & response)
     j2.get_to(response.result);
 }
 
-void ByBitGateway::get_klines(const std::string & symbol, const Timerange & timerange, KlineCallback && kline_callback)
+struct SymbolResponse
 {
-    if (auto it = m_ranges.find(timerange); it != m_ranges.end()) {
-        for (const auto & [ts, ohlc] : it->second) {
-            kline_callback({ts, ohlc});
+    struct Result
+    {
+        std::string category;
+        std::vector<Symbol> symbol_vec;
+    };
+
+    int ret_code = {};
+    std::string ret_msg;
+    Result result;
+};
+
+void from_json(const json & j, Symbol & symbol)
+{
+    j.at("symbol").get_to(symbol.symbol_name);
+}
+
+void from_json(const json & j, SymbolResponse::Result & symbol_result)
+{
+    j.at("category").get_to(symbol_result.category);
+    j.at("list").get_to(symbol_result.symbol_vec);
+}
+
+void from_json(const json & j, SymbolResponse & response)
+{
+    j.at("retCode").get_to(response.ret_code);
+    j.at("retMsg").get_to(response.ret_msg);
+    std::string result_raw;
+    const auto & j2 = j["result"];
+    j2.get_to(response.result);
+}
+
+bool ByBitGateway::get_klines(const std::string & symbol, const Timerange & timerange, KlineCallback && kline_callback)
+{
+    if (auto range_it = m_ranges_by_symbol.find(symbol); range_it != m_ranges_by_symbol.end()) {
+        if (auto it = range_it->second.find(timerange); it != range_it->second.end()) {
+            for (const auto & [ts, ohlc] : it->second) {
+                kline_callback({ts, ohlc});
+            }
+            return true;
         }
-        return;
     }
 
-    const bool success = request_klines(symbol, timerange, [this, timerange, kline_callback](std::map<std::chrono::milliseconds, OHLC> && ts_and_ohlc_map) {
-        auto & range = m_ranges[timerange];
-        for (const auto & ts_and_ohlc : ts_and_ohlc_map) {
-            kline_callback(ts_and_ohlc);
-        }
-        range.merge(ts_and_ohlc_map);
-    });
+    const bool success = request_klines(
+            symbol,
+            timerange,
+            [this,
+             symbol,
+             timerange,
+             kline_callback](std::map<std::chrono::milliseconds, OHLC> && ts_and_ohlc_map) {
+                auto & range = m_ranges_by_symbol[symbol][timerange];
+                for (const auto & ts_and_ohlc : ts_and_ohlc_map) {
+                    kline_callback(ts_and_ohlc);
+                }
+                range.merge(ts_and_ohlc_map);
+            });
     if (!success) {
         std::cout << "ERROR: Failed to request klines" << std::endl;
+        return false;
     }
+    return true;
 }
 
 bool ByBitGateway::request_klines(const std::string & symbol, const Timerange & timerange, KlinePackCallback && pack_callback)
@@ -139,7 +185,11 @@ bool ByBitGateway::request_klines(const std::string & symbol, const Timerange & 
                 });
         future.wait();
         std::map<std::chrono::milliseconds, OHLC> inter_result = future.get();
-        std::cout << "Got " << inter_result.size() << " prices" << std::endl;
+        std::cout << "Got " << inter_result.size() << " prices after filtration" << std::endl;
+        if (inter_result.empty()) {
+            std::cout << "ERROR empty kline result" << std::endl;
+            return false;
+        }
         if (!inter_result.empty()) {
             if (const auto delta = inter_result.begin()->first - last_ts; delta > min_interval) {
                 std::cout << "ERROR inconsistent time delta: " << std::chrono::duration_cast<std::chrono::seconds>(delta).count() << "s. Stopping" << std::endl;
@@ -155,4 +205,58 @@ bool ByBitGateway::request_klines(const std::string & symbol, const Timerange & 
     std::cout << timerange.start().count() << "-" << last_ts.count() << std::endl;
 
     return true;
+}
+
+std::vector<Symbol> ByBitGateway::get_symbols(const std::string & currency)
+{
+    auto future = std::async(
+            std::launch::async,
+            [this, &currency]() {
+                std::condition_variable cv;
+                std::mutex m;
+
+                const std::string category = "linear";
+                const unsigned limit = 1000;
+
+                const std::string url = [&]() {
+                    std::stringstream ss;
+                    ss << "https://api-testnet.bybit.com/v5/market/instruments-info"
+                       << "?category=" << category
+                       << "&limit=" << limit;
+                    return std::string(ss.str());
+                }();
+
+                std::cout << "REST request: " << url << std::endl;
+                std::string string_result;
+                client
+                        .Build()
+                        ->Get(url)
+                        .WithCompletion([&](const restincurl::Result & result) {
+                            std::lock_guard lock(m);
+                            string_result = result.body;
+                            cv.notify_all();
+                        })
+                        .Execute();
+
+                std::unique_lock lock(m);
+                cv.wait(lock, [&] { return !string_result.empty(); });
+
+                SymbolResponse response;
+                const auto j = json::parse(string_result);
+                j.get_to(response);
+
+                response.result.symbol_vec.erase(
+                        std::remove_if(
+                                response.result.symbol_vec.begin(),
+                                response.result.symbol_vec.end(),
+                                [&currency](const Symbol & symbol) {
+                                    return !symbol.symbol_name.ends_with(currency);
+                                }),
+                        response.result.symbol_vec.end());
+
+                std::cout << "Got " << response.result.symbol_vec.size() << " symbols with currency " << currency << std::endl;
+                return response.result.symbol_vec;
+            });
+    future.wait();
+    return future.get();
 }

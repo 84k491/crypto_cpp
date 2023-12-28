@@ -69,6 +69,11 @@ MainWindow::MainWindow(QWidget * parent)
     ui->cb_strategy->addItem("DoubleSma");
     ui->cb_strategy->addItem("BollingerBands");
 
+    const auto symbols = m_gateway.get_symbols("USDT");
+    for (const auto & symbol : symbols) {
+        ui->cb_symbol->addItem(symbol.symbol_name.c_str());
+    }
+
     std::cout << "End of mainwindow constructor" << std::endl;
 }
 
@@ -110,7 +115,7 @@ void MainWindow::on_pushButton_clicked()
         strategy_instance.subscribe_for_depo([&](std::chrono::milliseconds ts, double value) {
             emit signal_depo(ts, value);
         });
-        strategy_instance.run();
+        strategy_instance.run(Symbol{ui->cb_symbol->currentText().toStdString()});
         const auto result = strategy_instance.get_strategy_result();
         emit signal_result(result);
         std::cout << "strategy finished" << std::endl;
@@ -181,7 +186,11 @@ void MainWindow::on_pb_optimize_clicked()
     const auto & timerange = *timerange_opt;
 
     std::thread t([this, timerange, json_data]() {
-        Optimizer<DoubleSmaStrategy> optimizer(m_gateway, timerange, *json_data);
+        Optimizer optimizer(
+                m_gateway,
+                Symbol{ui->cb_symbol->currentText().toStdString()},
+                timerange,
+                *json_data);
 
         const auto best_config = optimizer.optimize();
         if (!best_config.has_value()) {
@@ -194,7 +203,7 @@ void MainWindow::on_pb_optimize_clicked()
     t.detach();
 }
 
-void MainWindow::setup_specific_parameters(JsonStrategyMetaInfo strategy_parameters)
+void MainWindow::setup_specific_parameters(const JsonStrategyMetaInfo & strategy_parameters)
 {
     qDeleteAll(ui->gb_specific_parameters->children());
     m_strategy_parameters_spinboxes.clear();

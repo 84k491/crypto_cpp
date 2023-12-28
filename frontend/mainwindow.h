@@ -89,7 +89,7 @@ private:
     std::optional<Timerange> get_timerange() const;
 
     std::optional<JsonStrategyMetaInfo> get_strategy_parameters() const;
-    void setup_specific_parameters(JsonStrategyMetaInfo strategy_parameters);
+    void setup_specific_parameters(const JsonStrategyMetaInfo & strategy_parameters);
     JsonStrategyConfig get_config_from_ui() const;
 
     DragableChart & get_or_create_chart(const std::string & chart_name);

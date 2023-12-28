@@ -33,10 +33,10 @@ void StrategyInstance::subscribe_for_strategy_internal(
     m_strategy_internal_callbacks.emplace_back(std::move(cb));
 }
 
-void StrategyInstance::run()
+bool StrategyInstance::run(const Symbol & symbol)
 {
-    m_md_gateway.get_klines(
-            "DOGEUSDT",
+    const bool success = m_md_gateway.get_klines(
+            symbol.symbol_name,
             m_timerange,
             [this](std::pair<std::chrono::milliseconds, OHLC> ts_and_ohlc) {
                 const auto & [ts, ohlc] = ts_and_ohlc;
@@ -48,6 +48,10 @@ void StrategyInstance::run()
                     on_signal(signal.value());
                 }
             });
+    if (!success) {
+        std::cout << "Failed to run strategy instance" << std::endl;
+        return false;
+    }
 
     if (m_position.opened() != nullptr) {
         const auto order_and_res_opt = m_position.close(m_last_signal.value().timestamp, m_last_signal.value().price);
@@ -60,7 +64,8 @@ void StrategyInstance::run()
         }
     }
     m_strategy_result.final_profit = m_deposit;
-    m_strategy_result.profit_per_trade = m_strategy_result.final_profit / m_strategy_result.trades_count;
+    m_strategy_result.profit_per_trade = m_strategy_result.final_profit / static_cast<double>(m_strategy_result.trades_count);
+    return true;
 }
 
 void StrategyInstance::on_signal(const Signal & signal)

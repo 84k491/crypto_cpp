@@ -53,3 +53,35 @@ std::string OptimizerParser::get_strategy_name() const
     }
     return m_data.get()["strategy_name"].get<std::string>();
 }
+
+std::optional<JsonStrategyConfig> Optimizer::optimize()
+{
+    OptimizerParser parser(m_optimizer_data);
+
+    double max_profit = -std::numeric_limits<double>::max();
+    std::optional<JsonStrategyConfig> best_config;
+    const auto configs = parser.get_possible_configs();
+    for (unsigned i = 0; i < configs.size(); ++i) {
+        const auto & config_json = configs[i];
+        const auto strategy_opt = StrategyFactory::build_strategy(parser.get_strategy_name(), config_json);
+        if (!strategy_opt.has_value() || !strategy_opt.value() || !strategy_opt.value()->is_valid()) {
+            continue;
+        }
+        StrategyInstance strategy_instance(m_timerange, strategy_opt.value(), m_gateway);
+        const bool success = strategy_instance.run(m_symbol);
+        if (!success) {
+            std::cout << "ERROR: Failed to optimize" << std::endl;
+            return {};
+        }
+        const auto profit = strategy_instance.get_strategy_result().final_profit;
+        if (max_profit < profit) {
+            max_profit = profit;
+            best_config = config_json;
+        }
+        m_on_passed_check(i, configs.size());
+    }
+    if (!best_config.has_value()) {
+        return {};
+    }
+    return JsonStrategyConfig{best_config.value()};
+}

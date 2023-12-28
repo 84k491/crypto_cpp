@@ -24,7 +24,7 @@ public:
                                                             double data)> && cb);
     void subscribe_for_klines(KlineCallback && on_kline_received_cb);
     void subscribe_for_depo(DepoCallback && on_depo_cb);
-    void run();
+    bool run(const Symbol& symbol);
 
     std::map<std::string, std::vector<std::pair<std::chrono::milliseconds, double>>>
     get_strategy_internal_data_history() const;

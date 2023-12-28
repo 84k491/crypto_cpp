@@ -55,7 +55,7 @@
                    </widget>
                   </item>
                   <item>
-                   <widget class="QComboBox" name="comboBox">
+                   <widget class="QComboBox" name="cb_symbol">
                     <property name="editable">
                      <bool>false</bool>
                     </property>
