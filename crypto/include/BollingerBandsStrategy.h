@@ -6,7 +6,6 @@
 #include "StrategyInterface.h"
 
 #include <chrono>
-#include <functional>
 
 class BollingerBandsStrategyConfig
 {
@@ -29,9 +28,7 @@ public:
 
     std::optional<Signal> push_price(std::pair<std::chrono::milliseconds, double> ts_and_price) override;
 
-    void subscribe_for_strategy_internal(std::function<void(std::string name,
-                                                            std::chrono::milliseconds ts,
-                                                            double data)> && cb) override;
+    TimeseriesPublisher<std::pair<std::string, double>>& strategy_internal_data_publisher() override;
 
     bool is_valid() const override;
 
@@ -42,8 +39,5 @@ private:
 
     Side m_last_signal_side = Side::Close;
 
-    std::vector<std::function<void(std::string name,
-                                   std::chrono::milliseconds ts,
-                                   double data)>>
-            m_strategy_internal_callbacks;
+    TimeseriesPublisher<std::pair<std::string, double>> m_strategy_internal_data_publisher;
 };

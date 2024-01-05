@@ -14,23 +14,7 @@ StrategyInstance::StrategyInstance(
     , m_strategy(strategy_ptr)
     , m_timerange(timerange)
 {
-    m_strategy->subscribe_for_strategy_internal([this](const std::string & name,
-                                                       std::chrono::milliseconds ts,
-                                                       double data) {
-        for (const auto & cb : m_strategy_internal_callbacks) {
-            cb(name, ts, data);
-        }
-    });
-
     m_strategy_result.position_currency_amount = m_pos_currency_amount;
-}
-
-void StrategyInstance::subscribe_for_strategy_internal(
-        std::function<void(std::string name,
-                           std::chrono::milliseconds ts,
-                           double data)> && cb)
-{
-    m_strategy_internal_callbacks.emplace_back(std::move(cb));
 }
 
 bool StrategyInstance::run(const Symbol & symbol)
@@ -39,9 +23,7 @@ bool StrategyInstance::run(const Symbol & symbol)
             symbol.symbol_name,
             [this](std::pair<std::chrono::milliseconds, OHLC> ts_and_ohlc) {
                 const auto & [ts, ohlc] = ts_and_ohlc;
-                for (const auto & cb : m_kline_callbacks) {
-                    cb(ts_and_ohlc);
-                }
+                m_klines_publisher.push(ts, ohlc);
                 const auto signal = m_strategy->push_price({ts, ohlc.close});
                 if (signal.has_value()) {
                     on_signal(signal.value());
@@ -59,9 +41,7 @@ bool StrategyInstance::run(const Symbol & symbol)
         if (order_and_res_opt.has_value()) {
             const auto [order, res] = order_and_res_opt.value();
             m_deposit += res.pnl;
-            for (const auto & depo_cb : m_depo_callbacks) {
-                depo_cb(m_last_signal.value().timestamp, m_deposit);
-            }
+            m_depo_publisher.push(m_last_signal.value().timestamp, m_deposit);
         }
     }
     m_strategy_result.final_profit = m_deposit;
@@ -93,9 +73,7 @@ void StrategyInstance::on_signal(const Signal & signal)
 
     if (position_result_opt.has_value()) {
         m_deposit += position_result_opt.value().pnl;
-        for (const auto & depo_cb : m_depo_callbacks) {
-            depo_cb(signal.timestamp, m_deposit);
-        }
+        m_depo_publisher.push(signal.timestamp, m_deposit);
         m_strategy_result.final_profit = m_deposit;
         if (m_best_profit < position_result_opt.value().pnl) {
             m_best_profit = position_result_opt.value().pnl;
@@ -126,14 +104,7 @@ void StrategyInstance::on_signal(const Signal & signal)
     if (m_strategy_result.min_depo > m_deposit) {
         m_strategy_result.min_depo = m_deposit;
     }
-    for (const auto & callback : m_signal_callbacks) {
-        callback(signal);
-    }
-}
-
-void StrategyInstance::subscribe_for_signals(std::function<void(const Signal &)> && on_signal_cb)
-{
-    m_signal_callbacks.emplace_back(std::move(on_signal_cb));
+    m_signal_publisher.push(signal.timestamp, signal);
 }
 
 const StrategyResult & StrategyInstance::get_strategy_result() const
@@ -141,12 +112,22 @@ const StrategyResult & StrategyInstance::get_strategy_result() const
     return m_strategy_result;
 }
 
-void StrategyInstance::subscribe_for_klines(KlineCallback && on_kline_received_cb)
+TimeseriesPublisher<Signal> & StrategyInstance::signals_publisher()
 {
-    m_kline_callbacks.emplace_back(std::move(on_kline_received_cb));
+    return m_signal_publisher;
 }
 
-void StrategyInstance::subscribe_for_depo(DepoCallback && on_depo_cb)
+TimeseriesPublisher<std::pair<std::string, double>> & StrategyInstance::strategy_internal_data_publisher()
 {
-    m_depo_callbacks.emplace_back(std::move(on_depo_cb));
+    return m_strategy->strategy_internal_data_publisher();
+}
+
+TimeseriesPublisher<OHLC> & StrategyInstance::klines_publisher()
+{
+    return m_klines_publisher;
+}
+
+TimeseriesPublisher<double> & StrategyInstance::depo_publisher()
+{
+    return m_depo_publisher;
 }

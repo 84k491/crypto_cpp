@@ -102,22 +102,31 @@ void MainWindow::on_pushButton_clicked()
                 strategy,
                 m_gateway);
 
-        strategy_instance.subscribe_for_klines([&](std::pair<std::chrono::milliseconds, OHLC> ts_and_ohlc) {
-            const auto & [ts, ohlc] = ts_and_ohlc;
-            emit signal_price(ts, ohlc.close);
-        });
-        strategy_instance.subscribe_for_signals([&](const Signal & signal) {
-            emit signal_signal(signal);
-        });
-        strategy_instance.subscribe_for_strategy_internal([this](const std::string & name, std::chrono::milliseconds ts, double data) {
-            emit signal_strategy_internal(name, ts, data);
-        });
-        strategy_instance.subscribe_for_depo([&](std::chrono::milliseconds ts, double value) {
-            emit signal_depo(ts, value);
-        });
+        const auto kline_sub = strategy_instance.klines_publisher().subscribe(
+                [](auto &) {},
+                [&](std::chrono::milliseconds ts, const OHLC & ohlc) {
+                    emit signal_price(ts, ohlc.close);
+                });
+        const auto signal_sub = strategy_instance.signals_publisher().subscribe(
+                [](auto &) {},
+                [&](std::chrono::milliseconds, const Signal & signal) {
+                    emit signal_signal(signal);
+                });
+        const auto internal_data_sub =
+                strategy_instance
+                        .strategy_internal_data_publisher()
+                        .subscribe(
+                                [](auto &) {},
+                                [&](std::chrono::milliseconds ts, const std::pair<const std::string, double> & data_pair) {
+                                    const auto & [name, data] = data_pair;
+                                    emit signal_strategy_internal(name, ts, data);
+                                });
+        const auto depo_sub = strategy_instance.depo_publisher().subscribe(
+                [](auto &) {},
+                [&](std::chrono::milliseconds ts, double depo) {
+                    emit signal_depo(ts, depo);
+                });
         strategy_instance.run(Symbol{ui->cb_symbol->currentText().toStdString()});
-        // TODO strategy must continue working asyncronously after run()
-        // this thread must wait until strategy finishes ?
         const auto result = strategy_instance.get_strategy_result();
         emit signal_result(result);
         std::cout << "strategy finished" << std::endl;

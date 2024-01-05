@@ -53,6 +53,7 @@ target_link_libraries(frontend PRIVATE
     Qt6::Charts
     curl
     nlohmann_json::nlohmann_json
+    crossguid2
 )
 
 include(GNUInstallDirs)

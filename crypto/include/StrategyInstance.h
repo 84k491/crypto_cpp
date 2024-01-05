@@ -5,6 +5,7 @@
 #include "Signal.h"
 #include "StrategyInterface.h"
 #include "StrategyResult.h"
+#include "TimeseriesPublisher.h"
 
 #include <optional>
 
@@ -18,13 +19,12 @@ public:
                      const std::shared_ptr<IStrategy> & strategy_ptr,
                      ByBitGateway & md_gateway);
 
-    void subscribe_for_signals(std::function<void(const Signal &)> && on_signal_cb);
-    void subscribe_for_strategy_internal(std::function<void(std::string name,
-                                                            std::chrono::milliseconds ts,
-                                                            double data)> && cb);
-    void subscribe_for_klines(KlineCallback && on_kline_received_cb);
-    void subscribe_for_depo(DepoCallback && on_depo_cb);
-    bool run(const Symbol& symbol);
+    TimeseriesPublisher<Signal>& signals_publisher();
+    TimeseriesPublisher<std::pair<std::string, double>>& strategy_internal_data_publisher();
+    TimeseriesPublisher<OHLC>& klines_publisher();
+    TimeseriesPublisher<double>& depo_publisher();
+
+    bool run(const Symbol & symbol);
 
     std::map<std::string, std::vector<std::pair<std::chrono::milliseconds, double>>>
     get_strategy_internal_data_history() const;
@@ -42,21 +42,16 @@ private:
 
     StrategyResult m_strategy_result;
 
-    std::vector<std::function<void(const Signal &)>> m_signal_callbacks;
-    std::vector<std::function<void(std::string name,
-                                   std::chrono::milliseconds ts,
-                                   double data)>>
-            m_strategy_internal_callbacks;
+    TimeseriesPublisher<Signal> m_signal_publisher;
+    TimeseriesPublisher<OHLC> m_klines_publisher;
+    TimeseriesPublisher<double> m_depo_publisher;
 
-    double m_deposit = 0.; // TODO use result profit
     static constexpr double m_pos_currency_amount = 100.;
     Position m_position;
 
     const Timerange m_timerange;
 
-    std::vector<KlineCallback> m_kline_callbacks;
-    std::vector<DepoCallback> m_depo_callbacks;
-
+    double m_deposit = 0.; // TODO use result profit
     double m_best_profit = std::numeric_limits<double>::lowest();
     double m_worst_loss = 0.;
 };

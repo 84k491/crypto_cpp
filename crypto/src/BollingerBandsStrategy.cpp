@@ -34,13 +34,6 @@ bool BollingerBandsStrategy::is_valid() const
     return m_config.is_valid();
 }
 
-void BollingerBandsStrategy::subscribe_for_strategy_internal(std::function<void(std::string name,
-                                                                                std::chrono::milliseconds ts,
-                                                                                double data)> && cb)
-{
-    m_strategy_internal_callbacks.emplace_back(std::move(cb));
-}
-
 std::optional<Signal> BollingerBandsStrategy::push_price(std::pair<std::chrono::milliseconds, double> ts_and_price)
 {
     const auto bb_res_opt = m_bollinger_bands.push_value(ts_and_price);
@@ -49,11 +42,9 @@ std::optional<Signal> BollingerBandsStrategy::push_price(std::pair<std::chrono::
     }
     const auto & bb_res = bb_res_opt.value();
     const auto & [ts, price] = ts_and_price;
-    for (const auto & cb : m_strategy_internal_callbacks) {
-        cb("upper_band", ts, bb_res.m_upper_band);
-        cb("lower_band", ts, bb_res.m_lower_band);
-        cb("trend", ts, bb_res.m_trend);
-    }
+    m_strategy_internal_data_publisher.push(ts, {"upper_band", bb_res.m_upper_band});
+    m_strategy_internal_data_publisher.push(ts, {"trend", bb_res.m_trend});
+    m_strategy_internal_data_publisher.push(ts, {"lower_band", bb_res.m_lower_band});
 
     if (m_last_signal_side != Side::Close) {
         switch (m_last_signal_side) {
@@ -89,4 +80,9 @@ std::optional<Signal> BollingerBandsStrategy::push_price(std::pair<std::chrono::
         }
     }
     return std::nullopt;
+}
+
+TimeseriesPublisher<std::pair<std::string, double>> & BollingerBandsStrategy::strategy_internal_data_publisher()
+{
+    return m_strategy_internal_data_publisher;
 }
