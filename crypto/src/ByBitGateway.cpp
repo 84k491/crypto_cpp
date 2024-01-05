@@ -1,10 +1,12 @@
 #include "ByBitGateway.h"
 
+#include "ScopeExit.h"
 #include "ohlc.h"
 
 #include <chrono>
 #include <future>
 #include <string>
+#include <thread>
 #include <vector>
 
 struct OhlcResult
@@ -65,6 +67,37 @@ void from_json(const json & j, OhlcResponse & response)
     j2.get_to(response.result);
 }
 
+struct ServerTimeResponse
+{
+    struct Result
+    {
+        std::chrono::seconds time_sec;
+        std::chrono::nanoseconds time_nano;
+    };
+
+    Result result;
+};
+
+void from_json(const json & j, ServerTimeResponse::Result & result)
+{
+    std::string time_sec_str = {};
+    j.at("timeSecond").get_to(time_sec_str);
+
+    std::string time_nano_str = {};
+    j.at("timeNano").get_to(time_nano_str);
+
+    uint64_t time_sec = std::stoull(time_sec_str);
+    result.time_sec = std::chrono::seconds{time_sec};
+    uint64_t time_nano = std::stoull(time_nano_str);
+    result.time_nano = std::chrono::nanoseconds{time_nano};
+}
+
+void from_json(const json & j, ServerTimeResponse & response)
+{
+    const auto & j2 = j["result"];
+    j2.get_to(response.result);
+}
+
 struct SymbolResponse
 {
     struct Result
@@ -98,139 +131,205 @@ void from_json(const json & j, SymbolResponse & response)
     j2.get_to(response.result);
 }
 
-bool ByBitGateway::get_klines(const std::string & symbol, const Timerange & timerange, KlineCallback && kline_callback)
+bool ByBitGateway::get_klines(const std::string & symbol,
+                              KlineCallback && kline_callback,
+                              const std::optional<std::chrono::milliseconds> & start,
+                              const std::optional<std::chrono::milliseconds> & end)
 {
-    if (auto range_it = m_ranges_by_symbol.find(symbol); range_it != m_ranges_by_symbol.end()) {
-        if (auto it = range_it->second.find(timerange); it != range_it->second.end()) {
-            for (const auto & [ts, ohlc] : it->second) {
-                kline_callback({ts, ohlc});
+    if (m_last_server_time == std::chrono::milliseconds{0}) {
+        m_last_server_time = get_server_time() - min_interval;
+        std::cout << "Modified server time: " << m_last_server_time.count() << std::endl;
+    }
+
+    if (start.has_value()) {
+        if (start.value() > m_last_server_time) {
+            std::cout << "ERROR starting in future" << std::endl;
+            return false;
+        }
+
+        const auto historical_end = end.has_value() ? std::min(end.value(), m_last_server_time) : m_last_server_time;
+        const auto histroical_timerange = Timerange{start.value(), historical_end};
+
+        if (auto range_it = m_ranges_by_symbol.find(symbol); range_it != m_ranges_by_symbol.end()) {
+            if (auto it = range_it->second.find(histroical_timerange); it != range_it->second.end()) {
+                for (const auto & [ts, ohlc] : it->second) {
+                    kline_callback({ts, ohlc});
+                }
+                return true;
             }
-            return true;
+        }
+
+        const bool success = request_historical_klines(
+                symbol,
+                histroical_timerange,
+                [this,
+                 symbol,
+                 histroical_timerange,
+                 kline_callback](std::map<std::chrono::milliseconds, OHLC> && ts_and_ohlc_map) {
+                    auto & range = m_ranges_by_symbol[symbol][histroical_timerange];
+                    for (const auto & ts_and_ohlc : ts_and_ohlc_map) {
+                        kline_callback(ts_and_ohlc);
+                    }
+                    range.merge(ts_and_ohlc_map);
+                });
+        if (!success) {
+            std::cout << "ERROR: Failed to request klines" << std::endl;
+            return false;
         }
     }
 
-    const bool success = request_klines(
-            symbol,
-            timerange,
-            [this,
-             symbol,
-             timerange,
-             kline_callback](std::map<std::chrono::milliseconds, OHLC> && ts_and_ohlc_map) {
-                auto & range = m_ranges_by_symbol[symbol][timerange];
-                for (const auto & ts_and_ohlc : ts_and_ohlc_map) {
-                    kline_callback(ts_and_ohlc);
-                }
-                range.merge(ts_and_ohlc_map);
-            });
-    if (!success) {
-        std::cout << "ERROR: Failed to request klines" << std::endl;
-        return false;
+    if (end.has_value() && end.value() < m_last_server_time) {
+        std::cout << "Don't continue live" << std::endl;
+        return true;
     }
+
+    std::cout << "Going live" << std::endl;
+
+    auto last_ts = m_last_server_time;
+    for (;;) {
+        const auto timerange = Timerange{last_ts + std::chrono::seconds{1}, last_ts + min_interval};
+
+        request_historical_klines(
+                symbol,
+                timerange,
+                [symbol,
+                 timerange,
+                 kline_callback,
+                 &last_ts](std::map<std::chrono::milliseconds, OHLC> && ts_and_ohlc_map) {
+                    for (const auto & ts_and_ohlc : ts_and_ohlc_map) {
+                        kline_callback(ts_and_ohlc);
+                        last_ts = ts_and_ohlc.first;
+                    }
+                });
+
+        if (end.has_value() && last_ts > end.value()) {
+            return true;
+            std::cout << "Finishing thread" << std::endl;
+        }
+        else {
+            std::cout << "Got all live prices, sleeping" << std::endl;
+            std::this_thread::sleep_for(std::chrono::seconds{30});
+        }
+    }
+
+    std::cout << "ERROR unreachable code" << std::endl;
     return true;
 }
 
-bool ByBitGateway::request_klines(const std::string & symbol, const Timerange & timerange, KlinePackCallback && pack_callback)
+bool ByBitGateway::request_historical_klines(const std::string & symbol, const Timerange & timerange, KlinePackCallback && pack_callback)
 {
-    std::cout << "Whole requested interval hours: " << std::chrono::duration_cast<std::chrono::hours>(timerange.duration()).count() << std::endl;
+    std::cout << "Whole requested interval seconds: " << std::chrono::duration_cast<std::chrono::seconds>(timerange.duration()).count() << std::endl;
 
-    auto last_ts = timerange.start();
-    while (last_ts < timerange.end()) {
-        auto future = std::async(
-                std::launch::async,
-                [&symbol, this, timerange, start = last_ts]() {
-                    std::condition_variable cv;
-                    std::mutex m;
+    auto last_start = timerange.start();
+    while (last_start < timerange.end()) {
+        const unsigned limit = 1000;
+        const auto end = [&]() -> std::chrono::milliseconds {
+            const auto possible_end = last_start + min_interval * 1000;
+            if (timerange.end() < possible_end) {
+                return timerange.end();
+            }
+            else {
+                return possible_end;
+            }
+        }();
 
-                    const std::string category = "linear";
-                    const unsigned limit = 1000;
+        ScopeExit se([&]() {
+            last_start = end + min_interval;
+        });
 
-                    const std::string url = [&]() {
-                        std::stringstream ss;
-                        ss << "https://api-testnet.bybit.com/v5/market/kline"
-                           << "?symbol=" << symbol
-                           << "&category=" << category
-                           << "&interval=" << min_interval.count()
-                           << "&limit=" << limit
-                           << "&start=" << start.count();
-                        return std::string(ss.str());
-                    }();
+        const std::chrono::milliseconds remining_delta = timerange.end() - last_start;
+        std::cout << "Remaining time delta: " << remining_delta.count() << "ms" << std::endl;
 
-                    std::cout << "REST request: " << url << std::endl;
-                    std::string string_result;
-                    client
-                            .Build()
-                            ->Get(url)
-                            .WithCompletion([&](const restincurl::Result & result) {
-                                std::lock_guard lock(m);
-                                string_result = result.body;
-                                cv.notify_all();
-                            })
-                            .Execute();
+        const std::string category = "linear";
 
-                    std::unique_lock lock(m);
-                    cv.wait(lock, [&] { return !string_result.empty(); });
+        const std::string request = [&]() {
+            std::stringstream ss;
+            ss << "https://api-testnet.bybit.com/v5/market/kline"
+               << "?symbol=" << symbol
+               << "&category=" << category
+               << "&interval=" << min_interval.count()
+               << "&limit=" << limit
+               << "&start=" << last_start.count()
+               << "&end=" << end.count();
+            return std::string(ss.str());
+        }();
 
-                    OhlcResponse response;
-                    const auto j = json::parse(string_result);
-                    from_json(j, response);
-
-                    std::map<std::chrono::milliseconds, OHLC> furure_result;
-                    for (const auto & ohlc : response.result.ohlc_list) {
-                        if (timerange.contains(ohlc.timestamp)) {
-                            furure_result.try_emplace(ohlc.timestamp, ohlc);
-                        }
-                    }
-
-                    return furure_result;
-                });
+        auto future = rest_client.request_async(request);
         future.wait();
-        std::map<std::chrono::milliseconds, OHLC> inter_result = future.get();
-        std::cout << "Got " << inter_result.size() << " prices after filtration" << std::endl;
+        OhlcResponse response;
+        const auto j = json::parse(future.get());
+        from_json(j, response);
+
+        std::map<std::chrono::milliseconds, OHLC> inter_result;
+        for (const auto & ohlc : response.result.ohlc_list) {
+            inter_result.try_emplace(ohlc.timestamp, ohlc);
+        }
+
+        std::cout << "Got " << inter_result.size() << " prices" << std::endl;
         if (inter_result.empty()) {
-            std::cout << "ERROR empty kline result" << std::endl;
+            std::cout << "Empty kline result" << std::endl;
             return false;
         }
         if (!inter_result.empty()) {
-            if (const auto delta = inter_result.begin()->first - last_ts; delta > min_interval) {
+            if (const auto delta = inter_result.begin()->first - last_start; delta > min_interval) {
                 std::cout << "ERROR inconsistent time delta: " << std::chrono::duration_cast<std::chrono::seconds>(delta).count() << "s. Stopping" << std::endl;
                 std::cout << "First timestamp: " << inter_result.begin()->first.count() << std::endl;
                 return false;
             }
-            last_ts = inter_result.rbegin()->first;
         }
         pack_callback(std::move(inter_result));
     }
-    const auto received_interval = last_ts - timerange.start();
-    std::cout << "Whole received interval hours: " << std::chrono::duration_cast<std::chrono::hours>(received_interval).count() << std::endl;
-    std::cout << timerange.start().count() << "-" << last_ts.count() << std::endl;
 
+    std::cout << "All prices received for interval: " << timerange.start().count() << "-" << timerange.end().count() << std::endl;
     return true;
 }
 
 std::vector<Symbol> ByBitGateway::get_symbols(const std::string & currency)
 {
-    auto future = std::async(
+    const std::string category = "linear";
+    const unsigned limit = 1000;
+
+    const std::string url = [&]() {
+        std::stringstream ss;
+        ss << "https://api-testnet.bybit.com/v5/market/instruments-info"
+           << "?category=" << category
+           << "&limit=" << limit;
+        return std::string(ss.str());
+    }();
+
+    auto str_future = rest_client.request_async(url);
+    str_future.wait();
+
+    SymbolResponse response;
+    const auto j = json::parse(str_future.get());
+    j.get_to(response);
+
+    response.result.symbol_vec.erase(
+            std::remove_if(
+                    response.result.symbol_vec.begin(),
+                    response.result.symbol_vec.end(),
+                    [&currency](const Symbol & symbol) {
+                        return !symbol.symbol_name.ends_with(currency);
+                    }),
+            response.result.symbol_vec.end());
+
+    std::cout << "Got " << response.result.symbol_vec.size() << " symbols with currency " << currency << std::endl;
+    return response.result.symbol_vec;
+}
+
+std::future<std::string> RestClient::request_async(const std::string & request)
+{
+    return std::async(
             std::launch::async,
-            [this, &currency]() {
+            [this, &request]() {
                 std::condition_variable cv;
                 std::mutex m;
 
-                const std::string category = "linear";
-                const unsigned limit = 1000;
-
-                const std::string url = [&]() {
-                    std::stringstream ss;
-                    ss << "https://api-testnet.bybit.com/v5/market/instruments-info"
-                       << "?category=" << category
-                       << "&limit=" << limit;
-                    return std::string(ss.str());
-                }();
-
-                std::cout << "REST request: " << url << std::endl;
+                std::cout << "REST request: " << request << std::endl;
                 std::string string_result;
                 client
                         .Build()
-                        ->Get(url)
+                        ->Get(request)
                         .WithCompletion([&](const restincurl::Result & result) {
                             std::lock_guard lock(m);
                             string_result = result.body;
@@ -241,22 +340,22 @@ std::vector<Symbol> ByBitGateway::get_symbols(const std::string & currency)
                 std::unique_lock lock(m);
                 cv.wait(lock, [&] { return !string_result.empty(); });
 
-                SymbolResponse response;
-                const auto j = json::parse(string_result);
-                j.get_to(response);
-
-                response.result.symbol_vec.erase(
-                        std::remove_if(
-                                response.result.symbol_vec.begin(),
-                                response.result.symbol_vec.end(),
-                                [&currency](const Symbol & symbol) {
-                                    return !symbol.symbol_name.ends_with(currency);
-                                }),
-                        response.result.symbol_vec.end());
-
-                std::cout << "Got " << response.result.symbol_vec.size() << " symbols with currency " << currency << std::endl;
-                return response.result.symbol_vec;
+                return string_result;
             });
-    future.wait();
-    return future.get();
+}
+
+std::chrono::milliseconds ByBitGateway::get_server_time()
+{
+    const std::string url = "https://api-testnet.bybit.com/v5/market/time";
+
+    auto str_future = rest_client.request_async(url);
+    str_future.wait();
+
+    ServerTimeResponse response{};
+    const auto j = json::parse(str_future.get());
+    j.get_to(response);
+
+    const auto server_time = std::chrono::duration_cast<std::chrono::milliseconds>(response.result.time_nano);
+    std::cout << "Server time: " << server_time.count() << std::endl;
+    return server_time;
 }

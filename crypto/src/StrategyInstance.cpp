@@ -37,7 +37,6 @@ bool StrategyInstance::run(const Symbol & symbol)
 {
     const bool success = m_md_gateway.get_klines(
             symbol.symbol_name,
-            m_timerange,
             [this](std::pair<std::chrono::milliseconds, OHLC> ts_and_ohlc) {
                 const auto & [ts, ohlc] = ts_and_ohlc;
                 for (const auto & cb : m_kline_callbacks) {
@@ -47,7 +46,9 @@ bool StrategyInstance::run(const Symbol & symbol)
                 if (signal.has_value()) {
                     on_signal(signal.value());
                 }
-            });
+            },
+            m_timerange.start(),
+            m_timerange.end());
     if (!success) {
         std::cout << "Failed to run strategy instance" << std::endl;
         return false;

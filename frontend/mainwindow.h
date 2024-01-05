@@ -5,12 +5,14 @@
 #include "DragableChart.h"
 #include "JsonStrategyConfig.h"
 #include "StrategyFactory.h"
+#include "StrategyInstance.h"
 #include "StrategyResult.h"
 
 #include <QMainWindow>
 #include <QScatterSeries>
 #include <QtCharts>
 #include <fstream>
+#include <memory>
 #include <qtypes.h>
 #include <string>
 

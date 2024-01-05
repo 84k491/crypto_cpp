@@ -116,6 +116,8 @@ void MainWindow::on_pushButton_clicked()
             emit signal_depo(ts, value);
         });
         strategy_instance.run(Symbol{ui->cb_symbol->currentText().toStdString()});
+        // TODO strategy must continue working asyncronously after run()
+        // this thread must wait until strategy finishes ?
         const auto result = strategy_instance.get_strategy_result();
         emit signal_result(result);
         std::cout << "strategy finished" << std::endl;
