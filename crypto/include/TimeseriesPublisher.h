@@ -1,16 +1,18 @@
 #pragma once
 
+#include "ISubsription.h"
 #include <chrono>
 #include <crossguid2/crossguid/guid.hpp>
 #include <functional>
 #include <map>
+#include <memory>
 #include <vector>
 
 template <typename ObjectT>
 class TimeseriesPublisher;
 
 template <typename ObjectT>
-class TimeseriesSubsription
+class TimeseriesSubsription final : public ISubsription
 {
 public:
     TimeseriesSubsription(TimeseriesPublisher<ObjectT> & publisher, xg::Guid guid)
@@ -19,7 +21,7 @@ public:
     {
     }
 
-    ~TimeseriesSubsription()
+    ~TimeseriesSubsription() override
     {
         m_publisher.unsubscribe(m_guid);
     }
@@ -39,7 +41,7 @@ public:
     ~TimeseriesPublisher();
 
     void push(TimeT timestamp, const ObjectT & object);
-    TimeseriesSubsription<ObjectT> subscribe(
+    std::unique_ptr<TimeseriesSubsription<ObjectT>> subscribe(
             std::function<void(const std::vector<std::pair<TimeT, const ObjectT>> &)> && snapshot_callback,
             std::function<void(TimeT, const ObjectT &)> && increment_callback);
 
@@ -60,7 +62,7 @@ void TimeseriesPublisher<ObjectT>::push(TimeseriesPublisher::TimeT timestamp, co
 }
 
 template <typename ObjectT>
-TimeseriesSubsription<ObjectT> TimeseriesPublisher<ObjectT>::subscribe(
+std::unique_ptr<TimeseriesSubsription<ObjectT>> TimeseriesPublisher<ObjectT>::subscribe(
         std::function<void(const std::vector<std::pair<TimeT, const ObjectT>> &)> && snapshot_callback,
         std::function<void(TimeT, const ObjectT &)> && increment_callback)
 {
@@ -70,7 +72,7 @@ TimeseriesSubsription<ObjectT> TimeseriesPublisher<ObjectT>::subscribe(
         std::cout << "ERROR subscriber with uuid " << it->first << " already exists" << std::endl;
     }
 
-    return TimeseriesSubsription<ObjectT>(*this, it->first);
+    return std::make_unique<TimeseriesSubsription<ObjectT>>(*this, it->first);
 }
 
 template <typename ObjectT>

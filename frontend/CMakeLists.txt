@@ -33,6 +33,7 @@ set(PROJECT_SOURCES
         ../crypto/src/StrategyFactory.cpp
         ../crypto/ta/src/BollingerBands.cpp
         ../crypto/ta/src/StandardDeviation.cpp
+        ../crypto/src/WorkerThread.cpp
 )
 
 qt_add_executable(frontend

@@ -32,6 +32,7 @@ public:
     using KlineCallback = std::function<void(std::pair<std::chrono::milliseconds, OHLC>)>;
 
     static constexpr std::chrono::minutes min_interval = std::chrono::minutes{1};
+    static auto get_taker_fee() { return taker_fee; }
 
     ByBitGateway() = default;
 
@@ -40,10 +41,9 @@ public:
             KlineCallback && cb,
             const std::optional<std::chrono::milliseconds> & start,
             const std::optional<std::chrono::milliseconds> & end);
+    void stop();
 
     ObjectPublisher<WorkStatus> & status_publisher();
-
-    static auto get_taker_fee() { return taker_fee; }
 
     std::vector<Symbol> get_symbols(const std::string & currency);
 
@@ -56,6 +56,7 @@ private:
 private:
     std::chrono::milliseconds m_last_server_time = std::chrono::milliseconds{0};
 
+    std::atomic_bool m_running = false;
     ObjectPublisher<WorkStatus> m_status;
 
     std::unordered_map<std::string, std::unordered_map<Timerange, std::map<std::chrono::milliseconds, OHLC>>> m_ranges_by_symbol;

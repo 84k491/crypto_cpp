@@ -8,7 +8,9 @@
 #include "StrategyResult.h"
 #include "TimeseriesPublisher.h"
 #include "WorkStatus.h"
+#include "WorkerThread.h"
 
+#include <memory>
 #include <optional>
 
 class StrategyInstance
@@ -28,17 +30,19 @@ public:
     ObjectPublisher<StrategyResult> & strategy_result_publisher();
     ObjectPublisher<WorkStatus> & status_publisher();
 
-    bool run(const Symbol & symbol);
-
-    std::map<std::string, std::vector<std::pair<std::chrono::milliseconds, double>>>
-    get_strategy_internal_data_history() const;
+    void run_async(const Symbol & symbol);
+    void stop_async();
+    void wait_for_finish();
 
 private:
+    bool do_run(const Symbol & symbol);
     void on_signal(const Signal & signal);
 
 private:
     ByBitGateway & m_md_gateway;
     std::shared_ptr<IStrategy> m_strategy;
+
+    std::unique_ptr<WorkerThread> m_worker_thread;
 
     std::optional<Signal> m_last_signal;
 

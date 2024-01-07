@@ -6,6 +6,7 @@
 #include "JsonStrategyConfig.h"
 #include "Optimizer.h"
 #include "StrategyInstance.h"
+#include "WorkStatus.h"
 
 #include <nlohmann/json.hpp>
 
@@ -56,6 +57,19 @@ MainWindow::MainWindow(QWidget * parent)
             this,
             &MainWindow::render_result);
 
+    ui->pb_stop->setEnabled(false);
+    connect(this, &MainWindow::signal_work_status, this, [this](const WorkStatus status) {
+        ui->lb_work_status->setText(to_string(status).c_str());
+        if (status == WorkStatus::Backtesting || status == WorkStatus::Live) {
+            ui->pb_run->setEnabled(false);
+            ui->pb_stop->setEnabled(true);
+        }
+        if (status == WorkStatus::Stopped || status == WorkStatus::Crashed) {
+            ui->pb_run->setEnabled(true);
+            ui->pb_stop->setEnabled(false);
+        }
+    });
+
     connect(this,
             &MainWindow::signal_optimized_config,
             this,
@@ -77,8 +91,16 @@ MainWindow::MainWindow(QWidget * parent)
     std::cout << "End of mainwindow constructor" << std::endl;
 }
 
-void MainWindow::on_pushButton_clicked()
+void MainWindow::on_pb_stop_clicked()
 {
+    m_strategy_instance->stop_async();
+    // TODO join, destruct
+}
+
+void MainWindow::on_pb_run_clicked()
+{
+    m_subscriptions.clear();
+
     for (auto & m_chart : m_charts) {
         m_chart.second->clear();
     }
@@ -96,61 +118,59 @@ void MainWindow::on_pushButton_clicked()
         return;
     }
 
-    std::thread t([this, timerange, strategy = strategy_ptr_opt.value()]() {
-        StrategyInstance strategy_instance(
-                timerange,
-                strategy,
-                m_gateway);
+    m_strategy_instance = std::make_unique<StrategyInstance>(
+            timerange,
+            strategy_ptr_opt.value(),
+            m_gateway);
 
-        const auto kline_sub = strategy_instance.klines_publisher().subscribe(
-                [](auto &) {},
-                [&](std::chrono::milliseconds ts, const OHLC & ohlc) {
-                    emit signal_price(ts, ohlc.close);
-                });
-        const auto signal_sub = strategy_instance.signals_publisher().subscribe(
-                [](auto &) {},
-                [&](std::chrono::milliseconds, const Signal & signal) {
-                    emit signal_signal(signal);
-                });
-        const auto internal_data_sub =
-                strategy_instance
-                        .strategy_internal_data_publisher()
-                        .subscribe(
-                                [](auto &) {},
-                                [&](std::chrono::milliseconds ts, const std::pair<const std::string, double> & data_pair) {
-                                    const auto & [name, data] = data_pair;
-                                    emit signal_strategy_internal(name, ts, data);
-                                });
-        const auto depo_sub = strategy_instance.depo_publisher().subscribe(
-                [](auto &) {},
-                [&](std::chrono::milliseconds ts, double depo) {
-                    emit signal_depo(ts, depo);
-                });
-        const auto status_sub = strategy_instance.status_publisher().subscribe(
-                [&](const WorkStatus & status) {
-                    switch (status) {
-                    case WorkStatus::Backtesting: break;
-                    default: {
-                        emit signal_result(strategy_instance.strategy_result_publisher().get());
-                        break;
-                    }
-                    }
-                });
-            const auto result_sub = strategy_instance.strategy_result_publisher().subscribe(
-                    [&](const StrategyResult & result) {
-                        const auto status = strategy_instance.status_publisher().get();
-                        switch (status) {
-                        case WorkStatus::Backtesting: break;
-                        default: {
-                            emit signal_result(result);
-                            break;
-                        }
-                        }
-                    });
-    strategy_instance.run(Symbol{ui->cb_symbol->currentText().toStdString()});
-    std::cout << "strategy finished" << std::endl;
-});
-t.detach();
+    m_subscriptions.push_back(m_strategy_instance->klines_publisher().subscribe(
+            [](auto &) {},
+            [&](std::chrono::milliseconds ts, const OHLC & ohlc) {
+                emit signal_price(ts, ohlc.close);
+            }));
+    m_subscriptions.push_back(m_strategy_instance->signals_publisher().subscribe(
+            [](auto &) {},
+            [&](std::chrono::milliseconds, const Signal & signal) {
+                emit signal_signal(signal);
+            }));
+    m_subscriptions.push_back(
+            m_strategy_instance
+                    ->strategy_internal_data_publisher()
+                    .subscribe(
+                            [](auto &) {},
+                            [&](std::chrono::milliseconds ts, const std::pair<const std::string, double> & data_pair) {
+                                const auto & [name, data] = data_pair;
+                                emit signal_strategy_internal(name, ts, data);
+                            }));
+    m_subscriptions.push_back(m_strategy_instance->depo_publisher().subscribe(
+            [](auto &) {},
+            [&](std::chrono::milliseconds ts, double depo) {
+                emit signal_depo(ts, depo);
+            }));
+    m_subscriptions.push_back(m_strategy_instance->status_publisher().subscribe(
+            [&](const WorkStatus & status) {
+                emit signal_work_status(status);
+                switch (status) {
+                case WorkStatus::Backtesting: break;
+                default: {
+                    emit signal_result(m_strategy_instance->strategy_result_publisher().get());
+                    break;
+                }
+                }
+            }));
+    m_subscriptions.push_back(m_strategy_instance->strategy_result_publisher().subscribe(
+            [&](const StrategyResult & result) {
+                const auto status = m_strategy_instance->status_publisher().get();
+                switch (status) {
+                case WorkStatus::Backtesting: break;
+                default: {
+                    emit signal_result(result);
+                    break;
+                }
+                }
+            }));
+    m_strategy_instance->run_async(Symbol{ui->cb_symbol->currentText().toStdString()});
+    std::cout << "strategy started" << std::endl;
 }
 
 MainWindow::~MainWindow()
@@ -170,7 +190,7 @@ void MainWindow::render_result(StrategyResult result)
     ui->lb_final_profit->setText(QString::number(result.final_profit));
     ui->lb_trades_count->setText(QString::number(result.trades_count));
     ui->lb_fees_paid->setText(QString::number(result.fees_paid));
-    ui->lb_profit_per_trade->setText(QString::number(result.profit_per_trade));
+    ui->lb_profit_per_trade->setText(QString::number(result.profit_per_trade()));
     ui->lb_best_profit->setText(QString::number(result.best_profit_trade));
     ui->lb_worst_loss->setText(QString::number(result.worst_loss_trade));
     ui->lb_max_depo->setText(QString::number(result.max_depo));

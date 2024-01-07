@@ -1,16 +1,16 @@
 #pragma once
 
-#include <chrono>
+#include "ISubsription.h"
 #include <crossguid2/crossguid/guid.hpp>
 #include <functional>
 #include <map>
-#include <vector>
+#include <memory>
 
 template <typename ObjectT>
 class ObjectPublisher;
 
 template <typename ObjectT>
-class ObjectSubscribtion
+class ObjectSubscribtion final : public ISubsription
 {
 public:
     ObjectSubscribtion(ObjectPublisher<ObjectT> & publisher, xg::Guid guid)
@@ -18,7 +18,8 @@ public:
         , m_guid(guid)
     {
     }
-    ~ObjectSubscribtion()
+
+    ~ObjectSubscribtion() override
     {
         m_publisher.unsubscribe(m_guid);
     }
@@ -41,7 +42,7 @@ public:
         return m_data;
     }
 
-    ObjectSubscribtion<ObjectT> subscribe(std::function<void(const ObjectT &)> && update_callback);
+    std::unique_ptr<ObjectSubscribtion<ObjectT>> subscribe(std::function<void(const ObjectT &)> && update_callback);
     void unsubscribe(xg::Guid guid);
 
 private:
@@ -67,13 +68,13 @@ void ObjectPublisher<ObjectT>::update(std::function<void(ObjectT &)> && update_c
 }
 
 template <typename ObjectT>
-ObjectSubscribtion<ObjectT> ObjectPublisher<ObjectT>::subscribe(std::function<void(const ObjectT &)> && update_callback)
+std::unique_ptr<ObjectSubscribtion<ObjectT>> ObjectPublisher<ObjectT>::subscribe(std::function<void(const ObjectT &)> && update_callback)
 {
     const auto [it, success] = m_update_callbacks.try_emplace(xg::newGuid(), std::move(update_callback));
     if (!success) {
         std::cout << "ERROR subscriber with uuid " << it->first << " already exists" << std::endl;
     }
-    return ObjectSubscribtion<ObjectT>(*this, it->first);
+    return std::make_unique<ObjectSubscribtion<ObjectT>>(*this, it->first);
 }
 
 template <typename ObjectT>

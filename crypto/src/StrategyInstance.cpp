@@ -19,7 +19,23 @@ StrategyInstance::StrategyInstance(
     });
 }
 
-bool StrategyInstance::run(const Symbol & symbol)
+void StrategyInstance::run_async(const Symbol & symbol)
+{
+    m_worker_thread = std::make_unique<WorkerThread>([this, symbol]() { return do_run(symbol); });
+}
+
+void StrategyInstance::stop_async()
+{
+    m_worker_thread->stop_async();
+    m_md_gateway.stop();
+}
+
+void StrategyInstance::wait_for_finish()
+{
+    m_worker_thread->wait_for_finish();
+}
+
+bool StrategyInstance::do_run(const Symbol & symbol)
 {
     const bool success = m_md_gateway.get_klines(
             symbol.symbol_name,
@@ -48,9 +64,8 @@ bool StrategyInstance::run(const Symbol & symbol)
     }
     m_strategy_result.update([&](StrategyResult & res) {
         res.final_profit = m_deposit;
-        res.profit_per_trade = res.final_profit / static_cast<double>(res.trades_count);
     });
-    return true;
+    return false;
 }
 
 void StrategyInstance::on_signal(const Signal & signal)

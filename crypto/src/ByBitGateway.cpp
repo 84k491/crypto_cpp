@@ -153,30 +153,30 @@ bool ByBitGateway::get_klines(const std::string & symbol,
         const auto historical_end = end.has_value() ? std::min(end.value(), m_last_server_time) : m_last_server_time;
         const auto histroical_timerange = Timerange{start.value(), historical_end};
 
+        bool cached = false;
         if (auto range_it = m_ranges_by_symbol.find(symbol); range_it != m_ranges_by_symbol.end()) {
             if (auto it = range_it->second.find(histroical_timerange); it != range_it->second.end()) {
                 for (const auto & [ts, ohlc] : it->second) {
                     kline_callback({ts, ohlc});
                 }
-
-                m_status.push(WorkStatus::Stopped);
-                return true;
+                cached = true;
             }
         }
 
-        const bool success = request_historical_klines(
-                symbol,
-                histroical_timerange,
-                [this,
-                 symbol,
-                 histroical_timerange,
-                 kline_callback](std::map<std::chrono::milliseconds, OHLC> && ts_and_ohlc_map) {
-                    auto & range = m_ranges_by_symbol[symbol][histroical_timerange];
-                    for (const auto & ts_and_ohlc : ts_and_ohlc_map) {
-                        kline_callback(ts_and_ohlc);
-                    }
-                    range.merge(ts_and_ohlc_map);
-                });
+        const bool success = cached ||
+                request_historical_klines(
+                                     symbol,
+                                     histroical_timerange,
+                                     [this,
+                                      symbol,
+                                      histroical_timerange,
+                                      kline_callback](std::map<std::chrono::milliseconds, OHLC> && ts_and_ohlc_map) {
+                                         auto & range = m_ranges_by_symbol[symbol][histroical_timerange];
+                                         for (const auto & ts_and_ohlc : ts_and_ohlc_map) {
+                                             kline_callback(ts_and_ohlc);
+                                         }
+                                         range.merge(ts_and_ohlc_map);
+                                     });
         if (!success) {
             std::cout << "ERROR: Failed to request klines" << std::endl;
             return false;
@@ -191,6 +191,7 @@ bool ByBitGateway::get_klines(const std::string & symbol,
 
     std::cout << "Going live" << std::endl;
     m_status.push(WorkStatus::Live);
+    m_running.store(true);
 
     auto last_ts = m_last_server_time;
     for (;;) {
@@ -209,14 +210,18 @@ bool ByBitGateway::get_klines(const std::string & symbol,
                     }
                 });
 
-        if (end.has_value() && last_ts > end.value()) {
+        if (!m_running.load() || (end.has_value() && last_ts > end.value())) {
             m_status.push(WorkStatus::Stopped);
             std::cout << "Stopping gateway" << std::endl;
             return true;
         }
         else {
-            std::cout << "Got all live prices, sleeping" << std::endl;
-            std::this_thread::sleep_for(std::chrono::seconds{30});
+            const auto wait_time = std::chrono::seconds{30};
+            std::cout << "Got all live prices, sleeping for " << wait_time.count() << " seconds" << std::endl;
+            const auto now = std::chrono::steady_clock::now();
+            while (m_running && std::chrono::steady_clock::now() < now + wait_time) {
+                std::this_thread::sleep_for(std::chrono::milliseconds{1});
+            }
         }
     }
 
@@ -371,4 +376,9 @@ std::chrono::milliseconds ByBitGateway::get_server_time()
 ObjectPublisher<WorkStatus> & ByBitGateway::status_publisher()
 {
     return m_status;
+}
+
+void ByBitGateway::stop()
+{
+    m_running = false;
 }

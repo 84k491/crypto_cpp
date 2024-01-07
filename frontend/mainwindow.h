@@ -7,6 +7,7 @@
 #include "StrategyFactory.h"
 #include "StrategyInstance.h"
 #include "StrategyResult.h"
+#include "WorkStatus.h"
 
 #include <QMainWindow>
 #include <QScatterSeries>
@@ -67,13 +68,16 @@ public:
     ~MainWindow() override;
 
 private slots:
-    void on_pushButton_clicked();
+    void on_pb_run_clicked();
     void on_pb_optimize_clicked();
     void render_result(StrategyResult result);
     void optimized_config_slot(const JsonStrategyConfig & config);
     void on_strategy_parameters_changed(const std::string & name, double value);
 
     void on_cb_strategy_currentTextChanged(const QString & arg1);
+
+
+    void on_pb_stop_clicked();
 
 signals:
     void signal_price(std::chrono::milliseconds ts, double price);
@@ -83,6 +87,7 @@ signals:
                                   double data);
     void signal_depo(std::chrono::milliseconds ts, double depo);
     void signal_result(StrategyResult result);
+    void signal_work_status(WorkStatus status);
     void signal_optimized_config(JsonStrategyConfig config);
     void signal_strategy_parameters_changed(std::string name, double value);
 
@@ -100,6 +105,9 @@ private:
     Ui::MainWindow * ui;
 
     StrategyFactory m_strategy_factory;
+
+    std::unique_ptr<StrategyInstance> m_strategy_instance;
+    std::list<std::unique_ptr<ISubsription>> m_subscriptions;
 
     ByBitGateway m_gateway;
 

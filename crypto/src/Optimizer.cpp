@@ -68,11 +68,8 @@ std::optional<JsonStrategyConfig> Optimizer::optimize()
             continue;
         }
         StrategyInstance strategy_instance(m_timerange, strategy_opt.value(), m_gateway);
-        const bool success = strategy_instance.run(m_symbol);
-        if (!success) {
-            std::cout << "ERROR: Failed to optimize" << std::endl;
-            return {};
-        }
+        strategy_instance.run_async(m_symbol);
+        strategy_instance.wait_for_finish();
         const auto profit = strategy_instance.strategy_result_publisher().get().final_profit;
         if (max_profit < profit) {
             max_profit = profit;
