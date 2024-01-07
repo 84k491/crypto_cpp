@@ -1,11 +1,13 @@
 #pragma once
 
 #include "ByBitGateway.h"
+#include "ObjectPublisher.h"
 #include "Position.h"
 #include "Signal.h"
 #include "StrategyInterface.h"
 #include "StrategyResult.h"
 #include "TimeseriesPublisher.h"
+#include "WorkStatus.h"
 
 #include <optional>
 
@@ -19,17 +21,17 @@ public:
                      const std::shared_ptr<IStrategy> & strategy_ptr,
                      ByBitGateway & md_gateway);
 
-    TimeseriesPublisher<Signal>& signals_publisher();
-    TimeseriesPublisher<std::pair<std::string, double>>& strategy_internal_data_publisher();
-    TimeseriesPublisher<OHLC>& klines_publisher();
-    TimeseriesPublisher<double>& depo_publisher();
+    TimeseriesPublisher<Signal> & signals_publisher();
+    TimeseriesPublisher<std::pair<std::string, double>> & strategy_internal_data_publisher();
+    TimeseriesPublisher<OHLC> & klines_publisher();
+    TimeseriesPublisher<double> & depo_publisher();
+    ObjectPublisher<StrategyResult> & strategy_result_publisher();
+    ObjectPublisher<WorkStatus> & status_publisher();
 
     bool run(const Symbol & symbol);
 
     std::map<std::string, std::vector<std::pair<std::chrono::milliseconds, double>>>
     get_strategy_internal_data_history() const;
-
-    const StrategyResult & get_strategy_result() const;
 
 private:
     void on_signal(const Signal & signal);
@@ -40,7 +42,7 @@ private:
 
     std::optional<Signal> m_last_signal;
 
-    StrategyResult m_strategy_result;
+    ObjectPublisher<StrategyResult> m_strategy_result;
 
     TimeseriesPublisher<Signal> m_signal_publisher;
     TimeseriesPublisher<OHLC> m_klines_publisher;

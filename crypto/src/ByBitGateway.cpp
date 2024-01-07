@@ -136,6 +136,9 @@ bool ByBitGateway::get_klines(const std::string & symbol,
                               const std::optional<std::chrono::milliseconds> & start,
                               const std::optional<std::chrono::milliseconds> & end)
 {
+    ScopeExit se([&] { m_status.push(WorkStatus::Crashed); });
+    m_status.push(WorkStatus::Backtesting);
+
     if (m_last_server_time == std::chrono::milliseconds{0}) {
         m_last_server_time = get_server_time() - min_interval;
         std::cout << "Modified server time: " << m_last_server_time.count() << std::endl;
@@ -155,6 +158,8 @@ bool ByBitGateway::get_klines(const std::string & symbol,
                 for (const auto & [ts, ohlc] : it->second) {
                     kline_callback({ts, ohlc});
                 }
+
+                m_status.push(WorkStatus::Stopped);
                 return true;
             }
         }
@@ -180,10 +185,12 @@ bool ByBitGateway::get_klines(const std::string & symbol,
 
     if (end.has_value() && end.value() < m_last_server_time) {
         std::cout << "Don't continue live" << std::endl;
+        m_status.push(WorkStatus::Stopped);
         return true;
     }
 
     std::cout << "Going live" << std::endl;
+    m_status.push(WorkStatus::Live);
 
     auto last_ts = m_last_server_time;
     for (;;) {
@@ -203,8 +210,9 @@ bool ByBitGateway::get_klines(const std::string & symbol,
                 });
 
         if (end.has_value() && last_ts > end.value()) {
+            m_status.push(WorkStatus::Stopped);
+            std::cout << "Stopping gateway" << std::endl;
             return true;
-            std::cout << "Finishing thread" << std::endl;
         }
         else {
             std::cout << "Got all live prices, sleeping" << std::endl;
@@ -213,7 +221,7 @@ bool ByBitGateway::get_klines(const std::string & symbol,
     }
 
     std::cout << "ERROR unreachable code" << std::endl;
-    return true;
+    return false;
 }
 
 bool ByBitGateway::request_historical_klines(const std::string & symbol, const Timerange & timerange, KlinePackCallback && pack_callback)
@@ -358,4 +366,9 @@ std::chrono::milliseconds ByBitGateway::get_server_time()
     const auto server_time = std::chrono::duration_cast<std::chrono::milliseconds>(response.result.time_nano);
     std::cout << "Server time: " << server_time.count() << std::endl;
     return server_time;
+}
+
+ObjectPublisher<WorkStatus> & ByBitGateway::status_publisher()
+{
+    return m_status;
 }

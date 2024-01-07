@@ -14,7 +14,9 @@ StrategyInstance::StrategyInstance(
     , m_strategy(strategy_ptr)
     , m_timerange(timerange)
 {
-    m_strategy_result.position_currency_amount = m_pos_currency_amount;
+    m_strategy_result.update([&](StrategyResult & res) {
+        res.position_currency_amount = m_pos_currency_amount;
+    });
 }
 
 bool StrategyInstance::run(const Symbol & symbol)
@@ -44,8 +46,10 @@ bool StrategyInstance::run(const Symbol & symbol)
             m_depo_publisher.push(m_last_signal.value().timestamp, m_deposit);
         }
     }
-    m_strategy_result.final_profit = m_deposit;
-    m_strategy_result.profit_per_trade = m_strategy_result.final_profit / static_cast<double>(m_strategy_result.trades_count);
+    m_strategy_result.update([&](StrategyResult & res) {
+        res.final_profit = m_deposit;
+        res.profit_per_trade = res.final_profit / static_cast<double>(res.trades_count);
+    });
     return true;
 }
 
@@ -74,42 +78,49 @@ void StrategyInstance::on_signal(const Signal & signal)
     if (position_result_opt.has_value()) {
         m_deposit += position_result_opt.value().pnl;
         m_depo_publisher.push(signal.timestamp, m_deposit);
-        m_strategy_result.final_profit = m_deposit;
+        m_strategy_result.update([&](StrategyResult & res) {
+            res.final_profit = m_deposit;
+        });
         if (m_best_profit < position_result_opt.value().pnl) {
             m_best_profit = position_result_opt.value().pnl;
-            m_strategy_result.best_profit_trade = position_result_opt.value().pnl;
-            m_strategy_result.longest_profit_trade_time =
-                    std::chrono::duration_cast<std::chrono::seconds>(position_result_opt.value().opened_time);
+            m_strategy_result.update([&](StrategyResult & res) {
+                res.best_profit_trade = position_result_opt.value().pnl;
+                res.longest_profit_trade_time =
+                        std::chrono::duration_cast<std::chrono::seconds>(position_result_opt.value().opened_time);
+            });
         }
         if (m_worst_loss > position_result_opt.value().pnl) {
             m_worst_loss = position_result_opt.value().pnl;
-            m_strategy_result.worst_loss_trade = position_result_opt.value().pnl;
-            m_strategy_result.longest_loss_trade_time =
-                    std::chrono::duration_cast<std::chrono::seconds>(position_result_opt.value().opened_time);
+            m_strategy_result.update([&](StrategyResult & res) {
+                res.worst_loss_trade = position_result_opt.value().pnl;
+                res.longest_loss_trade_time =
+                        std::chrono::duration_cast<std::chrono::seconds>(position_result_opt.value().opened_time);
+            });
         }
     }
 
     if (order_opt.has_value()) {
         // m_tr_gateway.place_order(order_opt.value());
-        m_strategy_result.trades_count++;
         const auto fee_paid = ByBitGateway::get_taker_fee() * m_pos_currency_amount;
         m_deposit -= fee_paid;
-        m_strategy_result.fees_paid += fee_paid;
+        m_strategy_result.update([&](StrategyResult & res) {
+            res.trades_count++;
+            res.fees_paid += fee_paid;
+        });
     }
 
     m_last_signal = signal;
-    if (m_strategy_result.max_depo < m_deposit) {
-        m_strategy_result.max_depo = m_deposit;
+    if (m_strategy_result.get().max_depo < m_deposit) {
+        m_strategy_result.update([&](StrategyResult & res) {
+            res.max_depo = m_deposit;
+        });
     }
-    if (m_strategy_result.min_depo > m_deposit) {
-        m_strategy_result.min_depo = m_deposit;
+    if (m_strategy_result.get().min_depo > m_deposit) {
+        m_strategy_result.update([&](StrategyResult & res) {
+            res.min_depo = m_deposit;
+        });
     }
     m_signal_publisher.push(signal.timestamp, signal);
-}
-
-const StrategyResult & StrategyInstance::get_strategy_result() const
-{
-    return m_strategy_result;
 }
 
 TimeseriesPublisher<Signal> & StrategyInstance::signals_publisher()
@@ -130,4 +141,14 @@ TimeseriesPublisher<OHLC> & StrategyInstance::klines_publisher()
 TimeseriesPublisher<double> & StrategyInstance::depo_publisher()
 {
     return m_depo_publisher;
+}
+
+ObjectPublisher<StrategyResult> & StrategyInstance::strategy_result_publisher()
+{
+    return m_strategy_result;
+}
+
+ObjectPublisher<WorkStatus> & StrategyInstance::status_publisher()
+{
+    return m_md_gateway.status_publisher();
 }

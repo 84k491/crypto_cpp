@@ -1,7 +1,9 @@
 #pragma once
 
+#include "ObjectPublisher.h"
 #include "Symbol.h"
 #include "Timerange.h"
+#include "WorkStatus.h"
 #include "ohlc.h"
 #include "restincurl.h"
 
@@ -39,6 +41,8 @@ public:
             const std::optional<std::chrono::milliseconds> & start,
             const std::optional<std::chrono::milliseconds> & end);
 
+    ObjectPublisher<WorkStatus> & status_publisher();
+
     static auto get_taker_fee() { return taker_fee; }
 
     std::vector<Symbol> get_symbols(const std::string & currency);
@@ -51,6 +55,8 @@ private:
 
 private:
     std::chrono::milliseconds m_last_server_time = std::chrono::milliseconds{0};
+
+    ObjectPublisher<WorkStatus> m_status;
 
     std::unordered_map<std::string, std::unordered_map<Timerange, std::map<std::chrono::milliseconds, OHLC>>> m_ranges_by_symbol;
     restincurl::Client client; // TODO use mrtazz/restclient-cpp

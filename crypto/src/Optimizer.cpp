@@ -73,7 +73,7 @@ std::optional<JsonStrategyConfig> Optimizer::optimize()
             std::cout << "ERROR: Failed to optimize" << std::endl;
             return {};
         }
-        const auto profit = strategy_instance.get_strategy_result().final_profit;
+        const auto profit = strategy_instance.strategy_result_publisher().get().final_profit;
         if (max_profit < profit) {
             max_profit = profit;
             best_config = config_json;

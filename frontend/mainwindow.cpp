@@ -126,12 +126,31 @@ void MainWindow::on_pushButton_clicked()
                 [&](std::chrono::milliseconds ts, double depo) {
                     emit signal_depo(ts, depo);
                 });
-        strategy_instance.run(Symbol{ui->cb_symbol->currentText().toStdString()});
-        const auto result = strategy_instance.get_strategy_result();
-        emit signal_result(result);
-        std::cout << "strategy finished" << std::endl;
-    });
-    t.detach();
+        const auto status_sub = strategy_instance.status_publisher().subscribe(
+                [&](const WorkStatus & status) {
+                    switch (status) {
+                    case WorkStatus::Backtesting: break;
+                    default: {
+                        emit signal_result(strategy_instance.strategy_result_publisher().get());
+                        break;
+                    }
+                    }
+                });
+            const auto result_sub = strategy_instance.strategy_result_publisher().subscribe(
+                    [&](const StrategyResult & result) {
+                        const auto status = strategy_instance.status_publisher().get();
+                        switch (status) {
+                        case WorkStatus::Backtesting: break;
+                        default: {
+                            emit signal_result(result);
+                            break;
+                        }
+                        }
+                    });
+    strategy_instance.run(Symbol{ui->cb_symbol->currentText().toStdString()});
+    std::cout << "strategy finished" << std::endl;
+});
+t.detach();
 }
 
 MainWindow::~MainWindow()
