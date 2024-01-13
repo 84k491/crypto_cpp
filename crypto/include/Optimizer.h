@@ -2,8 +2,6 @@
 
 #include "ByBitGateway.h"
 #include "JsonStrategyConfig.h"
-#include "StrategyFactory.h"
-#include "StrategyInstance.h"
 
 #include <nlohmann/json.hpp>
 

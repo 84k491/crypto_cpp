@@ -19,7 +19,7 @@ public:
     using KlineCallback = std::function<void(std::pair<std::chrono::milliseconds, OHLC>)>;
     using DepoCallback = std::function<void(std::chrono::milliseconds ts, double value)>;
 
-    StrategyInstance(const Timerange & timerange,
+    StrategyInstance(const MarketDataRequest & md_request,
                      const std::shared_ptr<IStrategy> & strategy_ptr,
                      ByBitGateway & md_gateway);
 
@@ -55,7 +55,7 @@ private:
     static constexpr double m_pos_currency_amount = 100.;
     Position m_position;
 
-    const Timerange m_timerange;
+    const MarketDataRequest m_md_request;
 
     double m_deposit = 0.; // TODO use result profit
     double m_best_profit = std::numeric_limits<double>::lowest();

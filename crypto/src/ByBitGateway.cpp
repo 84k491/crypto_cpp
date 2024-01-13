@@ -131,12 +131,15 @@ void from_json(const json & j, SymbolResponse & response)
     j2.get_to(response.result);
 }
 
-bool ByBitGateway::get_klines(const std::string & symbol,
-                              KlineCallback && kline_callback,
-                              const std::optional<std::chrono::milliseconds> & start,
-                              const std::optional<std::chrono::milliseconds> & end)
+bool ByBitGateway::subscribe_for_klines(
+        const std::string & symbol,
+        KlineCallback && kline_callback,
+        const MarketDataRequest & md_request)
 {
     ScopeExit se([&] { m_status.push(WorkStatus::Crashed); });
+    if (!md_request.historical_range.has_value() && !md_request.go_live) {
+        return false;
+    }
     m_status.push(WorkStatus::Backtesting);
 
     if (m_last_server_time == std::chrono::milliseconds{0}) {
@@ -144,14 +147,15 @@ bool ByBitGateway::get_klines(const std::string & symbol,
         std::cout << "Modified server time: " << m_last_server_time.count() << std::endl;
     }
 
-    if (start.has_value()) {
-        if (start.value() > m_last_server_time) {
+    if (md_request.historical_range.has_value()) {
+        const auto [start, end_opt] = md_request.historical_range.value();
+        if (start > m_last_server_time) {
             std::cout << "ERROR starting in future" << std::endl;
             return false;
         }
 
-        const auto historical_end = end.has_value() ? std::min(end.value(), m_last_server_time) : m_last_server_time;
-        const auto histroical_timerange = Timerange{start.value(), historical_end};
+        const auto historical_end = end_opt.has_value() ? std::min(end_opt.value(), m_last_server_time) : m_last_server_time;
+        const auto histroical_timerange = Timerange{start, historical_end};
 
         bool cached = false;
         if (auto range_it = m_ranges_by_symbol.find(symbol); range_it != m_ranges_by_symbol.end()) {
@@ -183,8 +187,9 @@ bool ByBitGateway::get_klines(const std::string & symbol,
         }
     }
 
-    if (end.has_value() && end.value() < m_last_server_time) {
+    if (!md_request.go_live) {
         std::cout << "Don't continue live" << std::endl;
+        se.cancel();
         m_status.push(WorkStatus::Stopped);
         return true;
     }
@@ -210,18 +215,18 @@ bool ByBitGateway::get_klines(const std::string & symbol,
                     }
                 });
 
-        if (!m_running.load() || (end.has_value() && last_ts > end.value())) {
+        if (!m_running.load()) {
+            se.cancel();
             m_status.push(WorkStatus::Stopped);
             std::cout << "Stopping gateway" << std::endl;
             return true;
         }
-        else {
-            const auto wait_time = std::chrono::seconds{30};
-            std::cout << "Got all live prices, sleeping for " << wait_time.count() << " seconds" << std::endl;
-            const auto now = std::chrono::steady_clock::now();
-            while (m_running && std::chrono::steady_clock::now() < now + wait_time) {
-                std::this_thread::sleep_for(std::chrono::milliseconds{1});
-            }
+
+        const auto wait_time = std::chrono::seconds{30};
+        std::cout << "Got all live prices, sleeping for " << wait_time.count() << " seconds" << std::endl;
+        const auto now = std::chrono::steady_clock::now();
+        while (m_running && std::chrono::steady_clock::now() < now + wait_time) {
+            std::this_thread::sleep_for(std::chrono::milliseconds{1});
         }
     }
 

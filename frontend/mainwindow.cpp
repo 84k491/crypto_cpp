@@ -122,8 +122,22 @@ void MainWindow::on_pb_run_clicked()
         return;
     }
 
+    const auto md_request = [&](){
+        MarketDataRequest result;
+        if (ui->cb_live->isChecked()) {
+            result.go_live = true;
+            result.historical_range.reset();
+        }
+        else {
+            result.go_live = false;
+            result.historical_range->start = timerange.start();
+            result.historical_range->end = timerange.end();
+        }
+        return result;
+    }();
+
     m_strategy_instance = std::make_unique<StrategyInstance>(
-            timerange,
+            md_request,
             strategy_ptr_opt.value(),
             m_gateway);
 

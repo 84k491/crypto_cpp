@@ -7,12 +7,12 @@
 #include <optional>
 
 StrategyInstance::StrategyInstance(
-        const Timerange & timerange,
+        const MarketDataRequest & md_request,
         const std::shared_ptr<IStrategy> & strategy_ptr,
         ByBitGateway & md_gateway)
     : m_md_gateway(md_gateway)
     , m_strategy(strategy_ptr)
-    , m_timerange(timerange)
+    , m_md_request(md_request)
 {
     m_strategy_result.update([&](StrategyResult & res) {
         res.position_currency_amount = m_pos_currency_amount;
@@ -37,7 +37,7 @@ void StrategyInstance::wait_for_finish()
 
 bool StrategyInstance::do_run(const Symbol & symbol)
 {
-    const bool success = m_md_gateway.get_klines(
+    const bool success = m_md_gateway.subscribe_for_klines(
             symbol.symbol_name,
             [this](std::pair<std::chrono::milliseconds, OHLC> ts_and_ohlc) {
                 const auto & [ts, ohlc] = ts_and_ohlc;
@@ -47,8 +47,7 @@ bool StrategyInstance::do_run(const Symbol & symbol)
                     on_signal(signal.value());
                 }
             },
-            m_timerange.start(),
-            m_timerange.end());
+            m_md_request);
     if (!success) {
         std::cout << "Failed to run strategy instance" << std::endl;
         return false;

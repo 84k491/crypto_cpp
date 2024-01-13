@@ -24,6 +24,18 @@ private:
     restincurl::Client client; // TODO use mrtazz/restclient-cpp
 };
 
+struct MarketDataRequest
+{
+    struct HistoricalRange
+    {
+        std::chrono::milliseconds start;
+        std::optional<std::chrono::milliseconds> end;
+    };
+
+    std::optional<HistoricalRange> historical_range;
+    bool go_live = false;
+};
+
 class ByBitGateway
 {
     static constexpr double taker_fee = 0.0002; // 0.02%
@@ -36,11 +48,10 @@ public:
 
     ByBitGateway() = default;
 
-    bool get_klines(
+    bool subscribe_for_klines(
             const std::string & symbol,
-            KlineCallback && cb,
-            const std::optional<std::chrono::milliseconds> & start,
-            const std::optional<std::chrono::milliseconds> & end);
+            KlineCallback && kline_callback,
+            const MarketDataRequest & md_request);
     void stop();
 
     ObjectPublisher<WorkStatus> & status_publisher();

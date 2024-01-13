@@ -1,5 +1,8 @@
 #include "Optimizer.h"
 
+#include "StrategyFactory.h"
+#include "StrategyInstance.h"
+
 #include <iostream>
 
 std::vector<nlohmann::json> OptimizerParser::get_possible_configs()
@@ -67,7 +70,16 @@ std::optional<JsonStrategyConfig> Optimizer::optimize()
         if (!strategy_opt.has_value() || !strategy_opt.value() || !strategy_opt.value()->is_valid()) {
             continue;
         }
-        StrategyInstance strategy_instance(m_timerange, strategy_opt.value(), m_gateway);
+
+        const auto md_request = [&]() {
+            MarketDataRequest result;
+            result.go_live = false;
+            result.historical_range->start = m_timerange.start();
+            result.historical_range->end = m_timerange.end();
+            return result;
+        }();
+
+        StrategyInstance strategy_instance(md_request, strategy_opt.value(), m_gateway);
         strategy_instance.run_async(m_symbol);
         strategy_instance.wait_for_finish();
         const auto profit = strategy_instance.strategy_result_publisher().get().final_profit;
