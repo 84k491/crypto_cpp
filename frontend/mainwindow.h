@@ -79,6 +79,8 @@ private slots:
 
     void on_pb_stop_clicked();
 
+    void on_pb_test_clicked();
+
 signals:
     void signal_price(std::chrono::milliseconds ts, double price);
     void signal_signal(Signal signal);

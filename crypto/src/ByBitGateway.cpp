@@ -253,7 +253,7 @@ bool ByBitGateway::request_historical_klines(const std::string & symbol, const T
         const std::chrono::milliseconds remining_delta = timerange.end() - last_start;
         std::cout << "Remaining time delta: " << remining_delta.count() << "ms" << std::endl;
 
-        const std::string category = "linear";
+        const std::string category = "spot";
 
         const std::string request = [&]() {
             std::stringstream ss;

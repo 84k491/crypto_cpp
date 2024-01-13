@@ -186,9 +186,9 @@
              <item>
               <layout class="QHBoxLayout" name="horizontalLayout_19">
                <item>
-                <widget class="QLabel" name="lb_optimizer_progress">
+                <widget class="QPushButton" name="pb_test">
                  <property name="text">
-                  <string/>
+                  <string>Test</string>
                  </property>
                 </widget>
                </item>
