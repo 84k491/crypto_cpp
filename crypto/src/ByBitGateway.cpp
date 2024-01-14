@@ -341,33 +341,6 @@ std::vector<Symbol> ByBitGateway::get_symbols(const std::string & currency)
     return response.result.symbol_vec;
 }
 
-std::future<std::string> RestClient::request_async(const std::string & request)
-{
-    return std::async(
-            std::launch::async,
-            [this, &request]() {
-                std::condition_variable cv;
-                std::mutex m;
-
-                std::cout << "REST request: " << request << std::endl;
-                std::string string_result;
-                client
-                        .Build()
-                        ->Get(request)
-                        .WithCompletion([&](const restincurl::Result & result) {
-                            std::lock_guard lock(m);
-                            string_result = result.body;
-                            cv.notify_all();
-                        })
-                        .Execute();
-
-                std::unique_lock lock(m);
-                cv.wait(lock, [&] { return !string_result.empty(); });
-
-                return string_result;
-            });
-}
-
 std::chrono::milliseconds ByBitGateway::get_server_time()
 {
     const std::string url = "https://api-testnet.bybit.com/v5/market/time";

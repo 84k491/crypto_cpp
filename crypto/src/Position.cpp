@@ -26,6 +26,7 @@ std::pair<std::optional<MarketOrder>, std::optional<PositionResult>> Position::o
             // just moving the position
             const auto volume_delta = target_volume - m_opened_position.value().absolute_volume();
             return {MarketOrder{
+                            "BTCUSDT", // TODO
                             std::abs(volume_delta),
                             side_from_absolute_volume(volume_delta)},
                     std::nullopt};
@@ -40,6 +41,7 @@ std::pair<std::optional<MarketOrder>, std::optional<PositionResult>> Position::o
         auto & [order, res] = order_and_res_opt.value();
         m_opened_position = OpenedPosition(ts, target_volume, price);
         const auto open_order = MarketOrder{
+                "BTCUSDT", // TODO
                 std::abs(target_volume),
                 side_from_absolute_volume(target_volume)};
         order += open_order;
@@ -48,6 +50,7 @@ std::pair<std::optional<MarketOrder>, std::optional<PositionResult>> Position::o
 
     m_opened_position = OpenedPosition(ts, target_volume, price);
     return {MarketOrder{
+                    "BTCUSDT", // TODO
                     std::abs(target_volume),
                     side_from_absolute_volume(target_volume)},
             std::nullopt};
@@ -68,6 +71,7 @@ std::optional<std::pair<MarketOrder, PositionResult>> Position::close(
     res.opened_time = ts - pos.open_ts();
 
     const auto close_order = MarketOrder{
+            "BTCUSDT", // TODO
             std::abs(pos.absolute_volume()),
             side_from_absolute_volume(-pos.absolute_volume())};
 
@@ -77,13 +81,35 @@ std::optional<std::pair<MarketOrder, PositionResult>> Position::close(
 
 MarketOrder & MarketOrder::operator+=(const MarketOrder & other)
 {
-    m_unsigned_volume += other.m_unsigned_volume;
-    return *this;
+    if (m_side == other.m_side) {
+        m_unsigned_volume += other.m_unsigned_volume;
+        return *this;
+    }
+    else {
+        if (m_unsigned_volume < other.m_unsigned_volume) {
+            m_unsigned_volume = other.m_unsigned_volume - m_unsigned_volume;
+            m_side = other.m_side;
+        }
+        else {
+            m_unsigned_volume -= other.m_unsigned_volume;
+        }
+        return *this;
+    }
 }
 
-MarketOrder::MarketOrder(double unsigned_volume, Side)
-    : m_unsigned_volume(unsigned_volume)
+MarketOrder::MarketOrder(const std::string & symbol, double unsigned_volume, Side side)
+    : m_symbol(symbol)
+    , m_unsigned_volume(unsigned_volume)
+    , m_side(side)
 {
+}
+
+std::string MarketOrder::side_str() const
+{
+    if (m_side == Side::Buy) {
+        return "Buy";
+    }
+    return "Sell";
 }
 
 Side Position::OpenedPosition::side() const

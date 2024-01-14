@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include "ByBitGateway.h"
+#include "ByBitTradingGateway.h"
 #include "DragableChart.h"
 #include "JsonStrategyConfig.h"
 #include "StrategyFactory.h"
@@ -112,6 +113,7 @@ private:
     std::list<std::shared_ptr<ISubsription>> m_subscriptions;
 
     ByBitGateway m_gateway;
+    ByBitTradingGateway m_trading_gateway;
 
     const std::string m_price_chart_name = "prices";
     const std::string m_depo_chart_name = "depo";

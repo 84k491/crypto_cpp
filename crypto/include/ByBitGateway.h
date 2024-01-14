@@ -6,7 +6,7 @@
 #include "TimeseriesPublisher.h"
 #include "WorkStatus.h"
 #include "ohlc.h"
-#include "restincurl.h"
+#include "RestClient.h"
 
 #include <atomic>
 #include <chrono>
@@ -16,15 +16,6 @@
 #include <optional>
 #include <unordered_map>
 #include <vector>
-
-class RestClient
-{
-public:
-    std::future<std::string> request_async(const std::string & request);
-
-private:
-    restincurl::Client client; // TODO use mrtazz/restclient-cpp
-};
 
 struct MarketDataRequest
 {
@@ -79,6 +70,5 @@ private:
     std::unique_ptr<WorkerThreadLoop> m_live_thread;
 
     std::unordered_map<std::string, std::unordered_map<Timerange, std::map<std::chrono::milliseconds, OHLC>>> m_ranges_by_symbol;
-    restincurl::Client client; // TODO use mrtazz/restclient-cpp
     RestClient rest_client;
 };

@@ -34,6 +34,8 @@ set(PROJECT_SOURCES
         ../crypto/ta/src/BollingerBands.cpp
         ../crypto/ta/src/StandardDeviation.cpp
         ../crypto/src/WorkerThread.cpp
+        ../crypto/src/ByBitTradingGateway.cpp
+        ../crypto/src/RestClient.cpp
 )
 
 qt_add_executable(frontend

@@ -8,12 +8,17 @@
 
 struct MarketOrder
 {
-    MarketOrder(double unsigned_volume, Side side);
+    MarketOrder(const std::string & symbol, double unsigned_volume, Side side);
     MarketOrder & operator+=(const MarketOrder & other);
 
+    auto unsigned_volume() const { return m_unsigned_volume; }
+    auto symbol() const { return m_symbol; }
+    std::string side_str() const;
+
 private:
+    std::string m_symbol;
     double m_unsigned_volume{};
-    // Side m_side = Side::Buy;
+    Side m_side = Side::Buy;
 };
 
 struct PositionResult
