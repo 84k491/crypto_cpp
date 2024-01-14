@@ -35,14 +35,11 @@ public:
     void wait_for_finish();
 
 private:
-    bool do_run(const Symbol & symbol);
     void on_signal(const Signal & signal);
 
 private:
     ByBitGateway & m_md_gateway;
     std::shared_ptr<IStrategy> m_strategy;
-
-    std::unique_ptr<WorkerThread> m_worker_thread;
 
     std::optional<Signal> m_last_signal;
 
@@ -51,6 +48,8 @@ private:
     TimeseriesPublisher<Signal> m_signal_publisher;
     TimeseriesPublisher<OHLC> m_klines_publisher;
     TimeseriesPublisher<double> m_depo_publisher;
+
+    std::shared_ptr<TimeseriesSubsription<OHLC>> m_kline_sub;
 
     static constexpr double m_pos_currency_amount = 100.;
     Position m_position;

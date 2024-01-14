@@ -98,7 +98,9 @@ MainWindow::MainWindow(QWidget * parent)
 void MainWindow::on_pb_stop_clicked()
 {
     m_strategy_instance->stop_async();
-    // TODO join, destruct
+    m_strategy_instance->wait_for_finish();
+    std::cout << "Strategy stopped" << std::endl;
+    m_strategy_instance.reset();
 }
 
 void MainWindow::on_pb_run_clicked()
@@ -130,6 +132,7 @@ void MainWindow::on_pb_run_clicked()
         }
         else {
             result.go_live = false;
+            result.historical_range = MarketDataRequest::HistoricalRange();
             result.historical_range->start = timerange.start();
             result.historical_range->end = timerange.end();
         }

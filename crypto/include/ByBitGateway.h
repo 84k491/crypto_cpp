@@ -3,6 +3,7 @@
 #include "ObjectPublisher.h"
 #include "Symbol.h"
 #include "Timerange.h"
+#include "TimeseriesPublisher.h"
 #include "WorkStatus.h"
 #include "ohlc.h"
 #include "restincurl.h"
@@ -11,6 +12,7 @@
 #include <chrono>
 #include <functional>
 #include <future>
+#include <list>
 #include <optional>
 #include <unordered_map>
 #include <vector>
@@ -36,23 +38,26 @@ struct MarketDataRequest
     bool go_live = false;
 };
 
+class WorkerThreadOnce;
+class WorkerThreadLoop;
 class ByBitGateway
 {
     static constexpr double taker_fee = 0.0002; // 0.02%
 
 public:
-    using KlineCallback = std::function<void(std::pair<std::chrono::milliseconds, OHLC>)>;
+    using KlineCallback = std::function<void(std::chrono::milliseconds, const OHLC &)>;
 
     static constexpr std::chrono::minutes min_interval = std::chrono::minutes{1};
     static auto get_taker_fee() { return taker_fee; }
 
     ByBitGateway() = default;
 
-    bool subscribe_for_klines(
+    std::shared_ptr<TimeseriesSubsription<OHLC>> subscribe_for_klines(
             const std::string & symbol,
             KlineCallback && kline_callback,
             const MarketDataRequest & md_request);
-    void stop();
+    void wait_for_finish();
+    void stop_async();
 
     ObjectPublisher<WorkStatus> & status_publisher();
 
@@ -67,8 +72,11 @@ private:
 private:
     std::chrono::milliseconds m_last_server_time = std::chrono::milliseconds{0};
 
-    std::atomic_bool m_running = false;
     ObjectPublisher<WorkStatus> m_status;
+    TimeseriesPublisher<OHLC> m_klines_publisher;
+
+    std::unique_ptr<WorkerThreadOnce> m_backtest_thread;
+    std::unique_ptr<WorkerThreadLoop> m_live_thread;
 
     std::unordered_map<std::string, std::unordered_map<Timerange, std::map<std::chrono::milliseconds, OHLC>>> m_ranges_by_symbol;
     restincurl::Client client; // TODO use mrtazz/restclient-cpp

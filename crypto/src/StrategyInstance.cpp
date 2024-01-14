@@ -21,26 +21,9 @@ StrategyInstance::StrategyInstance(
 
 void StrategyInstance::run_async(const Symbol & symbol)
 {
-    m_worker_thread = std::make_unique<WorkerThread>([this, symbol]() { return do_run(symbol); });
-}
-
-void StrategyInstance::stop_async()
-{
-    m_worker_thread->stop_async();
-    m_md_gateway.stop();
-}
-
-void StrategyInstance::wait_for_finish()
-{
-    m_worker_thread->wait_for_finish();
-}
-
-bool StrategyInstance::do_run(const Symbol & symbol)
-{
-    const bool success = m_md_gateway.subscribe_for_klines(
+    auto kline_sub_opt = m_md_gateway.subscribe_for_klines(
             symbol.symbol_name,
-            [this](std::pair<std::chrono::milliseconds, OHLC> ts_and_ohlc) {
-                const auto & [ts, ohlc] = ts_and_ohlc;
+            [this](std::chrono::milliseconds ts, const OHLC & ohlc) {
                 m_klines_publisher.push(ts, ohlc);
                 const auto signal = m_strategy->push_price({ts, ohlc.close});
                 if (signal.has_value()) {
@@ -48,10 +31,21 @@ bool StrategyInstance::do_run(const Symbol & symbol)
                 }
             },
             m_md_request);
-    if (!success) {
+    if (kline_sub_opt == nullptr) {
         std::cout << "Failed to run strategy instance" << std::endl;
-        return false;
+        return;
     }
+    m_kline_sub = std::move(kline_sub_opt);
+}
+
+void StrategyInstance::stop_async()
+{
+    m_md_gateway.stop_async();
+}
+
+void StrategyInstance::wait_for_finish()
+{
+    m_md_gateway.wait_for_finish();
 
     if (m_position.opened() != nullptr) {
         const auto order_and_res_opt = m_position.close(m_last_signal.value().timestamp, m_last_signal.value().price);
@@ -64,7 +58,6 @@ bool StrategyInstance::do_run(const Symbol & symbol)
     m_strategy_result.update([&](StrategyResult & res) {
         res.final_profit = m_deposit;
     });
-    return false;
 }
 
 void StrategyInstance::on_signal(const Signal & signal)

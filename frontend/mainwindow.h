@@ -109,7 +109,7 @@ private:
     StrategyFactory m_strategy_factory;
 
     std::unique_ptr<StrategyInstance> m_strategy_instance;
-    std::list<std::unique_ptr<ISubsription>> m_subscriptions;
+    std::list<std::shared_ptr<ISubsription>> m_subscriptions;
 
     ByBitGateway m_gateway;
 
