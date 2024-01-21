@@ -142,7 +142,8 @@ void MainWindow::on_pb_run_clicked()
     m_strategy_instance = std::make_unique<StrategyInstance>(
             md_request,
             strategy_ptr_opt.value(),
-            m_gateway);
+            m_gateway,
+            &m_trading_gateway);
 
     m_subscriptions.push_back(m_strategy_instance->klines_publisher().subscribe(
             [](auto &) {},
@@ -385,7 +386,7 @@ auto test()
 
         // Initialize ASIO
         client.init_asio();
-        client.set_tls_init_handler([](const auto & conn_handle) -> context_ptr {
+        client.set_tls_init_handler([](const auto &) -> context_ptr {
             context_ptr ctx = websocketpp::lib::make_shared<boost::asio::ssl::context>(boost::asio::ssl::context::sslv23);
 
             try {

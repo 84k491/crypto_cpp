@@ -9,6 +9,7 @@
 #include "StrategyInstance.h"
 #include "StrategyResult.h"
 #include "WorkStatus.h"
+#include "ByBitTradingGateway.h"
 
 #include <QMainWindow>
 #include <QScatterSeries>

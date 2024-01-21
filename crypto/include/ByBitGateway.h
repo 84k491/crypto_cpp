@@ -7,12 +7,10 @@
 #include "WorkStatus.h"
 #include "ohlc.h"
 #include "RestClient.h"
+#include "WorkerThread.h"
 
-#include <atomic>
 #include <chrono>
 #include <functional>
-#include <future>
-#include <list>
 #include <optional>
 #include <unordered_map>
 #include <vector>
@@ -29,7 +27,6 @@ struct MarketDataRequest
     bool go_live = false;
 };
 
-class WorkerThreadOnce;
 class WorkerThreadLoop;
 class ByBitGateway
 {

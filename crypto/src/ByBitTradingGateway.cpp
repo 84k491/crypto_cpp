@@ -1,98 +1,8 @@
 #include "ByBitTradingGateway.h"
 
+#include "ScopeExit.h"
 #include "ohlc.h"
-
-#include <future>
-#include <list>
-
-struct OrderResponse
-{
-    std::string category;
-    std::string symbol;
-    std::string orderId;
-    std::string orderLinkId;
-    std::string side;
-    std::string orderStatus;  // ":"Filled",
-    std::string cancelType;   // ":"UNKNOWN",
-    std::string rejectReason; // ":"EC_NoError",
-    std::string timeInForce;  // ":"IOC",
-    double price;             // ":"40323.7",
-    double qty;               // ":"0.002",
-    double leavesQty;         // ":"0",
-    double cumExecQty;        // ":"0.002",
-    double cumExecFee;        // ":"0 .046684",
-    std::string orderType;    // ":"Market",
-    std::string updatedTime;  // ":"1705336167611",
-    // "blockTradeId":"",
-    // "positionIdx":0,
-    // "isLeverage":"",
-    // "avgPrice":"42440",
-    // "leavesValue":"0",
-    // "cumExecValue":"84.88",
-    // "stopOrderType":"",
-    // "orderIv":"",
-    // "triggerPrice":"",
-    // "takeProfit":"",
-    // "stopLoss":"",
-    // "triggerBy":"",
-    // "tpTriggerBy":"",
-    // "slTriggerBy":"",
-    // "triggerDirect ion":0,
-    // "placeType":"",
-    // "lastPriceOnCreated":"42446",
-    // "closeOnTrigger":false,
-    // "reduceOnly":false,
-    // "smpGroup":0,
-    // "smpType":"None",
-    // "smpOrderId":"",
-    // "slLimitPrice":"0",
-    // "tpLimitPrice": "0",
-    // "tpslMode":"UNKNOWN",
-    // "createType":"CreateByUser",
-    // "marketUnit":"",
-    // "createdTime":"1705336167608",
-    // "feeCurrency":""
-};
-
-struct OrderResponseResult
-{
-    std::string id;
-    uint64_t creationTime;
-
-    std::list<OrderResponse> orders;
-};
-
-void from_json(const json & j, OrderResponse & order)
-{
-    j.at("category").get_to(order.category);
-    j.at("symbol").get_to(order.symbol);
-    j.at("orderId").get_to(order.orderId);
-    j.at("orderLinkId").get_to(order.orderLinkId);
-    j.at("side").get_to(order.side);
-    j.at("orderStatus").get_to(order.orderStatus);
-    j.at("cancelType").get_to(order.cancelType);
-    j.at("rejectReason").get_to(order.rejectReason);
-    j.at("timeInForce").get_to(order.timeInForce);
-    j.at("price").get_to(order.price);
-    j.at("qty").get_to(order.qty);
-    j.at("leavesQty").get_to(order.leavesQty);
-    j.at("cumExecQty").get_to(order.cumExecQty);
-    j.at("cumExecFee").get_to(order.cumExecFee);
-    j.at("orderType").get_to(order.orderType);
-    j.at("updatedTime").get_to(order.updatedTime);
-}
-
-void from_json(const json & j, OrderResponseResult & order)
-{
-    j.at("id").get_to(order.id);
-    j.at("creationTime").get_to(order.creationTime);
-
-    for (const auto & item : j.at("data")) {
-        OrderResponse order_response;
-        item.get_to(order_response);
-        order.orders.push_back(order_response);
-    }
-}
+#include <mutex>
 
 ByBitTradingGateway::ByBitTradingGateway()
     : m_url("wss://stream-testnet.bybit.com/v5/private")
@@ -136,7 +46,7 @@ void ByBitTradingGateway::subscribe()
         client.set_open_handler([this](auto con_ptr) {
             std::cout << "Sending message" << std::endl;
             std::string auth_msg = build_auth_message();
-            std::string subscription_message = R"({"op": "subscribe", "args": ["order"]})";
+            std::string subscription_message = R"({"op": "subscribe", "args": ["order", "execution"]})";
             try {
                 client.send(con_ptr, auth_msg, websocketpp::frame::opcode::text);
                 client.send(con_ptr, subscription_message, websocketpp::frame::opcode::text);
@@ -208,7 +118,7 @@ std::string ByBitTradingGateway::build_auth_message() const
     return auth_msg.dump();
 }
 
-bool ByBitTradingGateway::send_order_sync(const MarketOrder & order)
+std::optional<ByBitMessages::Execution> ByBitTradingGateway::send_order_sync(const MarketOrder & order)
 {
     int64_t ts = std::chrono::duration_cast<std::chrono::milliseconds>(
                          std::chrono::system_clock::now().time_since_epoch())
@@ -228,39 +138,148 @@ bool ByBitTradingGateway::send_order_sync(const MarketOrder & order)
 
     const auto request = json_order.dump();
 
-    const auto [it, success] = m_pending_orders.try_emplace(order_id, std::promise<OrderResponse>(), order);
+    std::unique_lock l(m_pending_orders_mutex);
+    const auto [it, success] = m_pending_orders.try_emplace(
+        order_id,
+        order,
+        std::promise<ByBitMessages::OrderResponse>(),
+        std::promise<ByBitMessages::Execution>()
+    );
+
     if (!success) {
         std::cout << "Trying to send order while order_id already exists: " << order_id << std::endl;
-        return false;
+        return std::nullopt;
     }
+    ScopeExit se([&]() {
+        l.lock();
+        m_pending_orders.erase(it);
+    });
+
     const std::string url = "https://api-testnet.bybit.com/v5/order/create";
-    auto request_future = rest_client.request_auth_async(url, request, m_api_key, m_secret_key);
+    std::future<std::string> request_future = rest_client.request_auth_async(url, request, m_api_key, m_secret_key);
     request_future.wait();
     const std::string request_result = request_future.get();
     std::cout << "REST Trading Response: " << request_result << std::endl;
 
-    auto response_future = it->second.first.get_future();
-    if (response_future.wait_for(ws_wait_timeout) == std::future_status::timeout) {
-        std::cout << "Timeout waiting for response" << std::endl;
-        return false;
+    std::future<ByBitMessages::OrderResponse> order_resp_future = it->second.order_resp_promise.get_future();
+    std::future<ByBitMessages::Execution> exec_future = it->second.exec_promise.get_future();
+    l.unlock();
+    if (order_resp_future.wait_for(ws_wait_timeout) == std::future_status::timeout) {
+        std::cout << "Timeout waiting for order_resp" << std::endl;
+        return std::nullopt;
     }
-    const auto response = response_future.get();
+    const auto order_resp = order_resp_future.get();
+    if (order_resp.qty != order.unsigned_volume()) {
+        std::cout << "Volume mismatch: expected " << order.unsigned_volume() << ", received " << order_resp.qty << std::endl;
+        return std::nullopt;
+    }
 
-    // TODO calculate slippage, check volume
+    if (exec_future.wait_for(ws_wait_timeout) == std::future_status::timeout) {
+        std::cout << "Timeout waiting for exec" << std::endl;
+        return std::nullopt;
+    }
+    const auto exec = exec_future.get();
+    if (exec.qty != order.unsigned_volume()) {
+        std::cout << "Volume mismatch: expected " << order.unsigned_volume() << ", received " << exec.qty << std::endl;
+        return std::nullopt;
+    }
 
-    return true;
+    std::cout << "Order successfully placed" << std::endl;
+
+    return exec;
 }
 
 void ByBitTradingGateway::on_ws_message_received(const std::string & message)
 {
     json j = json::parse(message);
     std::cout << "WS message received: " << message << std::endl;
-    OrderResponse response;
-    from_json(j, response);
+    if (j.find("op") != j.end()) {
+        const auto op = j.at("op");
+        const std::map<std::string, std::function<void(const json &)>> op_handlers = {
+                {"auth", [&](const json & j) { on_auth_response(j); }},
+                {"subscribe", [&](const json & j) { on_sub_response(j); }},
+        };
+        if (const auto it = op_handlers.find(op); it == op_handlers.end()) {
+            std::cout << "Unregistered operation: " << j.dump() << std::endl;
+            return;
+        }
+        else {
+            it->second(j);
+        }
+        return;
+    }
+    if (j.find("topic") != j.end()) {
+        const auto topic = j.at("topic");
+        const std::map<std::string, std::function<void(const json &)>> topic_handlers = {
+                {"order", [&](const json & j) { on_order_response(j); }},
+                {"execution", [&](const json & j) { on_execution(j); }},
+        };
+        if (const auto it = topic_handlers.find(topic); it == topic_handlers.end()) {
+            std::cout << "Unregistered topic: " << j.dump() << std::endl;
+            return;
+        }
+        else {
+            it->second(j);
+        }
+        return;
+    }
+    std::cout << "Unrecognized message: " << j.dump() << std::endl;
+}
 
-    const auto it = m_pending_orders.find(response.orderLinkId);
-    if (it != m_pending_orders.end()) {
-        // it->second.on_response(response);
-        m_pending_orders.erase(it);
+void ByBitTradingGateway::on_auth_response(const json & j)
+{
+    if (j.at("success") != true) {
+        std::cout << "Auth error: " << j.dump() << std::endl;
+        return;
+    }
+}
+
+void ByBitTradingGateway::on_order_response(const json & j)
+{
+    ByBitMessages::OrderResponseResult result;
+    from_json(j, result);
+
+    for (const auto & response : result.orders) {
+        std::lock_guard l(m_pending_orders_mutex);
+        const auto it = m_pending_orders.find(response.orderLinkId);
+        if (it != m_pending_orders.end()) {
+            auto & [order_id, pending_order] = *it;
+            auto & promise = pending_order.order_resp_promise;
+
+            promise.set_value(response);
+        }
+        else {
+            std::cout << "ERROR unsolicited order response" << std::endl;
+        }
+    }
+}
+
+void ByBitTradingGateway::on_sub_response(const json & j)
+{
+    if (j.at("success") != true) {
+        std::cout << "Subscription error: " << j.dump() << std::endl;
+        return;
+    }
+    std::cout << "Subscribed" << std::endl;
+}
+
+void ByBitTradingGateway::on_execution(const json & j) {
+    std::cout << "Execution successfull " << std::endl;
+
+    ByBitMessages::ExecutionResult result;
+    from_json(j, result);
+
+    for (const auto & response : result.executions) {
+        std::lock_guard l(m_pending_orders_mutex);
+        const auto it = m_pending_orders.find(response.orderLinkId);
+        if (it != m_pending_orders.end()) {
+            auto & [order_id, pending_order] = *it;
+            auto & promise = pending_order.exec_promise;
+
+            promise.set_value(response);
+        }
+        else {
+            std::cout << "ERROR unsolicited execution" << std::endl;
+        }
     }
 }

@@ -36,6 +36,7 @@ set(PROJECT_SOURCES
         ../crypto/src/WorkerThread.cpp
         ../crypto/src/ByBitTradingGateway.cpp
         ../crypto/src/RestClient.cpp
+        ../crypto/src/ByBitTradingMessages.cpp
 )
 
 qt_add_executable(frontend

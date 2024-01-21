@@ -2,15 +2,19 @@
 
 #include "Position.h"
 #include "RestClient.h"
+#include "ByBitTradingMessages.h"
 
-#include <future>
 #include <string>
 #include <websocketpp/client.hpp>
 #include <websocketpp/config/asio.hpp>
 #include <websocketpp/roles/client_endpoint.hpp>
 
-struct OrderResponseResult;
-struct OrderResponse;
+struct PendingOrder
+{
+    MarketOrder order;
+    std::promise<ByBitMessages::OrderResponse> order_resp_promise;
+    std::promise<ByBitMessages::Execution> exec_promise;
+};
 
 class ByBitTradingGateway
 {
@@ -24,7 +28,7 @@ class ByBitTradingGateway
 public:
     ByBitTradingGateway();
 
-    bool send_order_sync(const MarketOrder & order);
+    std::optional<ByBitMessages::Execution> send_order_sync(const MarketOrder & order);
 
 private:
     static std::string sign_message(const std::string & message, const std::string & secret);
@@ -32,6 +36,10 @@ private:
 
     void subscribe();
     void on_ws_message_received(const std::string & message);
+    void on_auth_response(const json & j);
+    void on_order_response(const json & j);
+    void on_sub_response(const json & j);
+    void on_execution(const json & j);
 
 private:
     std::string m_url;
@@ -42,9 +50,6 @@ private:
     WsClient client;
     WsClient::connection_ptr m_connection;
 
-    std::map<
-            std::string,
-            std::pair<std::promise<OrderResponse>,
-                      MarketOrder>>
-            m_pending_orders;
+    std::mutex m_pending_orders_mutex;
+    std::map<std::string, PendingOrder> m_pending_orders;
 };

@@ -9,8 +9,10 @@
 StrategyInstance::StrategyInstance(
         const MarketDataRequest & md_request,
         const std::shared_ptr<IStrategy> & strategy_ptr,
-        ByBitGateway & md_gateway)
+        ByBitGateway & md_gateway,
+        ByBitTradingGateway * tr_gateway)
     : m_md_gateway(md_gateway)
+    , m_tr_gateway(tr_gateway)
     , m_strategy(strategy_ptr)
     , m_md_request(md_request)
 {
@@ -107,12 +109,23 @@ void StrategyInstance::on_signal(const Signal & signal)
     }
 
     if (order_opt.has_value()) {
-        // m_tr_gateway.place_order(order_opt.value());
-        const auto fee_paid = ByBitGateway::get_taker_fee() * m_pos_currency_amount;
-        m_deposit -= fee_paid;
+        if (m_tr_gateway) {
+            const auto exec_opt = m_tr_gateway->send_order_sync(order_opt.value());
+            if (!exec_opt.has_value()) {
+                std::cout << "ERROR Failed to send order" << std::endl;
+                return;
+            }
+            const auto& exec = exec_opt.value();
+            const auto fee_paid = exec.execFee;
+
+            const auto slippage_delta = exec.execPrice - signal.price;
+            std::cout << "Slippage: " << slippage_delta << std::endl;
+            m_deposit -= fee_paid;
+        }
+
         m_strategy_result.update([&](StrategyResult & res) {
             res.trades_count++;
-            res.fees_paid += fee_paid;
+            // res.fees_paid += fee_paid; // TODO
         });
     }
 

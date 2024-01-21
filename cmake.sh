@@ -6,5 +6,10 @@ cd build
 export CC="clang"
 export CXX="clang++"
 
+np=$(nproc)
+res_np=$(expr $np - "1")
+$res_np
+
 cmake ../
-cmake --build . -j8
+echo "Using $res_np threads"
+cmake --build . -j$res_np
