@@ -2,6 +2,98 @@
 
 #include "ohlc.h"
 
+#include <future>
+#include <list>
+
+struct OrderResponse
+{
+    std::string category;
+    std::string symbol;
+    std::string orderId;
+    std::string orderLinkId;
+    std::string side;
+    std::string orderStatus;  // ":"Filled",
+    std::string cancelType;   // ":"UNKNOWN",
+    std::string rejectReason; // ":"EC_NoError",
+    std::string timeInForce;  // ":"IOC",
+    double price;             // ":"40323.7",
+    double qty;               // ":"0.002",
+    double leavesQty;         // ":"0",
+    double cumExecQty;        // ":"0.002",
+    double cumExecFee;        // ":"0 .046684",
+    std::string orderType;    // ":"Market",
+    std::string updatedTime;  // ":"1705336167611",
+    // "blockTradeId":"",
+    // "positionIdx":0,
+    // "isLeverage":"",
+    // "avgPrice":"42440",
+    // "leavesValue":"0",
+    // "cumExecValue":"84.88",
+    // "stopOrderType":"",
+    // "orderIv":"",
+    // "triggerPrice":"",
+    // "takeProfit":"",
+    // "stopLoss":"",
+    // "triggerBy":"",
+    // "tpTriggerBy":"",
+    // "slTriggerBy":"",
+    // "triggerDirect ion":0,
+    // "placeType":"",
+    // "lastPriceOnCreated":"42446",
+    // "closeOnTrigger":false,
+    // "reduceOnly":false,
+    // "smpGroup":0,
+    // "smpType":"None",
+    // "smpOrderId":"",
+    // "slLimitPrice":"0",
+    // "tpLimitPrice": "0",
+    // "tpslMode":"UNKNOWN",
+    // "createType":"CreateByUser",
+    // "marketUnit":"",
+    // "createdTime":"1705336167608",
+    // "feeCurrency":""
+};
+
+struct OrderResponseResult
+{
+    std::string id;
+    uint64_t creationTime;
+
+    std::list<OrderResponse> orders;
+};
+
+void from_json(const json & j, OrderResponse & order)
+{
+    j.at("category").get_to(order.category);
+    j.at("symbol").get_to(order.symbol);
+    j.at("orderId").get_to(order.orderId);
+    j.at("orderLinkId").get_to(order.orderLinkId);
+    j.at("side").get_to(order.side);
+    j.at("orderStatus").get_to(order.orderStatus);
+    j.at("cancelType").get_to(order.cancelType);
+    j.at("rejectReason").get_to(order.rejectReason);
+    j.at("timeInForce").get_to(order.timeInForce);
+    j.at("price").get_to(order.price);
+    j.at("qty").get_to(order.qty);
+    j.at("leavesQty").get_to(order.leavesQty);
+    j.at("cumExecQty").get_to(order.cumExecQty);
+    j.at("cumExecFee").get_to(order.cumExecFee);
+    j.at("orderType").get_to(order.orderType);
+    j.at("updatedTime").get_to(order.updatedTime);
+}
+
+void from_json(const json & j, OrderResponseResult & order)
+{
+    j.at("id").get_to(order.id);
+    j.at("creationTime").get_to(order.creationTime);
+
+    for (const auto & item : j.at("data")) {
+        OrderResponse order_response;
+        item.get_to(order_response);
+        order.orders.push_back(order_response);
+    }
+}
+
 ByBitTradingGateway::ByBitTradingGateway()
     : m_url("wss://stream-testnet.bybit.com/v5/private")
     , m_api_key("eGa7t3mip2WNVd9XiR")
@@ -124,35 +216,51 @@ bool ByBitTradingGateway::send_order_sync(const MarketOrder & order)
 
     const std::string order_id = std::to_string(ts);
     json json_order = {
-            {"category", "spot"},
+            {"category", "linear"},
             {"symbol", order.symbol()},
             {"side", order.side_str()},
             {"orderType", "Market"},
-            {"marketUnit","quoteCoin"},
             {"qty", std::to_string(order.unsigned_volume())},
             {"timeInForce", "IOC"},
             {"orderLinkId", order_id},
-            {"isLeverage", 0},
             {"orderFilter", "Order"},
     };
 
     const auto request = json_order.dump();
 
-    const auto [it, success] = m_pending_orders.try_emplace(order_id, order);
+    const auto [it, success] = m_pending_orders.try_emplace(order_id, std::promise<OrderResponse>(), order);
     if (!success) {
         std::cout << "Trying to send order while order_id already exists: " << order_id << std::endl;
         return false;
     }
     const std::string url = "https://api-testnet.bybit.com/v5/order/create";
-    auto response_future = rest_client.request_auth_async(url, request, m_api_key, m_secret_key);
-    response_future.wait();
-    const std::string response = response_future.get();
-    std::cout << "REST Trading Response: " << response << std::endl;
+    auto request_future = rest_client.request_auth_async(url, request, m_api_key, m_secret_key);
+    request_future.wait();
+    const std::string request_result = request_future.get();
+    std::cout << "REST Trading Response: " << request_result << std::endl;
+
+    auto response_future = it->second.first.get_future();
+    if (response_future.wait_for(ws_wait_timeout) == std::future_status::timeout) {
+        std::cout << "Timeout waiting for response" << std::endl;
+        return false;
+    }
+    const auto response = response_future.get();
+
+    // TODO calculate slippage, check volume
 
     return true;
 }
 
 void ByBitTradingGateway::on_ws_message_received(const std::string & message)
 {
+    json j = json::parse(message);
     std::cout << "WS message received: " << message << std::endl;
+    OrderResponse response;
+    from_json(j, response);
+
+    const auto it = m_pending_orders.find(response.orderLinkId);
+    if (it != m_pending_orders.end()) {
+        // it->second.on_response(response);
+        m_pending_orders.erase(it);
+    }
 }

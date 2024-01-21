@@ -3,10 +3,14 @@
 #include "Position.h"
 #include "RestClient.h"
 
+#include <future>
 #include <string>
 #include <websocketpp/client.hpp>
 #include <websocketpp/config/asio.hpp>
 #include <websocketpp/roles/client_endpoint.hpp>
+
+struct OrderResponseResult;
+struct OrderResponse;
 
 class ByBitTradingGateway
 {
@@ -14,6 +18,8 @@ class ByBitTradingGateway
     using WsClient = websocketpp::client<WsConfigClient>;
     using message_ptr = WsConfigClient::message_type::ptr;
     using context_ptr = websocketpp::lib::shared_ptr<boost::asio::ssl::context>;
+
+    static constexpr std::chrono::seconds ws_wait_timeout = std::chrono::seconds(5);
 
 public:
     ByBitTradingGateway();
@@ -36,5 +42,9 @@ private:
     WsClient client;
     WsClient::connection_ptr m_connection;
 
-    std::map<std::string, MarketOrder> m_pending_orders;
+    std::map<
+            std::string,
+            std::pair<std::promise<OrderResponse>,
+                      MarketOrder>>
+            m_pending_orders;
 };

@@ -367,7 +367,7 @@ using context_ptr = websocketpp::lib::shared_ptr<boost::asio::ssl::context>;
 
 void MainWindow::on_pb_test_clicked()
 {
-    MarketOrder order("BTCUSDT", 10, Side::Sell);
+    MarketOrder order("BTCUSDT", 0.002, Side::Sell);
     m_trading_gateway.send_order_sync(order);
 }
 
