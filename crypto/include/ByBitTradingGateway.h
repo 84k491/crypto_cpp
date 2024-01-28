@@ -3,7 +3,9 @@
 #include "Position.h"
 #include "RestClient.h"
 #include "ByBitTradingMessages.h"
+#include "WorkerThread.h"
 
+#include <memory>
 #include <string>
 #include <websocketpp/client.hpp>
 #include <websocketpp/config/asio.hpp>
@@ -37,9 +39,12 @@ private:
     void subscribe();
     void on_ws_message_received(const std::string & message);
     void on_auth_response(const json & j);
+    void on_ping_response(const json & j);
     void on_order_response(const json & j);
     void on_sub_response(const json & j);
     void on_execution(const json & j);
+
+    void send_ping();
 
 private:
     std::string m_url;
@@ -47,8 +52,10 @@ private:
     std::string m_secret_key;
 
     RestClient rest_client;
-    WsClient client;
+    WsClient m_client;
     WsClient::connection_ptr m_connection;
+
+    std::unique_ptr<WorkerThreadLoop> m_ping_worker;
 
     std::mutex m_pending_orders_mutex;
     std::map<std::string, PendingOrder> m_pending_orders;

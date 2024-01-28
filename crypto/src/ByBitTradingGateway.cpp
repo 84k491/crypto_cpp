@@ -2,6 +2,7 @@
 
 #include "ScopeExit.h"
 #include "ohlc.h"
+
 #include <mutex>
 
 ByBitTradingGateway::ByBitTradingGateway()
@@ -18,12 +19,12 @@ void ByBitTradingGateway::subscribe()
         std::cout << "websocket thread start" << std::endl;
 
         // Set logging to be pretty verbose (everything except message payloads)
-        client.set_access_channels(websocketpp::log::alevel::all);
-        client.clear_access_channels(websocketpp::log::alevel::frame_payload);
+        m_client.set_access_channels(websocketpp::log::alevel::all);
+        m_client.clear_access_channels(websocketpp::log::alevel::frame_payload);
 
         // Initialize ASIO
-        client.init_asio();
-        client.set_tls_init_handler([](const auto &) -> context_ptr {
+        m_client.init_asio();
+        m_client.set_tls_init_handler([](const auto &) -> context_ptr {
             context_ptr ctx = websocketpp::lib::make_shared<boost::asio::ssl::context>(boost::asio::ssl::context::sslv23);
 
             try {
@@ -39,27 +40,27 @@ void ByBitTradingGateway::subscribe()
         });
 
         // Register our message handler
-        client.set_message_handler([this](auto, auto msg_ptr) {
+        m_client.set_message_handler([this](auto, auto msg_ptr) {
             const auto payload_string = msg_ptr->get_payload();
             on_ws_message_received(payload_string);
         });
-        client.set_open_handler([this](auto con_ptr) {
+        m_client.set_open_handler([this](auto con_ptr) {
             std::cout << "Sending message" << std::endl;
             std::string auth_msg = build_auth_message();
             std::string subscription_message = R"({"op": "subscribe", "args": ["order", "execution"]})";
             try {
-                client.send(con_ptr, auth_msg, websocketpp::frame::opcode::text);
-                client.send(con_ptr, subscription_message, websocketpp::frame::opcode::text);
+                m_client.send(con_ptr, auth_msg, websocketpp::frame::opcode::text);
+                m_client.send(con_ptr, subscription_message, websocketpp::frame::opcode::text);
             }
             catch (std::exception & e) {
                 std::cout << e.what() << std::endl;
-                return 0;
             }
+
             return 0;
         });
 
         websocketpp::lib::error_code ec;
-        m_connection = client.get_connection(m_url, ec);
+        m_connection = m_client.get_connection(m_url, ec);
         if (ec) {
             std::cout << "could not create connection because: " << ec.message() << std::endl;
             return 0;
@@ -67,18 +68,30 @@ void ByBitTradingGateway::subscribe()
 
         // Note that connect here only requests a connection. No network messages are
         // exchanged until the event loop starts running in the next line.
-        client.connect(m_connection);
+        m_client.connect(m_connection);
 
         // Start the ASIO io_service run loop
         // this will cause a single connection to be made to the server. c.run()
         // will exit when this connection is closed.
         std::cout << "Running WS client" << std::endl;
-        client.run();
+        m_client.run();
 
         std::cout << "websocket client stopped" << std::endl;
         return 0;
     });
     t.detach();
+}
+
+void ByBitTradingGateway::send_ping()
+{
+    std::cout << "Sending ping" << std::endl;
+    std::string ping_message = R"({"op": "ping"})";
+    try {
+        m_client.send(m_connection, ping_message, websocketpp::frame::opcode::text);
+    }
+    catch (std::exception & e) {
+        std::cout << "ERROR on sending ping" << e.what() << std::endl;
+    }
 }
 
 std::string ByBitTradingGateway::sign_message(const std::string & message, const std::string & secret)
@@ -140,11 +153,10 @@ std::optional<ByBitMessages::Execution> ByBitTradingGateway::send_order_sync(con
 
     std::unique_lock l(m_pending_orders_mutex);
     const auto [it, success] = m_pending_orders.try_emplace(
-        order_id,
-        order,
-        std::promise<ByBitMessages::OrderResponse>(),
-        std::promise<ByBitMessages::Execution>()
-    );
+            order_id,
+            order,
+            std::promise<ByBitMessages::OrderResponse>(),
+            std::promise<ByBitMessages::Execution>());
 
     if (!success) {
         std::cout << "Trying to send order while order_id already exists: " << order_id << std::endl;
@@ -198,6 +210,7 @@ void ByBitTradingGateway::on_ws_message_received(const std::string & message)
         const std::map<std::string, std::function<void(const json &)>> op_handlers = {
                 {"auth", [&](const json & j) { on_auth_response(j); }},
                 {"subscribe", [&](const json & j) { on_sub_response(j); }},
+                {"pong", [&](const json & j) { on_ping_response(j); }},
         };
         if (const auto it = op_handlers.find(op); it == op_handlers.end()) {
             std::cout << "Unregistered operation: " << j.dump() << std::endl;
@@ -224,6 +237,11 @@ void ByBitTradingGateway::on_ws_message_received(const std::string & message)
         return;
     }
     std::cout << "Unrecognized message: " << j.dump() << std::endl;
+}
+
+void ByBitTradingGateway::on_ping_response(const json & j)
+{
+    std::cout << "Pong received: " << j << std::endl;
 }
 
 void ByBitTradingGateway::on_auth_response(const json & j)
@@ -261,9 +279,20 @@ void ByBitTradingGateway::on_sub_response(const json & j)
         return;
     }
     std::cout << "Subscribed" << std::endl;
+    m_ping_worker = std::make_unique<WorkerThreadLoop>(
+            [this](const std::atomic_bool & running) -> bool {
+                constexpr std::chrono::seconds ping_interval = std::chrono::seconds(20);
+                const auto start = std::chrono::steady_clock::now();
+                while (running && std::chrono::steady_clock::now() - start < ping_interval) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                }
+                send_ping();
+                return true;
+            });
 }
 
-void ByBitTradingGateway::on_execution(const json & j) {
+void ByBitTradingGateway::on_execution(const json & j)
+{
     std::cout << "Execution successfull " << std::endl;
 
     ByBitMessages::ExecutionResult result;
