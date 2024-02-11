@@ -112,9 +112,17 @@ struct SymbolResponse
     Result result;
 };
 
+void from_json(const json & j, Symbol::LotSizeFilter & size_filter)
+{
+    size_filter.max_qty = std::stod(j.at("maxOrderQty").get<std::string>());
+    size_filter.min_qty = std::stod(j.at("minOrderQty").get<std::string>());
+    size_filter.qty_step = std::stod(j.at("qtyStep").get<std::string>());
+}
+
 void from_json(const json & j, Symbol & symbol)
 {
     j.at("symbol").get_to(symbol.symbol_name);
+    j.at("lotSizeFilter").get_to(symbol.lot_size_filter);
 }
 
 void from_json(const json & j, SymbolResponse::Result & symbol_result)
@@ -310,7 +318,7 @@ bool ByBitGateway::request_historical_klines(const std::string & symbol, const T
 
 std::vector<Symbol> ByBitGateway::get_symbols(const std::string & currency)
 {
-    const std::string category = "spot";
+    const std::string category = "linear";
     const unsigned limit = 1000;
 
     const std::string url = [&]() {

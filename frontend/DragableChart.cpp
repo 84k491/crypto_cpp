@@ -1,5 +1,6 @@
 #include "DragableChart.h"
 
+#include <iostream>
 #include <qcoreevent.h>
 #include <qnamespace.h>
 
@@ -159,6 +160,7 @@ void DragableChart::push_series_value(
         std::chrono::milliseconds ts,
         double data)
 {
+    std::cout << "Pushing value in chart: " << series_name << " " << ts.count() << " " << data << std::endl;
     QLineSeries * series = nullptr;
     auto it = m_internal_series.find(series_name);
     if (it != m_internal_series.end()) {

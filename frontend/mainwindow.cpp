@@ -6,6 +6,7 @@
 #include "JsonStrategyConfig.h"
 #include "Optimizer.h"
 #include "StrategyInstance.h"
+#include "Symbol.h"
 #include "WorkStatus.h"
 
 #include <nlohmann/json.hpp>
@@ -86,6 +87,7 @@ MainWindow::MainWindow(QWidget * parent)
 
     ui->cb_strategy->addItem("DoubleSma");
     ui->cb_strategy->addItem("BollingerBands");
+    ui->cb_strategy->addItem("DebugEveryTick");
 
     const auto symbols = m_gateway.get_symbols("USDT");
     for (const auto & symbol : symbols) {
@@ -124,7 +126,7 @@ void MainWindow::on_pb_run_clicked()
         return;
     }
 
-    const auto md_request = [&](){
+    const auto md_request = [&]() {
         MarketDataRequest result;
         if (ui->cb_live->isChecked()) {
             result.go_live = true;
@@ -139,7 +141,22 @@ void MainWindow::on_pb_run_clicked()
         return result;
     }();
 
+    const auto symbol = [&]() -> std::optional<Symbol> {
+        const auto symbols = m_gateway.get_symbols("USDT");
+        for (const auto & s : symbols) {
+            if (s.symbol_name == ui->cb_symbol->currentText().toStdString()) {
+                return s;
+            }
+        }
+        return std::nullopt;
+    }();
+    if (!symbol.has_value()) {
+        std::cout << "ERROR Invalid symbol on starting strategy" << std::endl;
+        return;
+    }
+
     m_strategy_instance = std::make_unique<StrategyInstance>(
+            symbol.value(),
             md_request,
             strategy_ptr_opt.value(),
             m_gateway,
@@ -191,7 +208,7 @@ void MainWindow::on_pb_run_clicked()
                 }
                 }
             }));
-    m_strategy_instance->run_async(Symbol{ui->cb_symbol->currentText().toStdString()});
+    m_strategy_instance->run_async();
     std::cout << "strategy started" << std::endl;
 }
 
@@ -257,10 +274,25 @@ void MainWindow::on_pb_optimize_clicked()
     }
     const auto & timerange = *timerange_opt;
 
-    std::thread t([this, timerange, json_data]() {
+    const auto symbol = [&]() -> std::optional<Symbol> {
+        const auto symbols = m_gateway.get_symbols("USDT");
+        for (const auto & s : symbols) {
+            if (s.symbol_name == ui->cb_symbol->currentText().toStdString()) {
+                return s;
+            }
+        }
+        return std::nullopt;
+    }();
+
+    if (!symbol.has_value()) {
+        std::cout << "ERROR Invalid symbol on starting optimizer" << std::endl;
+        return;
+    }
+
+    std::thread t([this, timerange, json_data, symbol]() {
         Optimizer optimizer(
                 m_gateway,
-                Symbol{ui->cb_symbol->currentText().toStdString()},
+                symbol.value(),
                 timerange,
                 *json_data);
 
@@ -281,6 +313,9 @@ void MainWindow::setup_specific_parameters(const JsonStrategyMetaInfo & strategy
     m_strategy_parameters_spinboxes.clear();
 
     m_last_set_strategy_parameters = strategy_parameters;
+    if (!strategy_parameters.got_parameters()) {
+        return;
+    }
     const auto params = strategy_parameters.get()["parameters"].get<std::vector<nlohmann::json>>();
     auto * top_layout = new QVBoxLayout();
 
@@ -360,84 +395,8 @@ DragableChart & MainWindow::get_or_create_chart(const std::string & chart_name)
     return *new_chart;
 }
 
-using WsConfigClient = websocketpp::config::asio_tls;
-using WsClient = websocketpp::client<WsConfigClient>;
-// pull out the type of messages sent by our config
-using message_ptr = WsConfigClient::message_type::ptr;
-using context_ptr = websocketpp::lib::shared_ptr<boost::asio::ssl::context>;
-
 void MainWindow::on_pb_test_clicked()
 {
     MarketOrder order("BTCUSDT", 0.002, Side::Sell);
     m_trading_gateway.send_order_sync(order);
-}
-
-auto test()
-{
-    std::thread t([]() {
-        std::cout << "websocket test begin" << std::endl;
-
-        WsClient client;
-        std::string url = "wss://stream-testnet.bybit.com/v5/public/spot";
-
-        // Set logging to be pretty verbose (everything except message payloads)
-        client.set_access_channels(websocketpp::log::alevel::all);
-        client.clear_access_channels(websocketpp::log::alevel::frame_payload);
-
-        // Initialize ASIO
-        client.init_asio();
-        client.set_tls_init_handler([](const auto &) -> context_ptr {
-            context_ptr ctx = websocketpp::lib::make_shared<boost::asio::ssl::context>(boost::asio::ssl::context::sslv23);
-
-            try {
-                ctx->set_options(boost::asio::ssl::context::default_workarounds |
-                                 boost::asio::ssl::context::no_sslv2 |
-                                 boost::asio::ssl::context::no_sslv3 |
-                                 boost::asio::ssl::context::single_dh_use);
-            }
-            catch (std::exception & e) {
-                std::cout << e.what() << std::endl;
-            }
-            return ctx;
-        });
-
-        // Register our message handler
-        client.set_message_handler([](auto, auto msg_ptr) {
-            const auto payload_string = msg_ptr->get_payload();
-            std::cout << payload_string << std::endl;
-        });
-        client.set_open_handler([&client](auto con_ptr) {
-            std::cout << "Sending message" << std::endl;
-            std::string message = R"({ "req_id": "test", "op": "subscribe", "args": [ "orderbook.1.BTCUSDT" ] })";
-            try {
-                client.send(con_ptr, message, websocketpp::frame::opcode::text);
-            }
-            catch (std::exception & e) {
-                std::cout << e.what() << std::endl;
-                return 0;
-            }
-            return 0;
-        });
-
-        websocketpp::lib::error_code ec;
-        WsClient::connection_ptr con = client.get_connection(url, ec);
-        if (ec) {
-            std::cout << "could not create connection because: " << ec.message() << std::endl;
-            return 0;
-        }
-
-        // Note that connect here only requests a connection. No network messages are
-        // exchanged until the event loop starts running in the next line.
-        client.connect(con);
-
-        // Start the ASIO io_service run loop
-        // this will cause a single connection to be made to the server. c.run()
-        // will exit when this connection is closed.
-        std::cout << "Running WS client" << std::endl;
-        client.run();
-
-        std::cout << "websocket test end" << std::endl;
-        return 0;
-    });
-    t.detach();
 }

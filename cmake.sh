@@ -8,7 +8,6 @@ export CXX="clang++"
 
 np=$(nproc)
 res_np=$(expr $np - "1")
-$res_np
 
 cmake ../
 echo "Using $res_np threads"

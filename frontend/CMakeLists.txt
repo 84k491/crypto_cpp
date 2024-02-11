@@ -37,6 +37,7 @@ set(PROJECT_SOURCES
         ../crypto/src/ByBitTradingGateway.cpp
         ../crypto/src/RestClient.cpp
         ../crypto/src/ByBitTradingMessages.cpp
+        ../crypto/src/DebugEveryTickStrategy.cpp
 )
 
 qt_add_executable(frontend

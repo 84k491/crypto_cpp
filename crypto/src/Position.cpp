@@ -10,21 +10,33 @@ Side side_from_absolute_volume(double absolute_volume)
     return Side::Sell;
 }
 
-std::pair<std::optional<MarketOrder>, std::optional<PositionResult>> Position::open_or_move(std::chrono::milliseconds ts, double target_volume, double price)
+std::pair<std::optional<MarketOrder>, std::optional<PositionResult>>
+Position::open_or_move(std::chrono::milliseconds ts, double target_volume, double price)
 {
-    if (0. == target_volume) {
+    const auto adjusted_target_volume_opt = m_symbol.get_qty_floored(target_volume);
+    if (!adjusted_target_volume_opt.has_value()) {
+        std::cout
+                << "ERROR can't get proper volume on open_or_move, target_volume = "
+                << target_volume
+                << ", price_step: "
+                << m_symbol.lot_size_filter.qty_step << std::endl;
+        return {std::nullopt, std::nullopt};
+    }
+    const auto adjusted_target_volume = adjusted_target_volume_opt.value();
+
+    if (0. == adjusted_target_volume) {
         std::cout << "ERROR: closing on open_or_move" << std::endl;
         return {std::nullopt, std::nullopt};
     }
 
     if (m_opened_position.has_value()) {
-        if (m_opened_position.value().absolute_volume() == target_volume) {
+        if (m_opened_position.value().absolute_volume() == adjusted_target_volume) {
             return {std::nullopt, std::nullopt};
         }
 
-        if (m_opened_position.value().side() == side_from_absolute_volume(target_volume)) {
+        if (m_opened_position.value().side() == side_from_absolute_volume(adjusted_target_volume)) {
             // just moving the position
-            const auto volume_delta = target_volume - m_opened_position.value().absolute_volume();
+            const auto volume_delta = adjusted_target_volume - m_opened_position.value().absolute_volume();
             return {MarketOrder{
                             "BTCUSDT", // TODO
                             std::abs(volume_delta),
@@ -39,20 +51,20 @@ std::pair<std::optional<MarketOrder>, std::optional<PositionResult>> Position::o
             return {std::nullopt, std::nullopt};
         }
         auto & [order, res] = order_and_res_opt.value();
-        m_opened_position = OpenedPosition(ts, target_volume, price);
+        m_opened_position = OpenedPosition(ts, adjusted_target_volume, price);
         const auto open_order = MarketOrder{
                 "BTCUSDT", // TODO
-                std::abs(target_volume),
-                side_from_absolute_volume(target_volume)};
+                std::abs(adjusted_target_volume),
+                side_from_absolute_volume(adjusted_target_volume)};
         order += open_order;
         return {order, res};
     }
 
-    m_opened_position = OpenedPosition(ts, target_volume, price);
+    m_opened_position = OpenedPosition(ts, adjusted_target_volume, price);
     return {MarketOrder{
                     "BTCUSDT", // TODO
-                    std::abs(target_volume),
-                    side_from_absolute_volume(target_volume)},
+                    std::abs(adjusted_target_volume),
+                    side_from_absolute_volume(adjusted_target_volume)},
             std::nullopt};
 }
 

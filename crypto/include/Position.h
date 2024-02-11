@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Enums.h"
+#include "Symbol.h"
 
 #include <chrono>
 #include <optional>
@@ -48,7 +49,10 @@ class Position
     };
 
 public:
-    using PnlType = double;
+    Position(Symbol symbol)
+        : m_symbol(std::move(symbol))
+    {
+    }
 
     [[nodiscard]] std::pair<std::optional<MarketOrder>, std::optional<PositionResult>> open_or_move(
             std::chrono::milliseconds ts,
@@ -66,4 +70,5 @@ public:
 
 private:
     std::optional<OpenedPosition> m_opened_position;
+    const Symbol m_symbol;
 };

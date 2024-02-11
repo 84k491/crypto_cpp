@@ -19,7 +19,8 @@ public:
     using KlineCallback = std::function<void(std::pair<std::chrono::milliseconds, OHLC>)>;
     using DepoCallback = std::function<void(std::chrono::milliseconds ts, double value)>;
 
-    StrategyInstance(const MarketDataRequest & md_request,
+    StrategyInstance(const Symbol &symbol,
+                     const MarketDataRequest & md_request,
                      const std::shared_ptr<IStrategy> & strategy_ptr,
                      ByBitGateway & md_gateway,
                      ByBitTradingGateway * tr_gateway);
@@ -31,7 +32,7 @@ public:
     ObjectPublisher<StrategyResult> & strategy_result_publisher();
     ObjectPublisher<WorkStatus> & status_publisher();
 
-    void run_async(const Symbol & symbol);
+    void run_async();
     void stop_async();
     void wait_for_finish();
 
@@ -53,6 +54,7 @@ private:
 
     std::shared_ptr<TimeseriesSubsription<OHLC>> m_kline_sub;
 
+    const Symbol m_symbol;
     static constexpr double m_pos_currency_amount = 100.;
     Position m_position;
 

@@ -7,6 +7,7 @@
 #include <optional>
 
 StrategyInstance::StrategyInstance(
+        const Symbol & symbol,
         const MarketDataRequest & md_request,
         const std::shared_ptr<IStrategy> & strategy_ptr,
         ByBitGateway & md_gateway,
@@ -14,6 +15,8 @@ StrategyInstance::StrategyInstance(
     : m_md_gateway(md_gateway)
     , m_tr_gateway(tr_gateway)
     , m_strategy(strategy_ptr)
+    , m_symbol(symbol)
+    , m_position(symbol)
     , m_md_request(md_request)
 {
     m_strategy_result.update([&](StrategyResult & res) {
@@ -21,10 +24,10 @@ StrategyInstance::StrategyInstance(
     });
 }
 
-void StrategyInstance::run_async(const Symbol & symbol)
+void StrategyInstance::run_async()
 {
     auto kline_sub_opt = m_md_gateway.subscribe_for_klines(
-            symbol.symbol_name,
+            m_symbol.symbol_name,
             [this](std::chrono::milliseconds ts, const OHLC & ohlc) {
                 m_klines_publisher.push(ts, ohlc);
                 const auto signal = m_strategy->push_price({ts, ohlc.close});
@@ -109,13 +112,13 @@ void StrategyInstance::on_signal(const Signal & signal)
     }
 
     if (order_opt.has_value()) {
-        if (m_tr_gateway) {
+        if (m_tr_gateway != nullptr) {
             const auto exec_opt = m_tr_gateway->send_order_sync(order_opt.value());
             if (!exec_opt.has_value()) {
                 std::cout << "ERROR Failed to send order" << std::endl;
                 return;
             }
-            const auto& exec = exec_opt.value();
+            const auto & exec = exec_opt.value();
             const auto fee_paid = exec.execFee;
 
             const auto slippage_delta = exec.execPrice - signal.price;

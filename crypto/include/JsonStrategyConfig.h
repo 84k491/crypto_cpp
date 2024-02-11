@@ -27,6 +27,7 @@ public:
     }
 
     const auto & get() const { return m_meta_info; }
+    bool got_parameters() const { return m_meta_info.find("parameters") != m_meta_info.end(); }
 
 private:
     nlohmann::json m_meta_info;

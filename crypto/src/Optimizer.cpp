@@ -79,8 +79,8 @@ std::optional<JsonStrategyConfig> Optimizer::optimize()
             return result;
         }();
 
-        StrategyInstance strategy_instance(md_request, strategy_opt.value(), m_gateway, nullptr);
-        strategy_instance.run_async(m_symbol);
+        StrategyInstance strategy_instance(m_symbol, md_request, strategy_opt.value(), m_gateway, nullptr);
+        strategy_instance.run_async();
         strategy_instance.wait_for_finish();
         const auto profit = strategy_instance.strategy_result_publisher().get().final_profit;
         if (max_profit < profit) {
