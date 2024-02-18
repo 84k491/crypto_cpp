@@ -131,7 +131,7 @@ std::string ByBitTradingGateway::build_auth_message() const
     return auth_msg.dump();
 }
 
-std::optional<ByBitMessages::Execution> ByBitTradingGateway::send_order_sync(const MarketOrder & order)
+bool ByBitTradingGateway::send_order_sync(const MarketOrder & order)
 {
     int64_t ts = std::chrono::duration_cast<std::chrono::milliseconds>(
                          std::chrono::system_clock::now().time_since_epoch())
@@ -154,13 +154,11 @@ std::optional<ByBitMessages::Execution> ByBitTradingGateway::send_order_sync(con
     std::unique_lock l(m_pending_orders_mutex);
     const auto [it, success] = m_pending_orders.try_emplace(
             order_id,
-            order,
-            std::promise<ByBitMessages::OrderResponse>(),
-            std::promise<ByBitMessages::Execution>());
+            order);
 
     if (!success) {
         std::cout << "Trying to send order while order_id already exists: " << order_id << std::endl;
-        return std::nullopt;
+        return false;
     }
     ScopeExit se([&]() {
         l.lock();
@@ -173,32 +171,22 @@ std::optional<ByBitMessages::Execution> ByBitTradingGateway::send_order_sync(con
     const std::string request_result = request_future.get();
     std::cout << "REST Trading Response: " << request_result << std::endl;
 
-    std::future<ByBitMessages::OrderResponse> order_resp_future = it->second.order_resp_promise.get_future();
-    std::future<ByBitMessages::Execution> exec_future = it->second.exec_promise.get_future();
-    l.unlock();
-    if (order_resp_future.wait_for(ws_wait_timeout) == std::future_status::timeout) {
-        std::cout << "Timeout waiting for order_resp" << std::endl;
-        return std::nullopt;
-    }
-    const auto order_resp = order_resp_future.get();
-    if (order_resp.qty != order.unsigned_volume()) {
-        std::cout << "Volume mismatch: expected " << order.unsigned_volume() << ", received " << order_resp.qty << std::endl;
-        return std::nullopt;
-    }
-
-    if (exec_future.wait_for(ws_wait_timeout) == std::future_status::timeout) {
-        std::cout << "Timeout waiting for exec" << std::endl;
-        return std::nullopt;
-    }
-    const auto exec = exec_future.get();
-    if (exec.qty != order.unsigned_volume()) {
-        std::cout << "Volume mismatch: expected " << order.unsigned_volume() << ", received " << exec.qty << std::endl;
-        return std::nullopt;
+    {
+        std::future<bool> success_future = it->second.success_promise.get_future();
+        l.unlock();
+        if (success_future.wait_for(ws_wait_timeout) == std::future_status::timeout) {
+            std::cout << "Timeout waiting for order_resp" << std::endl;
+            return false;
+        }
+        if (!success_future.get()) {
+            std::cout << "Order failed" << order_id << std::endl;
+            return false;
+        }
     }
 
     std::cout << "Order successfully placed" << std::endl;
 
-    return exec;
+    return true;
 }
 
 void ByBitTradingGateway::on_ws_message_received(const std::string & message)
@@ -259,12 +247,18 @@ void ByBitTradingGateway::on_order_response(const json & j)
 
     for (const auto & response : result.orders) {
         std::lock_guard l(m_pending_orders_mutex);
-        const auto it = m_pending_orders.find(response.orderLinkId);
+        const auto order_id_str = response.orderLinkId;
+        const auto it = m_pending_orders.find(order_id_str);
         if (it != m_pending_orders.end()) {
             auto & [order_id, pending_order] = *it;
-            auto & promise = pending_order.order_resp_promise;
+            pending_order.m_acked = true;
 
-            promise.set_value(response);
+            if (pending_order.m_volume_to_fill <= 0) {
+                auto & promise = pending_order.success_promise;
+                promise.set_value(true);
+                return;
+            }
+            std::cout << "Recevied ack for pending_order: " << order_id << "but it's not filled yet" << std::endl;
         }
         else {
             std::cout << "ERROR unsolicited order response" << std::endl;
@@ -303,9 +297,14 @@ void ByBitTradingGateway::on_execution(const json & j)
         const auto it = m_pending_orders.find(response.orderLinkId);
         if (it != m_pending_orders.end()) {
             auto & [order_id, pending_order] = *it;
-            auto & promise = pending_order.exec_promise;
+            std::cout << "Recevied execution of " << response.qty << " for order: " << order_id << std::endl;
 
-            promise.set_value(response);
+            pending_order.m_volume_to_fill -= response.qty;
+            if (pending_order.m_volume_to_fill <= 0 && pending_order.m_acked) {
+                auto & promise = pending_order.success_promise;
+                promise.set_value(true);
+                return;
+            }
         }
         else {
             std::cout << "ERROR unsolicited execution" << std::endl;

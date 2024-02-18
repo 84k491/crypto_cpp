@@ -113,17 +113,16 @@ void StrategyInstance::on_signal(const Signal & signal)
 
     if (order_opt.has_value()) {
         if (m_tr_gateway != nullptr) {
-            const auto exec_opt = m_tr_gateway->send_order_sync(order_opt.value());
-            if (!exec_opt.has_value()) {
+            const auto success = m_tr_gateway->send_order_sync(order_opt.value());
+            if (!success) {
                 std::cout << "ERROR Failed to send order" << std::endl;
                 return;
             }
-            const auto & exec = exec_opt.value();
-            const auto fee_paid = exec.execFee;
+            // const auto fee_paid = exec.execFee; // TODO
 
-            const auto slippage_delta = exec.execPrice - signal.price;
-            std::cout << "Slippage: " << slippage_delta << std::endl;
-            m_deposit -= fee_paid;
+            // const auto slippage_delta = exec.execPrice - signal.price;
+            // std::cout << "Slippage: " << slippage_delta << std::endl;
+            // m_deposit -= fee_paid;
         }
 
         m_strategy_result.update([&](StrategyResult & res) {

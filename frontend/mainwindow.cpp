@@ -397,6 +397,6 @@ DragableChart & MainWindow::get_or_create_chart(const std::string & chart_name)
 
 void MainWindow::on_pb_test_clicked()
 {
-    MarketOrder order("BTCUSDT", 0.002, Side::Sell);
-    m_trading_gateway.send_order_sync(order);
+    // MarketOrder order("BTCUSDT", 0.002, Side::Sell);
+    // m_trading_gateway.send_order_sync(order);
 }

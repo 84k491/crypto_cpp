@@ -1,8 +1,8 @@
 #pragma once
 
+#include "ByBitTradingMessages.h"
 #include "Position.h"
 #include "RestClient.h"
-#include "ByBitTradingMessages.h"
 #include "WorkerThread.h"
 
 #include <memory>
@@ -13,9 +13,16 @@
 
 struct PendingOrder
 {
-    MarketOrder order;
-    std::promise<ByBitMessages::OrderResponse> order_resp_promise;
-    std::promise<ByBitMessages::Execution> exec_promise;
+    PendingOrder(const MarketOrder & order)
+        : m_order(order)
+        , m_volume_to_fill(order.unsigned_volume())
+    {
+    }
+    MarketOrder m_order;
+    std::promise<bool> success_promise;
+
+    double m_volume_to_fill;
+    bool m_acked = false;
 };
 
 class ByBitTradingGateway
@@ -30,7 +37,7 @@ class ByBitTradingGateway
 public:
     ByBitTradingGateway();
 
-    std::optional<ByBitMessages::Execution> send_order_sync(const MarketOrder & order);
+    bool send_order_sync(const MarketOrder & order);
 
 private:
     static std::string sign_message(const std::string & message, const std::string & secret);
