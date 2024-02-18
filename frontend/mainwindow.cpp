@@ -230,8 +230,8 @@ void MainWindow::render_result(StrategyResult result)
     ui->lb_trades_count->setText(QString::number(result.trades_count));
     ui->lb_fees_paid->setText(QString::number(result.fees_paid));
     ui->lb_profit_per_trade->setText(QString::number(result.profit_per_trade()));
-    ui->lb_best_profit->setText(QString::number(result.best_profit_trade));
-    ui->lb_worst_loss->setText(QString::number(result.worst_loss_trade));
+    ui->lb_best_profit->setText(QString::number(result.best_profit_trade.value_or(0.0)));
+    ui->lb_worst_loss->setText(QString::number(result.worst_loss_trade.value_or(0.0)));
     ui->lb_max_depo->setText(QString::number(result.max_depo));
     ui->lb_min_depo->setText(QString::number(result.min_depo));
     ui->lb_longest_profit_pos->setText(QString::number(result.longest_profit_trade_time.count()));

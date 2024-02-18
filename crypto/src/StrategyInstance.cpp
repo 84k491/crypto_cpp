@@ -56,13 +56,12 @@ void StrategyInstance::wait_for_finish()
         const auto order_and_res_opt = m_position.close(m_last_signal.value().timestamp, m_last_signal.value().price);
         if (order_and_res_opt.has_value()) {
             const auto [order, res] = order_and_res_opt.value();
-            m_deposit += res.pnl;
-            m_depo_publisher.push(m_last_signal.value().timestamp, m_deposit);
+            m_strategy_result.update([&](StrategyResult & str_res) {
+                str_res.final_profit += res.pnl;
+            });
+            m_depo_publisher.push(m_last_signal.value().timestamp, m_strategy_result.get().final_profit);
         }
     }
-    m_strategy_result.update([&](StrategyResult & res) {
-        res.final_profit = m_deposit;
-    });
 }
 
 void StrategyInstance::on_signal(const Signal & signal)
@@ -88,21 +87,20 @@ void StrategyInstance::on_signal(const Signal & signal)
     }
 
     if (position_result_opt.has_value()) {
-        m_deposit += position_result_opt.value().pnl;
-        m_depo_publisher.push(signal.timestamp, m_deposit);
         m_strategy_result.update([&](StrategyResult & res) {
-            res.final_profit = m_deposit;
+            res.final_profit += position_result_opt.value().pnl;
         });
-        if (m_best_profit < position_result_opt.value().pnl) {
-            m_best_profit = position_result_opt.value().pnl;
+        m_depo_publisher.push(signal.timestamp, m_strategy_result.get().final_profit);
+        if (const auto best_profit = m_strategy_result.get().best_profit_trade;
+            !best_profit.has_value() || best_profit < position_result_opt.value().pnl) {
             m_strategy_result.update([&](StrategyResult & res) {
                 res.best_profit_trade = position_result_opt.value().pnl;
                 res.longest_profit_trade_time =
                         std::chrono::duration_cast<std::chrono::seconds>(position_result_opt.value().opened_time);
             });
         }
-        if (m_worst_loss > position_result_opt.value().pnl) {
-            m_worst_loss = position_result_opt.value().pnl;
+        if (const auto worst_loss = m_strategy_result.get().worst_loss_trade;
+            !worst_loss.has_value() || worst_loss > position_result_opt.value().pnl) {
             m_strategy_result.update([&](StrategyResult & res) {
                 res.worst_loss_trade = position_result_opt.value().pnl;
                 res.longest_loss_trade_time =
@@ -122,7 +120,7 @@ void StrategyInstance::on_signal(const Signal & signal)
 
             // const auto slippage_delta = exec.execPrice - signal.price;
             // std::cout << "Slippage: " << slippage_delta << std::endl;
-            // m_deposit -= fee_paid;
+            // deposit -= fee_paid;
         }
 
         m_strategy_result.update([&](StrategyResult & res) {
@@ -132,14 +130,14 @@ void StrategyInstance::on_signal(const Signal & signal)
     }
 
     m_last_signal = signal;
-    if (m_strategy_result.get().max_depo < m_deposit) {
+    if (m_strategy_result.get().max_depo < m_strategy_result.get().final_profit) {
         m_strategy_result.update([&](StrategyResult & res) {
-            res.max_depo = m_deposit;
+            res.max_depo = res.final_profit;
         });
     }
-    if (m_strategy_result.get().min_depo > m_deposit) {
+    if (m_strategy_result.get().min_depo > m_strategy_result.get().final_profit) {
         m_strategy_result.update([&](StrategyResult & res) {
-            res.min_depo = m_deposit;
+            res.min_depo = m_strategy_result.get().final_profit;
         });
     }
     m_signal_publisher.push(signal.timestamp, signal);

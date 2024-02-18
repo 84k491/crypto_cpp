@@ -59,8 +59,4 @@ private:
     Position m_position;
 
     const MarketDataRequest m_md_request;
-
-    double m_deposit = 0.; // TODO use result profit
-    double m_best_profit = std::numeric_limits<double>::lowest();
-    double m_worst_loss = 0.;
 };
