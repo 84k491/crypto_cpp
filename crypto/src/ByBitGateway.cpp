@@ -222,8 +222,7 @@ std::shared_ptr<TimeseriesSubsription<OHLC>> ByBitGateway::subscribe_for_klines(
                              timerange,
                              &last_ts,
                              this](std::map<std::chrono::milliseconds, OHLC> && ts_and_ohlc_map) {
-                                if (ts_and_ohlc_map.size() == 2) {
-                                    const auto & [ts, ohlc] = *ts_and_ohlc_map.begin();
+                                for (const auto & [ts, ohlc] : ts_and_ohlc_map) {
                                     m_klines_publisher.push(ts, ohlc);
                                     last_ts = ts_and_ohlc_map.rbegin()->first;
                                     std::cout << "ts: " << ts.count() << "OHLC: " << ohlc << std::endl;
@@ -272,7 +271,7 @@ bool ByBitGateway::request_historical_klines(const std::string & symbol, const T
         const std::chrono::milliseconds remining_delta = timerange.end() - last_start;
         std::cout << "Remaining time delta: " << remining_delta.count() << "ms" << std::endl;
 
-        const std::string category = "spot";
+        const std::string category = "linear";
 
         const std::string request = [&]() {
             std::stringstream ss;
@@ -302,12 +301,10 @@ bool ByBitGateway::request_historical_klines(const std::string & symbol, const T
             std::cout << "Empty kline result" << std::endl;
             return false;
         }
-        if (!inter_result.empty()) {
-            if (const auto delta = inter_result.begin()->first - last_start; delta > min_interval) {
-                std::cout << "ERROR inconsistent time delta: " << std::chrono::duration_cast<std::chrono::seconds>(delta).count() << "s. Stopping" << std::endl;
-                std::cout << "First timestamp: " << inter_result.begin()->first.count() << std::endl;
-                return false;
-            }
+        if (const auto delta = inter_result.begin()->first - last_start; delta > min_interval) {
+            std::cout << "ERROR inconsistent time delta: " << std::chrono::duration_cast<std::chrono::seconds>(delta).count() << "s. Stopping" << std::endl;
+            std::cout << "First timestamp: " << inter_result.begin()->first.count() << std::endl;
+            return false;
         }
         pack_callback(std::move(inter_result));
     }
