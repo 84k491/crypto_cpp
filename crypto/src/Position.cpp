@@ -1,135 +1,111 @@
 #include "Position.h"
 
+#include "ByBitTradingGateway.h"
+#include "Types.h"
+
 #include <iostream>
+#include <optional>
+#include <utility>
 
-Side side_from_absolute_volume(double absolute_volume)
+bool PositionManager::open(SignedVolume target_absolute_volume)
 {
-    if (absolute_volume > 0) {
-        return Side::Buy;
-    }
-    return Side::Sell;
-}
-
-std::pair<std::optional<MarketOrder>, std::optional<PositionResult>>
-Position::open_or_move(std::chrono::milliseconds ts, double target_volume, double price)
-{
-    const auto adjusted_target_volume_opt = m_symbol.get_qty_floored(target_volume);
+    const auto adjusted_target_volume_opt = m_symbol.get_qty_floored(target_absolute_volume);
     if (!adjusted_target_volume_opt.has_value()) {
         std::cout
-                << "ERROR can't get proper volume on open_or_move, target_volume = "
-                << target_volume
+                << "ERROR can't get proper volume on open_or_move, target_absolute_volume = "
+                << target_absolute_volume.value()
                 << ", price_step: "
                 << m_symbol.lot_size_filter.qty_step << std::endl;
-        return {std::nullopt, std::nullopt};
+        return false;
     }
     const auto adjusted_target_volume = adjusted_target_volume_opt.value();
 
-    if (0. == adjusted_target_volume) {
+    if (0. == adjusted_target_volume.value()) {
         std::cout << "ERROR: closing on open_or_move" << std::endl;
-        return {std::nullopt, std::nullopt};
+        return false;
     }
 
     if (m_opened_position.has_value()) {
-        if (m_opened_position.value().absolute_volume() == adjusted_target_volume) {
-            return {std::nullopt, std::nullopt};
-        }
-
-        if (m_opened_position.value().side() == side_from_absolute_volume(adjusted_target_volume)) {
-            // just moving the position
-            const auto volume_delta = adjusted_target_volume - m_opened_position.value().absolute_volume();
-            return {MarketOrder{
-                            "BTCUSDT", // TODO
-                            std::abs(volume_delta),
-                            side_from_absolute_volume(volume_delta)},
-                    std::nullopt};
-        }
-
-        // close the current position and open a new one
-        auto order_and_res_opt = close(ts, price);
-        if (!order_and_res_opt.has_value()) {
-            std::cout << "ERROR: no optional" << std::endl;
-            return {std::nullopt, std::nullopt};
-        }
-        auto & [order, res] = order_and_res_opt.value();
-        m_opened_position = OpenedPosition(ts, adjusted_target_volume, price);
-        const auto open_order = MarketOrder{
-                "BTCUSDT", // TODO
-                std::abs(adjusted_target_volume),
-                side_from_absolute_volume(adjusted_target_volume)};
-        order += open_order;
-        return {order, res};
+        std::cout << "ERROR: opening already opened position" << std::endl;
+        return false;
     }
 
-    m_opened_position = OpenedPosition(ts, adjusted_target_volume, price);
-    return {MarketOrder{
-                    "BTCUSDT", // TODO
-                    std::abs(adjusted_target_volume),
-                    side_from_absolute_volume(adjusted_target_volume)},
-            std::nullopt};
+    if (m_tr_gateway == nullptr) {
+        return true;
+    }
+    const auto order = MarketOrder{
+            m_symbol.symbol_name,
+            adjusted_target_volume};
+
+    const auto trades_opt = m_tr_gateway->send_order_sync(order);
+    if (!trades_opt.has_value()) {
+        std::cout << "ERROR Failed to send order" << std::endl;
+        return false;
+    }
+    for (const auto & trade : trades_opt.value()) {
+        on_trade(trade);
+        // TODO check for absence of result
+    }
+
+    return true;
 }
 
-std::optional<std::pair<MarketOrder, PositionResult>> Position::close(
-        std::chrono::milliseconds ts,
-        double price)
+std::optional<PositionResult> PositionManager::close()
 {
     if (!m_opened_position.has_value()) {
         return std::nullopt;
     }
     auto & pos = m_opened_position.value();
 
-    PositionResult res;
-    const auto pnl = (price - pos.open_price()) * pos.absolute_volume();
-    res.pnl = pnl;
-    res.opened_time = ts - pos.open_ts();
+    const auto order = MarketOrder{
+            m_symbol.symbol_name,
+            pos.absolute_volume()};
 
-    const auto close_order = MarketOrder{
-            "BTCUSDT", // TODO
-            std::abs(pos.absolute_volume()),
-            side_from_absolute_volume(-pos.absolute_volume())};
+    const auto trades_opt = m_tr_gateway->send_order_sync(order);
+    if (!trades_opt.has_value()) {
+        std::cout << "ERROR Failed to send order" << std::endl;
+        return std::nullopt;
+    }
+    std::optional<PositionResult> overall_result;
+    for (const auto & trade : trades_opt.value()) {
+        const auto res_opt = on_trade(trade);
+        if (res_opt.has_value()) {
+            if (overall_result.has_value()) {
+                std::cout << "ERROR: two position results for a single order" << std::endl;
+            }
+            overall_result = res_opt;
+        }
+    }
+    if (!overall_result.has_value()) {
+        std::cout << "ERROR: no position result" << std::endl;
+    }
+    return overall_result;
+}
+
+std::optional<PositionResult> PositionManager::on_trade(const Trade & trade)
+{
+    if (!m_opened_position.has_value()) {
+        m_opened_position = OpenedPosition(trade.ts, SignedVolume(trade.unsigned_volume, trade.side), trade.price);
+        return std::nullopt;
+    }
+
+    const auto & pos = m_opened_position.value();
+
+    PositionResult res;
+    const auto pnl = (trade.price - pos.open_price()) * pos.absolute_volume().value();
+    res.pnl = pnl;
+    res.opened_time = trade.ts - pos.open_ts();
 
     m_opened_position = {};
-    return {{close_order, res}};
+    return res;
 }
 
-MarketOrder & MarketOrder::operator+=(const MarketOrder & other)
+Side PositionManager::OpenedPosition::side() const
 {
-    if (m_side == other.m_side) {
-        m_unsigned_volume += other.m_unsigned_volume;
-        return *this;
-    }
-    else {
-        if (m_unsigned_volume < other.m_unsigned_volume) {
-            m_unsigned_volume = other.m_unsigned_volume - m_unsigned_volume;
-            m_side = other.m_side;
-        }
-        else {
-            m_unsigned_volume -= other.m_unsigned_volume;
-        }
-        return *this;
-    }
+    return m_absolute_volume.as_unsigned_and_side().second;
 }
 
-MarketOrder::MarketOrder(const std::string & symbol, double unsigned_volume, Side side)
-    : m_symbol(symbol)
-    , m_unsigned_volume(unsigned_volume)
-    , m_side(side)
-{
-}
-
-std::string MarketOrder::side_str() const
-{
-    if (m_side == Side::Buy) {
-        return "Buy";
-    }
-    return "Sell";
-}
-
-Side Position::OpenedPosition::side() const
-{
-    return side_from_absolute_volume(m_absolute_volume);
-}
-
-Position::OpenedPosition::OpenedPosition(std::chrono::milliseconds ts, double absolute_volume, double price)
+PositionManager::OpenedPosition::OpenedPosition(std::chrono::milliseconds ts, SignedVolume absolute_volume, double price)
     : m_absolute_volume(absolute_volume)
     , m_open_price(price)
     , m_open_ts(ts)

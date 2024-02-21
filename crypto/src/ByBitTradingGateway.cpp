@@ -131,7 +131,7 @@ std::string ByBitTradingGateway::build_auth_message() const
     return auth_msg.dump();
 }
 
-bool ByBitTradingGateway::send_order_sync(const MarketOrder & order)
+std::optional<std::vector<Trade>> ByBitTradingGateway::send_order_sync(const MarketOrder & order)
 {
     int64_t ts = std::chrono::duration_cast<std::chrono::milliseconds>(
                          std::chrono::system_clock::now().time_since_epoch())
@@ -143,7 +143,7 @@ bool ByBitTradingGateway::send_order_sync(const MarketOrder & order)
             {"symbol", order.symbol()},
             {"side", order.side_str()},
             {"orderType", "Market"},
-            {"qty", std::to_string(order.unsigned_volume())},
+            {"qty", std::to_string(order.volume().value())},
             {"timeInForce", "IOC"},
             {"orderLinkId", order_id},
             {"orderFilter", "Order"},
@@ -158,10 +158,9 @@ bool ByBitTradingGateway::send_order_sync(const MarketOrder & order)
 
     if (!success) {
         std::cout << "Trying to send order while order_id already exists: " << order_id << std::endl;
-        return false;
+        return std::nullopt;
     }
     ScopeExit se([&]() {
-        l.lock();
         m_pending_orders.erase(it);
     });
 
@@ -169,24 +168,23 @@ bool ByBitTradingGateway::send_order_sync(const MarketOrder & order)
     std::future<std::string> request_future = rest_client.request_auth_async(url, request, m_api_key, m_secret_key);
     request_future.wait();
     const std::string request_result = request_future.get();
-    std::cout << "REST Trading Response: " << request_result << std::endl;
+    std::cout << "Enter order response: " << request_result << std::endl;
 
     {
         std::future<bool> success_future = it->second.success_promise.get_future();
-        l.unlock();
         if (success_future.wait_for(ws_wait_timeout) == std::future_status::timeout) {
             std::cout << "Timeout waiting for order_resp" << std::endl;
-            return false;
+            return std::nullopt;
         }
         if (!success_future.get()) {
             std::cout << "Order failed" << order_id << std::endl;
-            return false;
+            return std::nullopt;
         }
     }
-
     std::cout << "Order successfully placed" << std::endl;
 
-    return true;
+    std::vector<Trade> trades = it->second.m_trades;
+    return trades;
 }
 
 void ByBitTradingGateway::on_ws_message_received(const std::string & message)
@@ -300,6 +298,12 @@ void ByBitTradingGateway::on_execution(const json & j)
             std::cout << "Recevied execution of " << response.qty << " for order: " << order_id << std::endl;
 
             pending_order.m_volume_to_fill -= response.qty;
+            auto trade_opt = response.to_trade();
+            if (!trade_opt.has_value()) {
+                std::cout << "ERROR can't get proper trade on execution: " << j << std::endl;
+                return;
+            }
+            pending_order.m_trades.emplace_back(trade_opt.value());
             if (pending_order.m_volume_to_fill <= 0 && pending_order.m_acked) {
                 auto & promise = pending_order.success_promise;
                 promise.set_value(true);

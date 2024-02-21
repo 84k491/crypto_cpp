@@ -1,10 +1,13 @@
+#include "TradingPrimitives.h"
+#include "Types.h"
 #include "ohlc.h"
 
 #include <cstdint>
+#include <iostream>
 #include <list>
 #include <string>
 
-namespace ByBitMessages{
+namespace ByBitMessages {
 
 struct OrderResponse
 {
@@ -34,7 +37,8 @@ struct OrderResponseResult
     std::list<OrderResponse> orders;
 };
 
-struct Execution {
+struct Execution
+{
     std::string category;
     std::string symbol;
     std::string orderId;
@@ -45,6 +49,22 @@ struct Execution {
     double leavesQty;
     double execFee;
     std::string execTime;
+
+    std::optional<Trade> to_trade() const
+    {
+        const auto volume_opt = UnsignedVolume::from(qty);
+        if (!volume_opt.has_value()) {
+            std::cout << "Failed to create UnsignedVolume from qty: " << qty << std::endl;
+            return std::nullopt;
+        }
+
+        return Trade(
+                std::chrono::milliseconds(std::stoll(execTime)),
+                symbol,
+                execPrice,
+                volume_opt.value(),
+                side == "Buy" ? Side::Buy : Side::Sell);
+    }
 };
 
 struct ExecutionResult
@@ -98,4 +118,4 @@ void from_json(const json & j, OrderResponse & order);
 void from_json(const json & j, Execution & exec);
 void from_json(const json & j, ExecutionResult & exec_res);
 
-}
+} // namespace ByBitMessages

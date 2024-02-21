@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 #include <websocketpp/client.hpp>
 #include <websocketpp/config/asio.hpp>
 #include <websocketpp/roles/client_endpoint.hpp>
@@ -15,7 +16,7 @@ struct PendingOrder
 {
     PendingOrder(const MarketOrder & order)
         : m_order(order)
-        , m_volume_to_fill(order.unsigned_volume())
+        , m_volume_to_fill(order.volume().value())
     {
     }
     MarketOrder m_order;
@@ -23,6 +24,7 @@ struct PendingOrder
 
     double m_volume_to_fill;
     bool m_acked = false;
+    std::vector<Trade> m_trades;
 };
 
 class ByBitTradingGateway
@@ -37,7 +39,7 @@ class ByBitTradingGateway
 public:
     ByBitTradingGateway();
 
-    bool send_order_sync(const MarketOrder & order);
+    std::optional<std::vector<Trade>> send_order_sync(const MarketOrder & order);
 
 private:
     static std::string sign_message(const std::string & message, const std::string & secret);

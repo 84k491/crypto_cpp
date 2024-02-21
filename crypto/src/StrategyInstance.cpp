@@ -2,6 +2,7 @@
 
 #include "ByBitGateway.h"
 #include "Position.h"
+#include "Types.h"
 
 #include <chrono>
 #include <optional>
@@ -16,7 +17,7 @@ StrategyInstance::StrategyInstance(
     , m_tr_gateway(tr_gateway)
     , m_strategy(strategy_ptr)
     , m_symbol(symbol)
-    , m_position(symbol)
+    , m_position_manager(symbol, m_tr_gateway)
     , m_md_request(md_request)
 {
     m_strategy_result.update([&](StrategyResult & res) {
@@ -52,10 +53,10 @@ void StrategyInstance::wait_for_finish()
 {
     m_md_gateway.wait_for_finish();
 
-    if (m_position.opened() != nullptr) {
-        const auto order_and_res_opt = m_position.close(m_last_signal.value().timestamp, m_last_signal.value().price);
-        if (order_and_res_opt.has_value()) {
-            const auto [order, res] = order_and_res_opt.value();
+    if (m_position_manager.opened() != nullptr) {
+        const auto position_result_opt = m_position_manager.close();
+        if (position_result_opt.has_value()) {
+            const auto res = position_result_opt.value();
             m_strategy_result.update([&](StrategyResult & str_res) {
                 str_res.final_profit += res.pnl;
             });
@@ -66,67 +67,43 @@ void StrategyInstance::wait_for_finish()
 
 void StrategyInstance::on_signal(const Signal & signal)
 {
-    std::optional<MarketOrder> order_opt;
     std::optional<PositionResult> position_result_opt;
-    if (Side::Close == signal.side) {
-        if (m_position.opened() != nullptr) {
-            const auto order_and_res_opt = m_position.close(signal.timestamp, signal.price);
-            if (order_and_res_opt.has_value()) {
-                std::tie(order_opt, position_result_opt) = order_and_res_opt.value();
+    if (Side::Close == signal.side || signal.side != m_position_manager.opened()->side()) {
+        if (m_position_manager.opened() != nullptr) {
+            const auto pos_res_opt = m_position_manager.close();
+            if (!pos_res_opt.has_value()) {
+                std::cout << "ERROR no result on position close" << std::endl;
             }
+            position_result_opt = pos_res_opt;
+            m_strategy_result.update([&](StrategyResult & res) {
+                res.trades_count++;
+            });
         }
     }
-    else {
-        const int size_sign = signal.side == Side::Buy ? 1 : -1;
-        const auto default_pos_size = m_pos_currency_amount / signal.price;
-        std::tie(order_opt, position_result_opt) =
-                m_position.open_or_move(
-                        signal.timestamp,
-                        size_sign * default_pos_size,
-                        signal.price);
+
+    if (m_position_manager.opened() != nullptr) {
+        std::cout << "ERROR: position moving is not supported" << std::endl;
+        return;
+    }
+
+    if (Side::Close != signal.side) {
+        const auto default_pos_size_opt = UnsignedVolume::from(m_pos_currency_amount / signal.price);
+        if (!default_pos_size_opt.has_value()) {
+            std::cout << "ERROR can't get proper default position size" << std::endl;
+            return;
+        }
+        const bool success = m_position_manager.open(SignedVolume(default_pos_size_opt.value(), signal.side));
+        if (!success) {
+            std::cout << "ERROR Failed to open position" << std::endl;
+            return;
+        }
+        m_strategy_result.update([&](StrategyResult & res) {
+            res.trades_count++;
+        });
     }
 
     if (position_result_opt.has_value()) {
-        m_strategy_result.update([&](StrategyResult & res) {
-            res.final_profit += position_result_opt.value().pnl;
-        });
-        m_depo_publisher.push(signal.timestamp, m_strategy_result.get().final_profit);
-        if (const auto best_profit = m_strategy_result.get().best_profit_trade;
-            !best_profit.has_value() || best_profit < position_result_opt.value().pnl) {
-            m_strategy_result.update([&](StrategyResult & res) {
-                res.best_profit_trade = position_result_opt.value().pnl;
-                res.longest_profit_trade_time =
-                        std::chrono::duration_cast<std::chrono::seconds>(position_result_opt.value().opened_time);
-            });
-        }
-        if (const auto worst_loss = m_strategy_result.get().worst_loss_trade;
-            !worst_loss.has_value() || worst_loss > position_result_opt.value().pnl) {
-            m_strategy_result.update([&](StrategyResult & res) {
-                res.worst_loss_trade = position_result_opt.value().pnl;
-                res.longest_loss_trade_time =
-                        std::chrono::duration_cast<std::chrono::seconds>(position_result_opt.value().opened_time);
-            });
-        }
-    }
-
-    if (order_opt.has_value()) {
-        if (m_tr_gateway != nullptr) {
-            const auto success = m_tr_gateway->send_order_sync(order_opt.value());
-            if (!success) {
-                std::cout << "ERROR Failed to send order" << std::endl;
-                return;
-            }
-            // const auto fee_paid = exec.execFee; // TODO
-
-            // const auto slippage_delta = exec.execPrice - signal.price;
-            // std::cout << "Slippage: " << slippage_delta << std::endl;
-            // deposit -= fee_paid;
-        }
-
-        m_strategy_result.update([&](StrategyResult & res) {
-            res.trades_count++;
-            // res.fees_paid += fee_paid; // TODO
-        });
+        process_position_result(position_result_opt.value(), signal.timestamp);
     }
 
     m_last_signal = signal;
@@ -141,6 +118,30 @@ void StrategyInstance::on_signal(const Signal & signal)
         });
     }
     m_signal_publisher.push(signal.timestamp, signal);
+}
+
+void StrategyInstance::process_position_result(const PositionResult & new_result, std::chrono::milliseconds ts)
+{
+    m_strategy_result.update([&](StrategyResult & res) {
+        res.final_profit += new_result.pnl;
+    });
+    m_depo_publisher.push(ts, m_strategy_result.get().final_profit);
+    if (const auto best_profit = m_strategy_result.get().best_profit_trade;
+        !best_profit.has_value() || best_profit < new_result.pnl) {
+        m_strategy_result.update([&](StrategyResult & res) {
+            res.best_profit_trade = new_result.pnl;
+            res.longest_profit_trade_time =
+                    std::chrono::duration_cast<std::chrono::seconds>(new_result.opened_time);
+        });
+    }
+    if (const auto worst_loss = m_strategy_result.get().worst_loss_trade;
+        !worst_loss.has_value() || worst_loss > new_result.pnl) {
+        m_strategy_result.update([&](StrategyResult & res) {
+            res.worst_loss_trade = new_result.pnl;
+            res.longest_loss_trade_time =
+                    std::chrono::duration_cast<std::chrono::seconds>(new_result.opened_time);
+        });
+    }
 }
 
 TimeseriesPublisher<Signal> & StrategyInstance::signals_publisher()

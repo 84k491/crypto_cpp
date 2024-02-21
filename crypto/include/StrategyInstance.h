@@ -19,7 +19,7 @@ public:
     using KlineCallback = std::function<void(std::pair<std::chrono::milliseconds, OHLC>)>;
     using DepoCallback = std::function<void(std::chrono::milliseconds ts, double value)>;
 
-    StrategyInstance(const Symbol &symbol,
+    StrategyInstance(const Symbol & symbol,
                      const MarketDataRequest & md_request,
                      const std::shared_ptr<IStrategy> & strategy_ptr,
                      ByBitGateway & md_gateway,
@@ -38,6 +38,7 @@ public:
 
 private:
     void on_signal(const Signal & signal);
+    void process_position_result(const PositionResult & new_result, std::chrono::milliseconds ts);
 
 private:
     ByBitGateway & m_md_gateway;
@@ -56,7 +57,7 @@ private:
 
     const Symbol m_symbol;
     static constexpr double m_pos_currency_amount = 100.;
-    Position m_position;
+    PositionManager m_position_manager;
 
     const MarketDataRequest m_md_request;
 };

@@ -2,25 +2,15 @@
 
 #include "Enums.h"
 #include "Symbol.h"
+#include "TradingPrimitives.h"
+#include "Types.h"
 
 #include <chrono>
+#include <expected>
 #include <optional>
 #include <utility>
 
-struct MarketOrder
-{
-    MarketOrder(const std::string & symbol, double unsigned_volume, Side side);
-    MarketOrder & operator+=(const MarketOrder & other);
-
-    auto unsigned_volume() const { return m_unsigned_volume; }
-    auto symbol() const { return m_symbol; }
-    std::string side_str() const;
-
-private:
-    std::string m_symbol;
-    double m_unsigned_volume{};
-    Side m_side = Side::Buy;
-};
+class ByBitTradingGateway;
 
 struct PositionResult
 {
@@ -29,12 +19,13 @@ public:
     std::chrono::milliseconds opened_time = {};
 };
 
-class Position
+// TODO rename this file to position manager
+class PositionManager
 {
     class OpenedPosition
     {
     public:
-        OpenedPosition(std::chrono::milliseconds ts, double absolute_volume, double price);
+        OpenedPosition(std::chrono::milliseconds ts, SignedVolume absolute_volume, double price);
 
         Side side() const;
 
@@ -43,24 +34,23 @@ class Position
         auto open_ts() const { return m_open_ts; }
 
     private:
-        double m_absolute_volume = 0.;
+        SignedVolume m_absolute_volume;
         double m_open_price = 0.;
         std::chrono::milliseconds m_open_ts = {};
     };
 
 public:
-    Position(Symbol symbol)
+    PositionManager(Symbol symbol, ByBitTradingGateway * tr_gateway)
         : m_symbol(std::move(symbol))
+        , m_tr_gateway(tr_gateway)
     {
     }
 
-    [[nodiscard]] std::pair<std::optional<MarketOrder>, std::optional<PositionResult>> open_or_move(
-            std::chrono::milliseconds ts,
-            double target_volume,
-            double price);
-    [[nodiscard]] std::optional<std::pair<MarketOrder, PositionResult>> close(
-            std::chrono::milliseconds ts,
-            double price);
+    // TODO make signed and unsigned volume types
+    bool open(SignedVolume target_absolute_volume);
+    std::optional<PositionResult> close();
+
+    std::optional<PositionResult> on_trade(const Trade & trade);
 
     double pnl() const;
     const OpenedPosition * opened() const
@@ -71,4 +61,6 @@ public:
 private:
     std::optional<OpenedPosition> m_opened_position;
     const Symbol m_symbol;
+
+    ByBitTradingGateway * m_tr_gateway = nullptr;
 };
