@@ -1,8 +1,10 @@
 #include "mainwindow.h"
 
 #include "./ui_mainwindow.h"
+#include "ByBitTradingGateway.h"
 #include "DoubleSmaStrategy.h"
 #include "DragableChart.h"
+#include "ITradingGateway.h"
 #include "JsonStrategyConfig.h"
 #include "Optimizer.h"
 #include "StrategyInstance.h"
@@ -155,12 +157,22 @@ void MainWindow::on_pb_run_clicked()
         return;
     }
 
+    auto * tr_gateway = [&]() -> ITradingGateway * {
+        if (ui->cb_live->isChecked()) {
+            return &m_trading_gateway;
+        }
+        else {
+            m_backtest_tr_gateway = std::make_unique<BacktestTradingGateway>(symbol.value(), m_gateway);
+            return m_backtest_tr_gateway.get();
+        }
+    }();
+
     m_strategy_instance = std::make_unique<StrategyInstance>(
             symbol.value(),
             md_request,
             strategy_ptr_opt.value(),
             m_gateway,
-            &m_trading_gateway);
+            tr_gateway);
 
     m_subscriptions.push_back(m_strategy_instance->klines_publisher().subscribe(
             [](auto &) {},

@@ -32,6 +32,7 @@ public:
 
     auto volume() const { return m_volume; }
     auto symbol() const { return m_symbol; }
+    auto side() const { return m_side; }
 
 private:
     std::string m_symbol;

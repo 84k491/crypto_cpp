@@ -46,7 +46,7 @@ public:
     ~TimeseriesPublisher();
 
     void push(TimeT timestamp, const ObjectT & object);
-    std::shared_ptr<TimeseriesSubsription<ObjectT>> subscribe(
+    [[nodiscard]] std::shared_ptr<TimeseriesSubsription<ObjectT>> subscribe(
             std::function<void(const std::vector<std::pair<TimeT, const ObjectT>> &)> && snapshot_callback,
             std::function<void(TimeT, const ObjectT &)> && increment_callback);
 

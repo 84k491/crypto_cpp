@@ -140,7 +140,12 @@ void from_json(const json & j, SymbolResponse & response)
     j2.get_to(response.result);
 }
 
-std::shared_ptr<TimeseriesSubsription<OHLC>> ByBitGateway::subscribe_for_klines(
+std::shared_ptr<TimeseriesSubsription<OHLC>> ByBitGateway::subscribe_for_klines(KlineCallback && kline_callback)
+{
+    return m_klines_publisher.subscribe([](auto) {}, std::move(kline_callback));
+}
+
+std::shared_ptr<TimeseriesSubsription<OHLC>> ByBitGateway::subscribe_for_klines_and_start(
         const std::string & symbol,
         KlineCallback && kline_callback,
         const MarketDataRequest & md_request)

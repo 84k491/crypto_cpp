@@ -48,7 +48,7 @@ public:
         return m_data;
     }
 
-    std::shared_ptr<ObjectSubscribtion<ObjectT>> subscribe(std::function<void(const ObjectT &)> && update_callback);
+    [[nodiscard]] std::shared_ptr<ObjectSubscribtion<ObjectT>> subscribe(std::function<void(const ObjectT &)> && update_callback);
     void unsubscribe(xg::Guid guid);
 
 private:

@@ -1,6 +1,5 @@
 #include "Position.h"
 
-#include "ByBitTradingGateway.h"
 #include "Types.h"
 
 #include <iostream>
@@ -39,7 +38,7 @@ bool PositionManager::open(SignedVolume target_absolute_volume)
 
     const auto trades_opt = m_tr_gateway->send_order_sync(order);
     if (!trades_opt.has_value()) {
-        std::cout << "ERROR Failed to send order" << std::endl;
+        std::cout << "ERROR Failed to send an order" << std::endl;
         return false;
     }
     for (const auto & trade : trades_opt.value()) {

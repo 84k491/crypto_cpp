@@ -1,13 +1,13 @@
 #pragma once
 
 #include "ObjectPublisher.h"
+#include "RestClient.h"
 #include "Symbol.h"
 #include "Timerange.h"
 #include "TimeseriesPublisher.h"
 #include "WorkStatus.h"
-#include "ohlc.h"
-#include "RestClient.h"
 #include "WorkerThread.h"
+#include "ohlc.h"
 
 #include <chrono>
 #include <functional>
@@ -40,7 +40,9 @@ public:
 
     ByBitGateway() = default;
 
-    std::shared_ptr<TimeseriesSubsription<OHLC>> subscribe_for_klines(
+    std::shared_ptr<TimeseriesSubsription<OHLC>> subscribe_for_klines(KlineCallback && kline_callback);
+
+    std::shared_ptr<TimeseriesSubsription<OHLC>> subscribe_for_klines_and_start(
             const std::string & symbol,
             KlineCallback && kline_callback,
             const MarketDataRequest & md_request);

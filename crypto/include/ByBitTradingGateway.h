@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ByBitTradingMessages.h"
+#include "ITradingGateway.h"
 #include "Position.h"
 #include "RestClient.h"
 #include "WorkerThread.h"
@@ -27,7 +28,7 @@ struct PendingOrder
     std::vector<Trade> m_trades;
 };
 
-class ByBitTradingGateway
+class ByBitTradingGateway final : public ITradingGateway
 {
     using WsConfigClient = websocketpp::config::asio_tls;
     using WsClient = websocketpp::client<WsConfigClient>;
@@ -39,7 +40,7 @@ class ByBitTradingGateway
 public:
     ByBitTradingGateway();
 
-    std::optional<std::vector<Trade>> send_order_sync(const MarketOrder & order);
+    std::optional<std::vector<Trade>> send_order_sync(const MarketOrder & order) override;
 
 private:
     static std::string sign_message(const std::string & message, const std::string & secret);

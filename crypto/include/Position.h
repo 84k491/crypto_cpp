@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Enums.h"
+#include "ITradingGateway.h"
 #include "Symbol.h"
 #include "TradingPrimitives.h"
 #include "Types.h"
@@ -9,8 +10,6 @@
 #include <expected>
 #include <optional>
 #include <utility>
-
-class ByBitTradingGateway;
 
 struct PositionResult
 {
@@ -40,7 +39,7 @@ class PositionManager
     };
 
 public:
-    PositionManager(Symbol symbol, ByBitTradingGateway * tr_gateway)
+    PositionManager(Symbol symbol, ITradingGateway * tr_gateway)
         : m_symbol(std::move(symbol))
         , m_tr_gateway(tr_gateway)
     {
@@ -62,5 +61,5 @@ private:
     std::optional<OpenedPosition> m_opened_position;
     const Symbol m_symbol;
 
-    ByBitTradingGateway * m_tr_gateway = nullptr;
+    ITradingGateway * m_tr_gateway = nullptr;
 };

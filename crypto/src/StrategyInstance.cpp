@@ -1,6 +1,6 @@
 #include "StrategyInstance.h"
 
-#include "ByBitGateway.h"
+#include "ITradingGateway.h"
 #include "Position.h"
 #include "Types.h"
 
@@ -12,7 +12,7 @@ StrategyInstance::StrategyInstance(
         const MarketDataRequest & md_request,
         const std::shared_ptr<IStrategy> & strategy_ptr,
         ByBitGateway & md_gateway,
-        ByBitTradingGateway * tr_gateway)
+        ITradingGateway * tr_gateway)
     : m_md_gateway(md_gateway)
     , m_tr_gateway(tr_gateway)
     , m_strategy(strategy_ptr)
@@ -27,7 +27,7 @@ StrategyInstance::StrategyInstance(
 
 void StrategyInstance::run_async()
 {
-    auto kline_sub_opt = m_md_gateway.subscribe_for_klines(
+    auto kline_sub_opt = m_md_gateway.subscribe_for_klines_and_start(
             m_symbol.symbol_name,
             [this](std::chrono::milliseconds ts, const OHLC & ohlc) {
                 m_klines_publisher.push(ts, ohlc);
@@ -68,7 +68,8 @@ void StrategyInstance::wait_for_finish()
 void StrategyInstance::on_signal(const Signal & signal)
 {
     std::optional<PositionResult> position_result_opt;
-    if (Side::Close == signal.side || signal.side != m_position_manager.opened()->side()) {
+    if (Side::Close == signal.side ||
+        (m_position_manager.opened() != nullptr && signal.side != m_position_manager.opened()->side())) {
         if (m_position_manager.opened() != nullptr) {
             const auto pos_res_opt = m_position_manager.close();
             if (!pos_res_opt.has_value()) {

@@ -1,6 +1,7 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include "BacktestTradingGateway.h"
 #include "ByBitGateway.h"
 #include "ByBitTradingGateway.h"
 #include "DragableChart.h"
@@ -114,6 +115,7 @@ private:
     std::list<std::shared_ptr<ISubsription>> m_subscriptions;
 
     ByBitGateway m_gateway;
+    std::unique_ptr<BacktestTradingGateway> m_backtest_tr_gateway;
     ByBitTradingGateway m_trading_gateway;
 
     const std::string m_price_chart_name = "prices";
