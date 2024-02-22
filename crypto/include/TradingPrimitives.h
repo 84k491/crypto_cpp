@@ -66,6 +66,7 @@ public:
         , symbol(other.symbol)
         , price(other.price)
         , unsigned_volume(other.unsigned_volume)
+        , side(other.side)
     {
     }
 

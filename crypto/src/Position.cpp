@@ -8,7 +8,7 @@
 
 bool PositionManager::open(SignedVolume target_absolute_volume)
 {
-    const auto adjusted_target_volume_opt = m_symbol.get_qty_floored(target_absolute_volume);
+    const std::optional<SignedVolume> adjusted_target_volume_opt = m_symbol.get_qty_floored(target_absolute_volume);
     if (!adjusted_target_volume_opt.has_value()) {
         std::cout
                 << "ERROR can't get proper volume on open_or_move, target_absolute_volume = "
@@ -17,7 +17,7 @@ bool PositionManager::open(SignedVolume target_absolute_volume)
                 << m_symbol.lot_size_filter.qty_step << std::endl;
         return false;
     }
-    const auto adjusted_target_volume = adjusted_target_volume_opt.value();
+    const SignedVolume adjusted_target_volume = adjusted_target_volume_opt.value();
 
     if (0. == adjusted_target_volume.value()) {
         std::cout << "ERROR: closing on open_or_move" << std::endl;
