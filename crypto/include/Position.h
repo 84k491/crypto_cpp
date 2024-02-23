@@ -14,6 +14,7 @@
 struct PositionResult
 {
 public:
+    double fees_paid = 0.;
     double pnl = 0.;
     std::chrono::milliseconds opened_time = {};
 };

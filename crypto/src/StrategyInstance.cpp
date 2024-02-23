@@ -125,6 +125,7 @@ void StrategyInstance::process_position_result(const PositionResult & new_result
 {
     m_strategy_result.update([&](StrategyResult & res) {
         res.final_profit += new_result.pnl;
+        res.fees_paid += new_result.fees_paid;
     });
     m_depo_publisher.push(ts, m_strategy_result.get().final_profit);
     if (const auto best_profit = m_strategy_result.get().best_profit_trade;

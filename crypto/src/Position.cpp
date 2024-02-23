@@ -88,11 +88,14 @@ std::optional<PositionResult> PositionManager::on_trade(const Trade & trade)
         return std::nullopt;
     }
 
+    // TODO it can be more than one trade for opened position
     const auto & pos = m_opened_position.value();
 
     PositionResult res;
     const auto pnl = (trade.price - pos.open_price()) * pos.absolute_volume().value();
     res.pnl = pnl;
+    res.pnl -= trade.fee;
+    res.fees_paid += trade.fee;
     res.opened_time = trade.ts - pos.open_ts();
 
     m_opened_position = {};

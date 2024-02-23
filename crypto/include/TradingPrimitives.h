@@ -43,32 +43,18 @@ private:
 class Trade
 {
 public:
-    Trade(std::chrono::milliseconds ts, std::string symbol, double price, UnsignedVolume volume, Side side)
+    Trade(std::chrono::milliseconds ts, std::string symbol, double price, UnsignedVolume volume, Side side, double fee)
         : ts(ts)
         , symbol(std::move(symbol))
         , price(price)
         , unsigned_volume(std::move(volume))
         , side(side)
+        , fee(fee)
     {
     }
 
-    Trade(Trade && other) noexcept
-        : ts(other.ts)
-        , symbol(std::move(other.symbol))
-        , price(other.price)
-        , unsigned_volume(other.unsigned_volume)
-        , side(other.side)
-    {
-    }
-
-    Trade(const Trade & other)
-        : ts(other.ts)
-        , symbol(other.symbol)
-        , price(other.price)
-        , unsigned_volume(other.unsigned_volume)
-        , side(other.side)
-    {
-    }
+    Trade(Trade && other) noexcept = default;
+    Trade(const Trade & other) = default;
 
 public: // TODO make private with getters
         // private:
@@ -77,4 +63,5 @@ public: // TODO make private with getters
     double price{};
     UnsignedVolume unsigned_volume;
     Side side = Side::Buy;
+    double fee = 0.0;
 };

@@ -27,6 +27,8 @@ struct MarketDataRequest
     bool go_live = false;
 };
 
+// TODO refactor it to be thead safe (push MD requests, put them to queue, parse later)
+// it's needed for multitheaded optimizer
 class WorkerThreadLoop;
 class ByBitGateway
 {
