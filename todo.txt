@@ -1,0 +1,3 @@
+strategy getting different results if run two times on the same input
+
+----after first launch
