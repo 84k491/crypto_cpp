@@ -74,8 +74,7 @@ std::optional<JsonStrategyConfig> Optimizer::optimize()
         const auto md_request = [&]() {
             MarketDataRequest result;
             result.go_live = false;
-            result.historical_range->start = m_timerange.start();
-            result.historical_range->end = m_timerange.end();
+            result.historical_range = {m_timerange.start(), m_timerange.end()};
             return result;
         }();
 

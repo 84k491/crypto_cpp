@@ -374,12 +374,20 @@ ObjectPublisher<WorkStatus> & ByBitGateway::status_publisher()
 
 void ByBitGateway::wait_for_finish()
 {
-    m_backtest_thread->wait_for_finish();
-    m_live_thread->wait_for_finish();
+    if (m_backtest_thread) {
+        m_backtest_thread->wait_for_finish();
+    }
+    if (m_live_thread) {
+        m_live_thread->wait_for_finish();
+    }
 }
 
 void ByBitGateway::stop_async()
 {
-    m_backtest_thread->stop_async();
-    m_live_thread->stop_async();
+    if (m_backtest_thread) {
+        m_backtest_thread->stop_async();
+    }
+    if (m_live_thread) {
+        m_live_thread->stop_async();
+    }
 }
