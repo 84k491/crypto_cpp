@@ -62,4 +62,5 @@ private:
     const MarketDataRequest m_md_request;
 
     std::shared_ptr<ObjectSubscribtion<WorkStatus>> m_gw_status_sub;
+    bool first_price_received = false;
 };

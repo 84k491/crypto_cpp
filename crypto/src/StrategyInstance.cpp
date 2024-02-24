@@ -27,7 +27,6 @@ StrategyInstance::StrategyInstance(
     m_gw_status_sub = m_md_gateway.status_publisher().subscribe([this](const WorkStatus & status) {
         if (status == WorkStatus::Stopped || status == WorkStatus::Crashed) {
             if (m_position_manager.opened() != nullptr) {
-                std::cout << "Closing position on status stopped" << std::endl;
                 const auto position_result_opt = m_position_manager.close();
                 if (position_result_opt.has_value()) {
                     const auto res = position_result_opt.value();
@@ -47,6 +46,11 @@ void StrategyInstance::run_async()
             m_symbol.symbol_name,
             [this](std::chrono::milliseconds ts, const OHLC & ohlc) {
                 m_klines_publisher.push(ts, ohlc);
+                if (!first_price_received) {
+                    m_depo_publisher.push(ts, 0.);
+                    first_price_received = true;
+                }
+
                 const auto signal = m_strategy->push_price({ts, ohlc.close});
                 if (signal.has_value()) {
                     on_signal(signal.value());

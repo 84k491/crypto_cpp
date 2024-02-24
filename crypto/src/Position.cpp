@@ -61,8 +61,6 @@ std::optional<PositionResult> PositionManager::close()
                 volume};
     }();
 
-    std::cout << "Closing position: " << order << std::endl;
-
     const auto trades_opt = m_tr_gateway.send_order_sync(order);
     if (!trades_opt.has_value()) {
         std::cout << "ERROR Failed to send order" << std::endl;

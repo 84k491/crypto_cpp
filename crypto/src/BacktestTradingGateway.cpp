@@ -6,7 +6,6 @@ BacktestTradingGateway::BacktestTradingGateway(Symbol symbol, ByBitGateway & md_
     : m_symbol(std::move(symbol))
     , m_md_gateway(md_gateway)
 {
-    std::cout << "Starting BacktestTradingGateway on: " << m_symbol.symbol_name << std::endl;
     m_klines_sub = m_md_gateway.subscribe_for_klines([this](std::chrono::milliseconds, const OHLC & ohlc) {
         m_last_price_by_symbol[m_symbol.symbol_name] = ohlc.close;
     });
