@@ -74,6 +74,8 @@ MainWindow::MainWindow(QWidget * parent)
         if (status == WorkStatus::Stopped || status == WorkStatus::Crashed) {
             ui->pb_run->setEnabled(true);
             ui->pb_stop->setEnabled(false);
+            m_subscriptions.clear();
+            m_strategy_instance.reset();
         }
     });
 
