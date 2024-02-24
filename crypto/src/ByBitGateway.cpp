@@ -206,7 +206,7 @@ std::shared_ptr<TimeseriesSubsription<OHLC>> ByBitGateway::subscribe_for_klines_
         }
 
         if (!md_request.go_live) {
-            std::cout << "Not going live, finished" << std::endl;
+            // std::cout << "Not going live, finished" << std::endl;
             m_status.push(WorkStatus::Stopped);
             return;
         }

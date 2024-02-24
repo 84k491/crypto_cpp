@@ -64,6 +64,17 @@ MainWindow::MainWindow(QWidget * parent)
             this,
             &MainWindow::render_result);
 
+    connect(this, &MainWindow::signal_optimizer_passed_check, this, [this](int passed_checks, int total_checks) {
+        if (passed_checks == total_checks) {
+            ui->pb_optimize->setEnabled(true);
+            ui->pb_optimize->setText("Optimize");
+        }
+        else {
+            ui->pb_optimize->setEnabled(false);
+            ui->pb_optimize->setText((std::to_string(passed_checks) + std::string(" / ") + std::to_string(total_checks)).c_str());
+        }
+    });
+
     ui->pb_stop->setEnabled(false);
     connect(this, &MainWindow::signal_work_status, this, [this](const WorkStatus status) {
         ui->lb_work_status->setText(to_string(status).c_str());
@@ -309,6 +320,10 @@ void MainWindow::on_pb_optimize_clicked()
                 symbol.value(),
                 timerange,
                 *json_data);
+
+        optimizer.subscribe_for_passed_check([this](int passed_checks, int total_checks) {
+            emit signal_optimizer_passed_check(passed_checks, total_checks);
+        });
 
         const auto best_config = optimizer.optimize();
         if (!best_config.has_value()) {

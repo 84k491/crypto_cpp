@@ -95,6 +95,7 @@ signals:
     void signal_work_status(WorkStatus status);
     void signal_optimized_config(JsonStrategyConfig config);
     void signal_strategy_parameters_changed(std::string name, double value);
+    void signal_optimizer_passed_check(int passed_checks, int total_checks);
 
 private:
     void construct_optimizer_ui();

@@ -93,5 +93,6 @@ std::optional<JsonStrategyConfig> Optimizer::optimize()
     if (!best_config.has_value()) {
         return {};
     }
+    m_on_passed_check(configs.size(), configs.size());
     return JsonStrategyConfig{best_config.value()};
 }

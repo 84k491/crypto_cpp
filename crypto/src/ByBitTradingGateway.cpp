@@ -161,6 +161,7 @@ std::optional<std::vector<Trade>> ByBitTradingGateway::send_order_sync(const Mar
         return std::nullopt;
     }
     ScopeExit se([&]() {
+        std::lock_guard l(m_pending_orders_mutex);
         m_pending_orders.erase(it);
     });
 
@@ -172,6 +173,7 @@ std::optional<std::vector<Trade>> ByBitTradingGateway::send_order_sync(const Mar
 
     {
         std::future<bool> success_future = it->second.success_promise.get_future();
+        l.unlock();
         if (success_future.wait_for(ws_wait_timeout) == std::future_status::timeout) {
             std::cout << "Timeout waiting for order_resp" << std::endl;
             return std::nullopt;
