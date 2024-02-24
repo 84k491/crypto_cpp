@@ -157,13 +157,13 @@ void MainWindow::on_pb_run_clicked()
         return;
     }
 
-    auto * tr_gateway = [&]() -> ITradingGateway * {
+    auto & tr_gateway = [&]() -> ITradingGateway & {
         if (ui->cb_live->isChecked()) {
-            return &m_trading_gateway;
+            return m_trading_gateway;
         }
         else {
             m_backtest_tr_gateway = std::make_unique<BacktestTradingGateway>(symbol.value(), m_gateway);
-            return m_backtest_tr_gateway.get();
+            return *m_backtest_tr_gateway;
         }
     }();
 

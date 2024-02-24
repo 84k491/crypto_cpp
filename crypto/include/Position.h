@@ -13,11 +13,14 @@
 
 struct PositionResult
 {
+    friend std::ostream & operator<<(std::ostream & os, const PositionResult & res);
+
 public:
     double fees_paid = 0.;
-    double pnl = 0.;
+    double pnl = 0.; // fees counted
     std::chrono::milliseconds opened_time = {};
 };
+std::ostream & operator<<(std::ostream & os, const PositionResult & res);
 
 // TODO rename this file to position manager
 class PositionManager
@@ -40,7 +43,7 @@ class PositionManager
     };
 
 public:
-    PositionManager(Symbol symbol, ITradingGateway * tr_gateway)
+    PositionManager(Symbol symbol, ITradingGateway & tr_gateway)
         : m_symbol(std::move(symbol))
         , m_tr_gateway(tr_gateway)
     {
@@ -62,5 +65,5 @@ private:
     std::optional<OpenedPosition> m_opened_position;
     const Symbol m_symbol;
 
-    ITradingGateway * m_tr_gateway = nullptr;
+    ITradingGateway & m_tr_gateway;
 };

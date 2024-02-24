@@ -12,7 +12,7 @@ StrategyInstance::StrategyInstance(
         const MarketDataRequest & md_request,
         const std::shared_ptr<IStrategy> & strategy_ptr,
         ByBitGateway & md_gateway,
-        ITradingGateway * tr_gateway)
+        ITradingGateway & tr_gateway)
     : m_md_gateway(md_gateway)
     , m_tr_gateway(tr_gateway)
     , m_strategy(strategy_ptr)
@@ -62,13 +62,6 @@ void StrategyInstance::run_async()
 
 void StrategyInstance::stop_async()
 {
-    m_md_gateway.stop_async();
-}
-
-void StrategyInstance::wait_for_finish()
-{
-    m_md_gateway.wait_for_finish();
-
     if (m_position_manager.opened() != nullptr) {
         std::cout << "Closing position on wait_for_finish" << std::endl;
         const auto position_result_opt = m_position_manager.close();
@@ -80,6 +73,12 @@ void StrategyInstance::wait_for_finish()
             m_depo_publisher.push(m_last_signal.value().timestamp, m_strategy_result.get().final_profit);
         }
     }
+    m_md_gateway.stop_async();
+}
+
+void StrategyInstance::wait_for_finish()
+{
+    m_md_gateway.wait_for_finish();
 }
 
 void StrategyInstance::on_signal(const Signal & signal)

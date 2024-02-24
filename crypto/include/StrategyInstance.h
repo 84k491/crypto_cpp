@@ -23,7 +23,7 @@ public:
                      const MarketDataRequest & md_request,
                      const std::shared_ptr<IStrategy> & strategy_ptr,
                      ByBitGateway & md_gateway,
-                     ITradingGateway * tr_gateway);
+                     ITradingGateway & tr_gateway);
 
     TimeseriesPublisher<Signal> & signals_publisher();
     TimeseriesPublisher<std::pair<std::string, double>> & strategy_internal_data_publisher();
@@ -42,7 +42,7 @@ private:
 
 private:
     ByBitGateway & m_md_gateway;
-    ITradingGateway * m_tr_gateway;
+    ITradingGateway & m_tr_gateway;
     std::shared_ptr<IStrategy> m_strategy;
 
     std::optional<Signal> m_last_signal;

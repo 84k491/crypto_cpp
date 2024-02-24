@@ -1,5 +1,6 @@
 #include "Optimizer.h"
 
+#include "BacktestTradingGateway.h"
 #include "StrategyFactory.h"
 #include "StrategyInstance.h"
 
@@ -78,7 +79,8 @@ std::optional<JsonStrategyConfig> Optimizer::optimize()
             return result;
         }();
 
-        StrategyInstance strategy_instance(m_symbol, md_request, strategy_opt.value(), m_gateway, nullptr);
+        BacktestTradingGateway tr_gateway(m_symbol, m_gateway);
+        StrategyInstance strategy_instance(m_symbol, md_request, strategy_opt.value(), m_gateway, tr_gateway);
         strategy_instance.run_async();
         strategy_instance.wait_for_finish();
         const auto profit = strategy_instance.strategy_result_publisher().get().final_profit;

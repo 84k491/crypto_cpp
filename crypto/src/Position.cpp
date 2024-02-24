@@ -29,14 +29,11 @@ bool PositionManager::open(SignedVolume target_absolute_volume)
         return false;
     }
 
-    if (m_tr_gateway == nullptr) {
-        return true;
-    }
     const auto order = MarketOrder{
             m_symbol.symbol_name,
             adjusted_target_volume};
 
-    const auto trades_opt = m_tr_gateway->send_order_sync(order);
+    const auto trades_opt = m_tr_gateway.send_order_sync(order);
     if (!trades_opt.has_value()) {
         std::cout << "ERROR Failed to send an order" << std::endl;
         return false;
@@ -66,7 +63,7 @@ std::optional<PositionResult> PositionManager::close()
 
     std::cout << "Closing position: " << order << std::endl;
 
-    const auto trades_opt = m_tr_gateway->send_order_sync(order);
+    const auto trades_opt = m_tr_gateway.send_order_sync(order);
     if (!trades_opt.has_value()) {
         std::cout << "ERROR Failed to send order" << std::endl;
         return std::nullopt;
@@ -118,4 +115,13 @@ PositionManager::OpenedPosition::OpenedPosition(std::chrono::milliseconds ts, Si
     , m_open_price(price)
     , m_open_ts(ts)
 {
+}
+
+std::ostream & operator<<(std::ostream & os, const PositionResult & res)
+{
+    os << "PositionResult: "
+       << "pnl = " << res.pnl
+       << ", fees_paid = " << res.fees_paid
+       << ", opened_time = " << res.opened_time;
+    return os;
 }
