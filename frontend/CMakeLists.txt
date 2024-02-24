@@ -39,6 +39,7 @@ set(PROJECT_SOURCES
         ../crypto/src/ByBitTradingMessages.cpp
         ../crypto/src/DebugEveryTickStrategy.cpp
         ../crypto/src/BacktestTradingGateway.cpp
+        ../crypto/src/TradingPrimitives.cpp
 )
 
 qt_add_executable(frontend

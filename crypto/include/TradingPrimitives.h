@@ -7,6 +7,8 @@
 
 class MarketOrder
 {
+    friend std::ostream & operator<<(std::ostream & os, const MarketOrder & order);
+
 public:
     MarketOrder(std::string symbol, UnsignedVolume volume, Side side)
         : m_symbol(std::move(symbol))
@@ -39,6 +41,7 @@ private:
     UnsignedVolume m_volume;
     Side m_side = Side::Buy;
 };
+std::ostream & operator<<(std::ostream & os, const MarketOrder & order);
 
 class Trade
 {

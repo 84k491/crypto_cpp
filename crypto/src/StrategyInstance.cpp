@@ -23,6 +23,22 @@ StrategyInstance::StrategyInstance(
     m_strategy_result.update([&](StrategyResult & res) {
         res.position_currency_amount = m_pos_currency_amount;
     });
+
+    m_gw_status_sub = m_md_gateway.status_publisher().subscribe([this](const WorkStatus & status) {
+        if (status == WorkStatus::Stopped || status == WorkStatus::Crashed) {
+            if (m_position_manager.opened() != nullptr) {
+                std::cout << "Closing position on status stopped" << std::endl;
+                const auto position_result_opt = m_position_manager.close();
+                if (position_result_opt.has_value()) {
+                    const auto res = position_result_opt.value();
+                    m_strategy_result.update([&](StrategyResult & str_res) {
+                        str_res.final_profit += res.pnl;
+                    });
+                    m_depo_publisher.push(m_last_signal.value().timestamp, m_strategy_result.get().final_profit);
+                }
+            }
+        }
+    });
 }
 
 void StrategyInstance::run_async()
@@ -54,6 +70,7 @@ void StrategyInstance::wait_for_finish()
     m_md_gateway.wait_for_finish();
 
     if (m_position_manager.opened() != nullptr) {
+        std::cout << "Closing position on wait_for_finish" << std::endl;
         const auto position_result_opt = m_position_manager.close();
         if (position_result_opt.has_value()) {
             const auto res = position_result_opt.value();

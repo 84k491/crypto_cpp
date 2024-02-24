@@ -3,11 +3,13 @@
 #include "Enums.h"
 
 #include <optional>
+#include <ostream>
 #include <utility>
 
 class SignedVolume;
 class UnsignedVolume
 {
+    friend std::ostream & operator<<(std::ostream & os, const UnsignedVolume & volume);
     friend class SignedVolume;
     UnsignedVolume(double value)
         : m_value(value)
@@ -73,6 +75,7 @@ public:
 private:
     double m_value = {};
 };
+std::ostream & operator<<(std::ostream & os, const UnsignedVolume & volume);
 
 class SignedVolume
 {

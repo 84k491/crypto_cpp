@@ -56,9 +56,15 @@ std::optional<PositionResult> PositionManager::close()
     }
     auto & pos = m_opened_position.value();
 
-    const auto order = MarketOrder{
-            m_symbol.symbol_name,
-            pos.absolute_volume()};
+    const auto order = [&]() {
+        const auto [vol, side] = pos.absolute_volume().as_unsigned_and_side();
+        const auto volume = SignedVolume(vol, side == Side::Buy ? Side::Sell : Side::Buy);
+        return MarketOrder{
+                m_symbol.symbol_name,
+                volume};
+    }();
+
+    std::cout << "Closing position: " << order << std::endl;
 
     const auto trades_opt = m_tr_gateway->send_order_sync(order);
     if (!trades_opt.has_value()) {
