@@ -1,6 +1,7 @@
 #pragma once
 
-#include "TradingPrimitives.h"
+#include "MarketOrder.h"
+#include "Trade.h"
 
 #include <optional>
 #include <vector>

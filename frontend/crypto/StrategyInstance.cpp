@@ -1,7 +1,7 @@
 #include "StrategyInstance.h"
 
 #include "ITradingGateway.h"
-#include "Types.h"
+#include "Volume.h"
 
 #include <chrono>
 #include <optional>

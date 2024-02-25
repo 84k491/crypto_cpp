@@ -1,5 +1,5 @@
-#include "TradingPrimitives.h"
-#include "Types.h"
+#include "Trade.h"
+#include "Volume.h"
 #include "Ohlc.h"
 
 #include <cstdint>

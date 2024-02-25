@@ -3,8 +3,7 @@
 #include "Enums.h"
 #include "ITradingGateway.h"
 #include "Symbol.h"
-#include "TradingPrimitives.h"
-#include "Types.h"
+#include "Volume.h"
 
 #include <chrono>
 #include <expected>

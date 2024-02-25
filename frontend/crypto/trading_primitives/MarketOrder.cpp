@@ -1,4 +1,4 @@
-#include "TradingPrimitives.h"
+#include "MarketOrder.h"
 
 std::ostream & operator<<(std::ostream & os, const MarketOrder & order)
 {
@@ -6,8 +6,3 @@ std::ostream & operator<<(std::ostream & os, const MarketOrder & order)
     return os;
 }
 
-std::ostream & operator<<(std::ostream & os, const UnsignedVolume & volume)
-{
-    os << volume.value();
-    return os;
-}

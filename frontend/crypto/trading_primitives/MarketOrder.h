@@ -1,9 +1,8 @@
 #pragma once
 
-#include "Types.h"
+#include "Volume.h"
 
-#include <chrono>
-#include <string>
+#include <ostream>
 
 class MarketOrder
 {
@@ -42,29 +41,3 @@ private:
     Side m_side = Side::Buy;
 };
 std::ostream & operator<<(std::ostream & os, const MarketOrder & order);
-
-class Trade
-{
-public:
-    Trade(std::chrono::milliseconds ts, std::string symbol, double price, UnsignedVolume volume, Side side, double fee)
-        : ts(ts)
-        , symbol(std::move(symbol))
-        , price(price)
-        , unsigned_volume(std::move(volume))
-        , side(side)
-        , fee(fee)
-    {
-    }
-
-    Trade(Trade && other) noexcept = default;
-    Trade(const Trade & other) = default;
-
-public: // TODO make private with getters
-        // private:
-    std::chrono::milliseconds ts;
-    std::string symbol;
-    double price{};
-    UnsignedVolume unsigned_volume;
-    Side side = Side::Buy;
-    double fee = 0.0;
-};
