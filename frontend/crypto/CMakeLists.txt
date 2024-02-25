@@ -6,6 +6,7 @@ file(GLOB PROJECT_SOURCES
 )
 
 add_subdirectory(ta)
+add_subdirectory(tests)
 
 add_library(crypto_local STATIC ${PROJECT_SOURCES})
 
