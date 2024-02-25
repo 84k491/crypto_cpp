@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 
 project(crypto_platform)
+enable_testing()
 
 set(CMAKE_C_COMPILER "/usr/bin/clang")
 set(CMAKE_CXX_COMPILER "/usr/bin/clang++")

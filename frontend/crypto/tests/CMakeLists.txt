@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
 
-enable_testing()
 find_package(GTest REQUIRED)
 include_directories(
     ${GTEST_INCLUDE_DIRS}
@@ -18,4 +17,12 @@ target_link_libraries(object_publisher_test
     crossguid2
 )
 
-add_test(NAME object_publisher_test COMMAND object_publisher_test)
+set(UNIT_TEST object_publisher_test)
+add_test(NAME ${UNIT_TEST} COMMAND ${UNIT_TEST})
+add_custom_command(
+     TARGET ${UNIT_TEST}
+     COMMENT "Run test: ${UNIT_TEST}"
+     POST_BUILD 
+     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+     COMMAND ${UNIT_TEST}
+)
