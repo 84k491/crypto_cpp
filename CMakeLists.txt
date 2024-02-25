@@ -21,6 +21,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} \
     -Wunused-private-field \
     ")
 
-add_subdirectory(json)
+add_subdirectory(thirdparty/json)
 add_subdirectory(frontend)
 set(JSON_BuildTests OFF CACHE INTERNAL "")

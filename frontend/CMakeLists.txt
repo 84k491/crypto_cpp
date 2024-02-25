@@ -19,28 +19,9 @@ set(PROJECT_SOURCES
         mainwindow.h
         mainwindow.ui
         DragableChart.cpp
-        ../crypto/src/ByBitGateway.cpp
-        ../crypto/src/ohlc.cpp
-        ../crypto/src/DoubleSmaStrategy.cpp
-        ../crypto/src/ScopeExit.cpp
-        ../crypto/src/Signal.cpp
-        ../crypto/src/Timerange.cpp
-        ../crypto/src/StrategyInstance.cpp
-        ../crypto/src/Position.cpp
-        ../crypto/src/Optimizer.cpp
-        ../crypto/ta/src/SimpleMovingAverage.cpp
-        ../crypto/src/BollingerBandsStrategy.cpp
-        ../crypto/src/StrategyFactory.cpp
-        ../crypto/ta/src/BollingerBands.cpp
-        ../crypto/ta/src/StandardDeviation.cpp
-        ../crypto/src/WorkerThread.cpp
-        ../crypto/src/ByBitTradingGateway.cpp
-        ../crypto/src/RestClient.cpp
-        ../crypto/src/ByBitTradingMessages.cpp
-        ../crypto/src/DebugEveryTickStrategy.cpp
-        ../crypto/src/BacktestTradingGateway.cpp
-        ../crypto/src/TradingPrimitives.cpp
 )
+
+add_subdirectory(crypto)
 
 qt_add_executable(frontend
         MANUAL_FINALIZATION
@@ -48,21 +29,20 @@ qt_add_executable(frontend
 )
 target_compile_options(frontend PRIVATE "-g" "-O0")
 
-target_include_directories(${PROJECT_NAME}
-    PUBLIC
-    ${PROJECT_SOURCE_DIR}/../crypto/interfaces
-    ${PROJECT_SOURCE_DIR}/../crypto/include
-    ${PROJECT_SOURCE_DIR}/../crypto/ta/include
-)
+
+# target_include_directories(${PROJECT_NAME}
+#     PUBLIC
+#     ${PROJECT_SOURCE_DIR}/../crypto/interfaces
+#     ${PROJECT_SOURCE_DIR}/../crypto/include
+#     ${PROJECT_SOURCE_DIR}/../crypto/ta/include
+# )
 
 target_link_libraries(frontend PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)
 target_link_libraries(frontend PRIVATE
     Qt6::Charts
-    curl
     nlohmann_json::nlohmann_json
     crossguid2
-    ssl
-    crypto
+    crypto_local
 )
 
 include(GNUInstallDirs)
@@ -71,6 +51,7 @@ install(TARGETS frontend
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
- if(QT_VERSION_MAJOR EQUAL 6)
+
+if(QT_VERSION_MAJOR EQUAL 6)
     qt_finalize_executable(frontend)
 endif()
