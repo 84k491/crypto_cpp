@@ -30,19 +30,18 @@ qt_add_executable(frontend
 target_compile_options(frontend PRIVATE "-g" "-O0")
 
 
-# target_include_directories(${PROJECT_NAME}
-#     PUBLIC
-#     ${PROJECT_SOURCE_DIR}/../crypto/interfaces
-#     ${PROJECT_SOURCE_DIR}/../crypto/include
-#     ${PROJECT_SOURCE_DIR}/../crypto/ta/include
-# )
-
 target_link_libraries(frontend PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)
 target_link_libraries(frontend PRIVATE
     Qt6::Charts
     nlohmann_json::nlohmann_json
     crossguid2
     crypto_local
+    ta
+    util
+    strategy
+    gateway
+    trading_primitives
+    network
 )
 
 include(GNUInstallDirs)

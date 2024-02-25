@@ -7,7 +7,7 @@
 #include "TimeseriesPublisher.h"
 #include "WorkStatus.h"
 #include "WorkerThread.h"
-#include "ohlc.h"
+#include "Ohlc.h"
 
 #include <chrono>
 #include <functional>

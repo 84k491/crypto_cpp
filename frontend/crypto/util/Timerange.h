@@ -1,5 +1,3 @@
-#include "ohlc.h"
-
 #include <chrono>
 
 class Timerange
@@ -22,8 +20,6 @@ public:
 private:
     std::chrono::milliseconds m_start;
     std::chrono::milliseconds m_end; // included
-
-    std::map<std::chrono::milliseconds, OHLC> m_prices;
 };
 
 template <>

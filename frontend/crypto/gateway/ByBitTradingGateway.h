@@ -2,7 +2,6 @@
 
 #include "ByBitTradingMessages.h"
 #include "ITradingGateway.h"
-#include "Position.h"
 #include "RestClient.h"
 #include "WorkerThread.h"
 

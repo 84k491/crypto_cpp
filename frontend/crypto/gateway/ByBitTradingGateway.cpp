@@ -1,7 +1,7 @@
 #include "ByBitTradingGateway.h"
 
 #include "ScopeExit.h"
-#include "ohlc.h"
+#include "Ohlc.h"
 
 #include <mutex>
 

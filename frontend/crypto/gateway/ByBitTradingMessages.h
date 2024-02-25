@@ -1,6 +1,6 @@
 #include "TradingPrimitives.h"
 #include "Types.h"
-#include "ohlc.h"
+#include "Ohlc.h"
 
 #include <cstdint>
 #include <iostream>

@@ -2,7 +2,7 @@
 
 #include "ScopeExit.h"
 #include "WorkerThread.h"
-#include "ohlc.h"
+#include "Ohlc.h"
 
 #include <chrono>
 #include <future>
@@ -224,7 +224,6 @@ std::shared_ptr<TimeseriesSubsription<OHLC>> ByBitGateway::subscribe_for_klines_
                             symbol,
                             timerange,
                             [symbol,
-                             timerange,
                              &last_ts,
                              this](std::map<std::chrono::milliseconds, OHLC> && ts_and_ohlc_map) {
                                 for (const auto & [ts, ohlc] : ts_and_ohlc_map) {

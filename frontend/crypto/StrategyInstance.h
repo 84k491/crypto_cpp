@@ -3,7 +3,7 @@
 #include "ByBitGateway.h"
 #include "ITradingGateway.h"
 #include "ObjectPublisher.h"
-#include "Position.h"
+#include "PositionManager.h"
 #include "Signal.h"
 #include "StrategyInterface.h"
 #include "StrategyResult.h"

@@ -1,6 +1,6 @@
 #include "BacktestTradingGateway.h"
 
-#include "ohlc.h"
+#include "Ohlc.h"
 
 BacktestTradingGateway::BacktestTradingGateway(Symbol symbol, ByBitGateway & md_gateway)
     : m_symbol(std::move(symbol))

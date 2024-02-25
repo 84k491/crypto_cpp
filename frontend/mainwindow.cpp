@@ -1,9 +1,8 @@
 #include "mainwindow.h"
 
 #include "./ui_mainwindow.h"
-#include "ByBitTradingGateway.h"
-#include "DoubleSmaStrategy.h"
 #include "DragableChart.h"
+#include "DoubleSmaStrategy.h"
 #include "ITradingGateway.h"
 #include "JsonStrategyConfig.h"
 #include "Optimizer.h"
@@ -265,7 +264,7 @@ void MainWindow::render_result(StrategyResult result)
 
 void MainWindow::optimized_config_slot(const JsonStrategyConfig & config)
 {
-    DoubleSmaStrategyConfig new_config(config);
+    DoubleSmaStrategyConfig new_config(config); // TODO there is not only DSMA
     for (auto it = config.get().begin(); it != config.get().end(); ++it) {
         auto spinbox_it = m_strategy_parameters_spinboxes.find(it.key());
         if (spinbox_it == m_strategy_parameters_spinboxes.end()) {
