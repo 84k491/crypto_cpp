@@ -1,7 +1,7 @@
 #include "ObjectPublisher.h"
 
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 namespace test {
 using namespace testing;
@@ -101,7 +101,7 @@ TEST(ObjectPublisherTest, orderding)
     EXPECT_EQ(first_value, 1);
     EXPECT_EQ(second_value, 2);
 
-    publisher.push(11);
+    publisher.update([&](int & v) { v = 11; });
     EXPECT_EQ(first_value, 33);
     EXPECT_EQ(second_value, 44);
 }
