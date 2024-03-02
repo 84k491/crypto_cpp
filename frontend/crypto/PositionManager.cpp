@@ -6,7 +6,7 @@
 #include <optional>
 #include <utility>
 
-bool PositionManager::open(SignedVolume target_absolute_volume)
+bool PositionManager::open(double price, SignedVolume target_absolute_volume)
 {
     const std::optional<SignedVolume> adjusted_target_volume_opt = m_symbol.get_qty_floored(target_absolute_volume);
     if (!adjusted_target_volume_opt.has_value()) {
@@ -31,6 +31,7 @@ bool PositionManager::open(SignedVolume target_absolute_volume)
 
     const auto order = MarketOrder{
             m_symbol.symbol_name,
+            price,
             adjusted_target_volume};
 
     const auto trades_opt = m_tr_gateway.send_order_sync(order);
@@ -46,7 +47,7 @@ bool PositionManager::open(SignedVolume target_absolute_volume)
     return true;
 }
 
-std::optional<PositionResult> PositionManager::close()
+std::optional<PositionResult> PositionManager::close(double price)
 {
     if (!m_opened_position.has_value()) {
         return std::nullopt;
@@ -58,6 +59,7 @@ std::optional<PositionResult> PositionManager::close()
         const auto volume = SignedVolume(vol, side == Side::Buy ? Side::Sell : Side::Buy);
         return MarketOrder{
                 m_symbol.symbol_name,
+                price,
                 volume};
     }();
 

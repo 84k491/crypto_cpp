@@ -79,7 +79,7 @@ std::optional<JsonStrategyConfig> Optimizer::optimize()
             return result;
         }();
 
-        BacktestTradingGateway tr_gateway(m_symbol, m_gateway);
+        BacktestTradingGateway tr_gateway;
         StrategyInstance strategy_instance(m_symbol, md_request, strategy_opt.value(), m_gateway, tr_gateway);
         strategy_instance.run_async();
         strategy_instance.wait_for_finish();

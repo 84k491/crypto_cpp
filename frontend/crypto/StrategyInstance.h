@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ByBitGateway.h"
+#include "EventLoop.h"
 #include "ITradingGateway.h"
 #include "ObjectPublisher.h"
 #include "PositionManager.h"
@@ -13,7 +14,7 @@
 #include <memory>
 #include <optional>
 
-class StrategyInstance
+class StrategyInstance : public IEventInvoker<MDResponseEvent>
 {
 public:
     using KlineCallback = std::function<void(std::pair<std::chrono::milliseconds, OHLC>)>;
@@ -32,15 +33,21 @@ public:
     ObjectPublisher<StrategyResult> & strategy_result_publisher();
     ObjectPublisher<WorkStatus> & status_publisher();
 
+    void run_with_loop();
     void run_async();
     void stop_async();
     void wait_for_finish();
 
 private:
+    void invoke(const MDResponseEvent & value) override;
+
+    void on_price_received(std::chrono::milliseconds ts, const OHLC & ohlc);
     void on_signal(const Signal & signal);
     void process_position_result(const PositionResult & new_result, std::chrono::milliseconds ts);
 
 private:
+    EventLoop<MDResponseEvent> m_event_loop;
+
     ByBitGateway & m_md_gateway;
     ITradingGateway & m_tr_gateway;
     std::shared_ptr<IStrategy> m_strategy;
@@ -53,7 +60,7 @@ private:
     TimeseriesPublisher<OHLC> m_klines_publisher;
     TimeseriesPublisher<double> m_depo_publisher;
 
-    std::shared_ptr<TimeseriesSubsription<OHLC>> m_kline_sub;
+    // std::shared_ptr<TimeseriesSubsription<OHLC>> m_kline_sub;
 
     const Symbol m_symbol;
     static constexpr double m_pos_currency_amount = 100.;
@@ -63,4 +70,6 @@ private:
 
     std::shared_ptr<ObjectSubscribtion<WorkStatus>> m_gw_status_sub;
     bool first_price_received = false;
+
+    double m_last_price = 0.;
 };

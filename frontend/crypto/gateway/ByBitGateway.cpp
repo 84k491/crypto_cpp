@@ -145,116 +145,116 @@ void from_json(const json & j, SymbolResponse & response)
     j2.get_to(response.result);
 }
 
-std::shared_ptr<TimeseriesSubsription<OHLC>> ByBitGateway::subscribe_for_klines(KlineCallback && kline_callback)
-{
-    return m_klines_publisher.subscribe([](auto) {}, std::move(kline_callback));
-}
+// std::shared_ptr<TimeseriesSubsription<OHLC>> ByBitGateway::subscribe_for_klines(KlineCallback && kline_callback)
+// {
+//     return m_klines_publisher.subscribe([](auto) {}, std::move(kline_callback));
+// }
 
-std::shared_ptr<TimeseriesSubsription<OHLC>> ByBitGateway::subscribe_for_klines_and_start(
-        const std::string & symbol,
-        KlineCallback && kline_callback,
-        const MarketDataRequest & md_request)
-{
-    if (!md_request.historical_range.has_value() && !md_request.go_live) {
-        return {};
-    }
-
-    if (m_last_server_time == std::chrono::milliseconds{0}) {
-        m_last_server_time = get_server_time() - min_interval;
-        std::cout << "Modified server time: " << m_last_server_time.count() << std::endl;
-    }
-
-    auto sub = m_klines_publisher.subscribe([](auto) {}, std::move(kline_callback));
-
-    m_backtest_thread = std::make_unique<WorkerThreadOnce>([this, md_request, symbol] {
-        if (md_request.historical_range.has_value()) {
-            m_status.push(WorkStatus::Backtesting);
-            const auto [start, end_opt] = md_request.historical_range.value();
-            if (start > m_last_server_time) {
-                std::cout << "ERROR starting in future" << std::endl;
-                m_status.push(WorkStatus::Crashed);
-                return;
-            }
-
-            const auto historical_end = end_opt.has_value() ? std::min(end_opt.value(), m_last_server_time) : m_last_server_time;
-            const auto histroical_timerange = Timerange{start, historical_end};
-
-            bool cached = false;
-            if (auto range_it = m_ranges_by_symbol.find(symbol); range_it != m_ranges_by_symbol.end()) {
-                if (auto it = range_it->second.find(histroical_timerange); it != range_it->second.end()) {
-                    for (const auto & [ts, ohlc] : it->second) {
-                        m_klines_publisher.push(ts, ohlc);
-                    }
-                    cached = true;
-                }
-            }
-
-            const bool success = cached ||
-                    request_historical_klines(
-                                         symbol,
-                                         histroical_timerange,
-                                         [this,
-                                          symbol,
-                                          histroical_timerange](std::map<std::chrono::milliseconds, OHLC> && ts_and_ohlc_map) {
-                                             auto & range = m_ranges_by_symbol[symbol][histroical_timerange];
-                                             for (const auto & ts_and_ohlc : ts_and_ohlc_map) {
-                                                 const auto & [ts, ohlc] = ts_and_ohlc;
-                                                 m_klines_publisher.push(ts, ohlc);
-                                             }
-                                             range.merge(ts_and_ohlc_map);
-                                         });
-            if (!success) {
-                std::cout << "ERROR: Failed to request klines" << std::endl;
-                m_status.push(WorkStatus::Crashed);
-                return;
-            }
-        }
-
-        if (!md_request.go_live) {
-            // std::cout << "Not going live, finished" << std::endl;
-            m_status.push(WorkStatus::Stopped);
-            return;
-        }
-
-        std::cout << "Going live" << std::endl;
-        m_status.push(WorkStatus::Live);
-
-        m_live_thread = std::make_unique<WorkerThreadLoop>(
-                [this,
-                 symbol,
-                 last_ts = m_last_server_time](const std::atomic_bool & running) mutable -> bool {
-                    const auto timerange = Timerange{last_ts + std::chrono::seconds{1}, last_ts + min_interval};
-
-                    request_historical_klines(
-                            symbol,
-                            timerange,
-                            [symbol,
-                             &last_ts,
-                             this](std::map<std::chrono::milliseconds, OHLC> && ts_and_ohlc_map) {
-                                for (const auto & [ts, ohlc] : ts_and_ohlc_map) {
-                                    m_klines_publisher.push(ts, ohlc);
-                                    last_ts = ts_and_ohlc_map.rbegin()->first;
-                                    std::cout << "ts: " << ts.count() << "OHLC: " << ohlc << std::endl;
-                                }
-                            });
-
-                    const auto wait_time = std::chrono::seconds{30};
-                    std::cout << "Got all live prices, sleeping for " << wait_time.count() << " seconds" << std::endl;
-                    const auto now = std::chrono::steady_clock::now();
-                    while (running && std::chrono::steady_clock::now() < now + wait_time) {
-                        std::this_thread::sleep_for(std::chrono::milliseconds{1});
-                    }
-
-                    return true;
-                });
-        m_live_thread->set_on_finish([this]() {
-            m_status.push(WorkStatus::Stopped);
-            std::cout << "Stopping live connection" << std::endl;
-        });
-        return;
-    });
-    return sub;
-}
+// std::shared_ptr<TimeseriesSubsription<OHLC>> ByBitGateway::subscribe_for_klines_and_start(
+//         const std::string & symbol,
+//         KlineCallback && kline_callback,
+//         const MarketDataRequest & md_request)
+// {
+//     if (!md_request.historical_range.has_value() && !md_request.go_live) {
+//         return {};
+//     }
+//
+//     if (m_last_server_time == std::chrono::milliseconds{0}) {
+//         m_last_server_time = get_server_time() - min_interval;
+//         std::cout << "Modified server time: " << m_last_server_time.count() << std::endl;
+//     }
+//
+//     auto sub = m_klines_publisher.subscribe([](auto) {}, std::move(kline_callback));
+//
+//     m_backtest_thread = std::make_unique<WorkerThreadOnce>([this, md_request, symbol] {
+//         if (md_request.historical_range.has_value()) {
+//             m_status.push(WorkStatus::Backtesting);
+//             const auto [start, end_opt] = md_request.historical_range.value();
+//             if (start > m_last_server_time) {
+//                 std::cout << "ERROR starting in future" << std::endl;
+//                 m_status.push(WorkStatus::Crashed);
+//                 return;
+//             }
+//
+//             const auto historical_end = end_opt.has_value() ? std::min(end_opt.value(), m_last_server_time) : m_last_server_time;
+//             const auto histroical_timerange = Timerange{start, historical_end};
+//
+//             bool cached = false;
+//             if (auto range_it = m_ranges_by_symbol.find(symbol); range_it != m_ranges_by_symbol.end()) {
+//                 if (auto it = range_it->second.find(histroical_timerange); it != range_it->second.end()) {
+//                     for (const auto & [ts, ohlc] : it->second) {
+//                         m_klines_publisher.push(ts, ohlc);
+//                     }
+//                     cached = true;
+//                 }
+//             }
+//
+//             const bool success = cached ||
+//                     request_historical_klines(
+//                                          symbol,
+//                                          histroical_timerange,
+//                                          [this,
+//                                           symbol,
+//                                           histroical_timerange](std::map<std::chrono::milliseconds, OHLC> && ts_and_ohlc_map) {
+//                                              auto & range = m_ranges_by_symbol[symbol][histroical_timerange];
+//                                              for (const auto & ts_and_ohlc : ts_and_ohlc_map) {
+//                                                  const auto & [ts, ohlc] = ts_and_ohlc;
+//                                                  m_klines_publisher.push(ts, ohlc);
+//                                              }
+//                                              range.merge(ts_and_ohlc_map);
+//                                          });
+//             if (!success) {
+//                 std::cout << "ERROR: Failed to request klines" << std::endl;
+//                 m_status.push(WorkStatus::Crashed);
+//                 return;
+//             }
+//         }
+//
+//         if (!md_request.go_live) {
+//             // std::cout << "Not going live, finished" << std::endl;
+//             m_status.push(WorkStatus::Stopped);
+//             return;
+//         }
+//
+//         std::cout << "Going live" << std::endl;
+//         m_status.push(WorkStatus::Live);
+//
+//         m_live_thread = std::make_unique<WorkerThreadLoop>(
+//                 [this,
+//                  symbol,
+//                  last_ts = m_last_server_time](const std::atomic_bool & running) mutable -> bool {
+//                     const auto timerange = Timerange{last_ts + std::chrono::seconds{1}, last_ts + min_interval};
+//
+//                     request_historical_klines(
+//                             symbol,
+//                             timerange,
+//                             [symbol,
+//                              &last_ts,
+//                              this](std::map<std::chrono::milliseconds, OHLC> && ts_and_ohlc_map) {
+//                                 for (const auto & [ts, ohlc] : ts_and_ohlc_map) {
+//                                     m_klines_publisher.push(ts, ohlc);
+//                                     last_ts = ts_and_ohlc_map.rbegin()->first;
+//                                     std::cout << "ts: " << ts.count() << "OHLC: " << ohlc << std::endl;
+//                                 }
+//                             });
+//
+//                     const auto wait_time = std::chrono::seconds{30};
+//                     std::cout << "Got all live prices, sleeping for " << wait_time.count() << " seconds" << std::endl;
+//                     const auto now = std::chrono::steady_clock::now();
+//                     while (running && std::chrono::steady_clock::now() < now + wait_time) {
+//                         std::this_thread::sleep_for(std::chrono::milliseconds{1});
+//                     }
+//
+//                     return true;
+//                 });
+//         m_live_thread->set_on_finish([this]() {
+//             m_status.push(WorkStatus::Stopped);
+//             std::cout << "Stopping live connection" << std::endl;
+//         });
+//         return;
+//     });
+//     return sub;
+// }
 
 bool ByBitGateway::request_historical_klines(const std::string & symbol, const Timerange & timerange, KlinePackCallback && pack_callback)
 {
@@ -277,8 +277,8 @@ bool ByBitGateway::request_historical_klines(const std::string & symbol, const T
             last_start = end + min_interval;
         });
 
-        const std::chrono::milliseconds remining_delta = timerange.end() - last_start;
-        std::cout << "Remaining time delta: " << remining_delta.count() << "ms" << std::endl;
+        const std::chrono::milliseconds remaining_delta = timerange.end() - last_start;
+        std::cout << "Remaining time delta: " << remaining_delta.count() << "ms" << std::endl;
 
         const std::string category = "linear";
 
@@ -398,55 +398,95 @@ void ByBitGateway::stop_async()
 
 void ByBitGateway::push_async_request(MDRequest && request)
 {
+    std::cout << "Pushing async request in md gw" << std::endl;
     m_event_loop.push(std::move(request));
 }
 
 void ByBitGateway::invoke(const MDRequest & request)
 {
-    std::visit([this](auto && req) {
-        if constexpr (std::is_same_v<decltype(req), HistoricalMDRequest>) {
-            std::cout << "Got historical request" << std::endl;
-            const HistoricalMDRequest & histroical_request = req;
-            const auto symbol = histroical_request.symbol;
-            const auto histroical_timerange = Timerange{histroical_request.start, histroical_request.end};
+    if (const auto * r = std::get_if<HistoricalMDRequest>(&request); r) {
+        std::cout << "Got historical request" << std::endl;
+        const HistoricalMDRequest & histroical_request = *r;
+        const auto symbol = histroical_request.symbol;
+        const auto histroical_timerange = Timerange{histroical_request.start, histroical_request.end};
 
-            if (auto range_it = m_ranges_by_symbol.find(symbol.symbol_name); range_it != m_ranges_by_symbol.end()) {
-                if (auto it = range_it->second.find(histroical_timerange); it != range_it->second.end()) {
-                    const HistoricalMDPackEvent & prices = it->second;
-                    histroical_request.event_consumer.push(prices);
-                    return;
-                }
-            }
-
-            std::map<std::chrono::milliseconds, OHLC> prices;
-            const bool success = request_historical_klines(
-                    symbol,
-                    histroical_timerange,
-                    [this,
-                     &prices,
-                     symbol,
-                     histroical_timerange](std::map<std::chrono::milliseconds, OHLC> && ts_and_ohlc_map) {
-                        // other thread
-                        prices.merge(ts_and_ohlc_map);
-                    });
-
-            if (!success) {
-                std::cout << "ERROR: Failed to request klines" << std::endl;
-                m_status.push(WorkStatus::Crashed);
+        if (auto range_it = m_ranges_by_symbol.find(symbol.symbol_name); range_it != m_ranges_by_symbol.end()) {
+            if (auto it = range_it->second.find(histroical_timerange); it != range_it->second.end()) {
+                const HistoricalMDPackEvent & prices = it->second;
+                histroical_request.event_consumer.push(prices);
                 return;
             }
+        }
 
-            auto & range = m_ranges_by_symbol[symbol.symbol_name][histroical_timerange];
-            range.merge(prices);
-            histroical_request.event_consumer.push(prices);
+        std::map<std::chrono::milliseconds, OHLC> prices;
+        const bool success = request_historical_klines(
+                symbol.symbol_name,
+                histroical_timerange,
+                [&prices,
+                 symbol](std::map<std::chrono::milliseconds, OHLC> && ts_and_ohlc_map) {
+                    // other thread
+                    prices.merge(ts_and_ohlc_map);
+                });
 
+        if (!success) {
+            std::cout << "ERROR: Failed to request klines" << std::endl;
+            m_status.push(WorkStatus::Crashed);
             return;
         }
-        if constexpr (std::is_same_v<decltype(req), LiveMDRequest>) {
-            std::cout << "Got live request" << std::endl;
-            return;
+
+        auto & range = m_ranges_by_symbol[symbol.symbol_name][histroical_timerange];
+        std::cout << "Prices size before pushing: " << prices.size() << std::endl;
+        histroical_request.event_consumer.push(prices);
+        range.merge(prices);
+
+        return;
+    }
+    if (const auto * r = std::get_if<LiveMDRequest>(&request); r) {
+        const LiveMDRequest & live_request = *r;
+        auto locked_ref = m_live_requests.lock();
+        locked_ref.get().push_back(live_request);
+        if (locked_ref.get().size() == 1) {
+            m_live_thread = std::make_unique<WorkerThreadLoop>(
+                    [this,
+                     symbol = live_request.symbol,
+                     last_ts = m_last_server_time](const std::atomic_bool & running) mutable -> bool {
+                        const auto timerange = Timerange{last_ts + std::chrono::seconds{1}, last_ts + min_interval};
+
+                        request_historical_klines(
+                                symbol.symbol_name,
+                                timerange,
+                                [symbol,
+                                 &last_ts,
+                                 this](std::map<std::chrono::milliseconds, OHLC> && ts_and_ohlc_map) {
+                                    for (const auto & [ts, ohlc] : ts_and_ohlc_map) {
+                                        // m_klines_publisher.push(ts, ohlc);
+                                        auto requests = m_live_requests.lock();
+                                        for (auto req : requests.get()) {
+                                            if (req.symbol.symbol_name == symbol.symbol_name) {
+                                                req.event_consumer.push(ts_and_ohlc_map);
+                                            }
+                                        }
+                                        last_ts = ts_and_ohlc_map.rbegin()->first;
+                                        std::cout << "ts: " << ts.count() << "OHLC: " << ohlc << std::endl;
+                                    }
+                                });
+
+                        const auto wait_time = std::chrono::seconds{30};
+                        std::cout << "Got all live prices, sleeping for " << wait_time.count() << " seconds" << std::endl;
+                        const auto now = std::chrono::steady_clock::now();
+                        while (running && std::chrono::steady_clock::now() < now + wait_time) {
+                            std::this_thread::sleep_for(std::chrono::milliseconds{1});
+                        }
+
+                        return true;
+                    });
+            m_live_thread->set_on_finish([this]() {
+                m_status.push(WorkStatus::Stopped);
+                std::cout << "Stopping live connection" << std::endl;
+            });
         }
-        std::cout << "ERROR: Got unknown MD request" << std::endl;
-    },
-               request);
+        std::cout << "Got live request" << std::endl;
+        return;
+    }
+    std::cout << "ERROR: Got unknown MD request" << std::endl;
 }

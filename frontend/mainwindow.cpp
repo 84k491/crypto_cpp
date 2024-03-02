@@ -174,7 +174,7 @@ void MainWindow::on_pb_run_clicked()
             return m_trading_gateway;
         }
         else {
-            m_backtest_tr_gateway = std::make_unique<BacktestTradingGateway>(symbol.value(), m_gateway);
+            m_backtest_tr_gateway = std::make_unique<BacktestTradingGateway>();
             return *m_backtest_tr_gateway;
         }
     }();

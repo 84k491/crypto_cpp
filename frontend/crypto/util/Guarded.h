@@ -11,7 +11,7 @@ class LockedRef
 private:
     friend class Guarded<T>;
 
-    LockedRef(const T & value, std::mutex & mutex)
+    LockedRef(T & value, std::mutex & mutex)
         : m_value(value)
         , m_guard(mutex)
     {
@@ -36,7 +36,7 @@ public:
     {
     }
 
-    LockedRef<T> lock() { return LockedRef<T>{m_value}; }
+    LockedRef<T> lock() { return LockedRef<T>{m_value, m_mutex}; }
 
 private:
     T m_value;

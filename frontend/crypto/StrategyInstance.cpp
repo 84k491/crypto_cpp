@@ -12,7 +12,8 @@ StrategyInstance::StrategyInstance(
         const std::shared_ptr<IStrategy> & strategy_ptr,
         ByBitGateway & md_gateway,
         ITradingGateway & tr_gateway)
-    : m_md_gateway(md_gateway)
+    : m_event_loop(*this)
+    , m_md_gateway(md_gateway)
     , m_tr_gateway(tr_gateway)
     , m_strategy(strategy_ptr)
     , m_symbol(symbol)
@@ -26,7 +27,7 @@ StrategyInstance::StrategyInstance(
     m_gw_status_sub = m_md_gateway.status_publisher().subscribe([this](const WorkStatus & status) {
         if (status == WorkStatus::Stopped || status == WorkStatus::Crashed) {
             if (m_position_manager.opened() != nullptr) {
-                const auto position_result_opt = m_position_manager.close();
+                const auto position_result_opt = m_position_manager.close(m_last_price);
                 if (position_result_opt.has_value()) {
                     const auto res = position_result_opt.value();
                     m_strategy_result.update([&](StrategyResult & str_res) {
@@ -39,35 +40,52 @@ StrategyInstance::StrategyInstance(
     });
 }
 
+void StrategyInstance::run_with_loop()
+{
+}
+
+void StrategyInstance::on_price_received(std::chrono::milliseconds ts, const OHLC & ohlc)
+{
+    std::cout << "Got price: " << ts.count() << " " << ohlc.close << std::endl;
+    m_last_price = ohlc.close;
+    m_klines_publisher.push(ts, ohlc);
+    if (!first_price_received) {
+        m_depo_publisher.push(ts, 0.);
+        first_price_received = true;
+    }
+
+    const auto signal = m_strategy->push_price({ts, ohlc.close});
+    if (signal.has_value()) {
+        on_signal(signal.value());
+    }
+}
+
 void StrategyInstance::run_async()
 {
-    auto kline_sub_opt = m_md_gateway.subscribe_for_klines_and_start(
-            m_symbol.symbol_name,
-            [this](std::chrono::milliseconds ts, const OHLC & ohlc) {
-                m_klines_publisher.push(ts, ohlc);
-                if (!first_price_received) {
-                    m_depo_publisher.push(ts, 0.);
-                    first_price_received = true;
-                }
-
-                const auto signal = m_strategy->push_price({ts, ohlc.close});
-                if (signal.has_value()) {
-                    on_signal(signal.value());
-                }
-            },
-            m_md_request);
-    if (kline_sub_opt == nullptr) {
-        std::cout << "Failed to run strategy instance" << std::endl;
-        return;
+    std::cout << "Running async" << std::endl;
+    if (!m_md_request.go_live) {
+        HistoricalMDRequest historical_request{
+                .start = m_md_request.historical_range.value().start,
+                .end = m_md_request.historical_range.value().end.value(),
+                .symbol = m_symbol,
+                .event_consumer = m_event_loop,
+        };
+        m_md_gateway.push_async_request(historical_request);
     }
-    m_kline_sub = std::move(kline_sub_opt);
+    else {
+        LiveMDRequest live_request{
+                .symbol = m_symbol,
+                .event_consumer = m_event_loop,
+        };
+        m_md_gateway.push_async_request(live_request);
+    }
 }
 
 void StrategyInstance::stop_async()
 {
     if (m_position_manager.opened() != nullptr) {
         std::cout << "Closing position on wait_for_finish" << std::endl;
-        const auto position_result_opt = m_position_manager.close();
+        const auto position_result_opt = m_position_manager.close(m_last_price);
         if (position_result_opt.has_value()) {
             const auto res = position_result_opt.value();
             m_strategy_result.update([&](StrategyResult & str_res) {
@@ -90,7 +108,7 @@ void StrategyInstance::on_signal(const Signal & signal)
     if (Side::Close == signal.side ||
         (m_position_manager.opened() != nullptr && signal.side != m_position_manager.opened()->side())) {
         if (m_position_manager.opened() != nullptr) {
-            const auto pos_res_opt = m_position_manager.close();
+            const auto pos_res_opt = m_position_manager.close(signal.price);
             if (!pos_res_opt.has_value()) {
                 std::cout << "ERROR no result on position close" << std::endl;
             }
@@ -112,7 +130,11 @@ void StrategyInstance::on_signal(const Signal & signal)
             std::cout << "ERROR can't get proper default position size" << std::endl;
             return;
         }
-        const bool success = m_position_manager.open(SignedVolume(default_pos_size_opt.value(), signal.side));
+        const bool success = m_position_manager.open(
+                signal.price,
+                SignedVolume(
+                        default_pos_size_opt.value(),
+                        signal.side));
         if (!success) {
             std::cout << "ERROR Failed to open position" << std::endl;
             return;
@@ -193,4 +215,24 @@ ObjectPublisher<StrategyResult> & StrategyInstance::strategy_result_publisher()
 ObjectPublisher<WorkStatus> & StrategyInstance::status_publisher()
 {
     return m_md_gateway.status_publisher();
+}
+
+void StrategyInstance::invoke(const MDResponseEvent & value)
+{
+    if (const auto * r = std::get_if<MDPriceEvent>(&value); r) {
+        std::cout << "Got price response" << std::endl;
+        const MDPriceEvent & response = *r;
+        on_price_received(response.first, response.second);
+        return;
+    }
+    if (const auto * r = std::get_if<HistoricalMDPackEvent>(&value); r) {
+        std::cout << "Got historical price response" << std::endl;
+        const HistoricalMDPackEvent & response = *r;
+        std::cout << "Request size: " << response.size() << std::endl;
+        for (const auto & [ts, ohlc] : response) {
+            on_price_received(ts, ohlc);
+        }
+        return;
+    }
+    std::cout << "ERROR: Unhandled MDResponseEvent" << std::endl;
 }

@@ -49,8 +49,8 @@ public:
     }
 
     // TODO make signed and unsigned volume types
-    bool open(SignedVolume target_absolute_volume);
-    std::optional<PositionResult> close();
+    bool open(double price, SignedVolume target_absolute_volume);
+    std::optional<PositionResult> close(double price);
 
     std::optional<PositionResult> on_trade(const Trade & trade);
 

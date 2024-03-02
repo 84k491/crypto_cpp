@@ -2,10 +2,13 @@
 
 #include "ThreadSafeQueue.h"
 
+#include <iostream>
+
 template <class T>
 class IEventInvoker
 {
 public:
+    virtual ~IEventInvoker() = default;
     virtual void invoke(const T & value) = 0;
 };
 
@@ -13,6 +16,7 @@ template <class T>
 class IEventConsumer
 {
 public:
+    virtual ~IEventConsumer() = default;
     virtual bool push(const T & value) = 0;
 };
 
@@ -23,6 +27,7 @@ public:
     EventLoop(IEventInvoker<T> & invoker)
         : m_invoker(invoker)
     {
+        m_thread = std::thread([this] { run(); });
     }
 
     ~EventLoop()
@@ -33,14 +38,19 @@ public:
 
     bool push(const T & value) override
     {
+        std::cout << "Pushing in event loop" << std::endl;
         return m_queue.push(value);
     }
 
 private:
     void run()
     {
-        while (m_queue.wait_and_pop()) {
-            m_invoker.invoke(m_queue.pop());
+        while (true) {
+            const auto opt = m_queue.wait_and_pop();
+            if (!opt) {
+                return;
+            }
+            m_invoker.invoke(opt.value());
         }
     }
 
