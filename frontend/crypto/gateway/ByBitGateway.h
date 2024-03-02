@@ -1,19 +1,40 @@
 #pragma once
 
+#include "EventLoop.h"
 #include "ObjectPublisher.h"
+#include "Ohlc.h"
 #include "RestClient.h"
 #include "Symbol.h"
 #include "Timerange.h"
 #include "TimeseriesPublisher.h"
 #include "WorkStatus.h"
 #include "WorkerThread.h"
-#include "Ohlc.h"
 
 #include <chrono>
 #include <functional>
 #include <optional>
 #include <unordered_map>
 #include <vector>
+
+using HistoricalMDPackEvent = std::map<std::chrono::milliseconds, OHLC>;
+using MDPriceEvent = std::pair<std::chrono::milliseconds, OHLC>;
+using MDResponseEvent = std::variant<HistoricalMDPackEvent, MDPriceEvent>;
+
+struct HistoricalMDRequest
+{
+    std::chrono::milliseconds start;
+    std::chrono::milliseconds end;
+    Symbol symbol;
+    IEventConsumer<MDResponseEvent> & event_consumer;
+};
+
+struct LiveMDRequest
+{
+    Symbol symbol;
+    EventLoop<MDResponseEvent> & requester;
+};
+using MDRequest = std::variant<HistoricalMDRequest, LiveMDRequest>;
+
 
 struct MarketDataRequest
 {
@@ -30,8 +51,9 @@ struct MarketDataRequest
 // TODO refactor it to be thead safe (push MD requests, put them to queue, parse later)
 // it's needed for multitheaded optimizer
 class WorkerThreadLoop;
-class ByBitGateway
+class ByBitGateway final : private IEventInvoker<MDRequest>
 {
+private:
     static constexpr double taker_fee = 0.0002; // 0.02%
 
 public:
@@ -40,7 +62,10 @@ public:
     static constexpr std::chrono::minutes min_interval = std::chrono::minutes{1};
     static auto get_taker_fee() { return taker_fee; }
 
-    ByBitGateway() = default;
+    ByBitGateway();
+
+    void invoke(const MDRequest & value) override;
+    void push_async_request(MDRequest && request);
 
     std::shared_ptr<TimeseriesSubsription<OHLC>> subscribe_for_klines(KlineCallback && kline_callback);
 
@@ -62,6 +87,8 @@ private:
     bool request_historical_klines(const std::string & symbol, const Timerange & timerange, KlinePackCallback && cb);
 
 private:
+    EventLoop<MDRequest> m_event_loop;
+
     std::chrono::milliseconds m_last_server_time = std::chrono::milliseconds{0};
 
     ObjectPublisher<WorkStatus> m_status;

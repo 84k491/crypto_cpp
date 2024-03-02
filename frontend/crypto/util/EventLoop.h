@@ -10,7 +10,14 @@ public:
 };
 
 template <class T>
-class EventLoop
+class IEventConsumer
+{
+public:
+    virtual bool push(const T & value) = 0;
+};
+
+template <class T>
+class EventLoop : public IEventConsumer<T>
 {
 public:
     EventLoop(IEventInvoker<T> & invoker)
@@ -24,7 +31,7 @@ public:
         m_thread.join();
     }
 
-    bool push(const T & value)
+    bool push(const T & value) override
     {
         return m_queue.push(value);
     }

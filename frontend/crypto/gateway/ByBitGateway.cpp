@@ -1,14 +1,19 @@
 #include "ByBitGateway.h"
 
+#include "Ohlc.h"
 #include "ScopeExit.h"
 #include "WorkerThread.h"
-#include "Ohlc.h"
 
 #include <chrono>
 #include <future>
 #include <string>
 #include <thread>
 #include <vector>
+
+ByBitGateway::ByBitGateway()
+    : m_event_loop(*this)
+{
+}
 
 struct OhlcResult
 {
@@ -389,4 +394,59 @@ void ByBitGateway::stop_async()
     if (m_live_thread) {
         m_live_thread->stop_async();
     }
+}
+
+void ByBitGateway::push_async_request(MDRequest && request)
+{
+    m_event_loop.push(std::move(request));
+}
+
+void ByBitGateway::invoke(const MDRequest & request)
+{
+    std::visit([this](auto && req) {
+        if constexpr (std::is_same_v<decltype(req), HistoricalMDRequest>) {
+            std::cout << "Got historical request" << std::endl;
+            const HistoricalMDRequest & histroical_request = req;
+            const auto symbol = histroical_request.symbol;
+            const auto histroical_timerange = Timerange{histroical_request.start, histroical_request.end};
+
+            if (auto range_it = m_ranges_by_symbol.find(symbol.symbol_name); range_it != m_ranges_by_symbol.end()) {
+                if (auto it = range_it->second.find(histroical_timerange); it != range_it->second.end()) {
+                    const HistoricalMDPackEvent & prices = it->second;
+                    histroical_request.event_consumer.push(prices);
+                    return;
+                }
+            }
+
+            std::map<std::chrono::milliseconds, OHLC> prices;
+            const bool success = request_historical_klines(
+                    symbol,
+                    histroical_timerange,
+                    [this,
+                     &prices,
+                     symbol,
+                     histroical_timerange](std::map<std::chrono::milliseconds, OHLC> && ts_and_ohlc_map) {
+                        // other thread
+                        prices.merge(ts_and_ohlc_map);
+                    });
+
+            if (!success) {
+                std::cout << "ERROR: Failed to request klines" << std::endl;
+                m_status.push(WorkStatus::Crashed);
+                return;
+            }
+
+            auto & range = m_ranges_by_symbol[symbol.symbol_name][histroical_timerange];
+            range.merge(prices);
+            histroical_request.event_consumer.push(prices);
+
+            return;
+        }
+        if constexpr (std::is_same_v<decltype(req), LiveMDRequest>) {
+            std::cout << "Got live request" << std::endl;
+            return;
+        }
+        std::cout << "ERROR: Got unknown MD request" << std::endl;
+    },
+               request);
 }
