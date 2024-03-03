@@ -68,16 +68,16 @@ void StrategyInstance::run_async()
                 .start = m_md_request.historical_range.value().start,
                 .end = m_md_request.historical_range.value().end.value(),
                 .symbol = m_symbol,
-                .event_consumer = m_event_loop,
+                .event_consumer = &m_event_loop,
         };
-        m_md_gateway.push_async_request(historical_request);
+        m_md_gateway.push_async_request(std::move(historical_request));
     }
     else {
-        LiveMDRequest live_request{
-                .symbol = m_symbol,
-                .event_consumer = m_event_loop,
-        };
-        m_md_gateway.push_async_request(live_request);
+        // LiveMDRequest live_request{
+        //         .symbol = m_symbol,
+        //         .event_consumer = m_event_loop,
+        // };
+        // m_md_gateway.push_async_request(live_request);
     }
 }
 

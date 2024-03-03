@@ -26,13 +26,13 @@ struct HistoricalMDRequest
     std::chrono::milliseconds start;
     std::chrono::milliseconds end;
     Symbol symbol;
-    IEventConsumer<MDResponseEvent> & event_consumer;
+    IEventConsumer<HistoricalMDPackEvent> * event_consumer; // TODO use shared_ptr
 };
 
 struct LiveMDRequest
 {
     Symbol symbol;
-    EventLoop<MDResponseEvent> & event_consumer;
+    EventLoop<MDResponseEvent> * event_consumer;
 };
 using MDRequest = std::variant<HistoricalMDRequest, LiveMDRequest>;
 
@@ -51,7 +51,7 @@ struct MarketDataRequest
 // TODO refactor it to be thead safe (push MD requests, put them to queue, parse later)
 // it's needed for multitheaded optimizer
 class WorkerThreadLoop;
-class ByBitGateway final : private IEventInvoker<MDRequest>
+class ByBitGateway final : private IEventInvoker<HistoricalMDRequest, LiveMDRequest>
 {
 private:
     static constexpr double taker_fee = 0.0002; // 0.02%
@@ -64,7 +64,7 @@ public:
 
     ByBitGateway();
 
-    void push_async_request(MDRequest && request);
+    void push_async_request(HistoricalMDRequest && request);
 
     // std::shared_ptr<TimeseriesSubsription<OHLC>> subscribe_for_klines(KlineCallback && kline_callback);
     //
@@ -87,7 +87,7 @@ private:
     bool request_historical_klines(const std::string & symbol, const Timerange & timerange, KlinePackCallback && cb);
 
 private:
-    EventLoop<MDRequest> m_event_loop;
+    EventLoop<HistoricalMDRequest, LiveMDRequest> m_event_loop;
     Guarded<std::vector<LiveMDRequest>> m_live_requests;
 
     std::chrono::milliseconds m_last_server_time = std::chrono::milliseconds{0};

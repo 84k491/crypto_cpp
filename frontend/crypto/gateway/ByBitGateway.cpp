@@ -396,10 +396,10 @@ void ByBitGateway::stop_async()
     }
 }
 
-void ByBitGateway::push_async_request(MDRequest && request)
+void ByBitGateway::push_async_request(HistoricalMDRequest && request)
 {
     std::cout << "Pushing async request in md gw" << std::endl;
-    m_event_loop.push(std::move(request));
+    m_event_loop.push(request);
 }
 
 void ByBitGateway::invoke(const MDRequest & request)
@@ -413,7 +413,7 @@ void ByBitGateway::invoke(const MDRequest & request)
         if (auto range_it = m_ranges_by_symbol.find(symbol.symbol_name); range_it != m_ranges_by_symbol.end()) {
             if (auto it = range_it->second.find(histroical_timerange); it != range_it->second.end()) {
                 const HistoricalMDPackEvent & prices = it->second;
-                histroical_request.event_consumer.push(prices);
+                histroical_request.event_consumer->push(prices);
                 return;
             }
         }
@@ -436,7 +436,7 @@ void ByBitGateway::invoke(const MDRequest & request)
 
         auto & range = m_ranges_by_symbol[symbol.symbol_name][histroical_timerange];
         std::cout << "Prices size before pushing: " << prices.size() << std::endl;
-        histroical_request.event_consumer.push(prices);
+        histroical_request.event_consumer->push(prices);
         range.merge(prices);
 
         return;
@@ -463,7 +463,7 @@ void ByBitGateway::invoke(const MDRequest & request)
                                         auto requests = m_live_requests.lock();
                                         for (auto req : requests.get()) {
                                             if (req.symbol.symbol_name == symbol.symbol_name) {
-                                                req.event_consumer.push(ts_and_ohlc_map);
+                                                req.event_consumer->push(ts_and_ohlc_map);
                                             }
                                         }
                                         last_ts = ts_and_ohlc_map.rbegin()->first;

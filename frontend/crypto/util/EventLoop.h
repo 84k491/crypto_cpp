@@ -2,14 +2,17 @@
 
 #include "ThreadSafeQueue.h"
 
+#include <any>
 #include <iostream>
+#include <variant>
 
-template <class T>
+template <class... Args>
 class IEventInvoker
 {
 public:
     virtual ~IEventInvoker() = default;
-    virtual void invoke(const T & value) = 0;
+
+    virtual void invoke(const std::variant<Args...> & value) = 0;
 };
 
 template <class T>
@@ -17,29 +20,49 @@ class IEventConsumer
 {
 public:
     virtual ~IEventConsumer() = default;
-    virtual bool push(const T & value) = 0;
+    virtual bool push(const std::any value) = 0;
 };
 
-template <class T>
-class EventLoop : public IEventConsumer<T>
+template <class... Args>
+auto any_to_variant_cast(std::any a) -> std::variant<Args...>
+{
+    if (!a.has_value()) {
+        throw std::bad_any_cast();
+    }
+
+    std::optional<std::variant<Args...>> v = std::nullopt;
+
+    bool found = ((a.type() == typeid(Args) && (v = std::any_cast<Args>(std::move(a)), true)) || ...);
+
+    if (!found) {
+        throw std::bad_any_cast{};
+    }
+
+    return std::move(*v);
+}
+
+template <class... Args>
+class EventLoop : public IEventConsumer<Args>...
 {
 public:
-    EventLoop(IEventInvoker<T> & invoker)
+    EventLoop(IEventInvoker<Args...> & invoker)
         : m_invoker(invoker)
     {
         m_thread = std::thread([this] { run(); });
     }
 
-    ~EventLoop()
+    ~EventLoop() override
     {
         m_queue.stop();
         m_thread.join();
     }
 
-    bool push(const T & value) override
+    // TODO make a separate one for Consumer and one for other users with variant
+    bool push(std::any value) override
     {
-        std::cout << "Pushing in event loop" << std::endl;
-        return m_queue.push(value);
+        std::cout << "Pushing in event loop (any)" << std::endl;
+        auto var = any_to_variant_cast<Args...>(value);
+        return m_queue.push(std::move(var));
     }
 
 private:
@@ -55,8 +78,8 @@ private:
     }
 
 private:
-    IEventInvoker<T> & m_invoker;
+    IEventInvoker<Args...> & m_invoker;
 
-    ThreadSafeQueue<T> m_queue;
+    ThreadSafeQueue<std::variant<Args...>> m_queue{};
     std::thread m_thread;
 };

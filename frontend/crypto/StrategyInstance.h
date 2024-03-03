@@ -13,8 +13,9 @@
 
 #include <memory>
 #include <optional>
+#include <variant>
 
-class StrategyInstance : public IEventInvoker<MDResponseEvent>
+class StrategyInstance : public IEventInvoker<HistoricalMDPackEvent, MDPriceEvent>
 {
 public:
     using KlineCallback = std::function<void(std::pair<std::chrono::milliseconds, OHLC>)>;
@@ -46,7 +47,7 @@ private:
     void process_position_result(const PositionResult & new_result, std::chrono::milliseconds ts);
 
 private:
-    EventLoop<MDResponseEvent> m_event_loop;
+    EventLoop<HistoricalMDPackEvent, MDPriceEvent> m_event_loop;
 
     ByBitGateway & m_md_gateway;
     ITradingGateway & m_tr_gateway;
