@@ -62,19 +62,17 @@ void StrategyInstance::on_price_received(std::chrono::milliseconds ts, const OHL
 void StrategyInstance::run_async()
 {
     if (!m_md_request.go_live) {
-        HistoricalMDRequest historical_request{
-                .start = m_md_request.historical_range.value().start,
-                .end = m_md_request.historical_range.value().end.value(),
-                .symbol = m_symbol,
-                .event_consumer = &m_event_loop,
-        };
+        HistoricalMDRequest historical_request(
+                m_event_loop,
+                m_symbol,
+                m_md_request.historical_range.value().start,
+                m_md_request.historical_range.value().end.value());
         m_md_gateway.push_async_request(std::move(historical_request));
     }
     else {
-        LiveMDRequest live_request{
-                .symbol = m_symbol,
-                .event_consumer = &m_event_loop,
-        };
+        LiveMDRequest live_request(
+                m_event_loop,
+                m_symbol);
         m_md_gateway.push_async_request(std::move(live_request));
     }
 }

@@ -15,14 +15,15 @@ public:
     virtual void invoke(const std::variant<Args...> & value) = 0;
 };
 
-template <class T>
+template <
+        class T,
+        std::enable_if_t<std::is_polymorphic_v<T>, bool> = true> // event type must be polymorphic to use typeid
 class IEventConsumer
 {
 public:
     virtual ~IEventConsumer() = default;
 
-    template <class U>
-    bool push(const U value)
+    bool push(const T value)
     {
         return push_to_queue(std::move(value));
     }
@@ -69,7 +70,7 @@ public:
     template <class T>
     IEventConsumer<T> & as_consumer()
     {
-        return static_cast<IEventConsumer<T>&>(*this);
+        return static_cast<IEventConsumer<T> &>(*this);
     }
 
 protected:

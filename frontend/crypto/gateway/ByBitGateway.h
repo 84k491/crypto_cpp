@@ -1,6 +1,7 @@
 #pragma once
 
 #include "EventLoop.h"
+#include "Guarded.h"
 #include "ObjectPublisher.h"
 #include "Ohlc.h"
 #include "RestClient.h"
@@ -9,7 +10,6 @@
 #include "TimeseriesPublisher.h"
 #include "WorkStatus.h"
 #include "WorkerThread.h"
-#include "Guarded.h"
 
 #include <chrono>
 #include <functional>
@@ -21,18 +21,33 @@ using HistoricalMDPackEvent = std::map<std::chrono::milliseconds, OHLC>;
 using MDPriceEvent = std::pair<std::chrono::milliseconds, OHLC>;
 using MDResponseEvent = std::variant<HistoricalMDPackEvent, MDPriceEvent>;
 
-struct HistoricalMDRequest
+template <class T>
+struct BasicEvent
 {
-    std::chrono::milliseconds start;
-    std::chrono::milliseconds end;
-    Symbol symbol;
-    IEventConsumer<HistoricalMDPackEvent> * event_consumer{}; // TODO use shared_ptr
+    BasicEvent(IEventConsumer<T> & consumer)
+        : event_consumer(&consumer)
+    {
+    }
+    virtual ~BasicEvent() = default;
+    IEventConsumer<T> * event_consumer = nullptr; // TODO use shared_ptr
 };
 
-struct LiveMDRequest
+struct HistoricalMDRequest : public BasicEvent<HistoricalMDPackEvent>
 {
+    HistoricalMDRequest(
+            IEventConsumer<HistoricalMDPackEvent> & _consumer,
+            const Symbol & _symbol,
+            std::chrono::milliseconds _start,
+            std::chrono::milliseconds _end);
     Symbol symbol;
-    IEventConsumer<MDPriceEvent> * event_consumer{};
+    std::chrono::milliseconds start;
+    std::chrono::milliseconds end;
+};
+
+struct LiveMDRequest : public BasicEvent<MDPriceEvent>
+{
+    LiveMDRequest(IEventConsumer<MDPriceEvent> & _consumer, const Symbol & _symbol);
+    Symbol symbol;
 };
 using MDRequest = std::variant<HistoricalMDRequest, LiveMDRequest>;
 

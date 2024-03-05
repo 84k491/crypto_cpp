@@ -2,6 +2,7 @@
 
 #include "Ohlc.h"
 #include "ScopeExit.h"
+#include "Symbol.h"
 #include "WorkerThread.h"
 
 #include <chrono>
@@ -295,7 +296,7 @@ void ByBitGateway::push_async_request(HistoricalMDRequest && request)
 void ByBitGateway::push_async_request(LiveMDRequest && request)
 {
     std::cout << "Pushing async live request in md gw" << std::endl;
-    m_event_loop.as_consumer<HistoricalMDRequest>().push(request);
+    m_event_loop.as_consumer<LiveMDRequest>().push(request);
 }
 
 void ByBitGateway::invoke(const MDRequest & request)
@@ -385,4 +386,18 @@ void ByBitGateway::invoke(const MDRequest & request)
         return;
     }
     std::cout << "ERROR: Got unknown MD request" << std::endl;
+}
+
+HistoricalMDRequest::HistoricalMDRequest(IEventConsumer<HistoricalMDPackEvent> & _consumer, const Symbol & _symbol, std::chrono::milliseconds _start, std::chrono::milliseconds _end)
+    : BasicEvent<HistoricalMDPackEvent>(_consumer)
+    , symbol(_symbol)
+    , start(_start)
+    , end(_end)
+{
+}
+
+LiveMDRequest::LiveMDRequest(IEventConsumer<MDPriceEvent> & _consumer, const Symbol & _symbol)
+    : BasicEvent<MDPriceEvent>(_consumer)
+    , symbol(_symbol)
+{
 }
