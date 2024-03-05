@@ -50,8 +50,8 @@ public:
     }
 
 private:
-    std::queue<T> m_queue;
     std::mutex m_mutex;
+    std::queue<T> m_queue;
     std::condition_variable m_cv;
     std::atomic_bool m_keep_waiting{true};
 };

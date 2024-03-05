@@ -46,7 +46,6 @@ void StrategyInstance::run_with_loop()
 
 void StrategyInstance::on_price_received(std::chrono::milliseconds ts, const OHLC & ohlc)
 {
-    std::cout << "Got price: " << ts.count() << " " << ohlc.close << std::endl;
     m_last_price = ohlc.close;
     m_klines_publisher.push(ts, ohlc);
     if (!first_price_received) {
@@ -62,7 +61,6 @@ void StrategyInstance::on_price_received(std::chrono::milliseconds ts, const OHL
 
 void StrategyInstance::run_async()
 {
-    std::cout << "Running async" << std::endl;
     if (!m_md_request.go_live) {
         HistoricalMDRequest historical_request{
                 .start = m_md_request.historical_range.value().start,
@@ -73,11 +71,11 @@ void StrategyInstance::run_async()
         m_md_gateway.push_async_request(std::move(historical_request));
     }
     else {
-        // LiveMDRequest live_request{
-        //         .symbol = m_symbol,
-        //         .event_consumer = m_event_loop,
-        // };
-        // m_md_gateway.push_async_request(live_request);
+        LiveMDRequest live_request{
+                .symbol = m_symbol,
+                .event_consumer = &m_event_loop,
+        };
+        m_md_gateway.push_async_request(std::move(live_request));
     }
 }
 
@@ -220,7 +218,7 @@ ObjectPublisher<WorkStatus> & StrategyInstance::status_publisher()
 void StrategyInstance::invoke(const MDResponseEvent & value)
 {
     if (const auto * r = std::get_if<MDPriceEvent>(&value); r) {
-        std::cout << "Got price response" << std::endl;
+        std::cout << "Got live price response" << std::endl;
         const MDPriceEvent & response = *r;
         on_price_received(response.first, response.second);
         return;

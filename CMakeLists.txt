@@ -11,6 +11,7 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} \
     -std=c++23 \
+    -Werror \
     -Wall \
     -Wextra \
     -Wshadow \
@@ -20,6 +21,20 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} \
     -Wreorder-ctor \
     -Wunused-parameter \
     -Wunused-private-field \
+    -Wstrict-overflow=5 \
+    -Wunreachable-code \
+    -Wuninitialized \
+    -Wpedantic \
+    -Winit-self \
+    -Wpointer-arith \
+    -Wredundant-decls \
+    -Wthread-safety \
+    -Wconsumed \
+    -Warray-bounds-pointer-arithmetic \
+    -Wsign-compare \
+    -ggdb \
+    -g3 \
+    -Og \
     ")
 
 add_subdirectory(thirdparty/json)

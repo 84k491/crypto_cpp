@@ -20,7 +20,15 @@ class IEventConsumer
 {
 public:
     virtual ~IEventConsumer() = default;
-    virtual bool push(const std::any value) = 0;
+
+    template <class U>
+    bool push(const U value)
+    {
+        return push_to_queue(std::move(value));
+    }
+
+private:
+    virtual bool push_to_queue(const std::any value) = 0;
 };
 
 template <class... Args>
@@ -32,6 +40,7 @@ auto any_to_variant_cast(std::any a) -> std::variant<Args...>
 
     std::optional<std::variant<Args...>> v = std::nullopt;
 
+    // TODO use event with a virtual function
     bool found = ((a.type() == typeid(Args) && (v = std::any_cast<Args>(std::move(a)), true)) || ...);
 
     if (!found) {
@@ -57,8 +66,14 @@ public:
         m_thread.join();
     }
 
-    // TODO make a separate one for Consumer and one for other users with variant
-    bool push(std::any value) override
+    template <class T>
+    IEventConsumer<T> & as_consumer()
+    {
+        return static_cast<IEventConsumer<T>&>(*this);
+    }
+
+protected:
+    bool push_to_queue(std::any value) override
     {
         std::cout << "Pushing in event loop (any)" << std::endl;
         auto var = any_to_variant_cast<Args...>(value);

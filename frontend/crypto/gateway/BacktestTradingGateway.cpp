@@ -2,9 +2,22 @@
 
 BacktestTradingGateway::BacktestTradingGateway() = default;
 
+void BacktestTradingGateway::set_price_source(TimeseriesPublisher<OHLC> & publisher)
+{
+    m_price_sub = publisher.subscribe(
+            [](auto &) {},
+            [this](auto, const OHLC & ohlc) {
+                m_last_trade_price = ohlc.close;
+            });
+}
+
 std::optional<std::vector<Trade>> BacktestTradingGateway::send_order_sync(const MarketOrder & order)
 {
-    const auto & price = order.price();
+    if (!m_price_sub) {
+        std::cout << "No price sub. Did you forgot to subscribe backtest TRGW for prices?" << std::endl;
+    }
+
+    const auto & price = m_last_trade_price;
     const auto volume = order.volume();
 
     const double currency_spent = price * volume.value();

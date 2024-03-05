@@ -1,8 +1,8 @@
 #include "mainwindow.h"
 
 #include "./ui_mainwindow.h"
-#include "DragableChart.h"
 #include "DoubleSmaStrategy.h"
+#include "DragableChart.h"
 #include "ITradingGateway.h"
 #include "JsonStrategyConfig.h"
 #include "Optimizer.h"
@@ -185,6 +185,10 @@ void MainWindow::on_pb_run_clicked()
             strategy_ptr_opt.value(),
             m_gateway,
             tr_gateway);
+
+    if (auto * ptr = dynamic_cast<BacktestTradingGateway *>(&tr_gateway); ptr != nullptr) {
+        ptr->set_price_source(m_strategy_instance->klines_publisher());
+    }
 
     m_subscriptions.push_back(m_strategy_instance->klines_publisher().subscribe(
             [](auto &) {},

@@ -26,16 +26,17 @@ struct HistoricalMDRequest
     std::chrono::milliseconds start;
     std::chrono::milliseconds end;
     Symbol symbol;
-    IEventConsumer<HistoricalMDPackEvent> * event_consumer; // TODO use shared_ptr
+    IEventConsumer<HistoricalMDPackEvent> * event_consumer{}; // TODO use shared_ptr
 };
 
 struct LiveMDRequest
 {
     Symbol symbol;
-    EventLoop<MDResponseEvent> * event_consumer;
+    IEventConsumer<MDPriceEvent> * event_consumer{};
 };
 using MDRequest = std::variant<HistoricalMDRequest, LiveMDRequest>;
 
+// TODO remove this, use structs above without a consumer
 struct MarketDataRequest
 {
     struct HistoricalRange
@@ -48,8 +49,6 @@ struct MarketDataRequest
     bool go_live = false;
 };
 
-// TODO refactor it to be thead safe (push MD requests, put them to queue, parse later)
-// it's needed for multitheaded optimizer
 class WorkerThreadLoop;
 class ByBitGateway final : private IEventInvoker<HistoricalMDRequest, LiveMDRequest>
 {
@@ -65,13 +64,8 @@ public:
     ByBitGateway();
 
     void push_async_request(HistoricalMDRequest && request);
+    void push_async_request(LiveMDRequest && request);
 
-    // std::shared_ptr<TimeseriesSubsription<OHLC>> subscribe_for_klines(KlineCallback && kline_callback);
-    //
-    // std::shared_ptr<TimeseriesSubsription<OHLC>> subscribe_for_klines_and_start(
-    //         const std::string & symbol,
-    //         KlineCallback && kline_callback,
-    //         const MarketDataRequest & md_request);
     void wait_for_finish();
     void stop_async();
 
