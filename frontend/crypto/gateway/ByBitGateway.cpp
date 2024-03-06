@@ -309,8 +309,10 @@ void ByBitGateway::invoke(const MDRequest & request)
 
         if (auto range_it = m_ranges_by_symbol.find(symbol.symbol_name); range_it != m_ranges_by_symbol.end()) {
             if (auto it = range_it->second.find(histroical_timerange); it != range_it->second.end()) {
-                const HistoricalMDPackEvent & prices = it->second;
-                histroical_request.event_consumer->push(prices);
+                const auto & prices = it->second;
+                HistoricalMDPackEvent ev;
+                ev.ts_and_price_pack = prices;
+                histroical_request.event_consumer->push(ev);
                 return;
             }
         }
@@ -333,7 +335,9 @@ void ByBitGateway::invoke(const MDRequest & request)
 
         auto & range = m_ranges_by_symbol[symbol.symbol_name][histroical_timerange];
         std::cout << "Prices size before pushing: " << prices.size() << std::endl;
-        histroical_request.event_consumer->push(prices);
+        HistoricalMDPackEvent ev;
+        ev.ts_and_price_pack = prices;
+        histroical_request.event_consumer->push(ev);
         range.merge(prices);
 
         return;
@@ -361,7 +365,9 @@ void ByBitGateway::invoke(const MDRequest & request)
                                         auto requests = m_live_requests.lock();
                                         for (auto req : requests.get()) {
                                             if (req.symbol.symbol_name == symbol.symbol_name) {
-                                                req.event_consumer->push(ts_ohlc_pair);
+                                                MDPriceEvent ev;
+                                                ev.ts_and_price = ts_ohlc_pair;
+                                                req.event_consumer->push(ev);
                                             }
                                         }
                                         last_ts = ts_and_ohlc_map.rbegin()->first;

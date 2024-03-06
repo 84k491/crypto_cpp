@@ -17,9 +17,8 @@
 #include <unordered_map>
 #include <vector>
 
-using HistoricalMDPackEvent = std::map<std::chrono::milliseconds, OHLC>;
-using MDPriceEvent = std::pair<std::chrono::milliseconds, OHLC>;
-using MDResponseEvent = std::variant<HistoricalMDPackEvent, MDPriceEvent>;
+// using HistoricalMDPackEvent = std::map<std::chrono::milliseconds, OHLC>;
+// using MDPriceEvent = std::pair<std::chrono::milliseconds, OHLC>;
 
 template <class T>
 struct BasicEvent
@@ -31,6 +30,19 @@ struct BasicEvent
     virtual ~BasicEvent() = default;
     IEventConsumer<T> * event_consumer = nullptr; // TODO use shared_ptr
 };
+
+struct BasicResponseEvent {
+    virtual ~BasicResponseEvent() = default;
+};
+
+struct MDPriceEvent : public BasicResponseEvent {
+    std::pair<std::chrono::milliseconds, OHLC> ts_and_price;
+};
+
+struct HistoricalMDPackEvent : public BasicResponseEvent {
+    std::map<std::chrono::milliseconds, OHLC> ts_and_price_pack;
+};
+using MDResponseEvent = std::variant<HistoricalMDPackEvent, MDPriceEvent>;
 
 struct HistoricalMDRequest : public BasicEvent<HistoricalMDPackEvent>
 {

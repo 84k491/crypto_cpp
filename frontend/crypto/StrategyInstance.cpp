@@ -218,14 +218,14 @@ void StrategyInstance::invoke(const MDResponseEvent & value)
     if (const auto * r = std::get_if<MDPriceEvent>(&value); r) {
         std::cout << "Got live price response" << std::endl;
         const MDPriceEvent & response = *r;
-        on_price_received(response.first, response.second);
+        on_price_received(response.ts_and_price.first, response.ts_and_price.second);
         return;
     }
     if (const auto * r = std::get_if<HistoricalMDPackEvent>(&value); r) {
         std::cout << "Got historical price response" << std::endl;
         const HistoricalMDPackEvent & response = *r;
-        std::cout << "Request size: " << response.size() << std::endl;
-        for (const auto & [ts, ohlc] : response) {
+        std::cout << "Request size: " << response.ts_and_price_pack.size() << std::endl;
+        for (const auto & [ts, ohlc] : response.ts_and_price_pack) {
             on_price_received(ts, ohlc);
         }
         return;
