@@ -10,58 +10,13 @@
 #include "TimeseriesPublisher.h"
 #include "WorkStatus.h"
 #include "WorkerThread.h"
+#include "Events.h"
 
 #include <chrono>
 #include <functional>
 #include <optional>
 #include <unordered_map>
 #include <vector>
-
-// using HistoricalMDPackEvent = std::map<std::chrono::milliseconds, OHLC>;
-// using MDPriceEvent = std::pair<std::chrono::milliseconds, OHLC>;
-
-template <class T>
-struct BasicEvent
-{
-    BasicEvent(IEventConsumer<T> & consumer)
-        : event_consumer(&consumer)
-    {
-    }
-    virtual ~BasicEvent() = default;
-    IEventConsumer<T> * event_consumer = nullptr; // TODO use shared_ptr
-};
-
-struct BasicResponseEvent {
-    virtual ~BasicResponseEvent() = default;
-};
-
-struct MDPriceEvent : public BasicResponseEvent {
-    std::pair<std::chrono::milliseconds, OHLC> ts_and_price;
-};
-
-struct HistoricalMDPackEvent : public BasicResponseEvent {
-    std::map<std::chrono::milliseconds, OHLC> ts_and_price_pack;
-};
-using MDResponseEvent = std::variant<HistoricalMDPackEvent, MDPriceEvent>;
-
-struct HistoricalMDRequest : public BasicEvent<HistoricalMDPackEvent>
-{
-    HistoricalMDRequest(
-            IEventConsumer<HistoricalMDPackEvent> & _consumer,
-            const Symbol & _symbol,
-            std::chrono::milliseconds _start,
-            std::chrono::milliseconds _end);
-    Symbol symbol;
-    std::chrono::milliseconds start;
-    std::chrono::milliseconds end;
-};
-
-struct LiveMDRequest : public BasicEvent<MDPriceEvent>
-{
-    LiveMDRequest(IEventConsumer<MDPriceEvent> & _consumer, const Symbol & _symbol);
-    Symbol symbol;
-};
-using MDRequest = std::variant<HistoricalMDRequest, LiveMDRequest>;
 
 // TODO remove this, use structs above without a consumer
 struct MarketDataRequest

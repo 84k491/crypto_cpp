@@ -1,12 +1,14 @@
 #include "ByBitTradingGateway.h"
 
-#include "ScopeExit.h"
 #include "Ohlc.h"
+#include "ScopeExit.h"
 
 #include <mutex>
+#include <tuple>
 
 ByBitTradingGateway::ByBitTradingGateway()
-    : m_url("wss://stream-testnet.bybit.com/v5/private")
+    : m_event_loop(*this)
+    , m_url("wss://stream-testnet.bybit.com/v5/private")
     , m_api_key("eGa7t3mip2WNVd9XiR")
     , m_secret_key("X6MIgs0BT5wAalKgOLMubF9SLcUfr51UWoai")
 {
@@ -315,5 +317,77 @@ void ByBitTradingGateway::on_execution(const json & j)
         else {
             std::cout << "ERROR unsolicited execution" << std::endl;
         }
+    }
+}
+
+void ByBitTradingGateway::push_order_request(const OrderRequestEvent & order)
+{
+    m_event_loop.as_consumer<OrderRequestEvent>().push(order);
+}
+
+void ByBitTradingGateway::invoke(const std::variant<OrderRequestEvent> & variant)
+{
+    const auto & req = std::get<OrderRequestEvent>(variant);
+    const auto & order = req.order;
+
+    int64_t ts = std::chrono::duration_cast<std::chrono::milliseconds>(
+                         std::chrono::system_clock::now().time_since_epoch())
+                         .count();
+
+    const std::string order_id = std::to_string(ts);
+    json json_order = {
+            {"category", "linear"},
+            {"symbol", order.symbol()},
+            {"side", order.side_str()},
+            {"orderType", "Market"},
+            {"qty", std::to_string(order.volume().value())},
+            {"timeInForce", "IOC"},
+            {"orderLinkId", order_id},
+            {"orderFilter", "Order"},
+    };
+
+    const auto request = json_order.dump();
+
+    std::unique_lock l(m_pending_orders_mutex);
+    const auto [it, success] = m_pending_orders.try_emplace(
+            order_id,
+            order);
+
+    if (!success) {
+        std::cout << "Trying to send order while order_id already exists: " << order_id << std::endl;
+        req.reject_ev_consumer->push(OrderRejectedEvent(true, "Duplicate order id", order));
+        return;
+    }
+    ScopeExit se([&]() {
+        std::lock_guard l(m_pending_orders_mutex);
+        m_pending_orders.erase(it);
+    });
+
+    const std::string url = "https://api-testnet.bybit.com/v5/order/create";
+    std::future<std::string> request_future = rest_client.request_auth_async(url, request, m_api_key, m_secret_key);
+    request_future.wait();
+    const std::string request_result = request_future.get();
+    std::cout << "Enter order response: " << request_result << std::endl;
+
+    {
+        std::future<bool> success_future = it->second.success_promise.get_future();
+        l.unlock();
+        if (success_future.wait_for(ws_wait_timeout) == std::future_status::timeout) {
+            std::cout << "Timeout waiting for order_resp" << std::endl;
+            req.reject_ev_consumer->push(OrderRejectedEvent(false, "Timeout waiting for order entry", order));
+            return;
+        }
+        if (!success_future.get()) {
+            std::cout << "Order failed" << order_id << std::endl;
+            req.reject_ev_consumer->push(OrderRejectedEvent(false, "Order failed to enter", order));
+            return;
+        }
+    }
+    std::cout << "Order successfully placed" << std::endl;
+    req.event_consumer->push(OrderAcceptedEvent(order));
+
+    std::vector<Trade> trades = it->second.m_trades;
+    for (auto & tr : trades) {
+        req.trade_ev_consumer->push(TradeEvent(std::move(tr)));
     }
 }

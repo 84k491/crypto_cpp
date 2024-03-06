@@ -1,9 +1,12 @@
 #pragma once
 
 #include "ByBitTradingMessages.h"
+#include "EventLoop.h"
 #include "ITradingGateway.h"
+#include "MarketOrder.h"
 #include "RestClient.h"
 #include "WorkerThread.h"
+#include "Events.h"
 
 #include <memory>
 #include <string>
@@ -27,7 +30,9 @@ struct PendingOrder
     std::vector<Trade> m_trades;
 };
 
-class ByBitTradingGateway final : public ITradingGateway
+class ByBitTradingGateway final
+    : public ITradingGateway
+    , private IEventInvoker<OrderRequestEvent>
 {
     using WsConfigClient = websocketpp::config::asio_tls;
     using WsClient = websocketpp::client<WsConfigClient>;
@@ -41,7 +46,11 @@ public:
 
     std::optional<std::vector<Trade>> send_order_sync(const MarketOrder & order) override;
 
+    void push_order_request(const OrderRequestEvent & order) override;
+
 private:
+    void invoke(const std::variant<OrderRequestEvent> & value) override;
+
     static std::string sign_message(const std::string & message, const std::string & secret);
     std::string build_auth_message() const;
 
@@ -49,13 +58,16 @@ private:
     void on_ws_message_received(const std::string & message);
     void on_auth_response(const json & j);
     void on_ping_response(const json & j);
-    void on_order_response(const json & j);
     void on_sub_response(const json & j);
+
+    void on_order_response(const json & j);
     void on_execution(const json & j);
 
     void send_ping();
 
 private:
+    EventLoop<OrderRequestEvent> m_event_loop;
+
     std::string m_url;
     std::string m_api_key;
     std::string m_secret_key;

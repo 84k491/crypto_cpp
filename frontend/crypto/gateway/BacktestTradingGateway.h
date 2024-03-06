@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Events.h"
 #include "ITradingGateway.h"
 #include "Ohlc.h"
 #include "TimeseriesPublisher.h"
@@ -13,6 +14,7 @@ public:
     void set_price_source(TimeseriesPublisher<OHLC> & publisher);
 
     std::optional<std::vector<Trade>> send_order_sync(const MarketOrder & order) override;
+    void push_order_request(const OrderRequestEvent & order) override;
 
 private:
     double m_last_trade_price = 0.;
