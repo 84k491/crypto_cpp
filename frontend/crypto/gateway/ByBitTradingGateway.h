@@ -44,8 +44,6 @@ class ByBitTradingGateway final
 public:
     ByBitTradingGateway();
 
-    std::optional<std::vector<Trade>> send_order_sync(const MarketOrder & order) override;
-
     void push_order_request(const OrderRequestEvent & order) override;
 
 private:

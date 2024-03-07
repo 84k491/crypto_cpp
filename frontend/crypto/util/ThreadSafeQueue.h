@@ -1,7 +1,6 @@
 #pragma once
 
 #include <condition_variable>
-#include <iostream>
 #include <mutex>
 #include <optional>
 #include <queue>
@@ -29,7 +28,6 @@ public:
         if (!m_keep_waiting) {
             return false;
         }
-        std::cout << "Pushing in queue" << std::endl;
         std::lock_guard lock(m_mutex);
         m_queue.push(value);
         m_cv.notify_one();

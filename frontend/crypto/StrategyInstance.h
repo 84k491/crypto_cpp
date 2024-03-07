@@ -11,15 +11,28 @@
 #include "TimeseriesPublisher.h"
 #include "WorkStatus.h"
 
+#include <chrono>
 #include <memory>
 #include <optional>
 #include <variant>
 
-class StrategyInstance : public IEventInvoker<HistoricalMDPackEvent, MDPriceEvent>
+class StrategyInstance
+    : public IEventInvoker<
+              HistoricalMDPackEvent,
+              MDPriceEvent,
+              OrderAcceptedEvent,
+              OrderRejectedEvent,
+              TradeEvent>
 {
 public:
     using KlineCallback = std::function<void(std::pair<std::chrono::milliseconds, OHLC>)>;
     using DepoCallback = std::function<void(std::chrono::milliseconds ts, double value)>;
+    using ResponseEventVariant = std::variant<
+            HistoricalMDPackEvent,
+            MDPriceEvent,
+            OrderAcceptedEvent,
+            OrderRejectedEvent,
+            TradeEvent>;
 
     StrategyInstance(const Symbol & symbol,
                      const MarketDataRequest & md_request,
@@ -40,14 +53,22 @@ public:
     void wait_for_finish();
 
 private:
-    void invoke(const MDResponseEvent & value) override;
+    void invoke(const ResponseEventVariant & value) override;
 
     void on_price_received(std::chrono::milliseconds ts, const OHLC & ohlc);
     void on_signal(const Signal & signal);
     void process_position_result(const PositionResult & new_result, std::chrono::milliseconds ts);
 
+    bool open_position(double price, SignedVolume target_absolute_volume, std::chrono::milliseconds ts);
+    bool close_position(double price, std::chrono::milliseconds ts);
+
 private:
-    EventLoop<HistoricalMDPackEvent, MDPriceEvent> m_event_loop;
+    EventLoop<HistoricalMDPackEvent,
+              MDPriceEvent,
+              OrderAcceptedEvent,
+              OrderRejectedEvent,
+              TradeEvent>
+            m_event_loop;
 
     ByBitGateway & m_md_gateway;
     ITradingGateway & m_tr_gateway;
@@ -57,7 +78,7 @@ private:
 
     ObjectPublisher<StrategyResult> m_strategy_result;
 
-    TimeseriesPublisher<Signal> m_signal_publisher;
+    TimeseriesPublisher<Signal> m_signal_publisher; // TODO publish trades instead of signals
     TimeseriesPublisher<OHLC> m_klines_publisher;
     TimeseriesPublisher<double> m_depo_publisher;
 
@@ -72,5 +93,5 @@ private:
     std::shared_ptr<ObjectSubscribtion<WorkStatus>> m_gw_status_sub;
     bool first_price_received = false;
 
-    double m_last_price = 0.;
+    std::pair<std::chrono::milliseconds, double> m_last_ts_and_price;
 };

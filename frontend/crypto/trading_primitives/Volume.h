@@ -99,7 +99,15 @@ public:
         return {UnsignedVolume(m_value), Side::Buy};
     }
 
+    SignedVolume & operator+=(const SignedVolume & other)
+    {
+        m_value += other.m_value;
+        return *this;
+    }
+
     auto value() const { return m_value; }
+
+    bool is_zero() const { return m_value == 0.; }
 
 private:
     double m_value = {};

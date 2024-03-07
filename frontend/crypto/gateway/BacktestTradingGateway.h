@@ -13,7 +13,6 @@ public:
 
     void set_price_source(TimeseriesPublisher<OHLC> & publisher);
 
-    std::optional<std::vector<Trade>> send_order_sync(const MarketOrder & order) override;
     void push_order_request(const OrderRequestEvent & order) override;
 
 private:

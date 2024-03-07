@@ -133,64 +133,6 @@ std::string ByBitTradingGateway::build_auth_message() const
     return auth_msg.dump();
 }
 
-std::optional<std::vector<Trade>> ByBitTradingGateway::send_order_sync(const MarketOrder & order)
-{
-    int64_t ts = std::chrono::duration_cast<std::chrono::milliseconds>(
-                         std::chrono::system_clock::now().time_since_epoch())
-                         .count();
-
-    const std::string order_id = std::to_string(ts);
-    json json_order = {
-            {"category", "linear"},
-            {"symbol", order.symbol()},
-            {"side", order.side_str()},
-            {"orderType", "Market"},
-            {"qty", std::to_string(order.volume().value())},
-            {"timeInForce", "IOC"},
-            {"orderLinkId", order_id},
-            {"orderFilter", "Order"},
-    };
-
-    const auto request = json_order.dump();
-
-    std::unique_lock l(m_pending_orders_mutex);
-    const auto [it, success] = m_pending_orders.try_emplace(
-            order_id,
-            order);
-
-    if (!success) {
-        std::cout << "Trying to send order while order_id already exists: " << order_id << std::endl;
-        return std::nullopt;
-    }
-    ScopeExit se([&]() {
-        std::lock_guard l(m_pending_orders_mutex);
-        m_pending_orders.erase(it);
-    });
-
-    const std::string url = "https://api-testnet.bybit.com/v5/order/create";
-    std::future<std::string> request_future = rest_client.request_auth_async(url, request, m_api_key, m_secret_key);
-    request_future.wait();
-    const std::string request_result = request_future.get();
-    std::cout << "Enter order response: " << request_result << std::endl;
-
-    {
-        std::future<bool> success_future = it->second.success_promise.get_future();
-        l.unlock();
-        if (success_future.wait_for(ws_wait_timeout) == std::future_status::timeout) {
-            std::cout << "Timeout waiting for order_resp" << std::endl;
-            return std::nullopt;
-        }
-        if (!success_future.get()) {
-            std::cout << "Order failed" << order_id << std::endl;
-            return std::nullopt;
-        }
-    }
-    std::cout << "Order successfully placed" << std::endl;
-
-    std::vector<Trade> trades = it->second.m_trades;
-    return trades;
-}
-
 void ByBitTradingGateway::on_ws_message_received(const std::string & message)
 {
     json j = json::parse(message);

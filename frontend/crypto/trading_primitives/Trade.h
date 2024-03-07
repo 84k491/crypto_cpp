@@ -17,9 +17,6 @@ public:
     {
     }
 
-    Trade(Trade && other) noexcept = default;
-    Trade(const Trade & other) = default;
-
 public: // TODO make private with getters
         // private:
     std::chrono::milliseconds ts;

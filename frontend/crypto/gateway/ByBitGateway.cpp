@@ -302,7 +302,6 @@ void ByBitGateway::push_async_request(LiveMDRequest && request)
 void ByBitGateway::invoke(const MDRequest & request)
 {
     if (const auto * r = std::get_if<HistoricalMDRequest>(&request); r) {
-        std::cout << "Got historical request" << std::endl;
         const HistoricalMDRequest & histroical_request = *r;
         const auto symbol = histroical_request.symbol;
         const auto histroical_timerange = Timerange{histroical_request.start, histroical_request.end};
@@ -334,7 +333,6 @@ void ByBitGateway::invoke(const MDRequest & request)
         }
 
         auto & range = m_ranges_by_symbol[symbol.symbol_name][histroical_timerange];
-        std::cout << "Prices size before pushing: " << prices.size() << std::endl;
         HistoricalMDPackEvent ev;
         ev.ts_and_price_pack = prices;
         histroical_request.event_consumer->push(ev);

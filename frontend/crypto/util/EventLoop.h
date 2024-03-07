@@ -16,20 +16,26 @@ public:
 };
 
 template <
-        class T,
-        std::enable_if_t<std::is_polymorphic_v<T>, bool> = true> // event type must be polymorphic to use typeid
+        class EventT,
+        std::enable_if_t<std::is_polymorphic_v<EventT>, bool> = true> // event type must be polymorphic to use typeid
 class IEventConsumer
 {
 public:
     virtual ~IEventConsumer() = default;
 
-    bool push(const T value)
+    bool push(const EventT value)
     {
         return push_to_queue(std::move(value));
     }
 
+    bool push_in_this_thread(const EventT value)
+    {
+        return invoke_in_this_thread(std::move(value));
+    }
+
 private:
     virtual bool push_to_queue(const std::any value) = 0;
+    virtual bool invoke_in_this_thread(const std::any value) = 0;
 };
 
 template <class... Args>
@@ -76,9 +82,15 @@ public:
 protected:
     bool push_to_queue(std::any value) override
     {
-        std::cout << "Pushing in event loop (any)" << std::endl;
         auto var = any_to_variant_cast<Args...>(value);
         return m_queue.push(std::move(var));
+    }
+
+    bool invoke_in_this_thread(const std::any value) override
+    {
+        auto var = any_to_variant_cast<Args...>(value);
+        m_invoker.invoke(var);
+        return true;
     }
 
 private:

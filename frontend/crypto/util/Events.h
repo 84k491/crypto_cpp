@@ -7,6 +7,7 @@
 #include "Trade.h"
 
 #include <map>
+#include <utility>
 
 template <class T>
 struct BasicEvent
@@ -93,6 +94,16 @@ struct OrderRejectedEvent : public BasicResponseEvent
 
 struct OrderRequestEvent : public BasicEvent<OrderAcceptedEvent>
 {
+    OrderRequestEvent(MarketOrder order,
+                      IEventConsumer<OrderAcceptedEvent> & accept_consumer,
+                      IEventConsumer<TradeEvent> & trade_consumer,
+                      IEventConsumer<OrderRejectedEvent> & reject_consumer)
+        : BasicEvent<OrderAcceptedEvent>(accept_consumer)
+        , order(std::move(order))
+        , trade_ev_consumer(&trade_consumer)
+        , reject_ev_consumer(&reject_consumer)
+    {
+    }
     MarketOrder order;
     IEventConsumer<TradeEvent> * trade_ev_consumer = nullptr;
     IEventConsumer<OrderRejectedEvent> * reject_ev_consumer = nullptr;

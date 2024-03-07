@@ -10,6 +10,7 @@
 #include <optional>
 #include <utility>
 
+class Trade;
 struct PositionResult
 {
     friend std::ostream & operator<<(std::ostream & os, const PositionResult & res);
@@ -35,6 +36,8 @@ class PositionManager
         auto open_price() const { return m_open_price; }
         auto open_ts() const { return m_open_ts; }
 
+        auto add_volume(const SignedVolume & vol) { m_absolute_volume += vol; }
+
     private:
         SignedVolume m_absolute_volume;
         double m_open_price = 0.;
@@ -48,11 +51,9 @@ public:
     {
     }
 
-    // TODO make signed and unsigned volume types
-    bool open(double price, SignedVolume target_absolute_volume);
-    std::optional<PositionResult> close(double price);
+    // TODO position result publisher?
 
-    std::optional<PositionResult> on_trade(const Trade & trade);
+    std::optional<PositionResult> on_trade_received(const Trade & trade);
 
     double pnl() const;
     const OpenedPosition * opened() const
