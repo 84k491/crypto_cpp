@@ -61,14 +61,10 @@ void PositionManager::OpenedPosition::on_trade(double price, const SignedVolume 
     auto & volume = trade_side == m_open_side ? m_opened_volume : m_closed_volume;
     auto & vwap = trade_side == m_open_side ? m_opened_vwap : m_closed_vwap;
 
-    std::cout << "trade_side: " << (int)trade_side << "; old_volume: " << volume << "; trade_vol: " << vol.value() << "; vwap: " << vwap << std::endl;
-
     const UnsignedVolume new_volume = volume + vol.as_unsigned_and_side().first;
     vwap = ((vwap * volume.value()) + (price * vol.as_unsigned_and_side().first.value())) / new_volume.value();
     volume = new_volume;
-    std::cout << "new volume: " << volume << "; new vwap: " << vwap << std::endl;
 
-    // std::cout << "on_trade: delta:" << delta << "; new amount_spent: " << m_amount_spent << std::endl;
     m_total_fee += fee;
     m_absolute_volume += vol;
 }
@@ -78,6 +74,5 @@ double PositionManager::OpenedPosition::pnl() const
     auto res = m_closed_vwap * m_closed_volume.value() - m_opened_vwap * m_opened_volume.value();
     int sign = m_open_side == Side::Buy ? 1 : -1;
     res *= sign;
-    std::cout << "PNL calc: " << res << "; closed_vwap: " << m_closed_vwap << "; closed_volume: " << m_closed_volume.value() << "; opened vwap : " << m_opened_vwap << "; opened volume: " << m_opened_volume.value() << std::endl;
     return res;
 }
