@@ -17,6 +17,8 @@ class UnsignedVolume
     }
 
 public:
+    UnsignedVolume() = default;
+
     UnsignedVolume(const UnsignedVolume & other)
         : m_value(other.m_value)
     {
@@ -43,6 +45,11 @@ public:
     }
 
     auto value() const { return m_value; }
+
+    UnsignedVolume operator+(const UnsignedVolume & other) const
+    {
+        return {m_value + other.m_value};
+    }
 
     UnsignedVolume & operator+=(const UnsignedVolume & other)
     {
@@ -97,6 +104,16 @@ public:
             return {UnsignedVolume(-m_value), Side::Sell};
         }
         return {UnsignedVolume(m_value), Side::Buy};
+    }
+
+    SignedVolume operator*(int other) const
+    {
+        return SignedVolume(m_value * other);
+    }
+
+    SignedVolume operator+(const SignedVolume & other) const
+    {
+        return SignedVolume(m_value + other.m_value);
     }
 
     SignedVolume & operator+=(const SignedVolume & other)

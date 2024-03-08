@@ -17,7 +17,7 @@ struct PositionResult
 
 public:
     double fees_paid = 0.;
-    double pnl = 0.; // fees counted
+    double pnl_with_fee = 0.;
     std::chrono::milliseconds opened_time = {};
 };
 std::ostream & operator<<(std::ostream & os, const PositionResult & res);
@@ -28,20 +28,31 @@ class PositionManager
     class OpenedPosition
     {
     public:
-        OpenedPosition(std::chrono::milliseconds ts, SignedVolume absolute_volume, double price);
+        OpenedPosition(const Trade & trade);
 
         Side side() const;
 
         auto absolute_volume() const { return m_absolute_volume; }
-        auto open_price() const { return m_open_price; }
         auto open_ts() const { return m_open_ts; }
+        double pnl() const;
+        auto total_fee() const { return m_total_fee; }
 
-        auto add_volume(const SignedVolume & vol) { m_absolute_volume += vol; }
+        void on_trade(double price, const SignedVolume & vol, double fee);
 
     private:
-        SignedVolume m_absolute_volume;
-        double m_open_price = 0.;
+        SignedVolume m_absolute_volume = {}; // TODO remove?
+
+        Side m_open_side = Side::Buy;
+
+        UnsignedVolume m_opened_volume = {};
+        double m_opened_vwap = 0.;
+
+        UnsignedVolume m_closed_volume = {};
+        double m_closed_vwap = 0.;
+
         std::chrono::milliseconds m_open_ts = {};
+
+        double m_total_fee = 0.;
     };
 
 public:
