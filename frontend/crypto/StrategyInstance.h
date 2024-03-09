@@ -18,31 +18,21 @@
 #include <variant>
 
 class StrategyInstance
-    : public IEventInvoker<
-              HistoricalMDPackEvent,
-              MDPriceEvent,
-              OrderAcceptedEvent,
-              OrderRejectedEvent,
-              TradeEvent>
+    : public IEventInvoker<HistoricalMDPackEvent, MDPriceEvent, OrderAcceptedEvent, OrderRejectedEvent, TradeEvent>
 {
 public:
-    using KlineCallback = std::function<void(std::pair<std::chrono::milliseconds, OHLC>)>;
-    using DepoCallback = std::function<void(std::chrono::milliseconds ts, double value)>;
-    using ResponseEventVariant = std::variant<
-            HistoricalMDPackEvent,
-            MDPriceEvent,
-            OrderAcceptedEvent,
-            OrderRejectedEvent,
-            TradeEvent>;
+    using KlineCallback =
+            std::function<void(std::pair<std::chrono::milliseconds, OHLC>)>;
+    using DepoCallback =
+            std::function<void(std::chrono::milliseconds ts, double value)>;
+    using ResponseEventVariant =
+            std::variant<HistoricalMDPackEvent, MDPriceEvent, OrderAcceptedEvent, OrderRejectedEvent, TradeEvent>;
 
-    StrategyInstance(const Symbol & symbol,
-                     const MarketDataRequest & md_request,
-                     const std::shared_ptr<IStrategy> & strategy_ptr,
-                     ByBitGateway & md_gateway,
-                     ITradingGateway & tr_gateway);
+    StrategyInstance(const Symbol & symbol, const MarketDataRequest & md_request, const std::shared_ptr<IStrategy> & strategy_ptr, ByBitGateway & md_gateway, ITradingGateway & tr_gateway);
 
     TimeseriesPublisher<Signal> & signals_publisher();
-    TimeseriesPublisher<std::pair<std::string, double>> & strategy_internal_data_publisher();
+    TimeseriesPublisher<std::pair<std::string, double>> &
+    strategy_internal_data_publisher();
     TimeseriesPublisher<OHLC> & klines_publisher();
     TimeseriesPublisher<double> & depo_publisher();
     ObjectPublisher<StrategyResult> & strategy_result_publisher();
@@ -50,14 +40,15 @@ public:
 
     void run_async();
     void stop_async();
-    std::future<void> wait_for_finish();
+    [[nodiscard("wait in future")]] std::future<void> wait_for_finish();
 
 private:
     void invoke(const ResponseEventVariant & value) override;
 
     void on_price_received(std::chrono::milliseconds ts, const OHLC & ohlc);
     void on_signal(const Signal & signal);
-    void process_position_result(const PositionResult & new_result, std::chrono::milliseconds ts);
+    void process_position_result(const PositionResult & new_result,
+                                 std::chrono::milliseconds ts);
 
     bool open_position(double price, SignedVolume target_absolute_volume, std::chrono::milliseconds ts);
     bool close_position(double price, std::chrono::milliseconds ts);
@@ -66,11 +57,7 @@ private:
     void finish_if_needed_and_ready();
 
 private:
-    EventLoop<HistoricalMDPackEvent,
-              MDPriceEvent,
-              OrderAcceptedEvent,
-              OrderRejectedEvent,
-              TradeEvent>
+    EventLoop<HistoricalMDPackEvent, MDPriceEvent, OrderAcceptedEvent, OrderRejectedEvent, TradeEvent>
             m_event_loop;
 
     ByBitGateway & m_md_gateway;
@@ -81,7 +68,8 @@ private:
 
     ObjectPublisher<StrategyResult> m_strategy_result;
 
-    TimeseriesPublisher<Signal> m_signal_publisher; // TODO publish trades instead of signals
+    TimeseriesPublisher<Signal>
+            m_signal_publisher; // TODO publish trades instead of signals
     TimeseriesPublisher<OHLC> m_klines_publisher;
     TimeseriesPublisher<double> m_depo_publisher;
 
