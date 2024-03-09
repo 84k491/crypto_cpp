@@ -11,7 +11,6 @@ std::optional<PositionResult> PositionManager::on_trade_received(const Trade & t
 {
     if (!m_opened_position.has_value()) {
         m_opened_position = OpenedPosition(trade);
-        std::cout << "Position opened with price: " << trade.price << std::endl;
         return std::nullopt;
     }
 
@@ -25,7 +24,6 @@ std::optional<PositionResult> PositionManager::on_trade_received(const Trade & t
 
     PositionResult res;
     res.pnl_with_fee = pos.pnl() - pos.total_fee();
-    std::cout << "Position closed with price: " << trade.price << "; pnl_with_fee: " << res.pnl_with_fee << " - fee: " << trade.fee << std::endl;
     res.fees_paid += pos.total_fee();
     res.opened_time = trade.ts - pos.open_ts();
 

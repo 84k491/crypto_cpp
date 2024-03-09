@@ -4,6 +4,7 @@
 #include "Volume.h"
 
 #include <chrono>
+#include <future>
 #include <optional>
 
 StrategyInstance::StrategyInstance(
@@ -36,10 +37,6 @@ StrategyInstance::StrategyInstance(
     });
 }
 
-void StrategyInstance::run_with_loop()
-{
-}
-
 void StrategyInstance::on_price_received(std::chrono::milliseconds ts, const OHLC & ohlc)
 {
     m_last_ts_and_price = {ts, ohlc.close};
@@ -63,6 +60,7 @@ void StrategyInstance::run_async()
                 m_symbol,
                 m_md_request.historical_range.value().start,
                 m_md_request.historical_range.value().end.value());
+        m_historical_request_in_progress = true;
         m_md_gateway.push_async_request(std::move(historical_request));
     }
     else {
@@ -75,20 +73,24 @@ void StrategyInstance::run_async()
 
 void StrategyInstance::stop_async()
 {
+    // TODO push it with EL
     if (m_position_manager.opened() != nullptr) {
-        std::cout << "Closing position on wait_for_finish" << std::endl;
         const bool success = close_position(m_last_ts_and_price.second, m_last_ts_and_price.first);
         if (!success) {
             std::cout << "ERROR: can't close a position on stop" << std::endl;
         }
     }
 
-    m_md_gateway.stop_async(); // TODO "unsubscribe" from GW, but don't stop it
+    // m_md_gateway.stop_async(); // TODO "unsubscribe" from GW, but don't stop it
 }
 
-void StrategyInstance::wait_for_finish()
+std::future<void> StrategyInstance::wait_for_finish()
 {
-    m_md_gateway.wait_for_finish();
+    m_finish_promise = std::promise<void>();
+    if (ready_to_finish()) {
+        m_finish_promise->set_value();
+    }
+    return m_finish_promise->get_future();
 }
 
 void StrategyInstance::on_signal(const Signal & signal)
@@ -194,24 +196,35 @@ ObjectPublisher<WorkStatus> & StrategyInstance::status_publisher()
 
 void StrategyInstance::invoke(const ResponseEventVariant & var)
 {
+    bool event_parsed = false;
     if (const auto * r = std::get_if<MDPriceEvent>(&var); r) {
         const MDPriceEvent & response = *r;
         on_price_received(response.ts_and_price.first, response.ts_and_price.second);
-        return;
+        event_parsed = true;
     }
     if (const auto * r = std::get_if<HistoricalMDPackEvent>(&var); r) {
         const HistoricalMDPackEvent & response = *r;
         for (const auto & [ts, ohlc] : response.ts_and_price_pack) {
             on_price_received(ts, ohlc);
         }
-        return;
+
+        // TODO push it with EL
+        if (m_position_manager.opened() != nullptr) {
+            const bool success = close_position(m_last_ts_and_price.second, m_last_ts_and_price.first);
+            if (!success) {
+                std::cout << "ERROR: can't close a position on stop" << std::endl;
+            }
+        }
+
+        m_historical_request_in_progress = false;
+        event_parsed = true;
     }
     if (const auto * r = std::get_if<OrderAcceptedEvent>(&var); r) {
-        return;
+        event_parsed = true;
     }
     if (const auto * r = std::get_if<OrderRejectedEvent>(&var); r) {
         std::cout << "Got order rejected" << std::endl;
-        return;
+        event_parsed = true;
     }
     if (const auto * r = std::get_if<TradeEvent>(&var); r) {
         const auto res = m_position_manager.on_trade_received(r->trade);
@@ -221,9 +234,14 @@ void StrategyInstance::invoke(const ResponseEventVariant & var)
         m_strategy_result.update([&](StrategyResult & res) {
             res.trades_count++;
         });
-        return;
+        event_parsed = true;
     }
-    std::cout << "ERROR: Unhandled MDResponseEvent" << std::endl;
+
+    if (!event_parsed) {
+        std::cout << "ERROR: Unhandled MDResponseEvent" << std::endl;
+    }
+
+    finish_if_needed_and_ready();
 }
 
 bool StrategyInstance::open_position(double price, SignedVolume target_absolute_volume, std::chrono::milliseconds ts)
@@ -290,4 +308,26 @@ bool StrategyInstance::close_position(double price, std::chrono::milliseconds ts
             m_event_loop);
     m_tr_gateway.push_order_request(or_event);
     return true;
+}
+
+bool StrategyInstance::ready_to_finish() const
+{
+    const bool pos_closed = !m_position_manager.opened();
+    // const bool no_active_requests = true; // TODO
+    // std::cout << "Criterias: pos_closed: " << pos_closed << "; hist_req_finished: " << !m_historical_request_in_progress << std::endl;
+    return pos_closed && !m_historical_request_in_progress;
+}
+
+void StrategyInstance::finish_if_needed_and_ready()
+{
+    if (m_finish_promise.has_value()) {
+        if (ready_to_finish()) {
+            auto & promise = m_finish_promise.value();
+            promise.set_value();
+        }
+        else {
+            // std::cout << "Waiting for all criterias to be satisfied for finish" << std::endl;
+            return;
+        }
+    }
 }

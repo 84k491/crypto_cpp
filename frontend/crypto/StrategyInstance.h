@@ -12,6 +12,7 @@
 #include "WorkStatus.h"
 
 #include <chrono>
+#include <future>
 #include <memory>
 #include <optional>
 #include <variant>
@@ -47,10 +48,9 @@ public:
     ObjectPublisher<StrategyResult> & strategy_result_publisher();
     ObjectPublisher<WorkStatus> & status_publisher();
 
-    void run_with_loop();
     void run_async();
     void stop_async();
-    void wait_for_finish();
+    std::future<void> wait_for_finish();
 
 private:
     void invoke(const ResponseEventVariant & value) override;
@@ -61,6 +61,9 @@ private:
 
     bool open_position(double price, SignedVolume target_absolute_volume, std::chrono::milliseconds ts);
     bool close_position(double price, std::chrono::milliseconds ts);
+
+    bool ready_to_finish() const;
+    void finish_if_needed_and_ready();
 
 private:
     EventLoop<HistoricalMDPackEvent,
@@ -94,4 +97,7 @@ private:
     bool first_price_received = false;
 
     std::pair<std::chrono::milliseconds, double> m_last_ts_and_price;
+
+    bool m_historical_request_in_progress = false;
+    std::optional<std::promise<void>> m_finish_promise;
 };

@@ -69,6 +69,11 @@ public:
 
     ~EventLoop() override
     {
+        stop();
+    }
+
+    void stop()
+    {
         m_queue.stop();
         m_thread.join();
     }

@@ -81,8 +81,9 @@ std::optional<JsonStrategyConfig> Optimizer::optimize()
 
         BacktestTradingGateway tr_gateway;
         StrategyInstance strategy_instance(m_symbol, md_request, strategy_opt.value(), m_gateway, tr_gateway);
+        tr_gateway.set_price_source(strategy_instance.klines_publisher());
         strategy_instance.run_async();
-        strategy_instance.wait_for_finish();
+        strategy_instance.wait_for_finish().wait();
         const auto profit = strategy_instance.strategy_result_publisher().get().final_profit;
         if (max_profit < profit) {
             max_profit = profit;

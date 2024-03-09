@@ -289,13 +289,11 @@ void ByBitGateway::stop_async()
 
 void ByBitGateway::push_async_request(HistoricalMDRequest && request)
 {
-    std::cout << "Pushing async historical request in md gw" << std::endl;
     m_event_loop.as_consumer<HistoricalMDRequest>().push(request);
 }
 
 void ByBitGateway::push_async_request(LiveMDRequest && request)
 {
-    std::cout << "Pushing async live request in md gw" << std::endl;
     m_event_loop.as_consumer<LiveMDRequest>().push(request);
 }
 

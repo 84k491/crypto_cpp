@@ -20,7 +20,6 @@ public:
     {
         m_keep_waiting.store(false);
         m_cv.notify_all();
-        std::lock_guard lock(m_mutex);
     }
 
     bool push(const T & value)
