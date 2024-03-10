@@ -297,7 +297,7 @@ void ByBitTradingGateway::invoke(const std::variant<OrderRequestEvent> & variant
 
     if (!success) {
         std::cout << "Trying to send order while order_id already exists: " << order_id << std::endl;
-        req.reject_ev_consumer->push(OrderRejectedEvent(true, "Duplicate order id", order));
+        req.reject_ev_consumer->push(OrderRejectedEvent(req.guid, true, "Duplicate order id", order));
         return;
     }
     ScopeExit se([&]() {
@@ -316,17 +316,17 @@ void ByBitTradingGateway::invoke(const std::variant<OrderRequestEvent> & variant
         l.unlock();
         if (success_future.wait_for(ws_wait_timeout) == std::future_status::timeout) {
             std::cout << "Timeout waiting for order_resp" << std::endl;
-            req.reject_ev_consumer->push(OrderRejectedEvent(false, "Timeout waiting for order entry", order));
+            req.reject_ev_consumer->push(OrderRejectedEvent(req.guid, false, "Timeout waiting for order entry", order));
             return;
         }
         if (!success_future.get()) {
             std::cout << "Order failed" << order_id << std::endl;
-            req.reject_ev_consumer->push(OrderRejectedEvent(false, "Order failed to enter", order));
+            req.reject_ev_consumer->push(OrderRejectedEvent(req.guid, false, "Order failed to enter", order));
             return;
         }
     }
     std::cout << "Order successfully placed" << std::endl;
-    req.event_consumer->push(OrderAcceptedEvent(order));
+    req.event_consumer->push(OrderAcceptedEvent(req.guid, order));
 
     std::vector<Trade> trades = it->second.m_trades;
     for (auto & tr : trades) {

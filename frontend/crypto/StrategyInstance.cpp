@@ -2,6 +2,7 @@
 
 #include "ITradingGateway.h"
 #include "Volume.h"
+#include "WorkStatus.h"
 
 #include <chrono>
 #include <future>
@@ -55,19 +56,23 @@ void StrategyInstance::on_price_received(std::chrono::milliseconds ts, const OHL
 void StrategyInstance::run_async()
 {
     if (!m_md_request.go_live) {
+        m_status.push(WorkStatus::Backtesting);
+
         HistoricalMDRequest historical_request(
                 m_event_loop,
                 m_symbol,
                 m_md_request.historical_range.value().start,
                 m_md_request.historical_range.value().end.value());
-        m_historical_request_in_progress = true;
         m_md_gateway.push_async_request(std::move(historical_request));
+        m_pending_requests.emplace(historical_request.guid);
     }
     else {
+        m_status.push(WorkStatus::Live);
         LiveMDRequest live_request(
                 m_event_loop,
                 m_symbol);
         m_md_gateway.push_async_request(std::move(live_request));
+        m_live_md_requests.emplace(live_request.guid);
     }
 }
 
@@ -80,6 +85,8 @@ void StrategyInstance::stop_async()
             std::cout << "ERROR: can't close a position on stop" << std::endl;
         }
     }
+
+    // TODO unsubscribe from LiveMDRequest
 
     // m_md_gateway.stop_async(); // TODO "unsubscribe" from GW, but don't stop it
 }
@@ -191,7 +198,7 @@ ObjectPublisher<StrategyResult> & StrategyInstance::strategy_result_publisher()
 
 ObjectPublisher<WorkStatus> & StrategyInstance::status_publisher()
 {
-    return m_md_gateway.status_publisher();
+    return m_status;
 }
 
 void StrategyInstance::invoke(const ResponseEventVariant & var)
@@ -200,6 +207,7 @@ void StrategyInstance::invoke(const ResponseEventVariant & var)
     if (const auto * r = std::get_if<MDPriceEvent>(&var); r) {
         const MDPriceEvent & response = *r;
         on_price_received(response.ts_and_price.first, response.ts_and_price.second);
+
         event_parsed = true;
     }
     if (const auto * r = std::get_if<HistoricalMDPackEvent>(&var); r) {
@@ -216,14 +224,26 @@ void StrategyInstance::invoke(const ResponseEventVariant & var)
             }
         }
 
-        m_historical_request_in_progress = false;
+        const size_t erased_cnt = m_pending_requests.erase(response.request_guid);
+        if (erased_cnt == 0) {
+            std::cout << "ERROR: unsolicited HistoricalMDPackEvent" << std::endl;
+        }
         event_parsed = true;
     }
     if (const auto * r = std::get_if<OrderAcceptedEvent>(&var); r) {
+        const OrderAcceptedEvent & response = *r;
+        const size_t erased_cnt = m_pending_requests.erase(response.request_guid);
+        if (erased_cnt == 0) {
+            std::cout << "ERROR: unsolicited OrderAcceptedEvent" << std::endl;
+        }
         event_parsed = true;
     }
     if (const auto * r = std::get_if<OrderRejectedEvent>(&var); r) {
-        std::cout << "Got order rejected" << std::endl;
+        const OrderRejectedEvent & response = *r;
+        const size_t erased_cnt = m_pending_requests.erase(response.request_guid);
+        if (erased_cnt == 0) {
+            std::cout << "ERROR: unsolicited OrderRejectedEvent" << std::endl;
+        }
         event_parsed = true;
     }
     if (const auto * r = std::get_if<TradeEvent>(&var); r) {
@@ -241,6 +261,10 @@ void StrategyInstance::invoke(const ResponseEventVariant & var)
         std::cout << "ERROR: Unhandled MDResponseEvent" << std::endl;
     }
 
+    if (ready_to_finish()) {
+        m_status.push(WorkStatus::Stopped);
+        m_depo_publisher.push(m_last_ts_and_price.first, m_strategy_result.get().final_profit);
+    }
     finish_if_needed_and_ready();
 }
 
@@ -273,12 +297,12 @@ bool StrategyInstance::open_position(double price, SignedVolume target_absolute_
             adjusted_target_volume,
             ts};
 
-    // const auto trades_opt = m_tr_gateway.send_order_sync(order);
     OrderRequestEvent or_event(
             order,
             m_event_loop,
             m_event_loop,
             m_event_loop);
+    m_pending_requests.emplace(or_event.guid);
     m_tr_gateway.push_order_request(or_event);
     return true;
 }
@@ -306,16 +330,18 @@ bool StrategyInstance::close_position(double price, std::chrono::milliseconds ts
             m_event_loop,
             m_event_loop,
             m_event_loop);
+    m_pending_requests.emplace(or_event.guid);
     m_tr_gateway.push_order_request(or_event);
     return true;
 }
 
 bool StrategyInstance::ready_to_finish() const
 {
-    const bool pos_closed = !m_position_manager.opened();
+    const bool pos_closed = m_position_manager.opened() == nullptr;
     // const bool no_active_requests = true; // TODO
     // std::cout << "Criterias: pos_closed: " << pos_closed << "; hist_req_finished: " << !m_historical_request_in_progress << std::endl;
-    return pos_closed && !m_historical_request_in_progress;
+    const bool res = pos_closed && m_pending_requests.empty();
+    return res;
 }
 
 void StrategyInstance::finish_if_needed_and_ready()

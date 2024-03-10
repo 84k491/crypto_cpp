@@ -18,7 +18,7 @@
 #include <unordered_map>
 #include <vector>
 
-// TODO remove this, use structs above without a consumer
+// TODO remove this, use events without a consumer
 struct MarketDataRequest
 {
     struct HistoricalRange

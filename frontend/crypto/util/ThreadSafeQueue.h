@@ -18,7 +18,8 @@ public:
 
     void stop()
     {
-        m_keep_waiting.store(false);
+        std::lock_guard l(m_mutex);
+        m_keep_waiting = false;
         m_cv.notify_all();
     }
 
@@ -50,5 +51,5 @@ private:
     std::mutex m_mutex;
     std::queue<T> m_queue;
     std::condition_variable m_cv;
-    std::atomic_bool m_keep_waiting{true};
+    bool m_keep_waiting{true};
 };

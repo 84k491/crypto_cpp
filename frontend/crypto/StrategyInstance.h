@@ -15,6 +15,7 @@
 #include <future>
 #include <memory>
 #include <optional>
+#include <set>
 #include <variant>
 
 class StrategyInstance
@@ -86,6 +87,9 @@ private:
 
     std::pair<std::chrono::milliseconds, double> m_last_ts_and_price;
 
-    bool m_historical_request_in_progress = false;
+    ObjectPublisher<WorkStatus> m_status;
+
+    std::set<xg::Guid> m_live_md_requests;
+    std::set<xg::Guid> m_pending_requests;
     std::optional<std::promise<void>> m_finish_promise;
 };

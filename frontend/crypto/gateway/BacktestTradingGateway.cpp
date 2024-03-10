@@ -21,7 +21,7 @@ void BacktestTradingGateway::push_order_request(const OrderRequestEvent & req)
     }
 
     const auto & order = req.order;
-    req.event_consumer->push_in_this_thread(OrderAcceptedEvent(order));
+    req.event_consumer->push_in_this_thread(OrderAcceptedEvent(req.guid, order));
 
     const auto & price = m_last_trade_price;
     const auto volume = order.volume();

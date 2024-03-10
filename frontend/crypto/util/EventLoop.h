@@ -3,7 +3,6 @@
 #include "ThreadSafeQueue.h"
 
 #include <any>
-#include <iostream>
 #include <variant>
 
 template <class... Args>

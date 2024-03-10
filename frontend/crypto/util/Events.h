@@ -6,6 +6,7 @@
 #include "Symbol.h"
 #include "Trade.h"
 
+#include <crossguid2/crossguid/guid.hpp>
 #include <map>
 #include <utility>
 
@@ -28,12 +29,16 @@ struct BasicResponseEvent
 
 struct MDPriceEvent : public BasicResponseEvent
 {
+    MDPriceEvent() = default; // no need for guid here, there will be many responses
     std::pair<std::chrono::milliseconds, OHLC> ts_and_price;
 };
 
 struct HistoricalMDPackEvent : public BasicResponseEvent
 {
+    HistoricalMDPackEvent(xg::Guid request_guid);
     std::map<std::chrono::milliseconds, OHLC> ts_and_price_pack;
+
+    xg::Guid request_guid;
 };
 using MDResponseEvent = std::variant<HistoricalMDPackEvent, MDPriceEvent>;
 
@@ -47,23 +52,29 @@ struct HistoricalMDRequest : public BasicEvent<HistoricalMDPackEvent>
     Symbol symbol;
     std::chrono::milliseconds start;
     std::chrono::milliseconds end;
+
+    xg::Guid guid;
 };
 
 struct LiveMDRequest : public BasicEvent<MDPriceEvent>
 {
     LiveMDRequest(IEventConsumer<MDPriceEvent> & _consumer, const Symbol & _symbol);
     Symbol symbol;
+
+    xg::Guid guid;
 };
 using MDRequest = std::variant<HistoricalMDRequest, LiveMDRequest>;
 
 struct OrderAcceptedEvent : public BasicResponseEvent
 {
-    OrderAcceptedEvent(MarketOrder order)
+    OrderAcceptedEvent(xg::Guid request_guid, MarketOrder order)
         : order(std::move(order))
+        , request_guid(request_guid)
     {
     }
 
     MarketOrder order;
+    xg::Guid request_guid;
 };
 
 struct TradeEvent : public BasicResponseEvent
@@ -78,18 +89,22 @@ struct TradeEvent : public BasicResponseEvent
 struct OrderRejectedEvent : public BasicResponseEvent
 {
     OrderRejectedEvent(
+            xg::Guid request_guid,
             bool internal_reject,
             std::string reason,
             MarketOrder order)
         : internal_reject(internal_reject)
         , reason(std::move(reason))
         , order(std::move(order))
+        , request_guid(request_guid)
     {
     }
 
     bool internal_reject = true;
     std::string reason = "Unknown";
     MarketOrder order;
+
+    xg::Guid request_guid;
 };
 
 struct OrderRequestEvent : public BasicEvent<OrderAcceptedEvent>
@@ -102,9 +117,12 @@ struct OrderRequestEvent : public BasicEvent<OrderAcceptedEvent>
         , order(std::move(order))
         , trade_ev_consumer(&trade_consumer)
         , reject_ev_consumer(&reject_consumer)
+        , guid(xg::newGuid())
     {
     }
     MarketOrder order;
     IEventConsumer<TradeEvent> * trade_ev_consumer = nullptr;
     IEventConsumer<OrderRejectedEvent> * reject_ev_consumer = nullptr;
+
+    xg::Guid guid;
 };

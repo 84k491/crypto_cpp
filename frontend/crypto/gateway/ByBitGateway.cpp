@@ -6,6 +6,7 @@
 #include "WorkerThread.h"
 
 #include <chrono>
+#include <crossguid2/crossguid/guid.hpp>
 #include <future>
 #include <string>
 #include <thread>
@@ -307,7 +308,7 @@ void ByBitGateway::invoke(const MDRequest & request)
         if (auto range_it = m_ranges_by_symbol.find(symbol.symbol_name); range_it != m_ranges_by_symbol.end()) {
             if (auto it = range_it->second.find(histroical_timerange); it != range_it->second.end()) {
                 const auto & prices = it->second;
-                HistoricalMDPackEvent ev;
+                HistoricalMDPackEvent ev(r->guid);
                 ev.ts_and_price_pack = prices;
                 histroical_request.event_consumer->push(ev);
                 return;
@@ -331,7 +332,7 @@ void ByBitGateway::invoke(const MDRequest & request)
         }
 
         auto & range = m_ranges_by_symbol[symbol.symbol_name][histroical_timerange];
-        HistoricalMDPackEvent ev;
+        HistoricalMDPackEvent ev(r->guid);
         ev.ts_and_price_pack = prices;
         histroical_request.event_consumer->push(ev);
         range.merge(prices);
@@ -359,7 +360,7 @@ void ByBitGateway::invoke(const MDRequest & request)
                                     for (const auto & ts_ohlc_pair : ts_and_ohlc_map) {
                                         // m_klines_publisher.push(ts, ohlc);
                                         auto requests = m_live_requests.lock();
-                                        for (auto req : requests.get()) {
+                                        for (const auto & req : requests.get()) {
                                             if (req.symbol.symbol_name == symbol.symbol_name) {
                                                 MDPriceEvent ev;
                                                 ev.ts_and_price = ts_ohlc_pair;
@@ -388,18 +389,4 @@ void ByBitGateway::invoke(const MDRequest & request)
         return;
     }
     std::cout << "ERROR: Got unknown MD request" << std::endl;
-}
-
-HistoricalMDRequest::HistoricalMDRequest(IEventConsumer<HistoricalMDPackEvent> & _consumer, const Symbol & _symbol, std::chrono::milliseconds _start, std::chrono::milliseconds _end)
-    : BasicEvent<HistoricalMDPackEvent>(_consumer)
-    , symbol(_symbol)
-    , start(_start)
-    , end(_end)
-{
-}
-
-LiveMDRequest::LiveMDRequest(IEventConsumer<MDPriceEvent> & _consumer, const Symbol & _symbol)
-    : BasicEvent<MDPriceEvent>(_consumer)
-    , symbol(_symbol)
-{
 }
