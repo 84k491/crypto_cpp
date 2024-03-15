@@ -1,5 +1,6 @@
 #include "BacktestTradingGateway.h"
 
+#include "Enums.h"
 #include "Events.h"
 #include "Volume.h"
 
@@ -11,7 +12,63 @@ void BacktestTradingGateway::set_price_source(TimeseriesPublisher<OHLC> & publis
             [](auto &) {},
             [this](auto, const OHLC & ohlc) {
                 m_last_trade_price = ohlc.close;
+                const auto tpsl_trade = try_trade_tpsl(ohlc);
+                if (m_tpsl.has_value() && tpsl_trade.has_value()) {
+                    m_tpsl.value().trade_ev_consumer->push_in_this_thread(TradeEvent(tpsl_trade.value()));
+                    m_pos_volume = SignedVolume();
+                    m_tpsl.reset();
+                }
             });
+}
+
+std::optional<Trade> BacktestTradingGateway::try_trade_tpsl(OHLC ohlc)
+{
+    if (!m_tpsl.has_value()) {
+        return std::nullopt;
+    }
+    const auto & last_price = ohlc.close;
+
+    const auto & tpsl = m_tpsl.value().tpsl;
+    const Side pos_side = tpsl.stop_loss_price < tpsl.take_profit_price ? Side::Buy : Side::Sell;
+    const Side opposite_side = pos_side == Side::Sell ? Side::Buy : Side::Sell;
+    const auto pos_volume = m_pos_volume.as_unsigned_and_side().first;
+    const auto trade_price = [&]() -> std::optional<double> {
+        switch (pos_side) {
+        case Side::Buy: {
+            if (last_price >= tpsl.take_profit_price) {
+                return last_price;
+            }
+            if (last_price <= tpsl.stop_loss_price) {
+                return last_price;
+            }
+        }
+        case Side::Sell: {
+            if (last_price <= tpsl.take_profit_price) {
+                return last_price;
+            }
+            if (last_price >= tpsl.stop_loss_price) {
+                return last_price;
+            }
+        }
+        case Side::Close: {
+        }
+        }
+        return std::nullopt;
+    }();
+
+    if (!trade_price.has_value()) {
+        return std::nullopt;
+    }
+
+    Trade trade{
+            ohlc.timestamp,
+            m_symbol,
+            trade_price.value(),
+            pos_volume,
+            opposite_side,
+            (pos_volume.value() * last_price) * taker_fee_rate,
+    };
+    return trade;
 }
 
 void BacktestTradingGateway::push_order_request(const OrderRequestEvent & req)
@@ -22,6 +79,7 @@ void BacktestTradingGateway::push_order_request(const OrderRequestEvent & req)
 
     const auto & order = req.order;
     req.event_consumer->push_in_this_thread(OrderAcceptedEvent(req.guid, order));
+    m_symbol = order.symbol();
 
     const auto & price = m_last_trade_price;
     const auto volume = order.volume();
@@ -37,5 +95,14 @@ void BacktestTradingGateway::push_order_request(const OrderRequestEvent & req)
             fee,
     };
 
+    m_pos_volume += SignedVolume(volume, order.side());
+
     req.trade_ev_consumer->push_in_this_thread(TradeEvent(std::move(trade)));
+}
+
+void BacktestTradingGateway::push_tpsl_request(const TpslRequestEvent & tpsl_ev)
+{
+    m_tpsl = tpsl_ev;
+    TpslResponseEvent resp_ev(m_tpsl.value().guid, true);
+    m_tpsl.value().event_consumer->push_in_this_thread(resp_ev);
 }

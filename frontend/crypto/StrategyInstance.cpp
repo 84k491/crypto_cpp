@@ -1,12 +1,28 @@
 #include "StrategyInstance.h"
 
+#include "Events.h"
 #include "ITradingGateway.h"
+#include "TpslExitStrategy.h"
 #include "Volume.h"
 #include "WorkStatus.h"
 
 #include <chrono>
+#include <exception>
 #include <future>
 #include <optional>
+
+namespace {
+
+json exit_str_json = json::parse(R"(
+  {
+    "risk": 0.0001,
+    "risk_reward_ratio": 0.5
+  }
+)");
+
+TpslExitStrategyConfig tpsl_config(exit_str_json);
+
+} // namespace
 
 StrategyInstance::StrategyInstance(
         const Symbol & symbol,
@@ -18,10 +34,15 @@ StrategyInstance::StrategyInstance(
     , m_md_gateway(md_gateway)
     , m_tr_gateway(tr_gateway)
     , m_strategy(strategy_ptr)
+    , m_exit_strategy(tpsl_config)
     , m_symbol(symbol)
     , m_position_manager(symbol, m_tr_gateway)
     , m_md_request(md_request)
 {
+    if (!tpsl_config.is_valid()) {
+        throw std::exception();
+        // TODO remove
+    }
     m_strategy_result.update([&](StrategyResult & res) {
         res.position_currency_amount = m_pos_currency_amount;
     });
@@ -48,8 +69,10 @@ void StrategyInstance::on_price_received(std::chrono::milliseconds ts, const OHL
     }
 
     const auto signal = m_strategy->push_price({ts, ohlc.close});
-    if (signal.has_value()) {
-        on_signal(signal.value());
+    if (m_position_manager.opened() == nullptr) {
+        if (signal.has_value()) {
+            on_signal(signal.value());
+        }
     }
 }
 
@@ -254,6 +277,23 @@ void StrategyInstance::invoke(const ResponseEventVariant & var)
         m_strategy_result.update([&](StrategyResult & res) {
             res.trades_count++;
         });
+        if (m_position_manager.opened() != nullptr) {
+            const auto tpsl = m_exit_strategy.calc_tpsl(r->trade);
+            set_tpsl(tpsl);
+        }
+        event_parsed = true;
+    }
+    if (const auto * r = std::get_if<TpslResponseEvent>(&var); r) {
+        std::cout << "Received Tpsl response event" << std::endl;
+        const TpslResponseEvent & response = *r;
+        const size_t erased_cnt = m_pending_requests.erase(response.request_guid);
+        if (erased_cnt == 0) {
+            std::cout << "Unsolicited tpsl response" << std::endl;
+        }
+        if (!response.accepted) {
+            // TODO close position, stop strategy ?
+            std::cout << "ERROR: Tpsl was rejected!" << std::endl;
+        }
         event_parsed = true;
     }
 
@@ -266,6 +306,15 @@ void StrategyInstance::invoke(const ResponseEventVariant & var)
         m_depo_publisher.push(m_last_ts_and_price.first, m_strategy_result.get().final_profit);
     }
     finish_if_needed_and_ready();
+}
+
+void StrategyInstance::set_tpsl(Tpsl tpsl)
+{
+    std::cout << "Setting tpsl" << std::endl;
+
+    TpslRequestEvent req(tpsl, m_event_loop, m_event_loop);
+    m_pending_requests.emplace(req.guid);
+    m_tr_gateway.push_tpsl_request(req);
 }
 
 bool StrategyInstance::open_position(double price, SignedVolume target_absolute_volume, std::chrono::milliseconds ts)

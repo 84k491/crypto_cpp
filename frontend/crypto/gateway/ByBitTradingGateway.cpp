@@ -1,5 +1,6 @@
 #include "ByBitTradingGateway.h"
 
+#include "Events.h"
 #include "Ohlc.h"
 #include "ScopeExit.h"
 
@@ -267,9 +268,19 @@ void ByBitTradingGateway::push_order_request(const OrderRequestEvent & order)
     m_event_loop.as_consumer<OrderRequestEvent>().push(order);
 }
 
-void ByBitTradingGateway::invoke(const std::variant<OrderRequestEvent> & variant)
+void ByBitTradingGateway::push_tpsl_request(const TpslRequestEvent & tpsl_ev)
 {
-    const auto & req = std::get<OrderRequestEvent>(variant);
+    m_event_loop.as_consumer<TpslRequestEvent>().push(tpsl_ev);
+}
+
+void ByBitTradingGateway::invoke(const std::variant<OrderRequestEvent, TpslRequestEvent> & variant)
+{
+    const auto * req_ptr = std::get_if<OrderRequestEvent>(&variant);
+    if (req_ptr == nullptr) {
+        std::cout << "ERROR: TPSL not implemented in ByBitTradingGateway!" << std::endl;
+        return;
+    }
+    const auto & req = *req_ptr;
     const auto & order = req.order;
 
     int64_t ts = std::chrono::duration_cast<std::chrono::milliseconds>(

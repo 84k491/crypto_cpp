@@ -4,6 +4,7 @@
 #include "MarketOrder.h"
 #include "Ohlc.h"
 #include "Symbol.h"
+#include "Tpsl.h"
 #include "Trade.h"
 
 #include <crossguid2/crossguid/guid.hpp>
@@ -124,5 +125,32 @@ struct OrderRequestEvent : public BasicEvent<OrderAcceptedEvent>
     IEventConsumer<TradeEvent> * trade_ev_consumer = nullptr;
     IEventConsumer<OrderRejectedEvent> * reject_ev_consumer = nullptr;
 
+    xg::Guid guid;
+};
+
+struct TpslResponseEvent : public BasicResponseEvent
+{
+    TpslResponseEvent(xg::Guid request_guid, bool accepted)
+        : accepted(accepted)
+        , request_guid(request_guid)
+    {
+    }
+
+    bool accepted = false;
+    xg::Guid request_guid;
+};
+
+struct TpslRequestEvent : public BasicEvent<TpslResponseEvent>
+{
+    TpslRequestEvent(Tpsl tpsl, IEventConsumer<TpslResponseEvent> & ack_consumer, IEventConsumer<TradeEvent> & trade_consumer)
+        : BasicEvent<TpslResponseEvent>(ack_consumer)
+        , tpsl(tpsl)
+        , trade_ev_consumer(&trade_consumer)
+        , guid(xg::newGuid())
+    {
+    }
+
+    Tpsl tpsl;
+    IEventConsumer<TradeEvent> * trade_ev_consumer = nullptr;
     xg::Guid guid;
 };

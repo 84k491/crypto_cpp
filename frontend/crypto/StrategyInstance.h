@@ -9,6 +9,7 @@
 #include "StrategyInterface.h"
 #include "StrategyResult.h"
 #include "TimeseriesPublisher.h"
+#include "TpslExitStrategy.h"
 #include "WorkStatus.h"
 
 #include <chrono>
@@ -19,7 +20,12 @@
 #include <variant>
 
 class StrategyInstance
-    : public IEventInvoker<HistoricalMDPackEvent, MDPriceEvent, OrderAcceptedEvent, OrderRejectedEvent, TradeEvent>
+    : public IEventInvoker<HistoricalMDPackEvent,
+                           MDPriceEvent,
+                           OrderAcceptedEvent,
+                           OrderRejectedEvent,
+                           TradeEvent,
+                           TpslResponseEvent>
 {
 public:
     using KlineCallback =
@@ -27,7 +33,12 @@ public:
     using DepoCallback =
             std::function<void(std::chrono::milliseconds ts, double value)>;
     using ResponseEventVariant =
-            std::variant<HistoricalMDPackEvent, MDPriceEvent, OrderAcceptedEvent, OrderRejectedEvent, TradeEvent>;
+            std::variant<HistoricalMDPackEvent,
+                         MDPriceEvent,
+                         OrderAcceptedEvent,
+                         OrderRejectedEvent,
+                         TradeEvent,
+                         TpslResponseEvent>;
 
     StrategyInstance(const Symbol & symbol, const MarketDataRequest & md_request, const std::shared_ptr<IStrategy> & strategy_ptr, ByBitGateway & md_gateway, ITradingGateway & tr_gateway);
 
@@ -53,17 +64,25 @@ private:
 
     bool open_position(double price, SignedVolume target_absolute_volume, std::chrono::milliseconds ts);
     bool close_position(double price, std::chrono::milliseconds ts);
+    void set_tpsl(Tpsl tpsl);
 
     bool ready_to_finish() const;
     void finish_if_needed_and_ready();
 
 private:
-    EventLoop<HistoricalMDPackEvent, MDPriceEvent, OrderAcceptedEvent, OrderRejectedEvent, TradeEvent>
+    EventLoop<
+            HistoricalMDPackEvent,
+            MDPriceEvent,
+            OrderAcceptedEvent,
+            OrderRejectedEvent,
+            TradeEvent,
+            TpslResponseEvent>
             m_event_loop;
 
     ByBitGateway & m_md_gateway;
     ITradingGateway & m_tr_gateway;
     std::shared_ptr<IStrategy> m_strategy;
+    TpslExitStrategy m_exit_strategy;
 
     std::optional<Signal> m_last_signal;
 

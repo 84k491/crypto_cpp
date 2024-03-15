@@ -2,11 +2,11 @@
 
 #include "ByBitTradingMessages.h"
 #include "EventLoop.h"
+#include "Events.h"
 #include "ITradingGateway.h"
 #include "MarketOrder.h"
 #include "RestClient.h"
 #include "WorkerThread.h"
-#include "Events.h"
 
 #include <memory>
 #include <string>
@@ -32,7 +32,7 @@ struct PendingOrder
 
 class ByBitTradingGateway final
     : public ITradingGateway
-    , private IEventInvoker<OrderRequestEvent>
+    , private IEventInvoker<OrderRequestEvent, TpslRequestEvent>
 {
     using WsConfigClient = websocketpp::config::asio_tls;
     using WsClient = websocketpp::client<WsConfigClient>;
@@ -45,9 +45,10 @@ public:
     ByBitTradingGateway();
 
     void push_order_request(const OrderRequestEvent & order) override;
+    void push_tpsl_request(const TpslRequestEvent & tpsl_ev) override;
 
 private:
-    void invoke(const std::variant<OrderRequestEvent> & value) override;
+    void invoke(const std::variant<OrderRequestEvent, TpslRequestEvent> & value) override;
 
     static std::string sign_message(const std::string & message, const std::string & secret);
     std::string build_auth_message() const;
@@ -64,7 +65,7 @@ private:
     void send_ping();
 
 private:
-    EventLoop<OrderRequestEvent> m_event_loop;
+    EventLoop<OrderRequestEvent, TpslRequestEvent> m_event_loop;
 
     std::string m_url;
     std::string m_api_key;
