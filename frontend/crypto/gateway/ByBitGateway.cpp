@@ -390,3 +390,18 @@ void ByBitGateway::invoke(const MDRequest & request)
     }
     std::cout << "ERROR: Got unknown MD request" << std::endl;
 }
+
+void ByBitGateway::unsubscribe_from_live(xg::Guid guid)
+{
+    auto live_req_locked = m_live_requests.lock();
+    for (auto it = live_req_locked.get().begin(), end = live_req_locked.get().end(); it != end; ++it) {
+        if (it->guid == guid) {
+            std::cout << "Erasing live request: " << guid << std::endl;
+            live_req_locked.get().erase(it);
+            if (live_req_locked.get().empty()) {
+                m_live_thread->stop_async();
+            }
+            break;
+        }
+    }
+}

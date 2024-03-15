@@ -48,6 +48,8 @@ public:
     void push_async_request(HistoricalMDRequest && request);
     void push_async_request(LiveMDRequest && request);
 
+    void unsubscribe_from_live(xg::Guid guid);
+
     void wait_for_finish();
     void stop_async();
 

@@ -78,7 +78,7 @@ void StrategyInstance::run_async()
 
 void StrategyInstance::stop_async()
 {
-    // TODO push it with EL
+    // TODO push it to EventLoop ?
     if (m_position_manager.opened() != nullptr) {
         const bool success = close_position(m_last_ts_and_price.second, m_last_ts_and_price.first);
         if (!success) {
@@ -86,9 +86,9 @@ void StrategyInstance::stop_async()
         }
     }
 
-    // TODO unsubscribe from LiveMDRequest
-
-    // m_md_gateway.stop_async(); // TODO "unsubscribe" from GW, but don't stop it
+    for (const auto & req : m_live_md_requests) {
+        m_md_gateway.unsubscribe_from_live(req);
+    }
 }
 
 std::future<void> StrategyInstance::wait_for_finish()
@@ -340,7 +340,10 @@ bool StrategyInstance::ready_to_finish() const
     const bool pos_closed = m_position_manager.opened() == nullptr;
     // const bool no_active_requests = true; // TODO
     // std::cout << "Criterias: pos_closed: " << pos_closed << "; hist_req_finished: " << !m_historical_request_in_progress << std::endl;
-    const bool res = pos_closed && m_pending_requests.empty();
+    const bool res = pos_closed && m_pending_requests.empty() && m_live_md_requests.empty();
+    if (res) {
+        std::cout << "StrategyInstance is ready to finish" << std::endl;
+    }
     return res;
 }
 
