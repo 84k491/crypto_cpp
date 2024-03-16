@@ -84,8 +84,6 @@ private:
     std::shared_ptr<IStrategy> m_strategy;
     TpslExitStrategy m_exit_strategy;
 
-    std::optional<Signal> m_last_signal;
-
     ObjectPublisher<StrategyResult> m_strategy_result;
 
     TimeseriesPublisher<Signal>

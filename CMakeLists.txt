@@ -31,9 +31,10 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} \
     -Wconsumed \
     -Warray-bounds-pointer-arithmetic \
     -Wsign-compare \
+    -Wimplicit-fallthrough \
     -ggdb \
     -g3 \
-    -Og \
+    -O0 \
     ")
 
 add_subdirectory(thirdparty/json)

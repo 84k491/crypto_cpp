@@ -6,6 +6,7 @@
 
 class Trade
 {
+    friend std::ostream & operator<<(std::ostream & os, const Trade & trade);
 public:
     Trade(std::chrono::milliseconds ts, std::string symbol, double price, UnsignedVolume volume, Side side, double fee)
         : ts(ts)
@@ -26,3 +27,4 @@ public: // TODO make private with getters
     Side side = Side::Buy;
     double fee = 0.0;
 };
+std::ostream & operator<<(std::ostream & os, const Trade & trade);

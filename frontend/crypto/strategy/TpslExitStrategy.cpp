@@ -3,6 +3,8 @@
 #include "Enums.h"
 #include "Trade.h"
 
+#include <iostream>
+
 TpslExitStrategyConfig::TpslExitStrategyConfig(const JsonStrategyConfig & json)
 {
     if (json.get().contains("risk")) {
@@ -26,15 +28,18 @@ Tpsl TpslExitStrategy::calc_tpsl(const Trade & trade)
     case Side::Buy: {
         tpsl.take_profit_price = entry_price + profit;
         tpsl.stop_loss_price = entry_price - risk;
+        break;
     }
     case Side::Sell: {
         tpsl.stop_loss_price = entry_price + risk;
         tpsl.take_profit_price = entry_price - profit;
+        break;
     }
     case Side::Close: {
     }
     }
 
+    std::cout << "Calculated from price " << entry_price << ", side: " << (trade.side == Side::Buy ? "Buy" : "Sell") << " Tpsl: " << tpsl << std::endl;
     return tpsl;
 }
 

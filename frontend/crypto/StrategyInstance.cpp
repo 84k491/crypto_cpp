@@ -2,6 +2,7 @@
 
 #include "Events.h"
 #include "ITradingGateway.h"
+#include "Signal.h"
 #include "TpslExitStrategy.h"
 #include "Volume.h"
 #include "WorkStatus.h"
@@ -15,7 +16,7 @@ namespace {
 
 json exit_str_json = json::parse(R"(
   {
-    "risk": 0.0001,
+    "risk": 0.0005,
     "risk_reward_ratio": 0.5
   }
 )");
@@ -153,9 +154,6 @@ void StrategyInstance::on_signal(const Signal & signal)
             return;
         }
     }
-
-    m_last_signal = signal;
-    m_signal_publisher.push(signal.timestamp, signal);
 }
 
 void StrategyInstance::process_position_result(const PositionResult & new_result, std::chrono::milliseconds ts)
@@ -271,6 +269,10 @@ void StrategyInstance::invoke(const ResponseEventVariant & var)
     }
     if (const auto * r = std::get_if<TradeEvent>(&var); r) {
         const auto res = m_position_manager.on_trade_received(r->trade);
+
+        const auto & trade = r->trade;
+        m_signal_publisher.push(trade.ts, Signal{trade.side, trade.ts, trade.price});
+
         if (res.has_value()) {
             process_position_result(res.value(), r->trade.ts);
         }

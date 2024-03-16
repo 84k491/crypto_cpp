@@ -29,9 +29,8 @@ std::optional<Trade> BacktestTradingGateway::try_trade_tpsl(OHLC ohlc)
     const auto & last_price = ohlc.close;
 
     const auto & tpsl = m_tpsl.value().tpsl;
-    const Side pos_side = tpsl.stop_loss_price < tpsl.take_profit_price ? Side::Buy : Side::Sell;
+    const auto [pos_volume, pos_side] = m_pos_volume.as_unsigned_and_side();
     const Side opposite_side = pos_side == Side::Sell ? Side::Buy : Side::Sell;
-    const auto pos_volume = m_pos_volume.as_unsigned_and_side().first;
     const auto trade_price = [&]() -> std::optional<double> {
         switch (pos_side) {
         case Side::Buy: {
@@ -41,6 +40,7 @@ std::optional<Trade> BacktestTradingGateway::try_trade_tpsl(OHLC ohlc)
             if (last_price <= tpsl.stop_loss_price) {
                 return last_price;
             }
+            break;
         }
         case Side::Sell: {
             if (last_price <= tpsl.take_profit_price) {
@@ -49,6 +49,7 @@ std::optional<Trade> BacktestTradingGateway::try_trade_tpsl(OHLC ohlc)
             if (last_price >= tpsl.stop_loss_price) {
                 return last_price;
             }
+            break;
         }
         case Side::Close: {
         }
