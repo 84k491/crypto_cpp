@@ -130,12 +130,14 @@ struct OrderRequestEvent : public BasicEvent<OrderAcceptedEvent>
 
 struct TpslResponseEvent : public BasicResponseEvent
 {
-    TpslResponseEvent(xg::Guid request_guid, bool accepted)
-        : accepted(accepted)
+    TpslResponseEvent(xg::Guid request_guid, Tpsl tpsl, bool accepted)
+        : tpsl(tpsl)
+        , accepted(accepted)
         , request_guid(request_guid)
     {
     }
 
+    Tpsl tpsl;
     bool accepted = false;
     xg::Guid request_guid;
 };

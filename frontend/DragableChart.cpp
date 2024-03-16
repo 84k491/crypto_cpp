@@ -12,6 +12,8 @@ DragableChart::DragableChart(QWidget * parent)
     , buy_signals(new QScatterSeries())
     , sell_signals(new QScatterSeries())
     , close_signals(new QScatterSeries())
+    , take_profits(new QScatterSeries())
+    , stop_losses(new QScatterSeries())
 {
     setDragMode(QGraphicsView::NoDrag);
     this->setMouseTracking(true);
@@ -24,6 +26,10 @@ DragableChart::DragableChart(QWidget * parent)
     sell_signals->setMarkerSize(11.0);
     close_signals->setMarkerShape(QScatterSeries::MarkerShapeStar);
     close_signals->setMarkerSize(20.0);
+    take_profits->setMarkerShape(QScatterSeries::MarkerShapeStar);
+    take_profits->setMarkerSize(15.0);
+    stop_losses->setMarkerShape(QScatterSeries::MarkerShapeStar);
+    stop_losses->setMarkerSize(11.0);
 
     axisX->setTickCount(10);
     axisX->setFormat("hh:mm:ss");
@@ -40,6 +46,8 @@ DragableChart::DragableChart(QWidget * parent)
     chart()->addSeries(buy_signals);
     chart()->addSeries(sell_signals);
     chart()->addSeries(close_signals);
+    chart()->addSeries(take_profits);
+    chart()->addSeries(stop_losses);
 
     buy_signals->attachAxis(axisX);
     buy_signals->attachAxis(price_axis);
@@ -47,6 +55,10 @@ DragableChart::DragableChart(QWidget * parent)
     sell_signals->attachAxis(price_axis);
     close_signals->attachAxis(axisX);
     close_signals->attachAxis(price_axis);
+    take_profits->attachAxis(axisX);
+    take_profits->attachAxis(price_axis);
+    stop_losses->attachAxis(axisX);
+    stop_losses->attachAxis(price_axis);
 
     prices->setColor(QColor(0, 0, 0));
 
@@ -155,6 +167,13 @@ void DragableChart::push_signal(Signal signal)
     }
 }
 
+void DragableChart::push_tpsl(std::chrono::milliseconds ts, Tpsl tpsl)
+{
+    std::cout << "Rendering tpsl: " << tpsl.take_profit_price << std::endl;
+    take_profits->append(static_cast<double>(ts.count()), tpsl.take_profit_price);
+    stop_losses->append(static_cast<double>(ts.count()), tpsl.stop_loss_price);
+}
+
 void DragableChart::push_series_value(
         const std::string & series_name,
         std::chrono::milliseconds ts,
@@ -188,6 +207,8 @@ void DragableChart::clear()
     buy_signals->clear();
     sell_signals->clear();
     close_signals->clear();
+    take_profits->clear();
+    stop_losses->clear();
     for (auto & [_, series_ptr] : m_internal_series) {
         delete series_ptr;
     }

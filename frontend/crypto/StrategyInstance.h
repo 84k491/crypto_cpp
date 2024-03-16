@@ -49,6 +49,7 @@ public:
     TimeseriesPublisher<double> & depo_publisher();
     ObjectPublisher<StrategyResult> & strategy_result_publisher();
     ObjectPublisher<WorkStatus> & status_publisher();
+    TimeseriesPublisher<Tpsl> & tpsl_publisher();
 
     void run_async();
     void stop_async();
@@ -86,10 +87,10 @@ private:
 
     ObjectPublisher<StrategyResult> m_strategy_result;
 
-    TimeseriesPublisher<Signal>
-            m_signal_publisher; // TODO publish trades instead of signals
+    TimeseriesPublisher<Signal> m_signal_publisher; // TODO publish trades instead of signals
     TimeseriesPublisher<OHLC> m_klines_publisher;
     TimeseriesPublisher<double> m_depo_publisher;
+    TimeseriesPublisher<Tpsl> m_tpsl_publisher;
 
     // std::shared_ptr<TimeseriesSubsription<OHLC>> m_kline_sub;
 

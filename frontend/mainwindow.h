@@ -9,6 +9,7 @@
 #include "StrategyFactory.h"
 #include "StrategyInstance.h"
 #include "StrategyResult.h"
+#include "Tpsl.h"
 #include "WorkStatus.h"
 #include "ByBitTradingGateway.h"
 
@@ -86,6 +87,7 @@ private slots:
 
 signals:
     void signal_price(std::chrono::milliseconds ts, double price);
+    void signal_tpsl(std::chrono::milliseconds ts, Tpsl tpsl);
     void signal_signal(Signal signal);
     void signal_strategy_internal(const std::string name,
                                   std::chrono::milliseconds ts,

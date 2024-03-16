@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Signal.h"
+#include "Tpsl.h"
 
 #include <QtCharts>
 #include <chrono>
@@ -19,6 +20,7 @@ public:
                            std::chrono::milliseconds ts,
                            double data);
     void push_signal(Signal signal);
+    void push_tpsl(std::chrono::milliseconds ts, Tpsl tpsl);
 
     void set_title(const std::string & title);
 
@@ -51,6 +53,9 @@ private:
     QScatterSeries * buy_signals = nullptr;
     QScatterSeries * sell_signals = nullptr;
     QScatterSeries * close_signals = nullptr;
+
+    QScatterSeries * take_profits = nullptr;
+    QScatterSeries * stop_losses = nullptr;
 
     std::map<std::string, QLineSeries *> m_internal_series;
 };

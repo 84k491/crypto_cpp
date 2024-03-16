@@ -8,6 +8,7 @@
 #include "Optimizer.h"
 #include "StrategyInstance.h"
 #include "Symbol.h"
+#include "Tpsl.h"
 #include "WorkStatus.h"
 
 #include <nlohmann/json.hpp>
@@ -33,6 +34,13 @@ MainWindow::MainWindow(QWidget * parent)
             this,
             [this](std::chrono::milliseconds ts, double price) {
                 get_or_create_chart(m_price_chart_name).push_series_value("price", ts, price);
+            });
+
+    connect(this,
+            &MainWindow::signal_tpsl,
+            this,
+            [this](std::chrono::milliseconds ts, Tpsl tpsl) {
+                get_or_create_chart(m_price_chart_name).push_tpsl(ts, tpsl);
             });
 
     connect(this,
@@ -194,6 +202,11 @@ void MainWindow::on_pb_run_clicked()
             [](auto &) {},
             [&](std::chrono::milliseconds ts, const OHLC & ohlc) {
                 emit signal_price(ts, ohlc.close);
+            }));
+    m_subscriptions.push_back(m_strategy_instance->tpsl_publisher().subscribe(
+            [](auto &) {},
+            [&](std::chrono::milliseconds ts, const Tpsl & tpsl) {
+                emit signal_tpsl(ts, tpsl);
             }));
     m_subscriptions.push_back(m_strategy_instance->signals_publisher().subscribe(
             [](auto &) {},

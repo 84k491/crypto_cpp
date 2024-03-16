@@ -222,6 +222,11 @@ ObjectPublisher<WorkStatus> & StrategyInstance::status_publisher()
     return m_status;
 }
 
+TimeseriesPublisher<Tpsl> & StrategyInstance::tpsl_publisher()
+{
+    return m_tpsl_publisher;
+}
+
 void StrategyInstance::invoke(const ResponseEventVariant & var)
 {
     bool event_parsed = false;
@@ -288,6 +293,9 @@ void StrategyInstance::invoke(const ResponseEventVariant & var)
     if (const auto * r = std::get_if<TpslResponseEvent>(&var); r) {
         std::cout << "Received Tpsl response event" << std::endl;
         const TpslResponseEvent & response = *r;
+        if (response.accepted) {
+            m_tpsl_publisher.push(m_last_ts_and_price.first, response.tpsl);
+        }
         const size_t erased_cnt = m_pending_requests.erase(response.request_guid);
         if (erased_cnt == 0) {
             std::cout << "Unsolicited tpsl response" << std::endl;

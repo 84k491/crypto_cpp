@@ -104,6 +104,6 @@ void BacktestTradingGateway::push_order_request(const OrderRequestEvent & req)
 void BacktestTradingGateway::push_tpsl_request(const TpslRequestEvent & tpsl_ev)
 {
     m_tpsl = tpsl_ev;
-    TpslResponseEvent resp_ev(m_tpsl.value().guid, true);
+    TpslResponseEvent resp_ev(m_tpsl.value().guid, tpsl_ev.tpsl, true);
     m_tpsl.value().event_consumer->push_in_this_thread(resp_ev);
 }
