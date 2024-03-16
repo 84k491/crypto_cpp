@@ -20,19 +20,21 @@ Tpsl TpslExitStrategy::calc_tpsl(const Trade & trade)
     // TODO calc fees
     Tpsl tpsl;
     const double & entry_price = trade.price;
+    const double total_fee = trade.fee * 2;
+    const double fee_price_delta = total_fee / trade.unsigned_volume.value();
 
     double risk = entry_price * m_config.risk();
     double profit = entry_price * (m_config.risk() / m_config.risk_reward_ratio());
 
     switch (trade.side) {
     case Side::Buy: {
-        tpsl.take_profit_price = entry_price + profit;
-        tpsl.stop_loss_price = entry_price - risk;
+        tpsl.take_profit_price = entry_price + profit + fee_price_delta;
+        tpsl.stop_loss_price = entry_price - risk + fee_price_delta;
         break;
     }
     case Side::Sell: {
-        tpsl.stop_loss_price = entry_price + risk;
-        tpsl.take_profit_price = entry_price - profit;
+        tpsl.stop_loss_price = entry_price + risk - fee_price_delta;
+        tpsl.take_profit_price = entry_price - profit - fee_price_delta;
         break;
     }
     case Side::Close: {

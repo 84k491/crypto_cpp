@@ -16,8 +16,8 @@ namespace {
 
 json exit_str_json = json::parse(R"(
   {
-    "risk": 0.0005,
-    "risk_reward_ratio": 0.5
+    "risk": 0.004,
+    "risk_reward_ratio": 0.9
   }
 )");
 
