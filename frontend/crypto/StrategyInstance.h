@@ -40,7 +40,13 @@ public:
                          TradeEvent,
                          TpslResponseEvent>;
 
-    StrategyInstance(const Symbol & symbol, const MarketDataRequest & md_request, const std::shared_ptr<IStrategy> & strategy_ptr, ByBitGateway & md_gateway, ITradingGateway & tr_gateway);
+    StrategyInstance(
+            const Symbol & symbol,
+            const MarketDataRequest & md_request,
+            const std::shared_ptr<IStrategy> & strategy_ptr,
+            TpslExitStrategyConfig exit_strategy_config,
+            ByBitGateway & md_gateway,
+            ITradingGateway & tr_gateway);
 
     TimeseriesPublisher<Signal> & signals_publisher();
     TimeseriesPublisher<std::pair<std::string, double>> &

@@ -191,6 +191,7 @@ void MainWindow::on_pb_run_clicked()
             symbol.value(),
             md_request,
             strategy_ptr_opt.value(),
+            get_exit_config_from_ui(),
             m_gateway,
             tr_gateway);
 
@@ -407,6 +408,13 @@ JsonStrategyConfig MainWindow::get_config_from_ui() const
         config[name] = value;
     }
     return config;
+}
+
+TpslExitStrategyConfig MainWindow::get_exit_config_from_ui() const
+{
+    double risk = ui->dsb_risk->value();
+    double risk_reward_ratio = ui->dsb_risk_reward->value();
+    return {risk, risk_reward_ratio};
 }
 
 std::optional<JsonStrategyMetaInfo> MainWindow::get_strategy_parameters() const

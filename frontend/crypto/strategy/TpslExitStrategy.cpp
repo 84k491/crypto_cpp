@@ -15,6 +15,12 @@ TpslExitStrategyConfig::TpslExitStrategyConfig(const JsonStrategyConfig & json)
     }
 }
 
+TpslExitStrategyConfig::TpslExitStrategyConfig(double risk, double risk_reward_ratio)
+    : m_risk(risk)
+    , m_risk_reward_ratio(risk_reward_ratio)
+{
+}
+
 Tpsl TpslExitStrategy::calc_tpsl(const Trade & trade)
 {
     // TODO calc fees

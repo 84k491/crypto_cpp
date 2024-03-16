@@ -62,6 +62,8 @@ std::optional<JsonStrategyConfig> Optimizer::optimize()
 {
     OptimizerParser parser(m_optimizer_data);
 
+    TpslExitStrategyConfig exit_config(0.01, 0.9);
+
     double max_profit = -std::numeric_limits<double>::max();
     std::optional<JsonStrategyConfig> best_config;
     const auto configs = parser.get_possible_configs();
@@ -80,7 +82,13 @@ std::optional<JsonStrategyConfig> Optimizer::optimize()
         }();
 
         BacktestTradingGateway tr_gateway;
-        StrategyInstance strategy_instance(m_symbol, md_request, strategy_opt.value(), m_gateway, tr_gateway);
+        StrategyInstance strategy_instance(
+                m_symbol,
+                md_request,
+                strategy_opt.value(),
+                exit_config,
+                m_gateway,
+                tr_gateway);
         tr_gateway.set_price_source(strategy_instance.klines_publisher());
         strategy_instance.run_async();
         strategy_instance.wait_for_finish().wait();

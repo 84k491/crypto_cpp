@@ -9,6 +9,7 @@ class TpslExitStrategyConfig
 {
 public:
     TpslExitStrategyConfig(const JsonStrategyConfig & json);
+    TpslExitStrategyConfig(double risk, double risk_reward_ratio);
 
     bool is_valid() const;
 

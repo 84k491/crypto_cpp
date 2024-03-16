@@ -169,7 +169,6 @@ void DragableChart::push_signal(Signal signal)
 
 void DragableChart::push_tpsl(std::chrono::milliseconds ts, Tpsl tpsl)
 {
-    std::cout << "Rendering tpsl: " << tpsl.take_profit_price << std::endl;
     take_profits->append(static_cast<double>(ts.count()), tpsl.take_profit_price);
     stop_losses->append(static_cast<double>(ts.count()), tpsl.stop_loss_price);
 }

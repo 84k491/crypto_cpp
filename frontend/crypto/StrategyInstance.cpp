@@ -8,42 +8,25 @@
 #include "WorkStatus.h"
 
 #include <chrono>
-#include <exception>
 #include <future>
 #include <optional>
-
-namespace {
-
-json exit_str_json = json::parse(R"(
-  {
-    "risk": 0.004,
-    "risk_reward_ratio": 0.9
-  }
-)");
-
-TpslExitStrategyConfig tpsl_config(exit_str_json);
-
-} // namespace
 
 StrategyInstance::StrategyInstance(
         const Symbol & symbol,
         const MarketDataRequest & md_request,
         const std::shared_ptr<IStrategy> & strategy_ptr,
+        TpslExitStrategyConfig exit_strategy_config,
         ByBitGateway & md_gateway,
         ITradingGateway & tr_gateway)
     : m_event_loop(*this)
     , m_md_gateway(md_gateway)
     , m_tr_gateway(tr_gateway)
     , m_strategy(strategy_ptr)
-    , m_exit_strategy(tpsl_config)
+    , m_exit_strategy(exit_strategy_config)
     , m_symbol(symbol)
     , m_position_manager(symbol, m_tr_gateway)
     , m_md_request(md_request)
 {
-    if (!tpsl_config.is_valid()) {
-        throw std::exception();
-        // TODO remove
-    }
     m_strategy_result.update([&](StrategyResult & res) {
         res.position_currency_amount = m_pos_currency_amount;
     });

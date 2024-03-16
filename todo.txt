@@ -1,2 +1,4 @@
-
+add exit strategy to frontend
+make exit strategy optimizable
+backtest on prod data
 ----after first launch
