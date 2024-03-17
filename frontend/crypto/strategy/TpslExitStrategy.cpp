@@ -15,6 +15,12 @@ TpslExitStrategyConfig::TpslExitStrategyConfig(const JsonStrategyConfig & json)
     }
 }
 
+std::ostream & operator<<(std::ostream & os, const TpslExitStrategyConfig & config)
+{
+    os << "risk = " << config.risk() << ", risk_reward_ratio = " << config.risk_reward_ratio();
+    return os;
+}
+
 TpslExitStrategyConfig::TpslExitStrategyConfig(double risk, double risk_reward_ratio)
     : m_risk(risk)
     , m_risk_reward_ratio(risk_reward_ratio)
@@ -47,13 +53,14 @@ Tpsl TpslExitStrategy::calc_tpsl(const Trade & trade)
     }
     }
 
-    std::cout << "Calculated from price " << entry_price << ", side: " << (trade.side == Side::Buy ? "Buy" : "Sell") << " Tpsl: " << tpsl << std::endl;
+    // std::cout << "Calculated from price " << entry_price << ", side: " << (trade.side == Side::Buy ? "Buy" : "Sell") << " Tpsl: " << tpsl << std::endl;
     return tpsl;
 }
 
 bool TpslExitStrategyConfig::is_valid() const
 {
-    return m_risk > 0. && m_risk < 1. && m_risk_reward_ratio > 0. && m_risk_reward_ratio < 1.;
+    bool limits_ok = m_risk > 0. && m_risk < 1. && m_risk_reward_ratio > 0. && m_risk_reward_ratio < 1.;
+    return limits_ok;
 }
 
 TpslExitStrategy::TpslExitStrategy(TpslExitStrategyConfig config)

@@ -6,6 +6,8 @@
 
 class JsonStrategyConfig
 {
+    friend std::ostream & operator<<(std::ostream & os, const JsonStrategyConfig & config);
+
 public:
     JsonStrategyConfig(nlohmann::json config)
         : m_config(std::move(config))
@@ -17,6 +19,7 @@ public:
 private:
     nlohmann::json m_config;
 };
+std::ostream & operator<<(std::ostream & os, const JsonStrategyConfig & config);
 
 class JsonStrategyMetaInfo
 {

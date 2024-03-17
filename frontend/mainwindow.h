@@ -106,7 +106,7 @@ private:
 
     std::optional<JsonStrategyMetaInfo> get_strategy_parameters() const;
     void setup_specific_parameters(const JsonStrategyMetaInfo & strategy_parameters);
-    JsonStrategyConfig get_config_from_ui() const;
+    JsonStrategyConfig get_entry_config_from_ui() const;
     TpslExitStrategyConfig get_exit_config_from_ui() const;
 
     DragableChart & get_or_create_chart(const std::string & chart_name);

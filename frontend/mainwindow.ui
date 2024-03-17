@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1076</width>
-    <height>869</height>
+    <height>1100</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -32,7 +32,7 @@
        </attribute>
        <layout class="QHBoxLayout" name="horizontalLayout_8" stretch="1,1">
         <item>
-         <layout class="QVBoxLayout" name="verticalLayout" stretch="2,1">
+         <layout class="QVBoxLayout" name="verticalLayout" stretch="2,0,1">
           <item>
            <widget class="QGroupBox" name="groupBox">
             <property name="title">
@@ -186,7 +186,7 @@
                      <double>0.000010000000000</double>
                     </property>
                     <property name="value">
-                     <double>0.004000000000000</double>
+                     <double>0.002000000000000</double>
                     </property>
                    </widget>
                   </item>
@@ -213,7 +213,7 @@
                      <double>0.010000000000000</double>
                     </property>
                     <property name="value">
-                     <double>0.500000000000000</double>
+                     <double>0.900000000000000</double>
                     </property>
                    </widget>
                   </item>
@@ -228,9 +228,42 @@
           <item>
            <widget class="QGroupBox" name="gb_optimizer">
             <property name="title">
+             <string>Optimizer</string>
+            </property>
+            <layout class="QVBoxLayout" name="verticalLayout_9">
+             <item>
+              <widget class="QCheckBox" name="cb_optimize_entry">
+               <property name="text">
+                <string>Optimize entry strategy</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QCheckBox" name="cb_optimize_exit">
+               <property name="text">
+                <string>Optimize exit strategy</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="pb_optimize">
+               <property name="text">
+                <string>Optimize</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <widget class="QGroupBox" name="gb_control">
+            <property name="title">
              <string>Control</string>
             </property>
-            <layout class="QVBoxLayout" name="verticalLayout_8">
+            <layout class="QVBoxLayout" name="verticalLayout_8" stretch="3,1">
              <item>
               <layout class="QHBoxLayout" name="horizontalLayout_7">
                <item>
@@ -262,13 +295,6 @@
                 <widget class="QPushButton" name="pb_test">
                  <property name="text">
                   <string>Test</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QPushButton" name="pb_optimize">
-                 <property name="text">
-                  <string>Optimize</string>
                  </property>
                 </widget>
                </item>

@@ -7,6 +7,7 @@ class Trade;
 
 class TpslExitStrategyConfig
 {
+    friend std::ostream & operator<<(std::ostream & os, const TpslExitStrategyConfig & config);
 public:
     TpslExitStrategyConfig(const JsonStrategyConfig & json);
     TpslExitStrategyConfig(double risk, double risk_reward_ratio);

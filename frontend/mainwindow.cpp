@@ -142,7 +142,7 @@ void MainWindow::on_pb_run_clicked()
     const auto & timerange = *timerange_opt;
 
     const auto strategy_name = ui->cb_strategy->currentText().toStdString();
-    const auto strategy_ptr_opt = StrategyFactory::build_strategy(strategy_name, get_config_from_ui());
+    const auto strategy_ptr_opt = StrategyFactory::build_strategy(strategy_name, get_entry_config_from_ui());
     if (!strategy_ptr_opt.has_value() || !strategy_ptr_opt.value() || !strategy_ptr_opt.value()->is_valid()) {
         std::cout << "ERROR Failed to build strategy" << std::endl;
         return;
@@ -308,12 +308,32 @@ std::optional<Timerange> MainWindow::get_timerange() const
 
 void MainWindow::on_pb_optimize_clicked()
 {
-    const auto json_data = get_strategy_parameters();
+    const auto entry_strategy_meta_info = get_strategy_parameters();
     const auto timerange_opt = get_timerange();
-    if (!timerange_opt || !json_data) {
+    const auto exit_strategy_meta_info = StrategyFactory::get_meta_info("TpslExit");
+    if (!timerange_opt || !entry_strategy_meta_info || !exit_strategy_meta_info) {
         std::cout << "ERROR no value in required optional" << std::endl;
         return;
     }
+    std::string strategy_name = ui->cb_strategy->currentText().toStdString();
+    const auto entry_config = [&]() -> std::variant<JsonStrategyMetaInfo, JsonStrategyConfig> {
+        if (ui->cb_optimize_entry->isChecked()) {
+            return entry_strategy_meta_info.value();
+        }
+        else {
+            return get_entry_config_from_ui();
+        }
+    };
+    const auto exit_config = [&]() -> std::variant<JsonStrategyMetaInfo, TpslExitStrategyConfig> {
+        if (ui->cb_optimize_exit->isChecked()) {
+            return exit_strategy_meta_info.value();
+        }
+        else {
+            return get_exit_config_from_ui();
+        }
+    };
+    OptimizerInputs optimizer_inputs = {entry_config(), exit_config()};
+
     const auto & timerange = *timerange_opt;
 
     const auto symbol = [&]() -> std::optional<Symbol> {
@@ -331,12 +351,13 @@ void MainWindow::on_pb_optimize_clicked()
         return;
     }
 
-    std::thread t([this, timerange, json_data, symbol]() {
+    std::thread t([this, timerange, optimizer_inputs, symbol, strategy_name]() {
         Optimizer optimizer(
                 m_gateway,
                 symbol.value(),
                 timerange,
-                *json_data);
+                strategy_name,
+                optimizer_inputs);
 
         optimizer.subscribe_for_passed_check([this](int passed_checks, int total_checks) {
             emit signal_optimizer_passed_check(passed_checks, total_checks);
@@ -347,8 +368,8 @@ void MainWindow::on_pb_optimize_clicked()
             std::cout << "ERROR no best config" << std::endl;
             return;
         }
-        emit signal_optimized_config(best_config.value());
-        std::cout << "Best config: " << best_config.value().get() << std::endl;
+        emit signal_optimized_config(best_config.value().first);
+        std::cout << "Best config: " << best_config.value().first << "; " << best_config.value().second << std::endl;
     });
     t.detach();
 }
@@ -401,7 +422,7 @@ void MainWindow::setup_specific_parameters(const JsonStrategyMetaInfo & strategy
     ui->gb_specific_parameters->setLayout(top_layout);
 }
 
-JsonStrategyConfig MainWindow::get_config_from_ui() const
+JsonStrategyConfig MainWindow::get_entry_config_from_ui() const
 {
     nlohmann::json config;
     for (const auto & [name, value] : m_strategy_parameters_values) {

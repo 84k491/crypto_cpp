@@ -274,7 +274,6 @@ void StrategyInstance::invoke(const ResponseEventVariant & var)
         event_parsed = true;
     }
     if (const auto * r = std::get_if<TpslResponseEvent>(&var); r) {
-        std::cout << "Received Tpsl response event" << std::endl;
         const TpslResponseEvent & response = *r;
         if (response.accepted) {
             m_tpsl_publisher.push(m_last_ts_and_price.first, response.tpsl);
@@ -303,8 +302,6 @@ void StrategyInstance::invoke(const ResponseEventVariant & var)
 
 void StrategyInstance::set_tpsl(Tpsl tpsl)
 {
-    std::cout << "Setting tpsl" << std::endl;
-
     TpslRequestEvent req(tpsl, m_event_loop, m_event_loop);
     m_pending_requests.emplace(req.guid);
     m_tr_gateway.push_tpsl_request(req);

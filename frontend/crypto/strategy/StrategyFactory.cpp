@@ -25,6 +25,10 @@ std::optional<JsonStrategyMetaInfo> StrategyFactory::get_meta_info(const std::st
                     "DebugEveryTick",
                     "DebugEveryTick.json",
             },
+            {
+                    "TpslExit",
+                    "TpslExit.json",
+            },
     };
 
     if (name_to_filename.find(strategy_name) == name_to_filename.end()) {

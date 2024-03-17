@@ -2,39 +2,50 @@
 
 #include "ByBitGateway.h"
 #include "JsonStrategyConfig.h"
+#include "TpslExitStrategy.h"
 
 #include <nlohmann/json.hpp>
 
 #include <utility>
 #include <vector>
 
+struct OptimizerInputs
+{
+    // set of configs or one config (optimize or not)
+    std::variant<JsonStrategyMetaInfo, JsonStrategyConfig> entry_strategy;
+    std::variant<JsonStrategyMetaInfo, TpslExitStrategyConfig> exit_strategy;
+};
+
 class OptimizerParser
 {
 public:
-    OptimizerParser(JsonStrategyMetaInfo optimizer_data)
-        : m_data(std::move(optimizer_data))
+    OptimizerParser(OptimizerInputs optimizer_inputs)
+        : m_inputs(std::move(optimizer_inputs))
     {
     }
 
-    std::vector<nlohmann::json> get_possible_configs();
-    std::string get_strategy_name() const;
+    std::vector<std::pair<nlohmann::json, TpslExitStrategyConfig>> get_possible_configs();
 
 private:
-    const JsonStrategyMetaInfo m_data;
+    static std::vector<nlohmann::json> get_possible_configs(const JsonStrategyMetaInfo & meta_info);
+    std::vector<TpslExitStrategyConfig> get_possible_exit_configs();
+
+    const OptimizerInputs m_inputs;
 };
 
 class Optimizer
 {
 public:
-    Optimizer(ByBitGateway & gateway, Symbol symbol, Timerange timerange, JsonStrategyMetaInfo optimizer_data)
+    Optimizer(ByBitGateway & gateway, Symbol symbol, Timerange timerange, std::string strategy_name, OptimizerInputs optimizer_data)
         : m_gateway(gateway)
         , m_symbol(std::move(symbol))
-        , m_timerange(std::move(timerange))
-        , m_optimizer_data(std::move(optimizer_data))
+        , m_timerange(timerange)
+        , m_optimizer_inputs(std::move(optimizer_data))
+        , m_strategy_name(std::move(strategy_name))
     {
     }
 
-    [[nodiscard]] std::optional<JsonStrategyConfig> optimize();
+    [[nodiscard]] std::optional<std::pair<JsonStrategyConfig, TpslExitStrategyConfig>> optimize();
 
     void subscribe_for_passed_check(std::function<void(int, int)> && on_passed_checks)
     {
@@ -48,6 +59,7 @@ private:
     ByBitGateway & m_gateway;
     Symbol m_symbol;
     Timerange m_timerange;
-    JsonStrategyMetaInfo m_optimizer_data;
+    OptimizerInputs m_optimizer_inputs;
     std::function<void(unsigned, unsigned)> m_on_passed_check = [](unsigned, unsigned) {};
+    std::string m_strategy_name;
 };
