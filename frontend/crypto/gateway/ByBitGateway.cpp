@@ -176,7 +176,8 @@ bool ByBitGateway::request_historical_klines(const std::string & symbol, const T
 
         const std::string request = [&]() {
             std::stringstream ss;
-            ss << "https://api-testnet.bybit.com/v5/market/kline"
+            ss << s_endpoint_address
+               << "/v5/market/kline"
                << "?symbol=" << symbol
                << "&category=" << category
                << "&interval=" << min_interval.count()
@@ -221,7 +222,8 @@ std::vector<Symbol> ByBitGateway::get_symbols(const std::string & currency)
 
     const std::string url = [&]() {
         std::stringstream ss;
-        ss << "https://api-testnet.bybit.com/v5/market/instruments-info"
+        ss << s_endpoint_address
+           << "/v5/market/instruments-info"
            << "?category=" << category
            << "&limit=" << limit;
         return std::string(ss.str());
@@ -249,7 +251,7 @@ std::vector<Symbol> ByBitGateway::get_symbols(const std::string & currency)
 
 std::chrono::milliseconds ByBitGateway::get_server_time()
 {
-    const std::string url = "https://api-testnet.bybit.com/v5/market/time";
+    const std::string url = std::string(s_endpoint_address) + "/v5/market/time";
 
     auto str_future = rest_client.request_async(url);
     str_future.wait();

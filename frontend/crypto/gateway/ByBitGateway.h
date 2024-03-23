@@ -36,6 +36,8 @@ class ByBitGateway final : private IEventInvoker<HistoricalMDRequest, LiveMDRequ
 {
 private:
     static constexpr double taker_fee = 0.0002; // 0.02%
+    // static constexpr std::string_view s_endpoint_address = "https://api-testnet.bybit.com";
+    static constexpr std::string_view s_endpoint_address = "https://api.bybit.com";
 
 public:
     using KlineCallback = std::function<void(std::chrono::milliseconds, const OHLC &)>;
