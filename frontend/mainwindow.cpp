@@ -2,7 +2,6 @@
 
 #include "./ui_mainwindow.h"
 #include "DoubleSmaStrategy.h"
-#include "DragableChart.h"
 #include "ITradingGateway.h"
 #include "JsonStrategyConfig.h"
 #include "Optimizer.h"
@@ -457,12 +456,12 @@ void MainWindow::on_cb_strategy_currentTextChanged(const QString &)
     }
 }
 
-DragableChart & MainWindow::get_or_create_chart(const std::string & chart_name)
+MultiSeriesChart & MainWindow::get_or_create_chart(const std::string & chart_name)
 {
     if (auto it = m_charts.find(chart_name); it != m_charts.end()) {
         return *it->second;
     }
-    auto * new_chart = new DragableChart();
+    auto * new_chart = new MultiSeriesChart();
     new_chart->set_title(chart_name);
     m_charts[chart_name] = new_chart;
     ui->verticalLayout_graph->addWidget(new_chart);

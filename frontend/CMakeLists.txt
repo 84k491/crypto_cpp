@@ -19,6 +19,8 @@ set(PROJECT_SOURCES
         mainwindow.h
         mainwindow.ui
         DragableChart.cpp
+        MultiSeriesChart.h
+        MultiSeriesChart.cpp
 )
 
 add_subdirectory(crypto)
@@ -31,6 +33,7 @@ target_compile_options(frontend PRIVATE "-g" "-O0")
 
 
 target_link_libraries(frontend PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)
+target_link_libraries(${PROJECT_NAME} PRIVATE qcustomplot)
 target_link_libraries(frontend PRIVATE
     Qt6::Charts
     nlohmann_json::nlohmann_json
@@ -43,6 +46,9 @@ target_link_libraries(frontend PRIVATE
     trading_primitives
     network
 )
+
+# Compile needed definitions
+target_compile_definitions(${PROJECT_NAME} PRIVATE QCUSTOMPLOT_USE_LIBRARY)
 
 include(GNUInstallDirs)
 install(TARGETS frontend

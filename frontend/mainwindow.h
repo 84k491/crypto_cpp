@@ -5,6 +5,7 @@
 #include "ByBitGateway.h"
 #include "ByBitTradingGateway.h"
 #include "DragableChart.h"
+#include "MultiSeriesChart.h"
 #include "JsonStrategyConfig.h"
 #include "StrategyFactory.h"
 #include "StrategyInstance.h"
@@ -109,7 +110,7 @@ private:
     JsonStrategyConfig get_entry_config_from_ui() const;
     TpslExitStrategyConfig get_exit_config_from_ui() const;
 
-    DragableChart & get_or_create_chart(const std::string & chart_name);
+    MultiSeriesChart & get_or_create_chart(const std::string & chart_name);
 
 private:
     Ui::MainWindow * ui;
@@ -125,7 +126,7 @@ private:
 
     const std::string m_price_chart_name = "prices";
     const std::string m_depo_chart_name = "depo";
-    std::map<std::string, DragableChart *> m_charts;
+    std::map<std::string, MultiSeriesChart *> m_charts;
 
     std::optional<JsonStrategyMetaInfo> m_last_set_strategy_parameters;
     std::map<std::string, QDoubleSpinBox *> m_strategy_parameters_spinboxes;
