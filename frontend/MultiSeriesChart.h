@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Ohlc.h"
 #include "Signal.h"
 #include "Tpsl.h"
 #include "qcustomplot.h"
@@ -11,6 +12,11 @@ public:
 
     void clear();
 
+    void push_series_vector(
+            const std::string & series_name,
+            const std::vector<std::pair<
+                    std::chrono::milliseconds,
+                    double>> & data);
     void push_series_value(const std::string & series_name,
                            std::chrono::milliseconds ts,
                            double data);
@@ -20,6 +26,10 @@ public:
     void set_title(const std::string & title);
 
 private:
+    void push_series_value_dont_replot(const std::string & series_name,
+                                       std::chrono::milliseconds ts,
+                                       double data);
 
+private:
     std::map<std::string, int> m_series_indexes;
 };

@@ -43,6 +43,11 @@ StrategyInstance::StrategyInstance(
     });
 }
 
+StrategyInstance::~StrategyInstance()
+{
+    std::cout << "StrategyInstance destructor" << std::endl;
+}
+
 void StrategyInstance::on_price_received(std::chrono::milliseconds ts, const OHLC & ohlc)
 {
     m_last_ts_and_price = {ts, ohlc.close};

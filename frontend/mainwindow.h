@@ -4,16 +4,14 @@
 #include "BacktestTradingGateway.h"
 #include "ByBitGateway.h"
 #include "ByBitTradingGateway.h"
-#include "DragableChart.h"
-#include "MultiSeriesChart.h"
 #include "JsonStrategyConfig.h"
+#include "MultiSeriesChart.h"
 #include "StrategyFactory.h"
 #include "StrategyInstance.h"
 #include "StrategyResult.h"
 #include "Tpsl.h"
-#include "WorkStatus.h"
-#include "ByBitTradingGateway.h"
 #include "TpslExitStrategy.h"
+#include "WorkStatus.h"
 
 #include <QMainWindow>
 #include <QScatterSeries>
@@ -82,7 +80,6 @@ private slots:
 
     void on_cb_strategy_currentTextChanged(const QString & arg1);
 
-
     void on_pb_stop_clicked();
 
     void on_pb_test_clicked();
@@ -111,6 +108,9 @@ private:
     TpslExitStrategyConfig get_exit_config_from_ui() const;
 
     MultiSeriesChart & get_or_create_chart(const std::string & chart_name);
+
+    void get_strategy_data_snapshots();
+    void subscribe_to_strategy();
 
 private:
     Ui::MainWindow * ui;

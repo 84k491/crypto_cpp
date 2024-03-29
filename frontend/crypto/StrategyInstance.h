@@ -48,6 +48,8 @@ public:
             ByBitGateway & md_gateway,
             ITradingGateway & tr_gateway);
 
+    ~StrategyInstance() override;
+
     TimeseriesPublisher<Signal> & signals_publisher();
     TimeseriesPublisher<std::pair<std::string, double>> &
     strategy_internal_data_publisher();

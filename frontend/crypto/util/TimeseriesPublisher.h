@@ -6,7 +6,6 @@
 #include <crossguid2/crossguid/guid.hpp>
 #include <functional>
 #include <list>
-#include <map>
 #include <memory>
 #include <vector>
 
@@ -48,13 +47,13 @@ public:
 
     void push(TimeT timestamp, const ObjectT & object);
     [[nodiscard]] std::shared_ptr<TimeseriesSubsription<ObjectT>> subscribe(
-            std::function<void(const std::vector<std::pair<TimeT, const ObjectT>> &)> && snapshot_callback,
+            std::function<void(const std::vector<std::pair<TimeT, ObjectT>> &)> && snapshot_callback,
             std::function<void(TimeT, const ObjectT &)> && increment_callback);
 
     void unsubscribe(xg::Guid guid);
 
 private:
-    std::vector<std::pair<TimeT, const ObjectT>> m_data;
+    std::vector<std::pair<TimeT, ObjectT>> m_data;
     std::list<std::tuple<
             xg::Guid,
             std::function<void(TimeT, const ObjectT &)>,
@@ -73,7 +72,7 @@ void TimeseriesPublisher<ObjectT>::push(TimeseriesPublisher::TimeT timestamp, co
 
 template <typename ObjectT>
 std::shared_ptr<TimeseriesSubsription<ObjectT>> TimeseriesPublisher<ObjectT>::subscribe(
-        std::function<void(const std::vector<std::pair<TimeT, const ObjectT>> &)> && snapshot_callback,
+        std::function<void(const std::vector<std::pair<TimeT, ObjectT>> &)> && snapshot_callback,
         std::function<void(TimeT, const ObjectT &)> && increment_callback)
 {
     const auto guid = xg::newGuid();

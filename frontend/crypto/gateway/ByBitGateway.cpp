@@ -230,6 +230,7 @@ std::vector<Symbol> ByBitGateway::get_symbols(const std::string & currency)
     }();
 
     auto str_future = rest_client.request_async(url);
+    // TODO set timeout
     str_future.wait();
 
     SymbolResponse response;

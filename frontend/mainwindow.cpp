@@ -83,10 +83,14 @@ MainWindow::MainWindow(QWidget * parent)
 
     ui->pb_stop->setEnabled(false);
     connect(this, &MainWindow::signal_work_status, this, [this](const WorkStatus status) {
+        std::cout << "Work status: " << to_string(status) << std::endl;
         ui->lb_work_status->setText(to_string(status).c_str());
         if (status == WorkStatus::Backtesting || status == WorkStatus::Live) {
             ui->pb_run->setEnabled(false);
             ui->pb_stop->setEnabled(true);
+        }
+        if (status == WorkStatus::Stopped || status == WorkStatus::Live) {
+            subscribe_to_strategy();
         }
         if (status == WorkStatus::Stopped || status == WorkStatus::Crashed) {
             ui->pb_run->setEnabled(true);
@@ -198,8 +202,34 @@ void MainWindow::on_pb_run_clicked()
         ptr->set_price_source(m_strategy_instance->klines_publisher());
     }
 
+    m_subscriptions.push_back(m_strategy_instance->status_publisher().subscribe(
+            [&](const WorkStatus & status) {
+                emit signal_work_status(status);
+                switch (status) {
+                case WorkStatus::Backtesting: break;
+                default: {
+                    emit signal_result(m_strategy_instance->strategy_result_publisher().get());
+                    break;
+                }
+                }
+            }));
+
+    m_strategy_instance->run_async();
+    std::cout << "strategy started" << std::endl;
+}
+
+void MainWindow::subscribe_to_strategy()
+{
     m_subscriptions.push_back(m_strategy_instance->klines_publisher().subscribe(
-            [](auto &) {},
+            [this](const auto & vec) {
+                std::vector<std::pair<std::chrono::milliseconds, double>> new_data;
+                new_data.reserve(vec.size());
+                for (const auto & [ts, v] : vec) {
+                    new_data.emplace_back(ts, v.close);
+                }
+                auto & plot = get_or_create_chart(m_price_chart_name);
+                plot.push_series_vector("price", new_data);
+            },
             [&](std::chrono::milliseconds ts, const OHLC & ohlc) {
                 emit signal_price(ts, ohlc.close);
             }));
@@ -217,26 +247,28 @@ void MainWindow::on_pb_run_clicked()
             m_strategy_instance
                     ->strategy_internal_data_publisher()
                     .subscribe(
-                            [](auto &) {},
+                            [this](const std::vector<std::pair<std::chrono::milliseconds, std::pair<std::string, double>>> & vec) {
+                                std::map<std::string, std::vector<std::pair<std::chrono::milliseconds, double>>> vec_map;
+                                for (const auto & [ts, v] : vec) {
+                                    const auto & [name, value] = v;
+                                    vec_map[name].emplace_back(ts, value);
+                                }
+                                auto & plot = get_or_create_chart(m_price_chart_name);
+                                for (const auto & [name, out_vec] : vec_map) {
+                                    plot.push_series_vector(name, out_vec);
+                                }
+                            },
                             [&](std::chrono::milliseconds ts, const std::pair<const std::string, double> & data_pair) {
                                 const auto & [name, data] = data_pair;
                                 emit signal_strategy_internal(name, ts, data);
                             }));
     m_subscriptions.push_back(m_strategy_instance->depo_publisher().subscribe(
-            [](auto &) {},
+            [this](const auto & vec) {
+                auto & plot = get_or_create_chart(m_depo_chart_name);
+                plot.push_series_vector("depo", vec);
+            },
             [&](std::chrono::milliseconds ts, double depo) {
                 emit signal_depo(ts, depo);
-            }));
-    m_subscriptions.push_back(m_strategy_instance->status_publisher().subscribe(
-            [&](const WorkStatus & status) {
-                emit signal_work_status(status);
-                switch (status) {
-                case WorkStatus::Backtesting: break;
-                default: {
-                    emit signal_result(m_strategy_instance->strategy_result_publisher().get());
-                    break;
-                }
-                }
             }));
     m_subscriptions.push_back(m_strategy_instance->strategy_result_publisher().subscribe(
             [&](const StrategyResult & result) {
@@ -249,8 +281,6 @@ void MainWindow::on_pb_run_clicked()
                 }
                 }
             }));
-    m_strategy_instance->run_async();
-    std::cout << "strategy started" << std::endl;
 }
 
 MainWindow::~MainWindow()
