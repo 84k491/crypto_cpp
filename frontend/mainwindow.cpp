@@ -342,6 +342,7 @@ void MainWindow::render_result(StrategyResult result)
     ui->lb_min_depo->setText(QString::number(result.min_depo));
     ui->lb_longest_profit_pos->setText(QString::number(result.longest_profit_trade_time.count()));
     ui->lb_longest_loss_pos->setText(QString::number(result.longest_loss_trade_time.count()));
+    ui->lb_win_rate->setText(QString::number(result.win_rate()));
 }
 
 void MainWindow::optimized_config_slot(const JsonStrategyConfig & config)

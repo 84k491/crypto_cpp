@@ -151,6 +151,14 @@ void StrategyInstance::process_position_result(const PositionResult & new_result
         res.fees_paid += new_result.fees_paid;
     });
     m_depo_publisher.push(ts, m_strategy_result.get().final_profit);
+    m_strategy_result.update([&](StrategyResult & res) {
+        if (new_result.pnl_with_fee > 0.) {
+            res.profit_positions_cnt++;
+        }
+        else {
+            res.loss_positions_cnt++;
+        }
+    });
     if (const auto best_profit = m_strategy_result.get().best_profit_trade;
         !best_profit.has_value() || best_profit < new_result.pnl_with_fee) {
         m_strategy_result.update([&](StrategyResult & res) {
