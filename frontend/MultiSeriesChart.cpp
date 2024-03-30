@@ -1,7 +1,5 @@
 #include "MultiSeriesChart.h"
 
-#include <iostream>
-
 namespace {
 // colors for series
 std::vector<QColor> colors = {
@@ -11,13 +9,21 @@ std::vector<QColor> colors = {
         QColor(140, 50, 80),
 };
 
-std::map<std::string, std::tuple<QCPScatterStyle::ScatterShape, QColor, QColor, int>> scatter_series_display_params = {
-        {"buy_trade", {QCPScatterStyle::ssTriangle, Qt::black, Qt::green, 15}},
-        {"sell_trade", {QCPScatterStyle::ssTriangleInverted, Qt::black, Qt::red, 15}},
-        {"take_profit", {QCPScatterStyle::ssCircle, Qt::black, Qt::green, 15}},
-        {"stop_loss", {QCPScatterStyle::ssDiamond, Qt::black, Qt::red, 15}},
+std::map<std::string, QColor> line_series_colors = {
+        {"price", QColor(0, 0, 0)},
+        {"upper_band", QColor::fromString("#e88d38")},
+        {"lower_band", QColor::fromString("#3463c2")},
+        {"trend", QColor(140, 50, 80)},
 };
-// QCPScatterStyle::ssCircle, Qt::red, Qt::yellow, 15
+
+std::map<std::string, std::tuple<QCPScatterStyle::ScatterShape, QColor, QColor, int>>
+        scatter_series_display_params = {
+                {"buy_trade", {QCPScatterStyle::ssTriangle, Qt::black, Qt::green, 10}},
+                {"sell_trade", {QCPScatterStyle::ssTriangleInverted, Qt::black, Qt::red, 10}},
+                {"take_profit", {QCPScatterStyle::ssCircle, Qt::black, Qt::green, 10}},
+                {"stop_loss", {QCPScatterStyle::ssDiamond, Qt::black, Qt::red, 10}},
+};
+
 } // namespace
 
 MultiSeriesChart::MultiSeriesChart(QWidget * parent)
@@ -84,7 +90,6 @@ QCPGraph * MultiSeriesChart::get_graph_for_series(std::string_view series_name, 
     if (inserted) {
         addGraph();
         graph(idx)->setName(series_name.data());
-        graph(idx)->setPen(QPen(colors[idx]));
         if (is_scatter) {
             graph(idx)->setLineStyle(QCPGraph::lsNone);
             const auto display_params_pair_it = scatter_series_display_params.find(std::string(series_name));
@@ -94,6 +99,19 @@ QCPGraph * MultiSeriesChart::get_graph_for_series(std::string_view series_name, 
             }
             else {
                 graph(idx)->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCircle, Qt::red, Qt::yellow, 15));
+            }
+        }
+        else {
+            const auto color_it = line_series_colors.find(std::string(series_name));
+            if (color_it != line_series_colors.end()) {
+                auto pen = QPen(color_it->second);
+                pen.setWidthF(2);
+                graph(idx)->setPen(pen);
+            }
+            else {
+                auto pen = QPen(colors[idx % colors.size()]);
+                pen.setWidthF(2);
+                graph(idx)->setPen(pen);
             }
         }
     }
