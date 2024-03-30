@@ -113,11 +113,13 @@ MainWindow::MainWindow(QWidget * parent)
     ui->cb_strategy->addItem("DoubleSma");
     ui->cb_strategy->addItem("BollingerBands");
     ui->cb_strategy->addItem("DebugEveryTick");
+    ui->cb_strategy->setCurrentText(saved_state.m_strategy_name.c_str());
 
     const auto symbols = m_gateway.get_symbols("USDT");
     for (const auto & symbol : symbols) {
         ui->cb_symbol->addItem(symbol.symbol_name.c_str());
     }
+    ui->cb_symbol->setCurrentText(saved_state.m_symbol.c_str());
 
     std::cout << "End of mainwindow constructor" << std::endl;
 }
@@ -321,6 +323,8 @@ MainWindow::~MainWindow()
 
     saved_state.m_start_ts_unix_time = start.count();
     saved_state.m_work_hours = static_cast<int>(work_hours.count());
+    saved_state.m_symbol = ui->cb_symbol->currentText().toStdString();
+    saved_state.m_strategy_name = ui->cb_strategy->currentText().toStdString();
 
     delete ui;
 }

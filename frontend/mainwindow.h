@@ -39,8 +39,18 @@ public:
         }
 
         auto j = json::parse(save_file);
-        j.at("start_ts_unix_time").get_to(m_start_ts_unix_time);
-        j.at("work_hours").get_to(m_work_hours);
+        if (j.contains("start_ts_unix_time")) {
+            j.at("start_ts_unix_time").get_to(m_start_ts_unix_time);
+        }
+        if (j.contains("work_hours")) {
+            j.at("work_hours").get_to(m_work_hours);
+        }
+        if (j.contains("symbol")) {
+            j.at("symbol").get_to(m_symbol);
+        }
+        if (j.contains("strategy_name")) {
+            j.at("strategy_name").get_to(m_strategy_name);
+        }
         save_file.close();
     }
 
@@ -55,12 +65,16 @@ public:
         json j;
         j["start_ts_unix_time"] = m_start_ts_unix_time;
         j["work_hours"] = m_work_hours;
+        j["symbol"] = m_symbol;
+        j["strategy_name"] = m_strategy_name;
         save_file << j.dump();
         save_file.close();
     }
 
     uint64_t m_start_ts_unix_time = {};
     int m_work_hours = {};
+    std::string m_symbol = {};
+    std::string m_strategy_name = {};
 };
 
 class MainWindow : public QMainWindow
