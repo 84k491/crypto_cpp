@@ -1,9 +1,9 @@
 #pragma once
 
 #include "Enums.h"
-#include "ITradingGateway.h"
 #include "Symbol.h"
 #include "Volume.h"
+#include "Vwap.h"
 
 #include <chrono>
 #include <expected>
@@ -24,48 +24,54 @@ std::ostream & operator<<(std::ostream & os, const PositionResult & res);
 
 class PositionManager
 {
+    class ClosedPosition
+    {
+    public:
+        ClosedPosition() {}
+
+        ClosedPosition & operator+=(const ClosedPosition & other);
+
+        SignedVolume m_closed_volume = {};
+        Vwap m_closed_vwap;
+
+        double m_rpnl = {};
+        double m_close_fee = {};
+    };
+
     class OpenedPosition
     {
     public:
         OpenedPosition(const Trade & trade);
 
-        Side side() const;
-
-        auto absolute_volume() const { return m_absolute_volume; }
+        auto side() const { return m_absolute_opened_volume.as_unsigned_and_side().second; }
         auto open_ts() const { return m_open_ts; }
-        double pnl() const;
-        auto total_fee() const { return m_total_fee; }
+        auto entry_fee() const { return m_entry_fee; }
+        auto opened_volume() const { return m_absolute_opened_volume; }
 
-        void on_trade(double price, const SignedVolume & vol, double fee);
+        std::optional<ClosedPosition> on_trade(double price, const SignedVolume & vol, double fee);
 
     private:
-        SignedVolume m_absolute_volume = {}; // TODO remove?
+        double calc_rpnl_on_close(
+                SignedVolume opening_volume,
+                Vwap opening_vwap,
+                Vwap closing_vwap,
+                double close_fee) const;
 
-        Side m_open_side = Side::Buy;
-
-        UnsignedVolume m_opened_volume = {};
-        double m_opened_vwap = 0.;
-
-        UnsignedVolume m_closed_volume = {};
-        double m_closed_vwap = 0.;
-
+    private:
+        SignedVolume m_absolute_opened_volume = {}; // TODO rename to just abs_vol
+        Vwap m_opened_vwap;
+        double m_entry_fee = {};
         std::chrono::milliseconds m_open_ts = {};
-
-        double m_total_fee = 0.;
     };
 
 public:
-    PositionManager(Symbol symbol, ITradingGateway & tr_gateway)
+    PositionManager(Symbol symbol)
         : m_symbol(std::move(symbol))
-        , m_tr_gateway(tr_gateway)
     {
     }
 
-    // TODO position result publisher?
-
     std::optional<PositionResult> on_trade_received(const Trade & trade);
 
-    double pnl() const;
     const OpenedPosition * opened() const
     {
         return m_opened_position.has_value() ? &m_opened_position.value() : nullptr;
@@ -73,7 +79,6 @@ public:
 
 private:
     std::optional<OpenedPosition> m_opened_position;
+    std::optional<ClosedPosition> m_closed_position;
     const Symbol m_symbol;
-
-    ITradingGateway & m_tr_gateway;
 };

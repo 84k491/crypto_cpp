@@ -12,6 +12,7 @@ public:
     ObjectPublisherTest() = default;
 };
 
+// TODO use CamelCase
 TEST(ObjectPublisherTest, subscribe_unsubscribe_raii)
 {
     ObjectPublisher<int> publisher;

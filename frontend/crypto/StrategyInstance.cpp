@@ -24,7 +24,7 @@ StrategyInstance::StrategyInstance(
     , m_strategy(strategy_ptr)
     , m_exit_strategy(exit_strategy_config)
     , m_symbol(symbol)
-    , m_position_manager(symbol, m_tr_gateway)
+    , m_position_manager(symbol)
     , m_md_request(md_request)
 {
     m_strategy_result.update([&](StrategyResult & res) {
@@ -368,7 +368,7 @@ bool StrategyInstance::close_position(double price, std::chrono::milliseconds ts
     const auto & pos = *pos_ptr;
 
     const auto order = [&]() {
-        const auto [vol, side] = pos.absolute_volume().as_unsigned_and_side();
+        const auto [vol, side] = pos.opened_volume().as_unsigned_and_side();
         const auto volume = SignedVolume(vol, side == Side::Buy ? Side::Sell : Side::Buy);
         return MarketOrder{
                 m_symbol.symbol_name,

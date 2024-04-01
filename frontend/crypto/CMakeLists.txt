@@ -10,6 +10,7 @@ add_subdirectory(strategy)
 add_subdirectory(gateway)
 add_subdirectory(trading_primitives)
 add_subdirectory(network)
+add_subdirectory(tests)
 
 add_library(crypto_local STATIC ${PROJECT_SOURCES})
 

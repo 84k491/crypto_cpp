@@ -9,7 +9,13 @@ class Trade
     friend std::ostream & operator<<(std::ostream & os, const Trade & trade);
 
 public:
-    Trade(std::chrono::milliseconds ts, std::string symbol, double price, UnsignedVolume volume, Side side, double fee)
+    Trade(
+            std::chrono::milliseconds ts,
+            std::string symbol,
+            double price,
+            UnsignedVolume volume,
+            Side side,
+            double fee)
         : m_ts(ts)
         , m_symbol(std::move(symbol))
         , m_price(price)
@@ -23,6 +29,7 @@ public:
     std::string symbol() const { return m_symbol; }
     double price() const { return m_price; }
     UnsignedVolume unsigned_volume() const { return m_unsigned_volume; }
+    SignedVolume signed_volume() const { return {m_unsigned_volume, m_side}; }
     Side side() const { return m_side; }
     double fee() const { return m_fee; }
 

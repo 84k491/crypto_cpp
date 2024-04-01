@@ -106,6 +106,17 @@ public:
         return {UnsignedVolume(m_value), Side::Buy};
     }
 
+    int sign() const
+    {
+        if (m_value < 0) {
+            return -1;
+        }
+        if (m_value > 0) {
+            return 1;
+        }
+        return 0;
+    }
+
     SignedVolume operator*(int other) const
     {
         return SignedVolume(m_value * other);
