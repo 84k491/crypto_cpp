@@ -15,8 +15,8 @@ std::optional<PositionResult> PositionManager::on_trade_received(const Trade & t
     }
 
     auto & pos = m_opened_position.value();
-    const auto trade_vol = SignedVolume(trade.unsigned_volume, trade.side);
-    pos.on_trade(trade.price, trade_vol, trade.fee);
+    const auto trade_vol = SignedVolume(trade.unsigned_volume(), trade.side());
+    pos.on_trade(trade.price(), trade_vol, trade.fee());
     if (!pos.absolute_volume().is_zero()) {
         std::cout << "Not all volume was traded for opened position" << std::endl;
         return std::nullopt;
@@ -25,7 +25,7 @@ std::optional<PositionResult> PositionManager::on_trade_received(const Trade & t
     PositionResult res;
     res.pnl_with_fee = pos.pnl() - pos.total_fee();
     res.fees_paid += pos.total_fee();
-    res.opened_time = trade.ts - pos.open_ts();
+    res.opened_time = trade.ts() - pos.open_ts();
 
     m_opened_position = {};
     return res;
@@ -37,10 +37,10 @@ Side PositionManager::OpenedPosition::side() const
 }
 
 PositionManager::OpenedPosition::OpenedPosition(const Trade & trade)
-    : m_open_side(trade.side)
-    , m_open_ts(trade.ts)
+    : m_open_side(trade.side())
+    , m_open_ts(trade.ts())
 {
-    on_trade(trade.price, SignedVolume(trade.unsigned_volume, trade.side), trade.fee);
+    on_trade(trade.price(), SignedVolume(trade.unsigned_volume(), trade.side()), trade.fee());
 }
 
 std::ostream & operator<<(std::ostream & os, const PositionResult & res)

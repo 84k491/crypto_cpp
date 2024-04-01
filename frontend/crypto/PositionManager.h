@@ -22,7 +22,6 @@ public:
 };
 std::ostream & operator<<(std::ostream & os, const PositionResult & res);
 
-// TODO rename this file to position manager
 class PositionManager
 {
     class OpenedPosition

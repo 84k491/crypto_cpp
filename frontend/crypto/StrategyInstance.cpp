@@ -272,10 +272,10 @@ void StrategyInstance::invoke(const ResponseEventVariant & var)
         const auto res = m_position_manager.on_trade_received(r->trade);
 
         const auto & trade = r->trade;
-        m_signal_publisher.push(trade.ts, Signal{trade.side, trade.ts, trade.price});
+        m_signal_publisher.push(trade.ts(), Signal{trade.side(), trade.ts(), trade.price()});
 
         if (res.has_value()) {
-            process_position_result(res.value(), r->trade.ts);
+            process_position_result(res.value(), r->trade.ts());
         }
         m_strategy_result.update([&](StrategyResult & res) {
             res.trades_count++;
@@ -390,8 +390,6 @@ bool StrategyInstance::close_position(double price, std::chrono::milliseconds ts
 bool StrategyInstance::ready_to_finish() const
 {
     const bool pos_closed = m_position_manager.opened() == nullptr;
-    // const bool no_active_requests = true; // TODO
-    // std::cout << "Criterias: pos_closed: " << pos_closed << "; hist_req_finished: " << !m_historical_request_in_progress << std::endl;
     const bool res = pos_closed && m_pending_requests.empty() && m_live_md_requests.empty();
     if (res) {
         std::cout << "StrategyInstance is ready to finish" << std::endl;

@@ -47,7 +47,6 @@ auto any_to_variant_cast(std::any a) -> std::variant<Args...>
 
     std::optional<std::variant<Args...>> v = std::nullopt;
 
-    // TODO use event with a virtual function
     bool found = ((a.type() == typeid(Args) && (v = std::any_cast<Args>(std::move(a)), true)) || ...);
 
     if (!found) {

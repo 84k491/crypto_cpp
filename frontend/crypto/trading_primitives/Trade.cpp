@@ -1,21 +1,14 @@
 #include "Trade.h"
 
-// TODO move to Volume file
-std::ostream & operator<<(std::ostream & os, const UnsignedVolume & volume)
-{
-    os << volume.value();
-    return os;
-}
-
 std::ostream & operator<<(std::ostream & os, const Trade & trade)
 {
     os << "\nTrade: {"
-       << "\n  timestamp = " << trade.ts.count()
-       << "\n  symbol = " << trade.symbol
-       << "\n  price = " << trade.price
-       << "\n  volume = " << trade.unsigned_volume
-       << "\n  side = " << (trade.side == Side::Buy ? "Buy" : "Sell")
-       << "\n  fee = " << trade.fee
+       << "\n  timestamp = " << trade.m_ts.count()
+       << "\n  symbol = " << trade.m_symbol
+       << "\n  price = " << trade.m_price
+       << "\n  volume = " << trade.m_unsigned_volume
+       << "\n  side = " << (trade.m_side == Side::Buy ? "Buy" : "Sell")
+       << "\n  fee = " << trade.m_fee
        << "\n}";
     return os;
 }
