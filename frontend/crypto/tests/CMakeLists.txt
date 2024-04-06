@@ -5,19 +5,20 @@ include_directories(
     ${GTEST_INCLUDE_DIRS}
     ${GMOCK_INCLUDE_DIRS}
     ..
-    ../interfaces
 )
 
-add_executable(object_publisher_test
-    ObjectPublisherTest.cpp
+add_executable(position_manager_test
+    PositionManagerTest.cpp
+    ../PositionManager.cpp
 )
 
-target_link_libraries(object_publisher_test
+target_link_libraries(position_manager_test
     ${GTEST_BOTH_LIBRARIES}
-    crossguid2
+    trading_primitives
+    # crossguid2
 )
 
-set(UNIT_TEST object_publisher_test)
+set(UNIT_TEST position_manager_test)
 add_test(NAME ${UNIT_TEST} COMMAND ${UNIT_TEST})
 # add_custom_command(
 #      TARGET ${UNIT_TEST}

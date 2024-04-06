@@ -27,12 +27,13 @@ class PositionManager
     class ClosedPosition
     {
     public:
-        ClosedPosition() {}
+        ClosedPosition() = default;
 
         ClosedPosition & operator+=(const ClosedPosition & other);
 
         SignedVolume m_closed_volume = {};
-        Vwap m_closed_vwap;
+        // Vwap m_closed_vwap;
+        double m_currency_amount = {};
 
         double m_rpnl = {};
         double m_close_fee = {};
@@ -51,15 +52,9 @@ class PositionManager
         std::optional<ClosedPosition> on_trade(double price, const SignedVolume & vol, double fee);
 
     private:
-        double calc_rpnl_on_close(
-                SignedVolume opening_volume,
-                Vwap opening_vwap,
-                Vwap closing_vwap,
-                double close_fee) const;
-
-    private:
         SignedVolume m_absolute_opened_volume = {}; // TODO rename to just abs_vol
-        Vwap m_opened_vwap;
+        // Vwap m_opened_vwap;
+        double m_currency_amount = {};
         double m_entry_fee = {};
         std::chrono::milliseconds m_open_ts = {};
     };
