@@ -1,0 +1,17 @@
+{
+    "strategy_name": "TpslExit",
+    "parameters": [
+        {
+            "name": "risk",
+            "min_value": 0.001,
+            "step": 0.0001,
+            "max_value": 0.010
+        },
+        {
+            "name": "risk_reward_ratio",
+            "min_value": 0.80,
+            "step": 0.01,
+            "max_value": 0.99
+        }
+    ]
+}

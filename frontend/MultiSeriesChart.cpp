@@ -29,6 +29,12 @@ std::map<std::string, std::tuple<QCPScatterStyle::ScatterShape, QColor, QColor, 
 MultiSeriesChart::MultiSeriesChart(QWidget * parent)
     : QCustomPlot(parent)
 {
+    QSharedPointer<QCPAxisTickerDateTime> dateTicker(new QCPAxisTickerDateTime);
+    // dateTicker->setDateTimeFormat("d. MMMM\nyyyy");
+    dateTicker->setDateTimeFormat("hh:mm / dd.MM");
+    dateTicker->setTickCount(11);
+    xAxis->setTicker(dateTicker);
+    xAxis->setTickLabelRotation(30.);
     connect(xAxis, SIGNAL(rangeChanged(QCPRange)), xAxis2, SLOT(setRange(QCPRange)));
     connect(yAxis, SIGNAL(rangeChanged(QCPRange)), yAxis2, SLOT(setRange(QCPRange)));
     setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
@@ -52,7 +58,8 @@ void MultiSeriesChart::push_series_value_dont_replot(const std::string & series_
                                                      bool is_scatter)
 {
     auto * graph = get_graph_for_series(series_name, is_scatter);
-    graph->addData(static_cast<double>(ts.count()), data);
+    // casting to seconds
+    graph->addData(static_cast<double>(ts.count()) / 1000., data);
     graph->rescaleAxes();
 }
 
