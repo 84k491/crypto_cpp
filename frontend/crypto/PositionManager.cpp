@@ -40,6 +40,7 @@ std::optional<PositionResult> PositionManager::on_trade_received(const Trade & t
     res.opened_time = trade.ts() - pos.open_ts();
 
     m_opened_position = {};
+    m_closed_position = {};
     return res;
 }
 

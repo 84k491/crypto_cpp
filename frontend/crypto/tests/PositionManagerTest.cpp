@@ -520,4 +520,99 @@ TEST_F(PositionManagerTest, ShortCloseWithLoss)
     EXPECT_EQ(res.opened_time.count(), 100);
 }
 
+TEST_F(PositionManagerTest, LongCloseWithLossFractionalPrice)
+{
+    PositionManager pm(m_symbol);
+
+    Trade open_trade(std::chrono::milliseconds(123),
+                     m_symbol.symbol_name,
+                     0.05802,
+                     UnsignedVolume::from(1723).value(),
+                     Side::Buy,
+                     0.0549827);
+    pm.on_trade_received(open_trade);
+
+    Trade close_trade(std::chrono::milliseconds(223),
+                      m_symbol.symbol_name,
+                      0.05796,
+                      UnsignedVolume::from(1723).value(),
+                      Side::Sell,
+                      0.0549258);
+    const auto res_opt = pm.on_trade_received(close_trade);
+    ASSERT_TRUE(res_opt.has_value());
+    EXPECT_FALSE(pm.opened());
+    const auto & res = res_opt.value();
+
+    const auto open_amount = 0.05802 * 1723;
+    const auto close_amount = 0.05796 * 1723;
+    const auto fees = 0.0549827 + 0.0549258;
+    EXPECT_EQ(res.pnl_with_fee, close_amount - open_amount - fees);
+    EXPECT_EQ(res.fees_paid, fees);
+    EXPECT_EQ(res.opened_time.count(), 100);
+}
+
+TEST_F(PositionManagerTest, ShortProfitThenLongLoss)
+{
+    PositionManager pm(m_symbol);
+
+    // Short with profit
+    {
+        Trade open_trade(std::chrono::milliseconds(123),
+                         m_symbol.symbol_name,
+                         0.0584,
+                         UnsignedVolume::from(1712).value(),
+                         Side::Sell,
+                         0.0549894);
+        pm.on_trade_received(open_trade);
+
+        Trade close_trade(std::chrono::milliseconds(223),
+                          m_symbol.symbol_name,
+                          0.0582,
+                          UnsignedVolume::from(1712).value(),
+                          Side::Buy,
+                          0.0548011);
+        const auto res_opt = pm.on_trade_received(close_trade);
+        ASSERT_TRUE(res_opt.has_value());
+        EXPECT_FALSE(pm.opened());
+        const auto & res = res_opt.value();
+
+        const auto open_amount = 0.0584 * 1712;
+        const auto close_amount = 0.0582 * 1712;
+        const auto fees = 0.0549894 + 0.0548011;
+        EXPECT_NEAR(res.pnl_with_fee, open_amount - close_amount - fees, double_epsilon);
+        EXPECT_EQ(res.fees_paid, fees);
+        EXPECT_EQ(res.opened_time.count(), 100);
+    }
+
+    // Long with loss
+    {
+        Trade open_trade(std::chrono::milliseconds(323),
+                         m_symbol.symbol_name,
+                         0.05802,
+                         UnsignedVolume::from(1723).value(),
+                         Side::Buy,
+                         0.0549827);
+        pm.on_trade_received(open_trade);
+
+        Trade close_trade(std::chrono::milliseconds(423),
+                          m_symbol.symbol_name,
+                          0.05796,
+                          UnsignedVolume::from(1723).value(),
+                          Side::Sell,
+                          0.0549258);
+        const auto res_opt = pm.on_trade_received(close_trade);
+        ASSERT_TRUE(res_opt.has_value());
+        EXPECT_FALSE(pm.opened());
+        const auto & res = res_opt.value();
+
+        const auto open_amount = 0.05802 * 1723;
+        const auto close_amount = 0.05796 * 1723;
+        const auto fees = 0.0549827 + 0.0549258;
+        EXPECT_NEAR(res.pnl_with_fee,
+                    close_amount - open_amount - fees,
+                    double_epsilon);
+        EXPECT_EQ(res.fees_paid, fees);
+        EXPECT_EQ(res.opened_time.count(), 100);
+    }
+}
 } // namespace test
