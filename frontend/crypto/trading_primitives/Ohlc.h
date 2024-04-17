@@ -16,6 +16,6 @@ struct OHLC
     double turnover{};
 };
 
-using json = nlohmann::json;
+using json = nlohmann::json; // TODO remove this using
 void to_json(json & j, const OHLC & ohlc);
 std::ostream & operator<<(std::ostream & os, const OHLC & ohlc);
