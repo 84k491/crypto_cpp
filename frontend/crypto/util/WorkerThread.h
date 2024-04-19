@@ -26,6 +26,7 @@ private:
 class WorkerThreadLoop
 {
 public:
+    // TODO use typed flag
     WorkerThreadLoop(std::function<bool(const std::atomic_bool &)> && fn);
     ~WorkerThreadLoop();
 

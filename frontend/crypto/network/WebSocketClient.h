@@ -27,6 +27,7 @@ public:
     WebSocketClient(std::string url, std::optional<WsKeys> ws_keys, BusinessLogicCallback callback);
     bool wait_until_ready(std::chrono::milliseconds timeout = std::chrono::milliseconds(5000)) const;
     void subscribe(const std::string & topic);
+    void unsubscribe(const std::string & topic);
 
 private:
     void send_ping();

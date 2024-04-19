@@ -1,6 +1,7 @@
 #pragma once
 
 #include "EventLoop.h"
+#include "Events.h"
 #include "Guarded.h"
 #include "ObjectPublisher.h"
 #include "Ohlc.h"
@@ -8,9 +9,9 @@
 #include "Symbol.h"
 #include "Timerange.h"
 #include "TimeseriesPublisher.h"
+#include "WebSocketClient.h"
 #include "WorkStatus.h"
 #include "WorkerThread.h"
-#include "Events.h"
 
 #include <chrono>
 #include <functional>
@@ -36,7 +37,8 @@ class ByBitGateway final : private IEventInvoker<HistoricalMDRequest, LiveMDRequ
 {
 private:
     static constexpr double taker_fee = 0.0002; // 0.02%
-    // static constexpr std::string_view s_endpoint_address = "https://api-testnet.bybit.com";
+    static constexpr std::string_view s_test_ws_linear_endpoint_address = "wss://stream-testnet.bybit.com/v5/public/linear";
+    static constexpr std::string_view s_test_rest_endpoint_address = "https://api-testnet.bybit.com";
     static constexpr std::string_view s_endpoint_address = "https://api.bybit.com";
 
 public:
@@ -63,6 +65,11 @@ private:
     using KlinePackCallback = std::function<void(std::map<std::chrono::milliseconds, OHLC> &&)>;
 
     void invoke(const MDRequest & value) override;
+    void handle_request_deprecated(const LiveMDRequest & request);
+    void handle_request(const LiveMDRequest & request);
+
+    void on_price_received(const nlohmann::json & json);
+
     std::chrono::milliseconds get_server_time();
     bool request_historical_klines(const std::string & symbol, const Timerange & timerange, KlinePackCallback && cb);
 
@@ -80,4 +87,5 @@ private:
 
     std::unordered_map<std::string, std::unordered_map<Timerange, std::map<std::chrono::milliseconds, OHLC>>> m_ranges_by_symbol;
     RestClient rest_client;
+    WebSocketClient ws_client;
 };

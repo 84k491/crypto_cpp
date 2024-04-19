@@ -1,5 +1,6 @@
 #include "ByBitGateway.h"
 
+#include "MarketDataMessages.h"
 #include "Ohlc.h"
 #include "ScopeExit.h"
 #include "Symbol.h"
@@ -14,6 +15,12 @@
 
 ByBitGateway::ByBitGateway()
     : m_event_loop(*this)
+    , ws_client(
+              std::string(s_test_ws_linear_endpoint_address),
+              std::nullopt,
+              [this](const json & j) {
+                  on_price_received(j);
+              })
 {
     m_last_server_time = get_server_time();
 }
@@ -301,6 +308,91 @@ void ByBitGateway::push_async_request(LiveMDRequest && request)
     m_event_loop.as_consumer<LiveMDRequest>().push(request);
 }
 
+void ByBitGateway::handle_request_deprecated(const LiveMDRequest & request)
+{
+    std::cout << "Got live request" << std::endl;
+    const LiveMDRequest & live_request = request;
+    auto locked_ref = m_live_requests.lock();
+    locked_ref.get().push_back(live_request);
+    if (locked_ref.get().size() == 1) {
+        m_live_thread = std::make_unique<WorkerThreadLoop>(
+                [this,
+                 symbol = live_request.symbol,
+                 last_ts = m_last_server_time](const std::atomic_bool & running) mutable -> bool {
+                    const auto timerange = Timerange{last_ts + std::chrono::seconds{1}, last_ts + min_interval};
+
+                    request_historical_klines(
+                            symbol.symbol_name,
+                            timerange,
+                            [symbol,
+                             &last_ts,
+                             this](std::map<std::chrono::milliseconds, OHLC> && ts_and_ohlc_map) {
+                                for (const auto & ts_ohlc_pair : ts_and_ohlc_map) {
+                                    auto requests = m_live_requests.lock();
+                                    for (const auto & req : requests.get()) {
+                                        if (req.symbol.symbol_name == symbol.symbol_name) {
+                                            MDPriceEvent ev;
+                                            ev.ts_and_price = ts_ohlc_pair;
+                                            req.event_consumer->push(ev);
+                                        }
+                                    }
+                                    last_ts = ts_and_ohlc_map.rbegin()->first;
+                                    std::cout << "ts: " << ts_ohlc_pair.first.count() << "OHLC: " << ts_ohlc_pair.second << std::endl;
+                                }
+                            });
+
+                    const auto wait_time = std::chrono::seconds{30};
+                    std::cout << "Got all live prices, sleeping for " << wait_time.count() << " seconds" << std::endl;
+                    const auto now = std::chrono::steady_clock::now();
+                    while (running && std::chrono::steady_clock::now() < now + wait_time) {
+                        std::this_thread::sleep_for(std::chrono::milliseconds{1});
+                    }
+
+                    return true;
+                });
+        m_live_thread->set_on_finish([this]() {
+            m_status.push(WorkStatus::Stopped);
+            std::cout << "Stopping live connection" << std::endl;
+        });
+    }
+}
+
+void ByBitGateway::handle_request(const LiveMDRequest & request)
+{
+    const LiveMDRequest & live_request = request;
+    auto locked_ref = m_live_requests.lock();
+    if (!locked_ref.get().empty()) {
+        std::cout << "ERROR! more than one MD live request" << std::endl;
+        return;
+    }
+
+    if (!ws_client.wait_until_ready()) {
+        std::cout << "ERROR! websocket not ready" << std::endl;
+        return;
+    }
+
+    ws_client.subscribe("publicTrade." + live_request.symbol.symbol_name);
+    locked_ref.get().push_back(live_request);
+}
+
+void ByBitGateway::on_price_received(const nlohmann::json & json)
+{
+    auto locked_ref = m_live_requests.lock();
+    if (locked_ref.get().empty()) {
+        std::cout << "ERROR! no request on MD received" << std::endl;
+        return;
+    }
+
+    const LiveMDRequest & live_request = locked_ref.get().front();
+    const auto trades_list = json.get<PublicTradeList>();
+    for (const auto & trade : trades_list.trades) {
+        OHLC ohlc = {trade.timestamp, trade.price, trade.price, trade.price, trade.price};
+        MDPriceEvent ev;
+        ev.ts_and_price = {trade.timestamp, ohlc};
+        live_request.event_consumer->push(ev);
+    }
+}
+
 void ByBitGateway::invoke(const MDRequest & request)
 {
     if (const auto * r = std::get_if<HistoricalMDRequest>(&request); r) {
@@ -343,52 +435,7 @@ void ByBitGateway::invoke(const MDRequest & request)
         return;
     }
     if (const auto * r = std::get_if<LiveMDRequest>(&request); r) {
-        std::cout << "Got live request" << std::endl;
-        const LiveMDRequest & live_request = *r;
-        auto locked_ref = m_live_requests.lock();
-        locked_ref.get().push_back(live_request);
-        if (locked_ref.get().size() == 1) {
-            m_live_thread = std::make_unique<WorkerThreadLoop>(
-                    [this,
-                     symbol = live_request.symbol,
-                     last_ts = m_last_server_time](const std::atomic_bool & running) mutable -> bool {
-                        const auto timerange = Timerange{last_ts + std::chrono::seconds{1}, last_ts + min_interval};
-
-                        request_historical_klines(
-                                symbol.symbol_name,
-                                timerange,
-                                [symbol,
-                                 &last_ts,
-                                 this](std::map<std::chrono::milliseconds, OHLC> && ts_and_ohlc_map) {
-                                    for (const auto & ts_ohlc_pair : ts_and_ohlc_map) {
-                                        // m_klines_publisher.push(ts, ohlc);
-                                        auto requests = m_live_requests.lock();
-                                        for (const auto & req : requests.get()) {
-                                            if (req.symbol.symbol_name == symbol.symbol_name) {
-                                                MDPriceEvent ev;
-                                                ev.ts_and_price = ts_ohlc_pair;
-                                                req.event_consumer->push(ev);
-                                            }
-                                        }
-                                        last_ts = ts_and_ohlc_map.rbegin()->first;
-                                        std::cout << "ts: " << ts_ohlc_pair.first.count() << "OHLC: " << ts_ohlc_pair.second << std::endl;
-                                    }
-                                });
-
-                        const auto wait_time = std::chrono::seconds{30};
-                        std::cout << "Got all live prices, sleeping for " << wait_time.count() << " seconds" << std::endl;
-                        const auto now = std::chrono::steady_clock::now();
-                        while (running && std::chrono::steady_clock::now() < now + wait_time) {
-                            std::this_thread::sleep_for(std::chrono::milliseconds{1});
-                        }
-
-                        return true;
-                    });
-            m_live_thread->set_on_finish([this]() {
-                m_status.push(WorkStatus::Stopped);
-                std::cout << "Stopping live connection" << std::endl;
-            });
-        }
+        handle_request(*r);
         return;
     }
     std::cout << "ERROR: Got unknown MD request" << std::endl;
@@ -400,10 +447,11 @@ void ByBitGateway::unsubscribe_from_live(xg::Guid guid)
     for (auto it = live_req_locked.get().begin(), end = live_req_locked.get().end(); it != end; ++it) {
         if (it->guid == guid) {
             std::cout << "Erasing live request: " << guid << std::endl;
+            ws_client.unsubscribe("public." + it->symbol.symbol_name);
             live_req_locked.get().erase(it);
-            if (live_req_locked.get().empty()) {
-                m_live_thread->stop_async();
-            }
+            // if (live_req_locked.get().empty()) {
+            //     m_live_thread->stop_async();
+            // }
             break;
         }
     }

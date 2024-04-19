@@ -79,8 +79,17 @@ WebSocketClient::WebSocketClient(std::string url, std::optional<WsKeys> ws_keys,
 
 void WebSocketClient::subscribe(const std::string & topic)
 {
+    std::cout << "Subscribing to " << topic << std::endl;
     std::stringstream ss;
     ss << R"({"op": "subscribe", "args": [")" << topic << R"("]})";
+    m_client.send(m_connection, ss.str(), websocketpp::frame::opcode::text);
+}
+
+void WebSocketClient::unsubscribe(const std::string & topic)
+{
+    std::cout << "Unsubscribing from " << topic << std::endl;
+    std::stringstream ss;
+    ss << R"({"op": "unsubscribe", "args": [")" << topic << R"("]})";
     m_client.send(m_connection, ss.str(), websocketpp::frame::opcode::text);
 }
 
