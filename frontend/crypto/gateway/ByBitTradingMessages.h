@@ -1,6 +1,6 @@
+#include "Ohlc.h"
 #include "Trade.h"
 #include "Volume.h"
-#include "Ohlc.h"
 
 #include <cstdint>
 #include <iostream>
@@ -114,9 +114,21 @@ struct ExecutionResult
 }]}
 */
 
+struct TpslResult
+{
+    int ret_code = -1;
+    std::string ret_msg;
+    std::string result;
+    std::string ret_ext_info;
+    std::chrono::milliseconds timestamp;
+
+    bool ok() const { return ret_code == 0 && ret_msg == "OK"; }
+};
+
 void from_json(const json & j, OrderResponseResult & order);
 void from_json(const json & j, OrderResponse & order);
 void from_json(const json & j, Execution & exec);
 void from_json(const json & j, ExecutionResult & exec_res);
+void from_json(const json & j, TpslResult & tpsl_res);
 
 } // namespace ByBitMessages

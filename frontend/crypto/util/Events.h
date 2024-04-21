@@ -144,15 +144,16 @@ struct TpslResponseEvent : public BasicResponseEvent
 
 struct TpslRequestEvent : public BasicEvent<TpslResponseEvent>
 {
-    TpslRequestEvent(Tpsl tpsl, IEventConsumer<TpslResponseEvent> & ack_consumer, IEventConsumer<TradeEvent> & trade_consumer)
+    TpslRequestEvent(Symbol symbol, Tpsl tpsl, IEventConsumer<TpslResponseEvent> & ack_consumer)
         : BasicEvent<TpslResponseEvent>(ack_consumer)
+        , symbol(std::move(symbol))
         , tpsl(tpsl)
-        , trade_ev_consumer(&trade_consumer)
         , guid(xg::newGuid())
     {
     }
 
+    Symbol symbol; // TODO move it to Tpsl
     Tpsl tpsl;
-    IEventConsumer<TradeEvent> * trade_ev_consumer = nullptr;
+    // IEventConsumer<TpslRejectedEvent> * reject_ev_consumer = nullptr;
     xg::Guid guid;
 };

@@ -1,10 +1,12 @@
 #pragma once
 
 #include "Events.h"
+#include "Guarded.h"
 #include "ITradingGateway.h"
 #include "Ohlc.h"
 #include "TimeseriesPublisher.h"
 #include "Volume.h"
+
 #include <optional>
 
 class BacktestTradingGateway : public ITradingGateway
@@ -18,6 +20,10 @@ public:
     void push_order_request(const OrderRequestEvent & order) override;
     void push_tpsl_request(const TpslRequestEvent & tpsl_ev) override;
 
+    void register_trade_consumer(xg::Guid guid, const Symbol & symbol, IEventConsumer<TradeEvent> & consumer) override;
+    void unregister_trade_consumer(xg::Guid guid) override;
+    bool check_trade_consumer(const std::string & symbol);
+
 private:
     std::optional<Trade> try_trade_tpsl(OHLC ohlc);
 
@@ -28,4 +34,6 @@ private:
     std::shared_ptr<ISubsription> m_price_sub;
 
     SignedVolume m_pos_volume;
+
+    Guarded<std::map<std::string, std::pair<xg::Guid, IEventConsumer<TradeEvent> *>>> m_trade_consumers;
 };

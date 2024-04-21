@@ -18,7 +18,8 @@ StrategyInstance::StrategyInstance(
         TpslExitStrategyConfig exit_strategy_config,
         ByBitGateway & md_gateway,
         ITradingGateway & tr_gateway)
-    : m_event_loop(*this)
+    : m_strategy_guid(xg::newGuid())
+    , m_event_loop(*this)
     , m_md_gateway(md_gateway)
     , m_tr_gateway(tr_gateway)
     , m_strategy(strategy_ptr)
@@ -27,6 +28,7 @@ StrategyInstance::StrategyInstance(
     , m_position_manager(symbol)
     , m_md_request(md_request)
 {
+    m_tr_gateway.register_trade_consumer(m_strategy_guid, symbol, m_event_loop);
     m_strategy_result.update([&](StrategyResult & res) {
         res.position_currency_amount = m_pos_currency_amount;
     });
@@ -46,6 +48,7 @@ StrategyInstance::StrategyInstance(
 StrategyInstance::~StrategyInstance()
 {
     std::cout << "StrategyInstance destructor" << std::endl;
+    m_tr_gateway.unregister_trade_consumer(m_strategy_guid);
 }
 
 void StrategyInstance::on_price_received(std::chrono::milliseconds ts, const OHLC & ohlc)
@@ -315,7 +318,7 @@ void StrategyInstance::invoke(const ResponseEventVariant & var)
 
 void StrategyInstance::set_tpsl(Tpsl tpsl)
 {
-    TpslRequestEvent req(tpsl, m_event_loop, m_event_loop);
+    TpslRequestEvent req(m_symbol, tpsl, m_event_loop);
     m_pending_requests.emplace(req.guid);
     m_tr_gateway.push_tpsl_request(req);
 }

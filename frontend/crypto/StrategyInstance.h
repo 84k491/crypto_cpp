@@ -79,6 +79,8 @@ private:
     void finish_if_needed_and_ready();
 
 private:
+    xg::Guid m_strategy_guid;
+
     EventLoop<
             HistoricalMDPackEvent,
             MDPriceEvent,

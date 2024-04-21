@@ -1,4 +1,5 @@
 #include "ByBitTradingMessages.h"
+
 #include "Ohlc.h"
 
 namespace ByBitMessages {
@@ -61,4 +62,14 @@ void from_json(const json & j, ExecutionResult & exec_res)
     }
 }
 
+void from_json(const json & j, TpslResult & tpsl_res)
+{
+    j.at("retCode").get_to(tpsl_res.ret_code);
+    j.at("retMsg").get_to(tpsl_res.ret_msg);
+    j.at("result").get_to(tpsl_res.result);
+    j.at("retExtInfo").get_to(tpsl_res.ret_ext_info);
+    size_t ts = j.at("time");
+    tpsl_res.timestamp = std::chrono::milliseconds(ts);
 }
+
+} // namespace ByBitMessages

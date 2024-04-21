@@ -37,14 +37,9 @@ void ByBitTradingGateway::on_order_response(const json & j)
         const auto it = m_pending_orders.find(order_id_str);
         if (it != m_pending_orders.end()) {
             auto & [order_id, pending_order] = *it;
-            pending_order.m_acked = true;
-
-            if (pending_order.m_volume_to_fill <= 0) {
-                auto & promise = pending_order.success_promise;
-                promise.set_value(true);
-                return;
-            }
-            std::cout << "Recevied ack for pending_order: " << order_id << "but it's not filled yet" << std::endl;
+            auto & promise = pending_order.success_promise;
+            promise.set_value(true);
+            return;
         }
         else {
             std::cout << "ERROR unsolicited order response" << std::endl;
@@ -60,28 +55,14 @@ void ByBitTradingGateway::on_execution(const json & j)
     from_json(j, result);
 
     for (const auto & response : result.executions) {
-        std::lock_guard l(m_pending_orders_mutex);
-        const auto it = m_pending_orders.find(response.orderLinkId);
-        if (it != m_pending_orders.end()) {
-            auto & [order_id, pending_order] = *it;
-            std::cout << "Recevied execution of " << response.qty << " for order: " << order_id << std::endl;
-
-            pending_order.m_volume_to_fill -= response.qty;
-            auto trade_opt = response.to_trade();
-            if (!trade_opt.has_value()) {
-                std::cout << "ERROR can't get proper trade on execution: " << j << std::endl;
-                return;
-            }
-            pending_order.m_trades.emplace_back(trade_opt.value());
-            if (pending_order.m_volume_to_fill <= 0 && pending_order.m_acked) {
-                auto & promise = pending_order.success_promise;
-                promise.set_value(true);
-                return;
-            }
+        auto lref = m_trade_consumers.lock();
+        auto & consumer = *lref.get().at(response.symbol).second;
+        auto trade_opt = response.to_trade();
+        if (!trade_opt.has_value()) {
+            std::cout << "ERROR can't get proper trade on execution: " << j << std::endl;
+            return;
         }
-        else {
-            std::cout << "ERROR unsolicited execution" << std::endl;
-        }
+        consumer.push(TradeEvent(std::move(trade_opt.value())));
     }
 }
 
@@ -97,13 +78,23 @@ void ByBitTradingGateway::push_tpsl_request(const TpslRequestEvent & tpsl_ev)
 
 void ByBitTradingGateway::invoke(const std::variant<OrderRequestEvent, TpslRequestEvent> & variant)
 {
-    const auto * req_ptr = std::get_if<OrderRequestEvent>(&variant);
-    if (req_ptr == nullptr) {
-        std::cout << "ERROR: TPSL not implemented in ByBitTradingGateway!" << std::endl;
+    if (const auto * order_req = std::get_if<OrderRequestEvent>(&variant); order_req != nullptr) {
+        process_event(*order_req);
+    }
+    else if (const auto * tpsl_req = std::get_if<TpslRequestEvent>(&variant); tpsl_req != nullptr) {
+        process_event(*tpsl_req);
+    }
+    std::cout << "ERROR: Unknown event type" << std::endl;
+}
+
+void ByBitTradingGateway::process_event(const OrderRequestEvent & req)
+{
+    const auto & order = req.order;
+
+    if (!check_trade_consumer(order.symbol())) {
+        req.reject_ev_consumer->push(OrderRejectedEvent(req.guid, true, "No trade consumer for this symbol", order));
         return;
     }
-    const auto & req = *req_ptr;
-    const auto & order = req.order;
 
     int64_t ts = std::chrono::duration_cast<std::chrono::milliseconds>(
                          std::chrono::system_clock::now().time_since_epoch())
@@ -138,7 +129,7 @@ void ByBitTradingGateway::invoke(const std::variant<OrderRequestEvent, TpslReque
         m_pending_orders.erase(it);
     });
 
-    const std::string url = "https://api-testnet.bybit.com/v5/order/create";
+    const std::string url = std::string(s_rest_base_url) + "/v5/order/create";
     std::future<std::string> request_future = rest_client.request_auth_async(url, request, m_api_key, m_secret_key);
     request_future.wait();
     const std::string request_result = request_future.get();
@@ -160,11 +151,39 @@ void ByBitTradingGateway::invoke(const std::variant<OrderRequestEvent, TpslReque
     }
     std::cout << "Order successfully placed" << std::endl;
     req.event_consumer->push(OrderAcceptedEvent(req.guid, order));
+}
 
-    std::vector<Trade> trades = it->second.m_trades;
-    for (auto & tr : trades) {
-        req.trade_ev_consumer->push(TradeEvent(std::move(tr)));
+void ByBitTradingGateway::process_event(const TpslRequestEvent & tpsl)
+{
+    std::cout << "Got TpslRequestEvent" << std::endl;
+
+    if (!check_trade_consumer(tpsl.symbol.symbol_name)) {
+        std::cout << "ERROR: No trade consumer for this symbol" << std::endl;
+        tpsl.event_consumer->push(TpslResponseEvent(tpsl.guid, tpsl.tpsl, false));
+        return;
     }
+
+    json json_order = {
+            {"category", "linear"},
+            {"symbol", tpsl.symbol.symbol_name},
+            {"takeProfit", std::to_string(tpsl.tpsl.take_profit_price)},
+            {"stopLoss", std::to_string(tpsl.tpsl.stop_loss_price)},
+            {"tpTriggerBy", "LastPrice"},
+            {"slTriggerBy", "LastPrice"},
+            {"tpslMode", "Full"},
+            {"tpOrderType", "Market"},
+            {"slOrderType", "Market"},
+    };
+    const auto request = json_order.dump();
+
+    const std::string url = std::string(s_rest_base_url) + "/v5/position/trading-stop";
+    std::future<std::string> request_future = rest_client.request_auth_async(url, request, m_api_key, m_secret_key);
+    request_future.wait();
+    const std::string request_result = request_future.get();
+    std::cout << "Tpsl response: " << request_result << std::endl;
+    const auto j = json::parse(request_result);
+    const ByBitMessages::TpslResult result = j.get<ByBitMessages::TpslResult>();
+    tpsl.event_consumer->push(TpslResponseEvent(tpsl.guid, tpsl.tpsl, result.ok()));
 }
 
 void ByBitTradingGateway::on_ws_message(const json & j)
@@ -185,4 +204,27 @@ void ByBitTradingGateway::on_ws_message(const json & j)
         return;
     }
     std::cout << "Unrecognized message: " << j.dump() << std::endl;
+}
+
+void ByBitTradingGateway::register_trade_consumer(xg::Guid guid, const Symbol & symbol, IEventConsumer<TradeEvent> & consumer)
+{
+    auto lref = m_trade_consumers.lock();
+    lref.get().emplace(symbol.symbol_name, std::make_pair(guid, &consumer));
+}
+
+void ByBitTradingGateway::unregister_trade_consumer(xg::Guid guid)
+{
+    auto lref = m_trade_consumers.lock();
+    for (auto it = lref.get().begin(), end = lref.get().end(); it != end; ++it) {
+        if (it->second.first == guid) {
+            lref.get().erase(it);
+            return;
+        }
+    }
+}
+
+bool ByBitTradingGateway::check_trade_consumer(const std::string & symbol)
+{
+    auto lref = m_trade_consumers.lock();
+    return lref.get().find(symbol) != lref.get().end();
 }
