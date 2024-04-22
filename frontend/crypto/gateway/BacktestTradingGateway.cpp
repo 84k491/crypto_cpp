@@ -16,7 +16,7 @@ void BacktestTradingGateway::set_price_source(TimeseriesPublisher<OHLC> & publis
                 if (m_tpsl.has_value() && tpsl_trade.has_value()) {
                     auto lref = m_trade_consumers.lock();
                     for (auto & it : lref.get()) {
-                        it.second.second->push(TradeEvent(tpsl_trade.value()));
+                        it.second.second->push_in_this_thread(TradeEvent(tpsl_trade.value()));
                     }
                     m_pos_volume = SignedVolume();
                     m_tpsl.reset();

@@ -229,30 +229,26 @@ TimeseriesPublisher<Tpsl> & StrategyInstance::tpsl_publisher()
 void StrategyInstance::invoke(const ResponseEventVariant & var)
 {
     bool event_parsed = false;
-    if (const auto * r = std::get_if<MDPriceEvent>(&var); r) {
-        const MDPriceEvent & response = *r;
-        on_price_received(response.ts_and_price.first, response.ts_and_price.second);
-
-        event_parsed = true;
-    }
     if (const auto * r = std::get_if<HistoricalMDPackEvent>(&var); r) {
         const HistoricalMDPackEvent & response = *r;
         for (const auto & [ts, ohlc] : response.ts_and_price_pack) {
-            on_price_received(ts, ohlc);
+            MDPriceEvent ev;
+            ev.ts_and_price = {ts, ohlc};
+            static_cast<IEventConsumer<MDPriceEvent> &>(m_event_loop).push(ev);
         }
 
-        // TODO push it with EL
-        if (m_position_manager.opened() != nullptr) {
-            const bool success = close_position(m_last_ts_and_price.second, m_last_ts_and_price.first);
-            if (!success) {
-                std::cout << "ERROR: can't close a position on stop" << std::endl;
-            }
-        }
-
+        m_backtest_in_progress = true;
+        static_cast<IEventConsumer<StrategyStopRequest> &>(m_event_loop).push(StrategyStopRequest{});
         const size_t erased_cnt = m_pending_requests.erase(response.request_guid);
         if (erased_cnt == 0) {
             std::cout << "ERROR: unsolicited HistoricalMDPackEvent" << std::endl;
         }
+        event_parsed = true;
+    }
+    if (const auto * r = std::get_if<MDPriceEvent>(&var); r) {
+        const MDPriceEvent & response = *r;
+        on_price_received(response.ts_and_price.first, response.ts_and_price.second);
+
         event_parsed = true;
     }
     if (const auto * r = std::get_if<OrderAcceptedEvent>(&var); r) {
@@ -302,6 +298,18 @@ void StrategyInstance::invoke(const ResponseEventVariant & var)
             // TODO close position, stop strategy ?
             std::cout << "ERROR: Tpsl was rejected!" << std::endl;
         }
+        event_parsed = true;
+    }
+    if (const auto * r = std::get_if<StrategyStopRequest>(&var); r) {
+
+        if (m_position_manager.opened() != nullptr) {
+            const bool success = close_position(m_last_ts_and_price.second, m_last_ts_and_price.first);
+            if (!success) {
+                std::cout << "ERROR: can't close a position on stop/crash" << std::endl;
+            }
+        }
+
+        m_backtest_in_progress = false;
         event_parsed = true;
     }
 
@@ -393,7 +401,8 @@ bool StrategyInstance::close_position(double price, std::chrono::milliseconds ts
 bool StrategyInstance::ready_to_finish() const
 {
     const bool pos_closed = m_position_manager.opened() == nullptr;
-    const bool res = pos_closed && m_pending_requests.empty() && m_live_md_requests.empty();
+    const bool got_active_requests = m_pending_requests.empty() && m_live_md_requests.empty();
+    const bool res = pos_closed && got_active_requests && !m_backtest_in_progress;
     if (res) {
         std::cout << "StrategyInstance is ready to finish" << std::endl;
     }

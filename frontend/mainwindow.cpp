@@ -96,6 +96,7 @@ MainWindow::MainWindow(QWidget * parent)
             ui->pb_run->setEnabled(true);
             ui->pb_stop->setEnabled(false);
             m_subscriptions.clear();
+            std::cout << "Resetting strategy instance" << std::endl;
             m_strategy_instance.reset();
         }
     });
@@ -222,6 +223,7 @@ void MainWindow::on_pb_run_clicked()
 
 void MainWindow::subscribe_to_strategy()
 {
+    std::cout << "subscribe_to_strategy" << std::endl;
     m_subscriptions.push_back(m_strategy_instance->klines_publisher().subscribe(
             [this](const auto & vec) {
                 std::vector<std::pair<std::chrono::milliseconds, double>> new_data;

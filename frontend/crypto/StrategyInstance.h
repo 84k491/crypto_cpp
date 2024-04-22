@@ -19,13 +19,18 @@
 #include <set>
 #include <variant>
 
+struct StrategyStopRequest : public BasicResponseEvent
+{
+};
+
 class StrategyInstance
     : public IEventInvoker<HistoricalMDPackEvent,
                            MDPriceEvent,
                            OrderAcceptedEvent,
                            OrderRejectedEvent,
                            TradeEvent,
-                           TpslResponseEvent>
+                           TpslResponseEvent,
+                           StrategyStopRequest>
 {
 public:
     using KlineCallback =
@@ -38,7 +43,8 @@ public:
                          OrderAcceptedEvent,
                          OrderRejectedEvent,
                          TradeEvent,
-                         TpslResponseEvent>;
+                         TpslResponseEvent,
+                         StrategyStopRequest>;
 
     StrategyInstance(
             const Symbol & symbol,
@@ -87,7 +93,8 @@ private:
             OrderAcceptedEvent,
             OrderRejectedEvent,
             TradeEvent,
-            TpslResponseEvent>
+            TpslResponseEvent,
+            StrategyStopRequest>
             m_event_loop;
 
     ByBitGateway & m_md_gateway;
@@ -120,4 +127,6 @@ private:
     std::set<xg::Guid> m_live_md_requests;
     std::set<xg::Guid> m_pending_requests;
     std::optional<std::promise<void>> m_finish_promise;
+
+    bool m_backtest_in_progress = false;
 };
