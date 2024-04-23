@@ -30,6 +30,11 @@ DebugEveryTickStrategy::DebugEveryTickStrategy(const DebugEveryTickStrategyConfi
 
 std::optional<Signal> DebugEveryTickStrategy::push_price(std::pair<std::chrono::milliseconds, double> ts_and_price)
 {
+    iteration = (iteration + 1) % max_iter;
+    if (iteration != 0) {
+        return std::nullopt;
+    }
+
     const auto side = [&]() -> Side {
         if (last_side == Side::Sell) {
             return Side::Buy;

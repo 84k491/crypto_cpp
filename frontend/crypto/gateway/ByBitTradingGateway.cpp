@@ -78,13 +78,19 @@ void ByBitTradingGateway::push_tpsl_request(const TpslRequestEvent & tpsl_ev)
 
 void ByBitTradingGateway::invoke(const std::variant<OrderRequestEvent, TpslRequestEvent> & variant)
 {
+    bool event_parsed = false;
     if (const auto * order_req = std::get_if<OrderRequestEvent>(&variant); order_req != nullptr) {
         process_event(*order_req);
+        event_parsed = true;
     }
     else if (const auto * tpsl_req = std::get_if<TpslRequestEvent>(&variant); tpsl_req != nullptr) {
         process_event(*tpsl_req);
+        event_parsed = true;
     }
-    std::cout << "ERROR: Unknown event type" << std::endl;
+
+    if (!event_parsed) {
+        std::cout << "ERROR: Unknown event type" << std::endl;
+    }
 }
 
 void ByBitTradingGateway::process_event(const OrderRequestEvent & req)
@@ -180,7 +186,6 @@ void ByBitTradingGateway::process_event(const TpslRequestEvent & tpsl)
     std::future<std::string> request_future = rest_client.request_auth_async(url, request, m_api_key, m_secret_key);
     request_future.wait();
     const std::string request_result = request_future.get();
-    std::cout << "Tpsl response: " << request_result << std::endl;
     const auto j = json::parse(request_result);
     const ByBitMessages::TpslResult result = j.get<ByBitMessages::TpslResult>();
     tpsl.event_consumer->push(TpslResponseEvent(tpsl.guid, tpsl.tpsl, result.ok()));
@@ -188,6 +193,7 @@ void ByBitTradingGateway::process_event(const TpslRequestEvent & tpsl)
 
 void ByBitTradingGateway::on_ws_message(const json & j)
 {
+    std::cout << "on_ws_message: " << j.dump() << std::endl;
     if (j.find("topic") != j.end()) {
         const auto & topic = j.at("topic");
         const std::map<std::string, std::function<void(const json &)>> topic_handlers = {

@@ -64,10 +64,16 @@ void from_json(const json & j, ExecutionResult & exec_res)
 
 void from_json(const json & j, TpslResult & tpsl_res)
 {
+    /*
+        Tpsl response: {"retCode":0,"retMsg":"OK","result":{},"retExtInfo":{},"time":1713898946216}
+        parsed json: {"result":{},"retCode":0,"retExtInfo":{},"retMsg":"OK","time":1713898946216}
+    */
+    // TODO make a unit test with empty result
+
     j.at("retCode").get_to(tpsl_res.ret_code);
     j.at("retMsg").get_to(tpsl_res.ret_msg);
-    j.at("result").get_to(tpsl_res.result);
-    j.at("retExtInfo").get_to(tpsl_res.ret_ext_info);
+    // j.at("result").get_to(tpsl_res.result);
+    // j.at("retExtInfo").get_to(tpsl_res.ret_ext_info);
     size_t ts = j.at("time");
     tpsl_res.timestamp = std::chrono::milliseconds(ts);
 }
