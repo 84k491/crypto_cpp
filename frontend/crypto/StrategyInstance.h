@@ -126,6 +126,8 @@ private:
 
     std::set<xg::Guid> m_live_md_requests;
     std::set<xg::Guid> m_pending_requests;
+
+    bool m_stop_request_handled = false;
     std::optional<std::promise<void>> m_finish_promise;
 
     bool m_backtest_in_progress = false;

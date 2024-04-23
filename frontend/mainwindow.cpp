@@ -130,7 +130,6 @@ void MainWindow::on_pb_stop_clicked()
     m_strategy_instance->stop_async();
     m_strategy_instance->wait_for_finish().wait();
     std::cout << "Strategy stopped" << std::endl;
-    m_strategy_instance.reset();
 }
 
 void MainWindow::on_pb_run_clicked()

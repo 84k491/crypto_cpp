@@ -93,17 +93,11 @@ void StrategyInstance::run_async()
 
 void StrategyInstance::stop_async()
 {
-    // TODO push it to EventLoop ?
-    if (m_position_manager.opened() != nullptr) {
-        const bool success = close_position(m_last_ts_and_price.second, m_last_ts_and_price.first);
-        if (!success) {
-            std::cout << "ERROR: can't close a position on stop" << std::endl;
-        }
-    }
-
+    std::cout << "stop_async" << std::endl;
     for (const auto & req : m_live_md_requests) {
         m_md_gateway.unsubscribe_from_live(req);
     }
+    static_cast<IEventConsumer<StrategyStopRequest> &>(m_event_loop).push(StrategyStopRequest{});
 }
 
 std::future<void> StrategyInstance::wait_for_finish()
@@ -301,7 +295,7 @@ void StrategyInstance::invoke(const ResponseEventVariant & var)
         event_parsed = true;
     }
     if (const auto * r = std::get_if<StrategyStopRequest>(&var); r) {
-
+        std::cout << "StrategyStopRequest" << std::endl;
         if (m_position_manager.opened() != nullptr) {
             const bool success = close_position(m_last_ts_and_price.second, m_last_ts_and_price.first);
             if (!success) {
@@ -309,12 +303,15 @@ void StrategyInstance::invoke(const ResponseEventVariant & var)
             }
         }
 
+        m_live_md_requests.clear();
+
         m_backtest_in_progress = false;
+        m_stop_request_handled = true;
         event_parsed = true;
     }
 
     if (!event_parsed) {
-        std::cout << "ERROR: Unhandled MDResponseEvent" << std::endl;
+        std::cout << "ERROR: Unhandled Event" << std::endl;
     }
 
     if (ready_to_finish()) {
@@ -411,7 +408,7 @@ bool StrategyInstance::ready_to_finish() const
 
 void StrategyInstance::finish_if_needed_and_ready()
 {
-    if (m_finish_promise.has_value()) {
+    if (m_finish_promise.has_value() && m_stop_request_handled) {
         if (ready_to_finish()) {
             auto & promise = m_finish_promise.value();
             promise.set_value();
