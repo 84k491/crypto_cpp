@@ -2,10 +2,6 @@
 
 #include "Events.h"
 #include "Ohlc.h"
-#include "ScopeExit.h"
-
-#include <mutex>
-#include <tuple>
 
 ByBitTradingGateway::ByBitTradingGateway()
     : m_event_loop(*this)
@@ -31,18 +27,25 @@ void ByBitTradingGateway::on_order_response(const json & j)
     ByBitMessages::OrderResponseResult result;
     from_json(j, result);
 
-    for (const auto & response : result.orders) {
-        std::lock_guard l(m_pending_orders_mutex);
+    for (const ByBitMessages::OrderResponse & response : result.orders) {
         const auto order_id_str = response.orderLinkId;
-        const auto it = m_pending_orders.find(order_id_str);
-        if (it != m_pending_orders.end()) {
-            auto & [order_id, pending_order] = *it;
-            auto & promise = pending_order.success_promise;
-            promise.set_value(true);
-            return;
+        auto lref = m_consumers.lock();
+        auto it = lref.get().find(response.symbol);
+        if (it == lref.get().end()) {
+            std::cout << "Failed to find consumer for symbol: " << response.symbol << std::endl;
+            continue;
+        }
+        auto & consumers = *it->second.second;
+
+        if (response.rejectReason == "EC_NoError") {
+            auto & ack_consumer = consumers.order_ack_consumer;
+            ack_consumer.push(OrderResponseEvent(xg::Guid(order_id_str)));
         }
         else {
-            std::cout << "ERROR unsolicited order response" << std::endl;
+            auto & ack_consumer = consumers.order_ack_consumer;
+            ack_consumer.push(OrderResponseEvent(
+                    xg::Guid(order_id_str),
+                    response.rejectReason));
         }
     }
 }
@@ -55,13 +58,13 @@ void ByBitTradingGateway::on_execution(const json & j)
     from_json(j, result);
 
     for (const auto & response : result.executions) {
-        auto lref = m_trade_consumers.lock();
-        auto & consumer = *lref.get().at(response.symbol).second;
         auto trade_opt = response.to_trade();
         if (!trade_opt.has_value()) {
             std::cout << "ERROR can't get proper trade on execution: " << j << std::endl;
             return;
         }
+        auto lref = m_consumers.lock();
+        auto & consumer = lref.get().at(response.symbol).second->trade_consumer;
         consumer.push(TradeEvent(std::move(trade_opt.value())));
     }
 }
@@ -97,8 +100,8 @@ void ByBitTradingGateway::process_event(const OrderRequestEvent & req)
 {
     const auto & order = req.order;
 
-    if (!check_trade_consumer(order.symbol())) {
-        req.reject_ev_consumer->push(OrderRejectedEvent(req.guid, true, "No trade consumer for this symbol", order));
+    if (!check_consumers(order.symbol())) {
+        req.event_consumer->push(OrderResponseEvent(req.guid, "No trade consumer for this symbol"));
         return;
     }
 
@@ -120,50 +123,19 @@ void ByBitTradingGateway::process_event(const OrderRequestEvent & req)
 
     const auto request = json_order.dump();
 
-    std::unique_lock l(m_pending_orders_mutex);
-    const auto [it, success] = m_pending_orders.try_emplace(
-            order_id,
-            order);
-
-    if (!success) {
-        std::cout << "Trying to send order while order_id already exists: " << order_id << std::endl;
-        req.reject_ev_consumer->push(OrderRejectedEvent(req.guid, true, "Duplicate order id", order));
-        return;
-    }
-    ScopeExit se([&]() {
-        std::lock_guard l(m_pending_orders_mutex);
-        m_pending_orders.erase(it);
-    });
-
     const std::string url = std::string(s_rest_base_url) + "/v5/order/create";
     std::future<std::string> request_future = rest_client.request_auth_async(url, request, m_api_key, m_secret_key);
     request_future.wait();
     const std::string request_result = request_future.get();
     std::cout << "Enter order response: " << request_result << std::endl;
-
-    {
-        std::future<bool> success_future = it->second.success_promise.get_future();
-        l.unlock();
-        if (success_future.wait_for(ws_wait_timeout) == std::future_status::timeout) {
-            std::cout << "Timeout waiting for order_resp" << std::endl;
-            req.reject_ev_consumer->push(OrderRejectedEvent(req.guid, false, "Timeout waiting for order entry", order));
-            return;
-        }
-        if (!success_future.get()) {
-            std::cout << "Order failed" << order_id << std::endl;
-            req.reject_ev_consumer->push(OrderRejectedEvent(req.guid, false, "Order failed to enter", order));
-            return;
-        }
-    }
-    std::cout << "Order successfully placed" << std::endl;
-    req.event_consumer->push(OrderAcceptedEvent(req.guid, order));
+    // TODO check and reject right away
 }
 
 void ByBitTradingGateway::process_event(const TpslRequestEvent & tpsl)
 {
     std::cout << "Got TpslRequestEvent" << std::endl;
 
-    if (!check_trade_consumer(tpsl.symbol.symbol_name)) {
+    if (check_consumers(tpsl.symbol.symbol_name)) {
         std::cout << "ERROR: No trade consumer for this symbol" << std::endl;
         tpsl.event_consumer->push(TpslResponseEvent(tpsl.guid, tpsl.tpsl, false));
         return;
@@ -212,15 +184,15 @@ void ByBitTradingGateway::on_ws_message(const json & j)
     std::cout << "Unrecognized message: " << j.dump() << std::endl;
 }
 
-void ByBitTradingGateway::register_trade_consumer(xg::Guid guid, const Symbol & symbol, IEventConsumer<TradeEvent> & consumer)
+void ByBitTradingGateway::register_consumers(xg::Guid guid, const Symbol & symbol, TradingGatewayConsumers consumers)
 {
-    auto lref = m_trade_consumers.lock();
-    lref.get().emplace(symbol.symbol_name, std::make_pair(guid, &consumer));
+    auto lref = m_consumers.lock();
+    lref.get().emplace(symbol.symbol_name, std::make_pair(guid, &consumers));
 }
 
-void ByBitTradingGateway::unregister_trade_consumer(xg::Guid guid)
+void ByBitTradingGateway::unregister_consumers(xg::Guid guid)
 {
-    auto lref = m_trade_consumers.lock();
+    auto lref = m_consumers.lock();
     for (auto it = lref.get().begin(), end = lref.get().end(); it != end; ++it) {
         if (it->second.first == guid) {
             lref.get().erase(it);
@@ -229,8 +201,9 @@ void ByBitTradingGateway::unregister_trade_consumer(xg::Guid guid)
     }
 }
 
-bool ByBitTradingGateway::check_trade_consumer(const std::string & symbol)
+bool ByBitTradingGateway::check_consumers(const std::string & symbol)
 {
-    auto lref = m_trade_consumers.lock();
-    return lref.get().find(symbol) != lref.get().end();
+    auto lref = m_consumers.lock();
+    auto it = lref.get().find(symbol);
+    return it != lref.get().end();
 }

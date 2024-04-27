@@ -14,9 +14,9 @@ void BacktestTradingGateway::set_price_source(TimeseriesPublisher<OHLC> & publis
                 m_last_trade_price = ohlc.close;
                 const auto tpsl_trade = try_trade_tpsl(ohlc);
                 if (m_tpsl.has_value() && tpsl_trade.has_value()) {
-                    auto lref = m_trade_consumers.lock();
+                    auto lref = m_consumers.lock();
                     for (auto & it : lref.get()) {
-                        it.second.second->push_in_this_thread(TradeEvent(tpsl_trade.value()));
+                        it.second.second->trade_consumer.push_in_this_thread(TradeEvent(tpsl_trade.value()));
                     }
                     m_pos_volume = SignedVolume();
                     m_tpsl.reset();
@@ -80,13 +80,13 @@ void BacktestTradingGateway::push_order_request(const OrderRequestEvent & req)
     if (!m_price_sub) {
         std::cout << "No price sub. Did you forgot to subscribe backtest TRGW for prices?" << std::endl;
     }
-    if (!check_trade_consumer(req.order.symbol())) {
-        req.reject_ev_consumer->push(OrderRejectedEvent(req.guid, true, "No trade consumer for this symbol", req.order));
+    if (!check_consumers(req.order.symbol())) {
+        req.event_consumer->push(OrderResponseEvent(req.guid, "No trade consumer for this symbol"));
         return;
     }
 
     const auto & order = req.order;
-    req.event_consumer->push_in_this_thread(OrderAcceptedEvent(req.guid, order));
+    req.event_consumer->push_in_this_thread(OrderResponseEvent(req.guid));
     m_symbol = order.symbol();
 
     const auto & price = m_last_trade_price;
@@ -110,7 +110,7 @@ void BacktestTradingGateway::push_order_request(const OrderRequestEvent & req)
 
 void BacktestTradingGateway::push_tpsl_request(const TpslRequestEvent & tpsl_ev)
 {
-    if (!check_trade_consumer(tpsl_ev.symbol.symbol_name)) {
+    if (!check_consumers(tpsl_ev.symbol.symbol_name)) {
         std::cout << "ERROR: No trade consumer for this symbol" << std::endl;
         tpsl_ev.event_consumer->push(TpslResponseEvent(tpsl_ev.guid, tpsl_ev.tpsl, false));
         return;
@@ -121,15 +121,15 @@ void BacktestTradingGateway::push_tpsl_request(const TpslRequestEvent & tpsl_ev)
     m_tpsl.value().event_consumer->push_in_this_thread(resp_ev);
 }
 
-void BacktestTradingGateway::register_trade_consumer(xg::Guid guid, const Symbol & symbol, IEventConsumer<TradeEvent> & consumer)
+void BacktestTradingGateway::register_consumers(xg::Guid guid, const Symbol & symbol, TradingGatewayConsumers consumers)
 {
-    auto lref = m_trade_consumers.lock();
-    lref.get().emplace(symbol.symbol_name, std::make_pair(guid, &consumer));
+    auto lref = m_consumers.lock();
+    lref.get().emplace(symbol.symbol_name, std::make_pair(guid, &consumers));
 }
 
-void BacktestTradingGateway::unregister_trade_consumer(xg::Guid guid)
+void BacktestTradingGateway::unregister_consumers(xg::Guid guid)
 {
-    auto lref = m_trade_consumers.lock();
+    auto lref = m_consumers.lock();
     for (auto it = lref.get().begin(), end = lref.get().end(); it != end; ++it) {
         if (it->second.first == guid) {
             lref.get().erase(it);
@@ -138,8 +138,9 @@ void BacktestTradingGateway::unregister_trade_consumer(xg::Guid guid)
     }
 }
 
-bool BacktestTradingGateway::check_trade_consumer(const std::string & symbol)
+bool BacktestTradingGateway::check_consumers(const std::string & symbol)
 {
-    auto lref = m_trade_consumers.lock();
-    return lref.get().find(symbol) != lref.get().end();
+    auto lref = m_consumers.lock();
+    auto it = lref.get().find(symbol);
+    return it != lref.get().end();
 }

@@ -28,7 +28,11 @@ StrategyInstance::StrategyInstance(
     , m_position_manager(symbol)
     , m_md_request(md_request)
 {
-    m_tr_gateway.register_trade_consumer(m_strategy_guid, symbol, m_event_loop);
+    m_tr_gateway.register_consumers(m_strategy_guid, symbol, TradingGatewayConsumers{
+                                                                     .trade_consumer = m_event_loop,
+                                                                     .order_ack_consumer = m_event_loop,
+                                                                     .tpsl_response_consumer = m_event_loop,
+                                                             });
     m_strategy_result.update([&](StrategyResult & res) {
         res.position_currency_amount = m_pos_currency_amount;
     });
@@ -48,7 +52,7 @@ StrategyInstance::StrategyInstance(
 StrategyInstance::~StrategyInstance()
 {
     std::cout << "StrategyInstance destructor" << std::endl;
-    m_tr_gateway.unregister_trade_consumer(m_strategy_guid);
+    m_tr_gateway.unregister_consumers(m_strategy_guid);
 }
 
 void StrategyInstance::on_price_received(std::chrono::milliseconds ts, const OHLC & ohlc)
@@ -245,19 +249,14 @@ void StrategyInstance::invoke(const ResponseEventVariant & var)
 
         event_parsed = true;
     }
-    if (const auto * r = std::get_if<OrderAcceptedEvent>(&var); r) {
-        const OrderAcceptedEvent & response = *r;
+    if (const auto * r = std::get_if<OrderResponseEvent>(&var); r) {
+        const OrderResponseEvent & response = *r;
         const size_t erased_cnt = m_pending_requests.erase(response.request_guid);
         if (erased_cnt == 0) {
             std::cout << "ERROR: unsolicited OrderAcceptedEvent" << std::endl;
         }
-        event_parsed = true;
-    }
-    if (const auto * r = std::get_if<OrderRejectedEvent>(&var); r) {
-        const OrderRejectedEvent & response = *r;
-        const size_t erased_cnt = m_pending_requests.erase(response.request_guid);
-        if (erased_cnt == 0) {
-            std::cout << "ERROR: unsolicited OrderRejectedEvent" << std::endl;
+        if (response.reject_reason.has_value()) {
+            std::cout << "OrderRejected: " << response.reject_reason.value() << std::endl;
         }
         event_parsed = true;
     }
@@ -360,7 +359,6 @@ bool StrategyInstance::open_position(double price, SignedVolume target_absolute_
     OrderRequestEvent or_event(
             order,
             m_event_loop,
-            m_event_loop,
             m_event_loop);
     m_pending_requests.emplace(or_event.guid);
     m_tr_gateway.push_order_request(or_event);
@@ -387,7 +385,6 @@ bool StrategyInstance::close_position(double price, std::chrono::milliseconds ts
 
     OrderRequestEvent or_event(
             order,
-            m_event_loop,
             m_event_loop,
             m_event_loop);
     m_pending_requests.emplace(or_event.guid);

@@ -8,6 +8,13 @@
 struct OrderRequestEvent;
 struct TpslRequestEvent;
 
+struct TradingGatewayConsumers
+{
+    IEventConsumer<TradeEvent> & trade_consumer;
+    IEventConsumer<OrderResponseEvent> & order_ack_consumer;
+    IEventConsumer<TpslResponseEvent> & tpsl_response_consumer;
+};
+
 class ITradingGateway
 {
 public:
@@ -16,6 +23,6 @@ public:
     virtual void push_order_request(const OrderRequestEvent & order) = 0;
     virtual void push_tpsl_request(const TpslRequestEvent & tpsl_ev) = 0;
 
-    virtual void register_trade_consumer(xg::Guid guid, const Symbol & symbol, IEventConsumer<TradeEvent> & consumer) = 0;
-    virtual void unregister_trade_consumer(xg::Guid guid) = 0;
+    virtual void register_consumers(xg::Guid guid, const Symbol & symbol, TradingGatewayConsumers consumers) = 0;
+    virtual void unregister_consumers(xg::Guid guid) = 0;
 };

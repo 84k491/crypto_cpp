@@ -26,8 +26,7 @@ struct StrategyStopRequest : public BasicResponseEvent
 class StrategyInstance
     : public IEventInvoker<HistoricalMDPackEvent,
                            MDPriceEvent,
-                           OrderAcceptedEvent,
-                           OrderRejectedEvent,
+                           OrderResponseEvent,
                            TradeEvent,
                            TpslResponseEvent,
                            StrategyStopRequest>
@@ -40,8 +39,7 @@ public:
     using ResponseEventVariant =
             std::variant<HistoricalMDPackEvent,
                          MDPriceEvent,
-                         OrderAcceptedEvent,
-                         OrderRejectedEvent,
+                         OrderResponseEvent,
                          TradeEvent,
                          TpslResponseEvent,
                          StrategyStopRequest>;
@@ -90,8 +88,7 @@ private:
     EventLoop<
             HistoricalMDPackEvent,
             MDPriceEvent,
-            OrderAcceptedEvent,
-            OrderRejectedEvent,
+            OrderResponseEvent,
             TradeEvent,
             TpslResponseEvent,
             StrategyStopRequest>

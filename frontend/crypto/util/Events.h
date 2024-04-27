@@ -66,16 +66,18 @@ struct LiveMDRequest : public BasicEvent<MDPriceEvent>
 };
 using MDRequest = std::variant<HistoricalMDRequest, LiveMDRequest>;
 
-struct OrderAcceptedEvent : public BasicResponseEvent
+struct OrderResponseEvent : public BasicResponseEvent
 {
-    OrderAcceptedEvent(xg::Guid request_guid, MarketOrder order)
-        : order(std::move(order))
-        , request_guid(request_guid)
+    OrderResponseEvent(
+            xg::Guid request_guid,
+            std::optional<std::string> reject_reason = std::nullopt)
+        : request_guid(request_guid)
+        , reject_reason(std::move(reject_reason))
     {
     }
 
-    MarketOrder order;
     xg::Guid request_guid;
+    std::optional<std::string> reject_reason;
 };
 
 struct TradeEvent : public BasicResponseEvent
@@ -87,43 +89,19 @@ struct TradeEvent : public BasicResponseEvent
     Trade trade;
 };
 
-struct OrderRejectedEvent : public BasicResponseEvent
-{
-    OrderRejectedEvent(
-            xg::Guid request_guid,
-            bool internal_reject,
-            std::string reason,
-            MarketOrder order)
-        : internal_reject(internal_reject)
-        , reason(std::move(reason))
-        , order(std::move(order))
-        , request_guid(request_guid)
-    {
-    }
-
-    bool internal_reject = true;
-    std::string reason = "Unknown";
-    MarketOrder order;
-
-    xg::Guid request_guid;
-};
-
-struct OrderRequestEvent : public BasicEvent<OrderAcceptedEvent>
+struct OrderRequestEvent : public BasicEvent<OrderResponseEvent>
 {
     OrderRequestEvent(MarketOrder order,
-                      IEventConsumer<OrderAcceptedEvent> & accept_consumer,
-                      IEventConsumer<TradeEvent> & trade_consumer,
-                      IEventConsumer<OrderRejectedEvent> & reject_consumer)
-        : BasicEvent<OrderAcceptedEvent>(accept_consumer)
+                      IEventConsumer<OrderResponseEvent> & accept_consumer,
+                      IEventConsumer<TradeEvent> & trade_consumer)
+        : BasicEvent<OrderResponseEvent>(accept_consumer)
         , order(std::move(order))
         , trade_ev_consumer(&trade_consumer)
-        , reject_ev_consumer(&reject_consumer)
         , guid(xg::newGuid())
     {
     }
     MarketOrder order;
     IEventConsumer<TradeEvent> * trade_ev_consumer = nullptr;
-    IEventConsumer<OrderRejectedEvent> * reject_ev_consumer = nullptr;
 
     xg::Guid guid;
 };

@@ -5,21 +5,10 @@
 #include "Events.h"
 #include "Guarded.h"
 #include "ITradingGateway.h"
-#include "MarketOrder.h"
 #include "RestClient.h"
 #include "WebSocketClient.h"
 
 #include <string>
-
-struct PendingOrder
-{
-    PendingOrder(const MarketOrder & order)
-        : m_order(order)
-    {
-    }
-    MarketOrder m_order;
-    std::promise<bool> success_promise;
-};
 
 class ByBitTradingGateway final
     : public ITradingGateway
@@ -34,11 +23,12 @@ public:
     void push_order_request(const OrderRequestEvent & order) override;
     void push_tpsl_request(const TpslRequestEvent & tpsl_ev) override;
 
-    void register_trade_consumer(xg::Guid guid, const Symbol & symbol, IEventConsumer<TradeEvent> & consumer) override;
-    void unregister_trade_consumer(xg::Guid guid) override;
-    bool check_trade_consumer(const std::string & symbol);
+    void register_consumers(xg::Guid guid, const Symbol & symbol, TradingGatewayConsumers consumers) override;
+    void unregister_consumers(xg::Guid guid) override;
 
 private:
+    bool check_consumers(const std::string & symbol);
+
     void invoke(const std::variant<OrderRequestEvent, TpslRequestEvent> & value) override;
     void process_event(const OrderRequestEvent & order);
     void process_event(const TpslRequestEvent & tpsl);
@@ -57,8 +47,5 @@ private:
     RestClient rest_client;
     WebSocketClient m_ws_client;
 
-    std::mutex m_pending_orders_mutex;
-    std::map<std::string, PendingOrder> m_pending_orders;
-
-    Guarded<std::map<std::string, std::pair<xg::Guid, IEventConsumer<TradeEvent> *>>> m_trade_consumers;
+    Guarded<std::map<std::string, std::pair<xg::Guid, TradingGatewayConsumers *>>> m_consumers;
 };

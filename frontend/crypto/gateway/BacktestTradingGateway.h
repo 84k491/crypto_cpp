@@ -20,11 +20,11 @@ public:
     void push_order_request(const OrderRequestEvent & order) override;
     void push_tpsl_request(const TpslRequestEvent & tpsl_ev) override;
 
-    void register_trade_consumer(xg::Guid guid, const Symbol & symbol, IEventConsumer<TradeEvent> & consumer) override;
-    void unregister_trade_consumer(xg::Guid guid) override;
-    bool check_trade_consumer(const std::string & symbol);
+    void register_consumers(xg::Guid guid, const Symbol & symbol, TradingGatewayConsumers consumers) override;
+    void unregister_consumers(xg::Guid guid) override;
 
 private:
+    bool check_consumers(const std::string & symbol);
     std::optional<Trade> try_trade_tpsl(OHLC ohlc);
 
 private:
@@ -35,5 +35,5 @@ private:
 
     SignedVolume m_pos_volume;
 
-    Guarded<std::map<std::string, std::pair<xg::Guid, IEventConsumer<TradeEvent> *>>> m_trade_consumers;
+    Guarded<std::map<std::string, std::pair<xg::Guid, TradingGatewayConsumers *>>> m_consumers;
 };
