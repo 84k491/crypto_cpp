@@ -14,18 +14,20 @@ std::future<std::string> RestClient::request_async(const std::string & request)
 
                 std::cout << "REST request: " << request << std::endl;
                 std::string string_result;
+                bool reply_received = false;
                 client
                         .Build()
                         ->Get(request)
                         .WithCompletion([&](const restincurl::Result & result) {
                             std::lock_guard lock(m);
                             string_result = result.body;
+                            reply_received = true;
                             cv.notify_all();
                         })
                         .Execute();
 
                 std::unique_lock lock(m);
-                cv.wait(lock, [&] { return !string_result.empty(); });
+                cv.wait(lock, [&] { return reply_received; });
 
                 return string_result;
             });
@@ -56,11 +58,12 @@ std::future<std::string> RestClient::request_auth_async(
         const std::string & url,
         const std::string & request,
         const std::string & api_key,
-        const std::string & secret_key)
+        const std::string & secret_key,
+        std::optional<std::chrono::milliseconds> timeout)
 {
     return std::async(
             std::launch::async,
-            [this, request, api_key, secret_key, url]() {
+            [this, request, api_key, secret_key, url, timeout]() {
                 std::condition_variable cv;
                 std::mutex m;
 
@@ -70,10 +73,10 @@ std::future<std::string> RestClient::request_auth_async(
                 const std::string window_str = "5000";
                 const std::string header_data = timestamp_str + api_key + window_str;
                 std::string sign = sign_message(header_data, request, secret_key);
-                std::cout << "Sign: <" << sign << ">" << std::endl;
 
                 std::cout << "REST request: " << request << std::endl;
                 std::string string_result;
+                bool reply_received = false;
                 client
                         .Build()
                         ->Post(url)
@@ -86,12 +89,18 @@ std::future<std::string> RestClient::request_auth_async(
                         .WithCompletion([&](const restincurl::Result & result) {
                             std::lock_guard lock(m);
                             string_result = result.body;
+                            reply_received = true;
                             cv.notify_all();
                         })
                         .Execute();
 
                 std::unique_lock lock(m);
-                cv.wait(lock, [&] { return !string_result.empty(); });
+                if (timeout.has_value()) {
+                    cv.wait_for(lock, timeout.value(), [&] { return reply_received; });
+                }
+                else {
+                    cv.wait(lock, [&] { return reply_received; });
+                }
 
                 return string_result;
             });

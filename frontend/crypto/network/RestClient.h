@@ -12,7 +12,8 @@ public:
             const std::string & url,
             const std::string & request,
             const std::string & api_key,
-            const std::string & secret_key);
+            const std::string & secret_key,
+            std::optional<std::chrono::milliseconds> timeout);
 
 private:
     restincurl::Client client; // TODO use mrtazz/restclient-cpp

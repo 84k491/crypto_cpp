@@ -128,6 +128,7 @@ void ByBitTradingGateway::invoke(const std::variant<OrderRequestEvent, TpslReque
 
 void ByBitTradingGateway::process_event(const OrderRequestEvent & req)
 {
+    using namespace std::chrono_literals;
     const auto & order = req.order;
 
     if (!check_consumers(order.symbol())) {
@@ -150,15 +151,23 @@ void ByBitTradingGateway::process_event(const OrderRequestEvent & req)
     const auto request = json_order.dump();
 
     const std::string url = std::string(s_rest_base_url) + "/v5/order/create";
-    std::future<std::string> request_future = rest_client.request_auth_async(url, request, m_api_key, m_secret_key);
+    std::future<std::string> request_future = rest_client.request_auth_async(
+            url,
+            request,
+            m_api_key,
+            m_secret_key,
+            1000ms);
     request_future.wait();
     const std::string request_result = request_future.get();
     std::cout << "Enter order response: " << request_result << std::endl;
-    // TODO check and reject right away
+    if (request_result.empty()) {
+        req.event_consumer->push(OrderResponseEvent(req.order.guid(), "Empty REST response"));
+    }
 }
 
 void ByBitTradingGateway::process_event(const TpslRequestEvent & tpsl)
 {
+    using namespace std::chrono_literals;
     std::cout << "Got TpslRequestEvent" << std::endl;
 
     if (!check_consumers(tpsl.symbol.symbol_name)) {
@@ -182,9 +191,18 @@ void ByBitTradingGateway::process_event(const TpslRequestEvent & tpsl)
     const auto request = json_order.dump();
 
     const std::string url = std::string(s_rest_base_url) + "/v5/position/trading-stop";
-    std::future<std::string> request_future = rest_client.request_auth_async(url, request, m_api_key, m_secret_key);
+    std::future<std::string> request_future = rest_client.request_auth_async(
+            url,
+            request,
+            m_api_key,
+            m_secret_key,
+            1000ms);
     request_future.wait();
     const std::string request_result = request_future.get();
+    if (request_result.empty()) {
+        tpsl.event_consumer->push(TpslResponseEvent(tpsl.guid, tpsl.tpsl, "Empty REST response"));
+        return;
+    }
     const auto j = json::parse(request_result);
     const ByBitMessages::TpslResult result = j.get<ByBitMessages::TpslResult>();
     tpsl.event_consumer->push(TpslResponseEvent(tpsl.guid, tpsl.tpsl));
