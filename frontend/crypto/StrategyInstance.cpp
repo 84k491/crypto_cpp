@@ -32,6 +32,7 @@ StrategyInstance::StrategyInstance(
                                                                      .trade_consumer = m_event_loop,
                                                                      .order_ack_consumer = m_event_loop,
                                                                      .tpsl_response_consumer = m_event_loop,
+                                                                     .tpsl_update_consumer = m_event_loop,
                                                              });
     m_strategy_result.update([&](StrategyResult & res) {
         res.position_currency_amount = m_pos_currency_amount;
@@ -52,6 +53,7 @@ StrategyInstance::StrategyInstance(
 StrategyInstance::~StrategyInstance()
 {
     std::cout << "StrategyInstance destructor" << std::endl;
+    // TODO gateway can be destroyed before strategy
     m_tr_gateway.unregister_consumers(m_strategy_guid);
 }
 
@@ -65,6 +67,7 @@ void StrategyInstance::on_price_received(std::chrono::milliseconds ts, const OHL
     }
 
     const auto signal = m_strategy->push_price({ts, ohlc.close});
+    // TODO set position before sending order. because next check can be before execution arrives
     if (m_position_manager.opened() == nullptr) {
         if (signal.has_value()) {
             on_signal(signal.value());
@@ -280,17 +283,21 @@ void StrategyInstance::invoke(const ResponseEventVariant & var)
     }
     if (const auto * r = std::get_if<TpslResponseEvent>(&var); r) {
         const TpslResponseEvent & response = *r;
-        if (response.accepted) {
+        if (!response.reject_reason.has_value()) {
             m_tpsl_publisher.push(m_last_ts_and_price.first, response.tpsl);
         }
         const size_t erased_cnt = m_pending_requests.erase(response.request_guid);
         if (erased_cnt == 0) {
             std::cout << "Unsolicited tpsl response" << std::endl;
         }
-        if (!response.accepted) {
+        if (response.reject_reason.has_value()) {
             // TODO close position, stop strategy ?
-            std::cout << "ERROR: Tpsl was rejected!" << std::endl;
+            std::cout << "ERROR: Tpsl was rejected!: " << response.reject_reason.value() << std::endl;
         }
+        event_parsed = true;
+    }
+    if (const auto * r = std::get_if<TpslUpdatedEvent>(&var); r) {
+        std::cout << "TpslUpdatedEvent" << std::endl;
         event_parsed = true;
     }
     if (const auto * r = std::get_if<StrategyStopRequest>(&var); r) {

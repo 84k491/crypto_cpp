@@ -66,7 +66,7 @@ struct LiveMDRequest : public BasicEvent<MDPriceEvent>
 };
 using MDRequest = std::variant<HistoricalMDRequest, LiveMDRequest>;
 
-struct OrderResponseEvent : public BasicResponseEvent
+struct OrderResponseEvent : public BasicResponseEvent // TODO rename to AckEvent
 {
     OrderResponseEvent(
             xg::Guid request_guid,
@@ -78,6 +78,17 @@ struct OrderResponseEvent : public BasicResponseEvent
 
     xg::Guid request_guid;
     std::optional<std::string> reject_reason;
+};
+
+struct TpslResponseEvent : public OrderResponseEvent
+{
+    TpslResponseEvent(xg::Guid request_guid, Tpsl tpsl, std::optional<std::string> reason = std::nullopt)
+        : OrderResponseEvent(request_guid, std::move(reason))
+        , tpsl(tpsl)
+    {
+    }
+
+    Tpsl tpsl;
 };
 
 struct TradeEvent : public BasicResponseEvent
@@ -92,9 +103,9 @@ struct TradeEvent : public BasicResponseEvent
 struct OrderRequestEvent : public BasicEvent<OrderResponseEvent>
 {
     OrderRequestEvent(MarketOrder order,
-                      IEventConsumer<OrderResponseEvent> & accept_consumer,
+                      IEventConsumer<OrderResponseEvent> & response_consumer,
                       IEventConsumer<TradeEvent> & trade_consumer)
-        : BasicEvent<OrderResponseEvent>(accept_consumer)
+        : BasicEvent<OrderResponseEvent>(response_consumer)
         , order(std::move(order))
         , trade_ev_consumer(&trade_consumer)
         , guid(xg::newGuid())
@@ -106,18 +117,16 @@ struct OrderRequestEvent : public BasicEvent<OrderResponseEvent>
     xg::Guid guid;
 };
 
-struct TpslResponseEvent : public BasicResponseEvent
+struct TpslUpdatedEvent : public BasicResponseEvent
 {
-    TpslResponseEvent(xg::Guid request_guid, Tpsl tpsl, bool accepted)
-        : tpsl(tpsl)
-        , accepted(accepted)
-        , request_guid(request_guid)
+    TpslUpdatedEvent(std::string symbol_name, bool set_up)
+        : symbol_name(std::move(symbol_name))
+        , set_up(set_up)
     {
     }
 
-    Tpsl tpsl;
-    bool accepted = false;
-    xg::Guid request_guid;
+    std::string symbol_name;
+    bool set_up = false;
 };
 
 struct TpslRequestEvent : public BasicEvent<TpslResponseEvent>
@@ -132,6 +141,5 @@ struct TpslRequestEvent : public BasicEvent<TpslResponseEvent>
 
     Symbol symbol; // TODO move it to Tpsl
     Tpsl tpsl;
-    // IEventConsumer<TpslRejectedEvent> * reject_ev_consumer = nullptr;
     xg::Guid guid;
 };

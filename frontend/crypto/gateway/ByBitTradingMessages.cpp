@@ -13,6 +13,7 @@ void from_json(const json & j, OrderResponse & order)
     j.at("side").get_to(order.side);
     j.at("orderStatus").get_to(order.orderStatus);
     j.at("cancelType").get_to(order.cancelType);
+    j.at("createType").get_to(order.createType);
     j.at("rejectReason").get_to(order.rejectReason);
     j.at("timeInForce").get_to(order.timeInForce);
     order.price = std::stod(j.at("price").get<std::string>());

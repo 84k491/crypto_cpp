@@ -131,12 +131,12 @@ private:
 
     StrategyFactory m_strategy_factory;
 
-    std::unique_ptr<StrategyInstance> m_strategy_instance;
-    std::list<std::shared_ptr<ISubsription>> m_subscriptions;
-
     ByBitGateway m_gateway;
     std::unique_ptr<BacktestTradingGateway> m_backtest_tr_gateway;
     ByBitTradingGateway m_trading_gateway;
+
+    std::unique_ptr<StrategyInstance> m_strategy_instance;
+    std::list<std::shared_ptr<ISubsription>> m_subscriptions;
 
     const std::string m_price_chart_name = "prices";
     const std::string m_depo_chart_name = "depo";

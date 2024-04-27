@@ -35,6 +35,7 @@ private:
 
     void on_ws_message(const json & j);
     void on_order_response(const json & j);
+    void on_tpsl_update(const std::array<ByBitMessages::OrderResponse, 2> & updates);
     void on_execution(const json & j);
 
 private:
@@ -47,5 +48,5 @@ private:
     RestClient rest_client;
     WebSocketClient m_ws_client;
 
-    Guarded<std::map<std::string, std::pair<xg::Guid, TradingGatewayConsumers *>>> m_consumers;
+    Guarded<std::map<std::string, std::pair<xg::Guid, TradingGatewayConsumers>>> m_consumers;
 };

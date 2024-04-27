@@ -29,6 +29,7 @@ class StrategyInstance
                            OrderResponseEvent,
                            TradeEvent,
                            TpslResponseEvent,
+                           TpslUpdatedEvent,
                            StrategyStopRequest>
 {
 public:
@@ -42,6 +43,7 @@ public:
                          OrderResponseEvent,
                          TradeEvent,
                          TpslResponseEvent,
+                         TpslUpdatedEvent,
                          StrategyStopRequest>;
 
     StrategyInstance(
@@ -91,6 +93,7 @@ private:
             OrderResponseEvent,
             TradeEvent,
             TpslResponseEvent,
+            TpslUpdatedEvent,
             StrategyStopRequest>
             m_event_loop;
 

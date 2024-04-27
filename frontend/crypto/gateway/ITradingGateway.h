@@ -13,6 +13,7 @@ struct TradingGatewayConsumers
     IEventConsumer<TradeEvent> & trade_consumer;
     IEventConsumer<OrderResponseEvent> & order_ack_consumer;
     IEventConsumer<TpslResponseEvent> & tpsl_response_consumer;
+    IEventConsumer<TpslUpdatedEvent> & tpsl_update_consumer;
 };
 
 class ITradingGateway

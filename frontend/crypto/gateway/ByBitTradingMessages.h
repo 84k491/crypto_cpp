@@ -17,6 +17,7 @@ struct OrderResponse
     std::string orderLinkId;
     std::string side;
     std::string orderStatus;  // ":"Filled",
+    std::string createType;   // ":"UNKNOWN",
     std::string cancelType;   // ":"UNKNOWN",
     std::string rejectReason; // ":"EC_NoError",
     std::string timeInForce;  // ":"IOC",

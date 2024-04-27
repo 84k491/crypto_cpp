@@ -35,5 +35,5 @@ private:
 
     SignedVolume m_pos_volume;
 
-    Guarded<std::map<std::string, std::pair<xg::Guid, TradingGatewayConsumers *>>> m_consumers;
+    Guarded<std::map<std::string, std::pair<xg::Guid, TradingGatewayConsumers>>> m_consumers;
 };

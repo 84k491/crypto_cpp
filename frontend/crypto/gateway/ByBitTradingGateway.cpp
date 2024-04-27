@@ -3,6 +3,8 @@
 #include "Events.h"
 #include "Ohlc.h"
 
+#include <set>
+
 ByBitTradingGateway::ByBitTradingGateway()
     : m_event_loop(*this)
     , m_url("wss://stream-testnet.bybit.com/v5/private")
@@ -27,7 +29,16 @@ void ByBitTradingGateway::on_order_response(const json & j)
     ByBitMessages::OrderResponseResult result;
     from_json(j, result);
 
+    std::vector<ByBitMessages::OrderResponse> tpsl_updates;
     for (const ByBitMessages::OrderResponse & response : result.orders) {
+        if (std::set<std::string>{"CreateByStopLoss", "CreateByTakeProfit"}.contains(response.createType)) {
+            tpsl_updates.push_back(response);
+            if (tpsl_updates.size() > 1) {
+                on_tpsl_update({tpsl_updates[0], tpsl_updates[1]});
+            }
+            continue;
+        }
+
         const auto order_id_str = response.orderLinkId;
         auto lref = m_consumers.lock();
         auto it = lref.get().find(response.symbol);
@@ -35,11 +46,11 @@ void ByBitTradingGateway::on_order_response(const json & j)
             std::cout << "Failed to find consumer for symbol: " << response.symbol << std::endl;
             continue;
         }
-        auto & consumers = *it->second.second;
+        auto & consumers = it->second.second;
 
         if (response.rejectReason == "EC_NoError") {
             auto & ack_consumer = consumers.order_ack_consumer;
-            ack_consumer.push(OrderResponseEvent(xg::Guid(order_id_str)));
+            ack_consumer.push(OrderResponseEvent(xg::Guid(order_id_str))); // TODO fill guid to request and from response
         }
         else {
             auto & ack_consumer = consumers.order_ack_consumer;
@@ -48,6 +59,20 @@ void ByBitTradingGateway::on_order_response(const json & j)
                     response.rejectReason));
         }
     }
+}
+
+void ByBitTradingGateway::on_tpsl_update(const std::array<ByBitMessages::OrderResponse, 2> & updates)
+{
+    const auto & response = updates[0];
+
+    auto lref = m_consumers.lock();
+    auto it = lref.get().find(response.symbol);
+    if (it == lref.get().end()) {
+        std::cout << "Failed to find consumer for symbol: " << response.symbol << std::endl;
+        return;
+    }
+    auto & consumers = it->second.second;
+    consumers.tpsl_update_consumer.push(TpslUpdatedEvent(response.symbol, true));
 }
 
 void ByBitTradingGateway::on_execution(const json & j)
@@ -64,8 +89,13 @@ void ByBitTradingGateway::on_execution(const json & j)
             return;
         }
         auto lref = m_consumers.lock();
-        auto & consumer = lref.get().at(response.symbol).second->trade_consumer;
-        consumer.push(TradeEvent(std::move(trade_opt.value())));
+        auto it = lref.get().find(response.symbol);
+        if (it == lref.get().end()) {
+            std::cout << "Failed to find consumer for symbol: " << response.symbol << std::endl;
+            continue;
+        }
+        auto & consumers = it->second.second;
+        consumers.trade_consumer.push(TradeEvent(std::move(trade_opt.value())));
     }
 }
 
@@ -101,7 +131,7 @@ void ByBitTradingGateway::process_event(const OrderRequestEvent & req)
     const auto & order = req.order;
 
     if (!check_consumers(order.symbol())) {
-        req.event_consumer->push(OrderResponseEvent(req.guid, "No trade consumer for this symbol"));
+        req.event_consumer->push(OrderResponseEvent(req.guid, "No trade consumer for this symbol: "));
         return;
     }
 
@@ -135,9 +165,10 @@ void ByBitTradingGateway::process_event(const TpslRequestEvent & tpsl)
 {
     std::cout << "Got TpslRequestEvent" << std::endl;
 
-    if (check_consumers(tpsl.symbol.symbol_name)) {
-        std::cout << "ERROR: No trade consumer for this symbol" << std::endl;
-        tpsl.event_consumer->push(TpslResponseEvent(tpsl.guid, tpsl.tpsl, false));
+    if (!check_consumers(tpsl.symbol.symbol_name)) {
+        std::cout << "ERROR: No trade consumer for this symbol: " << tpsl.symbol.symbol_name << std::endl;
+        // TODO specify symbol std::print/fmt::format?
+        tpsl.event_consumer->push(TpslResponseEvent(tpsl.guid, tpsl.tpsl, "No consumer for this symbol"));
         return;
     }
 
@@ -160,7 +191,7 @@ void ByBitTradingGateway::process_event(const TpslRequestEvent & tpsl)
     const std::string request_result = request_future.get();
     const auto j = json::parse(request_result);
     const ByBitMessages::TpslResult result = j.get<ByBitMessages::TpslResult>();
-    tpsl.event_consumer->push(TpslResponseEvent(tpsl.guid, tpsl.tpsl, result.ok()));
+    tpsl.event_consumer->push(TpslResponseEvent(tpsl.guid, tpsl.tpsl));
 }
 
 void ByBitTradingGateway::on_ws_message(const json & j)
@@ -187,7 +218,7 @@ void ByBitTradingGateway::on_ws_message(const json & j)
 void ByBitTradingGateway::register_consumers(xg::Guid guid, const Symbol & symbol, TradingGatewayConsumers consumers)
 {
     auto lref = m_consumers.lock();
-    lref.get().emplace(symbol.symbol_name, std::make_pair(guid, &consumers));
+    lref.get().emplace(symbol.symbol_name, std::make_pair(guid, consumers));
 }
 
 void ByBitTradingGateway::unregister_consumers(xg::Guid guid)
@@ -204,6 +235,5 @@ void ByBitTradingGateway::unregister_consumers(xg::Guid guid)
 bool ByBitTradingGateway::check_consumers(const std::string & symbol)
 {
     auto lref = m_consumers.lock();
-    auto it = lref.get().find(symbol);
-    return it != lref.get().end();
+    return lref.get().contains(symbol);
 }
