@@ -50,7 +50,7 @@ void ByBitTradingGateway::on_order_response(const json & j)
 
         if (response.rejectReason == "EC_NoError") {
             auto & ack_consumer = consumers.order_ack_consumer;
-            ack_consumer.push(OrderResponseEvent(xg::Guid(order_id_str))); // TODO fill guid to request and from response
+            ack_consumer.push(OrderResponseEvent(xg::Guid(order_id_str)));
         }
         else {
             auto & ack_consumer = consumers.order_ack_consumer;
@@ -131,15 +131,11 @@ void ByBitTradingGateway::process_event(const OrderRequestEvent & req)
     const auto & order = req.order;
 
     if (!check_consumers(order.symbol())) {
-        req.event_consumer->push(OrderResponseEvent(req.guid, "No trade consumer for this symbol: "));
+        req.event_consumer->push(OrderResponseEvent(req.order.guid(), "No trade consumer for symbol"));
         return;
     }
 
-    int64_t ts = std::chrono::duration_cast<std::chrono::milliseconds>(
-                         std::chrono::system_clock::now().time_since_epoch())
-                         .count();
-
-    const std::string order_id = std::to_string(ts);
+    const std::string order_id = order.guid().str();
     json json_order = {
             {"category", "linear"},
             {"symbol", order.symbol()},

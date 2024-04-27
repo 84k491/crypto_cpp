@@ -81,12 +81,12 @@ void BacktestTradingGateway::push_order_request(const OrderRequestEvent & req)
         std::cout << "No price sub. Did you forgot to subscribe backtest TRGW for prices?" << std::endl;
     }
     if (!check_consumers(req.order.symbol())) {
-        req.event_consumer->push(OrderResponseEvent(req.guid, "No trade consumer for this symbol"));
+        req.event_consumer->push(OrderResponseEvent(req.order.guid(), "No trade consumer for this symbol"));
         return;
     }
 
     const auto & order = req.order;
-    req.event_consumer->push_in_this_thread(OrderResponseEvent(req.guid));
+    req.event_consumer->push_in_this_thread(OrderResponseEvent(req.order.guid()));
     m_symbol = order.symbol();
 
     const auto & price = m_last_trade_price;

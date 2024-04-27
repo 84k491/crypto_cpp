@@ -108,13 +108,10 @@ struct OrderRequestEvent : public BasicEvent<OrderResponseEvent>
         : BasicEvent<OrderResponseEvent>(response_consumer)
         , order(std::move(order))
         , trade_ev_consumer(&trade_consumer)
-        , guid(xg::newGuid())
     {
     }
     MarketOrder order;
     IEventConsumer<TradeEvent> * trade_ev_consumer = nullptr;
-
-    xg::Guid guid;
 };
 
 struct TpslUpdatedEvent : public BasicResponseEvent

@@ -367,7 +367,7 @@ bool StrategyInstance::open_position(double price, SignedVolume target_absolute_
             order,
             m_event_loop,
             m_event_loop);
-    m_pending_requests.emplace(or_event.guid);
+    m_pending_requests.emplace(order.guid());
     m_tr_gateway.push_order_request(or_event);
     return true;
 }
@@ -394,7 +394,7 @@ bool StrategyInstance::close_position(double price, std::chrono::milliseconds ts
             order,
             m_event_loop,
             m_event_loop);
-    m_pending_requests.emplace(or_event.guid);
+    m_pending_requests.emplace(order.guid());
     m_tr_gateway.push_order_request(or_event);
     return true;
 }
