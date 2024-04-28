@@ -10,6 +10,7 @@
 #include <chrono>
 #include <future>
 #include <optional>
+#include <print>
 
 StrategyInstance::StrategyInstance(
         const Symbol & symbol,
@@ -55,24 +56,6 @@ StrategyInstance::~StrategyInstance()
     std::cout << "StrategyInstance destructor" << std::endl;
     // TODO gateway can be destroyed before strategy
     m_tr_gateway.unregister_consumers(m_strategy_guid);
-}
-
-void StrategyInstance::on_price_received(std::chrono::milliseconds ts, const OHLC & ohlc)
-{
-    m_last_ts_and_price = {ts, ohlc.close};
-    m_klines_publisher.push(ts, ohlc);
-    if (!first_price_received) {
-        m_depo_publisher.push(ts, 0.);
-        first_price_received = true;
-    }
-
-    const auto signal = m_strategy->push_price({ts, ohlc.close});
-    // TODO set position before sending order. because next check can be before execution arrives
-    if (m_position_manager.opened() == nullptr) {
-        if (signal.has_value()) {
-            on_signal(signal.value());
-        }
-    }
 }
 
 void StrategyInstance::run_async()
@@ -229,81 +212,28 @@ TimeseriesPublisher<Tpsl> & StrategyInstance::tpsl_publisher()
 
 void StrategyInstance::invoke(const std::variant<STRATEGY_EVENTS> & var)
 {
-
     std::visit(
             VariantMatcher{
                     [&](const HistoricalMDPackEvent & response) {
-                        for (const auto & [ts, ohlc] : response.ts_and_price_pack) {
-                            MDPriceEvent ev;
-                            ev.ts_and_price = {ts, ohlc};
-                            static_cast<IEventConsumer<MDPriceEvent> &>(m_event_loop).push(ev);
-                        }
-
-                        m_backtest_in_progress = true;
-                        static_cast<IEventConsumer<StrategyStopRequest> &>(m_event_loop).push(StrategyStopRequest{});
-                        const size_t erased_cnt = m_pending_requests.erase(response.request_guid);
-                        if (erased_cnt == 0) {
-                            std::cout << "ERROR: unsolicited HistoricalMDPackEvent" << std::endl;
-                        }
+                        handle_event(response);
                     },
                     [&](const MDPriceEvent & response) {
-                        on_price_received(response.ts_and_price.first, response.ts_and_price.second);
+                        handle_event(response);
                     },
                     [&](const OrderResponseEvent & response) {
-                        const size_t erased_cnt = m_pending_requests.erase(response.request_guid);
-                        if (erased_cnt == 0) {
-                            std::cout << "ERROR: unsolicited OrderAcceptedEvent" << std::endl;
-                        }
-                        if (response.reject_reason.has_value()) {
-                            std::cout << "OrderRejected: " << response.reject_reason.value() << std::endl;
-                        }
+                        handle_event(response);
                     },
                     [&](const TradeEvent & r) {
-                        const auto res = m_position_manager.on_trade_received(r.trade);
-
-                        const auto & trade = r.trade;
-                        m_signal_publisher.push(trade.ts(), Signal{trade.side(), trade.ts(), trade.price()});
-
-                        if (res.has_value()) {
-                            process_position_result(res.value(), r.trade.ts());
-                        }
-                        m_strategy_result.update([&](StrategyResult & res) {
-                            res.trades_count++;
-                        });
-                        if (m_position_manager.opened() != nullptr) {
-                            const auto tpsl = m_exit_strategy.calc_tpsl(r.trade);
-                            set_tpsl(tpsl);
-                        }
+                        handle_event(r);
                     },
                     [&](const TpslResponseEvent & response) {
-                        if (!response.reject_reason.has_value()) {
-                            m_tpsl_publisher.push(m_last_ts_and_price.first, response.tpsl);
-                        }
-                        const size_t erased_cnt = m_pending_requests.erase(response.request_guid);
-                        if (erased_cnt == 0) {
-                            std::cout << "Unsolicited tpsl response" << std::endl;
-                        }
-                        if (response.reject_reason.has_value()) {
-                            // TODO close position, stop strategy ?
-                            std::cout << "ERROR: Tpsl was rejected!: " << response.reject_reason.value() << std::endl;
-                        }
+                        handle_event(response);
                     },
-                    [&](const TpslUpdatedEvent &) {
-                        std::cout << "TpslUpdatedEvent" << std::endl;
+                    [&](const TpslUpdatedEvent & response) {
+                        handle_event(response);
                     },
-                    [&](const StrategyStopRequest &) {
-                        std::cout << "StrategyStopRequest" << std::endl;
-                        if (m_position_manager.opened() != nullptr) {
-                            const bool success = close_position(m_last_ts_and_price.second, m_last_ts_and_price.first);
-                            if (!success) {
-                                std::cout << "ERROR: can't close a position on stop/crash" << std::endl;
-                            }
-                        }
-
-                        m_live_md_requests.clear();
-
-                        m_backtest_in_progress = false;
-                        m_stop_request_handled = true;
+                    [&](const StrategyStopRequest & response) {
+                        handle_event(response);
                     }},
             var);
 
@@ -312,6 +242,105 @@ void StrategyInstance::invoke(const std::variant<STRATEGY_EVENTS> & var)
         m_depo_publisher.push(m_last_ts_and_price.first, m_strategy_result.get().final_profit);
     }
     finish_if_needed_and_ready();
+}
+
+void StrategyInstance::handle_event(const HistoricalMDPackEvent & response)
+{
+    for (const auto & [ts, ohlc] : response.ts_and_price_pack) {
+        MDPriceEvent ev;
+        ev.ts_and_price = {ts, ohlc};
+        static_cast<IEventConsumer<MDPriceEvent> &>(m_event_loop).push(ev);
+    }
+
+    m_backtest_in_progress = true;
+    static_cast<IEventConsumer<StrategyStopRequest> &>(m_event_loop).push(StrategyStopRequest{});
+    const size_t erased_cnt = m_pending_requests.erase(response.request_guid);
+    if (erased_cnt == 0) {
+        std::cout << "ERROR: unsolicited HistoricalMDPackEvent" << std::endl;
+    }
+}
+
+void StrategyInstance::handle_event(const MDPriceEvent & response)
+{
+    const auto & [ts, ohlc] = std::tie(response.ts_and_price.first, response.ts_and_price.second);
+    m_last_ts_and_price = {ts, ohlc.close};
+    m_klines_publisher.push(ts, ohlc);
+    if (!first_price_received) {
+        m_depo_publisher.push(ts, 0.);
+        first_price_received = true;
+    }
+
+    const auto signal = m_strategy->push_price({ts, ohlc.close});
+    // TODO set position before sending order. because next check can be before execution arrives
+    if (m_position_manager.opened() == nullptr) {
+        if (signal.has_value()) {
+            on_signal(signal.value());
+        }
+    }
+}
+
+void StrategyInstance::handle_event(const OrderResponseEvent & response)
+{
+    const size_t erased_cnt = m_pending_requests.erase(response.request_guid);
+    if (erased_cnt == 0) {
+        std::cout << "ERROR: unsolicited OrderAcceptedEvent" << std::endl;
+    }
+    if (response.reject_reason.has_value()) {
+        std::cout << "OrderRejected: " << response.reject_reason.value() << std::endl;
+    }
+}
+
+void StrategyInstance::handle_event(const TradeEvent & response)
+{
+    const auto res = m_position_manager.on_trade_received(response.trade);
+
+    const auto & trade = response.trade;
+    m_signal_publisher.push(trade.ts(), Signal{trade.side(), trade.ts(), trade.price()});
+
+    if (res.has_value()) {
+        process_position_result(res.value(), trade.ts());
+    }
+    m_strategy_result.update([&](StrategyResult & res) {
+        res.trades_count++;
+    });
+    if (m_position_manager.opened() != nullptr) {
+        const auto tpsl = m_exit_strategy.calc_tpsl(trade);
+        set_tpsl(tpsl);
+    }
+}
+void StrategyInstance::handle_event(const TpslResponseEvent & response)
+{
+    if (!response.reject_reason.has_value()) {
+        m_tpsl_publisher.push(m_last_ts_and_price.first, response.tpsl);
+    }
+    const size_t erased_cnt = m_pending_requests.erase(response.request_guid);
+    if (erased_cnt == 0) {
+        std::cout << "Unsolicited tpsl response" << std::endl;
+    }
+    if (response.reject_reason.has_value()) {
+        // TODO close position, stop strategy ?
+        std::cout << "ERROR: Tpsl was rejected!: " << response.reject_reason.value() << std::endl;
+    }
+}
+void StrategyInstance::handle_event(const TpslUpdatedEvent &)
+{
+    std::println("Received TpslUpdatedEvent");
+}
+
+void StrategyInstance::handle_event(const StrategyStopRequest &)
+{
+    std::cout << "StrategyStopRequest" << std::endl;
+    if (m_position_manager.opened() != nullptr) {
+        const bool success = close_position(m_last_ts_and_price.second, m_last_ts_and_price.first);
+        if (!success) {
+            std::cout << "ERROR: can't close a position on stop/crash" << std::endl;
+        }
+    }
+
+    m_live_md_requests.clear();
+
+    m_backtest_in_progress = false;
+    m_stop_request_handled = true;
 }
 
 void StrategyInstance::set_tpsl(Tpsl tpsl)

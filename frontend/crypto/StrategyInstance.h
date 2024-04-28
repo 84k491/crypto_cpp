@@ -64,8 +64,14 @@ public:
 
 private:
     void invoke(const std::variant<STRATEGY_EVENTS> & value) override;
+    void handle_event(const HistoricalMDPackEvent & response);
+    void handle_event(const MDPriceEvent & response);
+    void handle_event(const OrderResponseEvent & response);
+    void handle_event(const TradeEvent & response);
+    void handle_event(const TpslResponseEvent & response);
+    static void handle_event(const TpslUpdatedEvent & response);
+    void handle_event(const StrategyStopRequest & response);
 
-    void on_price_received(std::chrono::milliseconds ts, const OHLC & ohlc);
     void on_signal(const Signal & signal);
     void process_position_result(const PositionResult & new_result,
                                  std::chrono::milliseconds ts);
