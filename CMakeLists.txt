@@ -14,7 +14,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} \
     -Wall \
     -Wextra \
     -Wshadow \
-    -Wswitch-default \
     -Wswitch-bool \
     -Wswitch \
     -Wreorder-ctor \

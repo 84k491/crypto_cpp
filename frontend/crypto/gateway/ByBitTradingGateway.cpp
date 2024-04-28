@@ -3,6 +3,7 @@
 #include "Events.h"
 #include "Ohlc.h"
 
+#include <print>
 #include <set>
 
 ByBitTradingGateway::ByBitTradingGateway()
@@ -43,7 +44,7 @@ void ByBitTradingGateway::on_order_response(const json & j)
         auto lref = m_consumers.lock();
         auto it = lref.get().find(response.symbol);
         if (it == lref.get().end()) {
-            std::cout << "Failed to find consumer for symbol: " << response.symbol << std::endl;
+            std::println("Failed to find consumer for symbol: {}", response.symbol);
             continue;
         }
         auto & consumers = it->second.second;
@@ -68,7 +69,7 @@ void ByBitTradingGateway::on_tpsl_update(const std::array<ByBitMessages::OrderRe
     auto lref = m_consumers.lock();
     auto it = lref.get().find(response.symbol);
     if (it == lref.get().end()) {
-        std::cout << "Failed to find consumer for symbol: " << response.symbol << std::endl;
+        std::println("Failed to find consumer for symbol: {}", response.symbol);
         return;
     }
     auto & consumers = it->second.second;
@@ -91,7 +92,7 @@ void ByBitTradingGateway::on_execution(const json & j)
         auto lref = m_consumers.lock();
         auto it = lref.get().find(response.symbol);
         if (it == lref.get().end()) {
-            std::cout << "Failed to find consumer for symbol: " << response.symbol << std::endl;
+            std::println("Failed to find consumer for symbol: {}", response.symbol);
             continue;
         }
         auto & consumers = it->second.second;
