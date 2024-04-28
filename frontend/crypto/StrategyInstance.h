@@ -41,7 +41,7 @@ public:
 
     StrategyInstance(
             const Symbol & symbol,
-            const MarketDataRequest & md_request,
+            const std::optional<HistoricalMDRequestData> & historical_md_request,
             const std::shared_ptr<IStrategy> & strategy_ptr,
             TpslExitStrategyConfig exit_strategy_config,
             ByBitGateway & md_gateway,
@@ -100,13 +100,11 @@ private:
     TimeseriesPublisher<double> m_depo_publisher;
     TimeseriesPublisher<Tpsl> m_tpsl_publisher;
 
-    // std::shared_ptr<TimeseriesSubsription<OHLC>> m_kline_sub;
-
     const Symbol m_symbol;
     static constexpr double m_pos_currency_amount = 100.;
     PositionManager m_position_manager;
 
-    const MarketDataRequest m_md_request;
+    const std::optional<HistoricalMDRequestData> m_historical_md_request;
 
     std::shared_ptr<ObjectSubscribtion<WorkStatus>> m_gw_status_sub;
     bool first_price_received = false;

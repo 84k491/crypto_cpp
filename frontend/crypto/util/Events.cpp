@@ -1,17 +1,18 @@
 #include "Events.h"
 
-HistoricalMDRequest::HistoricalMDRequest(IEventConsumer<HistoricalMDPackEvent> & _consumer, const Symbol & _symbol, std::chrono::milliseconds _start, std::chrono::milliseconds _end)
-    : BasicEvent<HistoricalMDPackEvent>(_consumer)
-    , symbol(_symbol)
-    , start(_start)
-    , end(_end)
+HistoricalMDRequest::HistoricalMDRequest(IEventConsumer<HistoricalMDPackEvent> & consumer,
+                                         const Symbol & symbol,
+                                         HistoricalMDRequestData data)
+    : BasicEvent<HistoricalMDPackEvent>(consumer)
+    , data(data)
+    , symbol(symbol)
     , guid(xg::newGuid())
 {
 }
 
-LiveMDRequest::LiveMDRequest(IEventConsumer<MDPriceEvent> & _consumer, const Symbol & _symbol)
-    : BasicEvent<MDPriceEvent>(_consumer)
-    , symbol(_symbol)
+LiveMDRequest::LiveMDRequest(IEventConsumer<MDPriceEvent> & consumer, const Symbol & symbol)
+    : BasicEvent<MDPriceEvent>(consumer)
+    , symbol(symbol)
     , guid(xg::newGuid())
 {
 }

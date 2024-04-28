@@ -14,7 +14,7 @@
 
 StrategyInstance::StrategyInstance(
         const Symbol & symbol,
-        const MarketDataRequest & md_request,
+        const std::optional<HistoricalMDRequestData> & historical_md_request,
         const std::shared_ptr<IStrategy> & strategy_ptr,
         TpslExitStrategyConfig exit_strategy_config,
         ByBitGateway & md_gateway,
@@ -27,7 +27,7 @@ StrategyInstance::StrategyInstance(
     , m_exit_strategy(exit_strategy_config)
     , m_symbol(symbol)
     , m_position_manager(symbol)
-    , m_md_request(md_request)
+    , m_historical_md_request(historical_md_request)
 {
     m_tr_gateway.register_consumers(m_strategy_guid, symbol, TradingGatewayConsumers{
                                                                      .trade_consumer = m_event_loop,
@@ -54,20 +54,18 @@ StrategyInstance::StrategyInstance(
 StrategyInstance::~StrategyInstance()
 {
     std::cout << "StrategyInstance destructor" << std::endl;
-    // TODO gateway can be destroyed before strategy
     m_tr_gateway.unregister_consumers(m_strategy_guid);
 }
 
 void StrategyInstance::run_async()
 {
-    if (!m_md_request.go_live) {
+    if (!m_historical_md_request.has_value()) {
         m_status.push(WorkStatus::Backtesting);
 
         HistoricalMDRequest historical_request(
                 m_event_loop,
                 m_symbol,
-                m_md_request.historical_range.value().start,
-                m_md_request.historical_range.value().end.value());
+                m_historical_md_request.value());
         m_md_gateway.push_async_request(std::move(historical_request));
         m_pending_requests.emplace(historical_request.guid);
     }

@@ -310,7 +310,7 @@ void ByBitGateway::push_async_request(LiveMDRequest && request)
 void ByBitGateway::handle_request(const HistoricalMDRequest & request)
 {
     const auto symbol = request.symbol;
-    const auto histroical_timerange = Timerange{request.start, request.end};
+    const auto histroical_timerange = Timerange{request.data.start, request.data.end};
 
     if (auto range_it = m_ranges_by_symbol.find(symbol.symbol_name); range_it != m_ranges_by_symbol.end()) {
         if (auto it = range_it->second.find(histroical_timerange); it != range_it->second.end()) {

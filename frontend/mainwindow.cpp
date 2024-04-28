@@ -154,18 +154,11 @@ void MainWindow::on_pb_run_clicked()
     }
 
     const auto md_request = [&]() {
-        MarketDataRequest result;
-        if (ui->cb_live->isChecked()) {
-            result.go_live = true;
-            result.historical_range.reset();
+        std::optional<HistoricalMDRequestData> req_data;
+        if (!ui->cb_live->isChecked()) {
+            req_data = {.start = timerange.start(), .end = timerange.end()};
         }
-        else {
-            result.go_live = false;
-            result.historical_range = MarketDataRequest::HistoricalRange();
-            result.historical_range->start = timerange.start();
-            result.historical_range->end = timerange.end();
-        }
-        return result;
+        return req_data;
     }();
 
     const auto symbol = [&]() -> std::optional<Symbol> {

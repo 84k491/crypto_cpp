@@ -15,22 +15,8 @@
 
 #include <chrono>
 #include <functional>
-#include <optional>
 #include <unordered_map>
 #include <vector>
-
-// TODO remove this, use events without a consumer
-struct MarketDataRequest
-{
-    struct HistoricalRange
-    {
-        std::chrono::milliseconds start;
-        std::optional<std::chrono::milliseconds> end;
-    };
-
-    std::optional<HistoricalRange> historical_range;
-    bool go_live = false;
-};
 
 class WorkerThreadLoop;
 class ByBitGateway final : private IEventInvoker<HistoricalMDRequest, LiveMDRequest>

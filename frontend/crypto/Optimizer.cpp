@@ -16,7 +16,7 @@ std::vector<std::pair<nlohmann::json, TpslExitStrategyConfig>> OptimizerParser::
             return get_possible_configs(*meta);
         }
         if (const auto * config = std::get_if<JsonStrategyConfig>(&m_inputs.entry_strategy); config != nullptr) {
-            const auto& json = config->get();
+            const auto & json = config->get();
             return {json};
         }
         return {};
@@ -110,17 +110,12 @@ std::optional<std::pair<JsonStrategyConfig, TpslExitStrategyConfig>> Optimizer::
             continue;
         }
 
-        const auto md_request = [&]() {
-            MarketDataRequest result;
-            result.go_live = false;
-            result.historical_range = {m_timerange.start(), m_timerange.end()};
-            return result;
-        }();
+        HistoricalMDRequestData md_request_data = {.start = m_timerange.start(), .end = m_timerange.end()};
 
         BacktestTradingGateway tr_gateway;
         StrategyInstance strategy_instance(
                 m_symbol,
-                md_request,
+                md_request_data,
                 strategy_opt.value(),
                 exit_config,
                 m_gateway,

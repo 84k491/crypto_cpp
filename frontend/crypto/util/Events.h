@@ -41,27 +41,30 @@ struct HistoricalMDPackEvent : public BasicResponseEvent
 
     xg::Guid request_guid;
 };
-using MDResponseEvent = std::variant<HistoricalMDPackEvent, MDPriceEvent>;
+
+struct HistoricalMDRequestData
+{
+    std::chrono::milliseconds start;
+    std::chrono::milliseconds end;
+};
 
 struct HistoricalMDRequest : public BasicEvent<HistoricalMDPackEvent>
 {
     HistoricalMDRequest(
-            IEventConsumer<HistoricalMDPackEvent> & _consumer,
-            const Symbol & _symbol,
-            std::chrono::milliseconds _start,
-            std::chrono::milliseconds _end);
-    Symbol symbol;
-    std::chrono::milliseconds start;
-    std::chrono::milliseconds end;
+            IEventConsumer<HistoricalMDPackEvent> & consumer,
+            const Symbol & symbol,
+            HistoricalMDRequestData data);
+    HistoricalMDRequestData data;
 
+    Symbol symbol;
     xg::Guid guid;
 };
 
 struct LiveMDRequest : public BasicEvent<MDPriceEvent>
 {
-    LiveMDRequest(IEventConsumer<MDPriceEvent> & _consumer, const Symbol & _symbol);
-    Symbol symbol;
+    LiveMDRequest(IEventConsumer<MDPriceEvent> & consumer, const Symbol & symbol);
 
+    Symbol symbol;
     xg::Guid guid;
 };
 
