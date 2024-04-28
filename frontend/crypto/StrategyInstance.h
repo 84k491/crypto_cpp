@@ -19,32 +19,25 @@
 #include <set>
 #include <variant>
 
+#define STRATEGY_EVENTS HistoricalMDPackEvent, \
+                        MDPriceEvent,          \
+                        OrderResponseEvent,    \
+                        TradeEvent,            \
+                        TpslResponseEvent,     \
+                        TpslUpdatedEvent,      \
+                        StrategyStopRequest
+
 struct StrategyStopRequest : public BasicResponseEvent
 {
 };
 
-class StrategyInstance
-    : public IEventInvoker<HistoricalMDPackEvent,
-                           MDPriceEvent,
-                           OrderResponseEvent,
-                           TradeEvent,
-                           TpslResponseEvent,
-                           TpslUpdatedEvent,
-                           StrategyStopRequest>
+class StrategyInstance : public IEventInvoker<STRATEGY_EVENTS>
 {
 public:
     using KlineCallback =
             std::function<void(std::pair<std::chrono::milliseconds, OHLC>)>;
     using DepoCallback =
             std::function<void(std::chrono::milliseconds ts, double value)>;
-    using ResponseEventVariant =
-            std::variant<HistoricalMDPackEvent,
-                         MDPriceEvent,
-                         OrderResponseEvent,
-                         TradeEvent,
-                         TpslResponseEvent,
-                         TpslUpdatedEvent,
-                         StrategyStopRequest>;
 
     StrategyInstance(
             const Symbol & symbol,
@@ -70,7 +63,7 @@ public:
     [[nodiscard("wait in future")]] std::future<void> wait_for_finish();
 
 private:
-    void invoke(const ResponseEventVariant & value) override;
+    void invoke(const std::variant<STRATEGY_EVENTS> & value) override;
 
     void on_price_received(std::chrono::milliseconds ts, const OHLC & ohlc);
     void on_signal(const Signal & signal);
@@ -87,15 +80,7 @@ private:
 private:
     xg::Guid m_strategy_guid;
 
-    EventLoop<
-            HistoricalMDPackEvent,
-            MDPriceEvent,
-            OrderResponseEvent,
-            TradeEvent,
-            TpslResponseEvent,
-            TpslUpdatedEvent,
-            StrategyStopRequest>
-            m_event_loop;
+    EventLoop<STRATEGY_EVENTS> m_event_loop;
 
     ByBitGateway & m_md_gateway;
     ITradingGateway & m_tr_gateway;

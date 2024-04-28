@@ -227,7 +227,7 @@ TimeseriesPublisher<Tpsl> & StrategyInstance::tpsl_publisher()
     return m_tpsl_publisher;
 }
 
-void StrategyInstance::invoke(const ResponseEventVariant & var)
+void StrategyInstance::invoke(const std::variant<STRATEGY_EVENTS> & var)
 {
 
     std::visit(
