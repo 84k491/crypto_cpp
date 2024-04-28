@@ -64,8 +64,8 @@ public:
 private:
     using KlinePackCallback = std::function<void(std::map<std::chrono::milliseconds, OHLC> &&)>;
 
-    void invoke(const MDRequest & value) override;
-    void handle_request_deprecated(const LiveMDRequest & request);
+    void invoke(const std::variant<HistoricalMDRequest, LiveMDRequest> & value) override;
+    void handle_request(const HistoricalMDRequest & request);
     void handle_request(const LiveMDRequest & request);
 
     void on_price_received(const nlohmann::json & json);

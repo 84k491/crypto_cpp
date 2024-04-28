@@ -6,6 +6,12 @@
 #include <iostream>
 #include <variant>
 
+template <class... Ts>
+struct VariantMatcher : Ts...
+{
+    using Ts::operator()...;
+};
+
 template <class... Args>
 class IEventInvoker
 {

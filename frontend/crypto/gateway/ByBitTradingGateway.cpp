@@ -112,19 +112,12 @@ void ByBitTradingGateway::push_tpsl_request(const TpslRequestEvent & tpsl_ev)
 
 void ByBitTradingGateway::invoke(const std::variant<OrderRequestEvent, TpslRequestEvent> & variant)
 {
-    bool event_parsed = false;
-    if (const auto * order_req = std::get_if<OrderRequestEvent>(&variant); order_req != nullptr) {
-        process_event(*order_req);
-        event_parsed = true;
-    }
-    else if (const auto * tpsl_req = std::get_if<TpslRequestEvent>(&variant); tpsl_req != nullptr) {
-        process_event(*tpsl_req);
-        event_parsed = true;
-    }
-
-    if (!event_parsed) {
-        std::cout << "ERROR: Unknown event type" << std::endl;
-    }
+    std::visit(
+            VariantMatcher{
+                    [&](const OrderRequestEvent & order) { process_event(order); },
+                    [&](const TpslRequestEvent & tpsl) { process_event(tpsl); },
+            },
+            variant);
 }
 
 void ByBitTradingGateway::process_event(const OrderRequestEvent & req)

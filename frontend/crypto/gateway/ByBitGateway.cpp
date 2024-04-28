@@ -10,7 +10,6 @@
 #include <crossguid2/crossguid/guid.hpp>
 #include <future>
 #include <string>
-#include <thread>
 #include <vector>
 
 ByBitGateway::ByBitGateway()
@@ -308,53 +307,42 @@ void ByBitGateway::push_async_request(LiveMDRequest && request)
     m_event_loop.as_consumer<LiveMDRequest>().push(request);
 }
 
-void ByBitGateway::handle_request_deprecated(const LiveMDRequest & request)
+void ByBitGateway::handle_request(const HistoricalMDRequest & request)
 {
-    std::cout << "Got live request" << std::endl;
-    const LiveMDRequest & live_request = request;
-    auto locked_ref = m_live_requests.lock();
-    locked_ref.get().push_back(live_request);
-    if (locked_ref.get().size() == 1) {
-        m_live_thread = std::make_unique<WorkerThreadLoop>(
-                [this,
-                 symbol = live_request.symbol,
-                 last_ts = m_last_server_time](const std::atomic_bool & running) mutable -> bool {
-                    const auto timerange = Timerange{last_ts + std::chrono::seconds{1}, last_ts + min_interval};
+    const auto symbol = request.symbol;
+    const auto histroical_timerange = Timerange{request.start, request.end};
 
-                    request_historical_klines(
-                            symbol.symbol_name,
-                            timerange,
-                            [symbol,
-                             &last_ts,
-                             this](std::map<std::chrono::milliseconds, OHLC> && ts_and_ohlc_map) {
-                                for (const auto & ts_ohlc_pair : ts_and_ohlc_map) {
-                                    auto requests = m_live_requests.lock();
-                                    for (const auto & req : requests.get()) {
-                                        if (req.symbol.symbol_name == symbol.symbol_name) {
-                                            MDPriceEvent ev;
-                                            ev.ts_and_price = ts_ohlc_pair;
-                                            req.event_consumer->push(ev);
-                                        }
-                                    }
-                                    last_ts = ts_and_ohlc_map.rbegin()->first;
-                                    std::cout << "ts: " << ts_ohlc_pair.first.count() << "OHLC: " << ts_ohlc_pair.second << std::endl;
-                                }
-                            });
-
-                    const auto wait_time = std::chrono::seconds{30};
-                    std::cout << "Got all live prices, sleeping for " << wait_time.count() << " seconds" << std::endl;
-                    const auto now = std::chrono::steady_clock::now();
-                    while (running && std::chrono::steady_clock::now() < now + wait_time) {
-                        std::this_thread::sleep_for(std::chrono::milliseconds{1});
-                    }
-
-                    return true;
-                });
-        m_live_thread->set_on_finish([this]() {
-            m_status.push(WorkStatus::Stopped);
-            std::cout << "Stopping live connection" << std::endl;
-        });
+    if (auto range_it = m_ranges_by_symbol.find(symbol.symbol_name); range_it != m_ranges_by_symbol.end()) {
+        if (auto it = range_it->second.find(histroical_timerange); it != range_it->second.end()) {
+            const auto & prices = it->second;
+            HistoricalMDPackEvent ev(request.guid);
+            ev.ts_and_price_pack = prices;
+            request.event_consumer->push(ev);
+            return;
+        }
     }
+
+    std::map<std::chrono::milliseconds, OHLC> prices;
+    const bool success = request_historical_klines(
+            symbol.symbol_name,
+            histroical_timerange,
+            [&prices,
+             symbol](std::map<std::chrono::milliseconds, OHLC> && ts_and_ohlc_map) {
+                // other thread
+                prices.merge(ts_and_ohlc_map);
+            });
+
+    if (!success) {
+        std::cout << "ERROR: Failed to request klines" << std::endl;
+        m_status.push(WorkStatus::Crashed);
+        return;
+    }
+
+    auto & range = m_ranges_by_symbol[symbol.symbol_name][histroical_timerange];
+    HistoricalMDPackEvent ev(request.guid);
+    ev.ts_and_price_pack = prices;
+    request.event_consumer->push(ev);
+    range.merge(prices);
 }
 
 void ByBitGateway::handle_request(const LiveMDRequest & request)
@@ -393,52 +381,14 @@ void ByBitGateway::on_price_received(const nlohmann::json & json)
     }
 }
 
-void ByBitGateway::invoke(const MDRequest & request)
+void ByBitGateway::invoke(const std::variant<HistoricalMDRequest, LiveMDRequest> & request)
 {
-    if (const auto * r = std::get_if<HistoricalMDRequest>(&request); r) {
-        const HistoricalMDRequest & histroical_request = *r;
-        const auto symbol = histroical_request.symbol;
-        const auto histroical_timerange = Timerange{histroical_request.start, histroical_request.end};
-
-        if (auto range_it = m_ranges_by_symbol.find(symbol.symbol_name); range_it != m_ranges_by_symbol.end()) {
-            if (auto it = range_it->second.find(histroical_timerange); it != range_it->second.end()) {
-                const auto & prices = it->second;
-                HistoricalMDPackEvent ev(r->guid);
-                ev.ts_and_price_pack = prices;
-                histroical_request.event_consumer->push(ev);
-                return;
-            }
-        }
-
-        std::map<std::chrono::milliseconds, OHLC> prices;
-        const bool success = request_historical_klines(
-                symbol.symbol_name,
-                histroical_timerange,
-                [&prices,
-                 symbol](std::map<std::chrono::milliseconds, OHLC> && ts_and_ohlc_map) {
-                    // other thread
-                    prices.merge(ts_and_ohlc_map);
-                });
-
-        if (!success) {
-            std::cout << "ERROR: Failed to request klines" << std::endl;
-            m_status.push(WorkStatus::Crashed);
-            return;
-        }
-
-        auto & range = m_ranges_by_symbol[symbol.symbol_name][histroical_timerange];
-        HistoricalMDPackEvent ev(r->guid);
-        ev.ts_and_price_pack = prices;
-        histroical_request.event_consumer->push(ev);
-        range.merge(prices);
-
-        return;
-    }
-    if (const auto * r = std::get_if<LiveMDRequest>(&request); r) {
-        handle_request(*r);
-        return;
-    }
-    std::cout << "ERROR: Got unknown MD request" << std::endl;
+    std::visit(
+            VariantMatcher{
+                    [&](const HistoricalMDRequest & r) { handle_request(r); },
+                    [&](const LiveMDRequest & r) { handle_request(r); },
+            },
+            request);
 }
 
 void ByBitGateway::unsubscribe_from_live(xg::Guid guid)

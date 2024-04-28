@@ -64,9 +64,8 @@ struct LiveMDRequest : public BasicEvent<MDPriceEvent>
 
     xg::Guid guid;
 };
-using MDRequest = std::variant<HistoricalMDRequest, LiveMDRequest>;
 
-struct OrderResponseEvent : public BasicResponseEvent // TODO rename to AckEvent
+struct OrderResponseEvent : public BasicResponseEvent // TODO rename to AckEvent?
 {
     OrderResponseEvent(
             xg::Guid request_guid,
