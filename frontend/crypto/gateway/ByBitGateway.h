@@ -3,6 +3,7 @@
 #include "EventLoop.h"
 #include "Events.h"
 #include "Guarded.h"
+#include "IMarketDataGateway.h"
 #include "ObjectPublisher.h"
 #include "Ohlc.h"
 #include "RestClient.h"
@@ -19,7 +20,8 @@
 #include <vector>
 
 class WorkerThreadLoop;
-class ByBitGateway final : private IEventInvoker<HistoricalMDRequest, LiveMDRequest>
+class ByBitGateway final : public IMarketDataGateway
+    , private IEventInvoker<HistoricalMDRequest, LiveMDRequest>
 {
 private:
     static constexpr double taker_fee = 0.0002; // 0.02%
@@ -28,22 +30,21 @@ private:
     static constexpr std::string_view s_endpoint_address = "https://api.bybit.com";
 
 public:
-    static constexpr std::chrono::minutes min_interval = std::chrono::minutes{1};
+    static constexpr std::chrono::minutes min_historical_interval = std::chrono::minutes{1};
     static auto get_taker_fee() { return taker_fee; }
 
     ByBitGateway();
 
-    void push_async_request(HistoricalMDRequest && request);
-    void push_async_request(LiveMDRequest && request);
+    void push_async_request(HistoricalMDRequest && request) override;
+    void push_async_request(LiveMDRequest && request) override;
 
-    void unsubscribe_from_live(xg::Guid guid);
+    void unsubscribe_from_live(xg::Guid guid) override;
 
-    ObjectPublisher<WorkStatus> & status_publisher();
+    ObjectPublisher<WorkStatus> & status_publisher() override;
 
     std::vector<Symbol> get_symbols(const std::string & currency);
 
 private:
-
     void invoke(const std::variant<HistoricalMDRequest, LiveMDRequest> & value) override;
     void handle_request(const HistoricalMDRequest & request);
     void handle_request(const LiveMDRequest & request);

@@ -17,7 +17,7 @@ StrategyInstance::StrategyInstance(
         const std::optional<HistoricalMDRequestData> & historical_md_request,
         const std::shared_ptr<IStrategy> & strategy_ptr,
         TpslExitStrategyConfig exit_strategy_config,
-        ByBitGateway & md_gateway,
+        IMarketDataGateway & md_gateway,
         ITradingGateway & tr_gateway)
     : m_strategy_guid(xg::newGuid())
     , m_event_loop(*this)

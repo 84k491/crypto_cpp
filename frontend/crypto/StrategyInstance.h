@@ -1,7 +1,7 @@
 #pragma once
 
-#include "ByBitGateway.h"
 #include "EventLoop.h"
+#include "IMarketDataGateway.h"
 #include "ITradingGateway.h"
 #include "ObjectPublisher.h"
 #include "PositionManager.h"
@@ -44,7 +44,7 @@ public:
             const std::optional<HistoricalMDRequestData> & historical_md_request,
             const std::shared_ptr<IStrategy> & strategy_ptr,
             TpslExitStrategyConfig exit_strategy_config,
-            ByBitGateway & md_gateway,
+            IMarketDataGateway & md_gateway,
             ITradingGateway & tr_gateway);
 
     ~StrategyInstance() override;
@@ -88,7 +88,7 @@ private:
 
     EventLoop<STRATEGY_EVENTS> m_event_loop;
 
-    ByBitGateway & m_md_gateway;
+    IMarketDataGateway & m_md_gateway;
     ITradingGateway & m_tr_gateway;
     std::shared_ptr<IStrategy> m_strategy;
     TpslExitStrategy m_exit_strategy;

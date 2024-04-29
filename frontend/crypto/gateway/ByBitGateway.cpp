@@ -162,7 +162,7 @@ bool ByBitGateway::request_historical_klines(const std::string & symbol, const T
     while (last_start < timerange.end()) {
         const unsigned limit = 1000;
         const auto end = [&]() -> std::chrono::milliseconds {
-            const auto possible_end = last_start + min_interval * 1000;
+            const auto possible_end = last_start + min_historical_interval * 1000;
             if (timerange.end() < possible_end) {
                 return timerange.end();
             }
@@ -172,7 +172,7 @@ bool ByBitGateway::request_historical_klines(const std::string & symbol, const T
         }();
 
         ScopeExit se([&]() {
-            last_start = end + min_interval;
+            last_start = end + min_historical_interval;
         });
 
         const std::chrono::milliseconds remaining_delta = timerange.end() - last_start;
@@ -186,7 +186,7 @@ bool ByBitGateway::request_historical_klines(const std::string & symbol, const T
                << "/v5/market/kline"
                << "?symbol=" << symbol
                << "&category=" << category
-               << "&interval=" << min_interval.count()
+               << "&interval=" << min_historical_interval.count()
                << "&limit=" << limit
                << "&start=" << last_start.count()
                << "&end=" << end.count();
@@ -209,7 +209,7 @@ bool ByBitGateway::request_historical_klines(const std::string & symbol, const T
             std::cout << "Empty kline result" << std::endl;
             return false;
         }
-        if (const auto delta = inter_result.begin()->first - last_start; delta > min_interval) {
+        if (const auto delta = inter_result.begin()->first - last_start; delta > min_historical_interval) {
             std::cout << "ERROR inconsistent time delta: " << std::chrono::duration_cast<std::chrono::seconds>(delta).count() << "s. Stopping" << std::endl;
             std::cout << "First timestamp: " << inter_result.begin()->first.count() << std::endl;
             return false;
