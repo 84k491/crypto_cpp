@@ -314,7 +314,7 @@ void ByBitGateway::handle_request(const HistoricalMDRequest & request)
 
     if (!success) {
         std::cout << "ERROR: Failed to request klines" << std::endl;
-        m_status.push(WorkStatus::Crashed);
+        m_status.push(WorkStatus::Panic);
         return;
     }
 

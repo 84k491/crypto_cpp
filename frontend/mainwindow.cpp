@@ -92,7 +92,7 @@ MainWindow::MainWindow(QWidget * parent)
         if (status == WorkStatus::Stopped || status == WorkStatus::Live) {
             subscribe_to_strategy();
         }
-        if (status == WorkStatus::Stopped || status == WorkStatus::Crashed) {
+        if (status == WorkStatus::Stopped || status == WorkStatus::Panic) {
             ui->pb_run->setEnabled(true);
             ui->pb_stop->setEnabled(false);
             m_subscriptions.clear();

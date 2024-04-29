@@ -29,6 +29,7 @@ StrategyInstance::StrategyInstance(
     , m_position_manager(symbol)
     , m_historical_md_request(historical_md_request)
 {
+    m_status.push(WorkStatus::Stopped);
     m_tr_gateway.register_consumers(m_strategy_guid, symbol, TradingGatewayConsumers{
                                                                      .trade_consumer = m_event_loop,
                                                                      .order_ack_consumer = m_event_loop,
@@ -40,7 +41,7 @@ StrategyInstance::StrategyInstance(
     });
 
     m_gw_status_sub = m_md_gateway.status_publisher().subscribe([this](const WorkStatus & status) {
-        if (status == WorkStatus::Stopped || status == WorkStatus::Crashed) {
+        if (status == WorkStatus::Stopped || status == WorkStatus::Panic) {
             if (m_position_manager.opened() != nullptr) {
                 const bool success = close_position(m_last_ts_and_price.second, m_last_ts_and_price.first);
                 if (!success) {

@@ -6,7 +6,7 @@ enum class WorkStatus
     Stopped,
     Backtesting,
     Live,
-    Crashed,
+    Panic,
 };
 
 inline std::string to_string(WorkStatus status)
@@ -15,7 +15,7 @@ inline std::string to_string(WorkStatus status)
     case WorkStatus::Stopped: return "Stopped";
     case WorkStatus::Backtesting: return "Backtesting";
     case WorkStatus::Live: return "Live";
-    case WorkStatus::Crashed: return "Crashed";
+    case WorkStatus::Panic: return "Panic";
     }
 }
 

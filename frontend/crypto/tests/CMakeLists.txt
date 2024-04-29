@@ -6,24 +6,30 @@ include_directories(
     ${GMOCK_INCLUDE_DIRS}
     ..
 )
-
+####################################################################################################
 add_executable(position_manager_test
     PositionManagerTest.cpp
     ../PositionManager.cpp
 )
-
 target_link_libraries(position_manager_test
     ${GTEST_BOTH_LIBRARIES}
     trading_primitives
-    # crossguid2
 )
-
 set(UNIT_TEST position_manager_test)
 add_test(NAME ${UNIT_TEST} COMMAND ${UNIT_TEST})
-# add_custom_command(
-#      TARGET ${UNIT_TEST}
-#      COMMENT "Run test: ${UNIT_TEST}"
-#      POST_BUILD 
-#      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-#      COMMAND ${UNIT_TEST}
-# )
+####################################################################################################
+add_executable(strategy_instance_test
+    StrategyInstanceTest.cpp
+    ../StrategyInstance.cpp
+    ../PositionManager.cpp
+)
+target_link_libraries(strategy_instance_test
+    ${GTEST_BOTH_LIBRARIES}
+    trading_primitives
+    util
+    gateway
+    nlohmann_json
+    strategy
+)
+set(UNIT_TEST strategy_instance_test)
+add_test(NAME ${UNIT_TEST} COMMAND ${UNIT_TEST})
