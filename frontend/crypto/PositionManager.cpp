@@ -5,6 +5,7 @@
 
 #include <iostream>
 #include <optional>
+#include <print>
 #include <utility>
 
 std::optional<PositionResult> PositionManager::on_trade_received(const Trade & trade)

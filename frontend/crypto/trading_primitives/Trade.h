@@ -35,7 +35,7 @@ public:
 
 private:
     std::chrono::milliseconds m_ts;
-    std::string m_symbol;
+    std::string m_symbol; // TODO use Symbol type
     double m_price{};
     UnsignedVolume m_unsigned_volume;
     Side m_side = Side::Buy;

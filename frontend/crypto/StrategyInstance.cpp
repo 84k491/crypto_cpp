@@ -353,11 +353,10 @@ bool StrategyInstance::open_position(double price, SignedVolume target_absolute_
 {
     const std::optional<SignedVolume> adjusted_target_volume_opt = m_symbol.get_qty_floored(target_absolute_volume);
     if (!adjusted_target_volume_opt.has_value()) {
-        std::cout
-                << "ERROR can't get proper volume on open_or_move, target_absolute_volume = "
-                << target_absolute_volume.value()
-                << ", price_step: "
-                << m_symbol.lot_size_filter.qty_step << std::endl;
+        std::println(
+                "ERROR can't get proper volume on open_or_move, target_absolute_volume = {}, qty_step = {}",
+                target_absolute_volume.value(),
+                m_symbol.lot_size_filter.qty_step);
         return false;
     }
     const SignedVolume adjusted_target_volume = adjusted_target_volume_opt.value();
