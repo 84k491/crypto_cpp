@@ -277,26 +277,6 @@ ObjectPublisher<WorkStatus> & ByBitGateway::status_publisher()
     return m_status;
 }
 
-void ByBitGateway::wait_for_finish()
-{
-    if (m_backtest_thread) {
-        m_backtest_thread->wait_for_finish();
-    }
-    if (m_live_thread) {
-        m_live_thread->wait_for_finish();
-    }
-}
-
-void ByBitGateway::stop_async()
-{
-    if (m_backtest_thread) {
-        m_backtest_thread->stop_async();
-    }
-    if (m_live_thread) {
-        m_live_thread->stop_async();
-    }
-}
-
 void ByBitGateway::push_async_request(HistoricalMDRequest && request)
 {
     m_event_loop.as_consumer<HistoricalMDRequest>().push(request);

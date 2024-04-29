@@ -59,7 +59,7 @@ StrategyInstance::~StrategyInstance()
 
 void StrategyInstance::run_async()
 {
-    if (!m_historical_md_request.has_value()) {
+    if (m_historical_md_request.has_value()) {
         m_status.push(WorkStatus::Backtesting);
 
         HistoricalMDRequest historical_request(

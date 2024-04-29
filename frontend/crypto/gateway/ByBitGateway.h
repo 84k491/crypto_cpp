@@ -28,8 +28,6 @@ private:
     static constexpr std::string_view s_endpoint_address = "https://api.bybit.com";
 
 public:
-    using KlineCallback = std::function<void(std::chrono::milliseconds, const OHLC &)>;
-
     static constexpr std::chrono::minutes min_interval = std::chrono::minutes{1};
     static auto get_taker_fee() { return taker_fee; }
 
@@ -40,15 +38,11 @@ public:
 
     void unsubscribe_from_live(xg::Guid guid);
 
-    void wait_for_finish();
-    void stop_async();
-
     ObjectPublisher<WorkStatus> & status_publisher();
 
     std::vector<Symbol> get_symbols(const std::string & currency);
 
 private:
-    using KlinePackCallback = std::function<void(std::map<std::chrono::milliseconds, OHLC> &&)>;
 
     void invoke(const std::variant<HistoricalMDRequest, LiveMDRequest> & value) override;
     void handle_request(const HistoricalMDRequest & request);
@@ -57,6 +51,8 @@ private:
     void on_price_received(const nlohmann::json & json);
 
     std::chrono::milliseconds get_server_time();
+
+    using KlinePackCallback = std::function<void(std::map<std::chrono::milliseconds, OHLC> &&)>;
     bool request_historical_klines(const std::string & symbol, const Timerange & timerange, KlinePackCallback && cb);
 
 private:
