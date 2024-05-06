@@ -80,11 +80,14 @@ void StrategyInstance::run_async()
     }
 }
 
-void StrategyInstance::stop_async()
+void StrategyInstance::stop_async(bool panic)
 {
     std::cout << "stop_async" << std::endl;
     for (const auto & req : m_live_md_requests) {
         m_md_gateway.unsubscribe_from_live(req);
+    }
+    if (panic) {
+        m_status_on_stop = WorkStatus::Panic;
     }
     static_cast<IEventConsumer<StrategyStopRequest> &>(m_event_loop).push(StrategyStopRequest{});
 }
@@ -237,8 +240,9 @@ void StrategyInstance::invoke(const std::variant<STRATEGY_EVENTS> & var)
             var);
 
     if (ready_to_finish()) {
-        m_status.push(WorkStatus::Stopped);
+        m_status.push(m_status_on_stop);
         m_depo_publisher.push(m_last_ts_and_price.first, m_strategy_result.get().final_profit);
+        m_tr_gateway.unregister_consumers(m_strategy_guid);
     }
     finish_if_needed_and_ready();
 }
@@ -280,12 +284,14 @@ void StrategyInstance::handle_event(const MDPriceEvent & response)
 
 void StrategyInstance::handle_event(const OrderResponseEvent & response)
 {
-    const size_t erased_cnt = m_pending_orders.erase(response.request_guid);
-    if (erased_cnt == 0) {
-        std::cout << "ERROR: unsolicited OrderAcceptedEvent" << std::endl;
-    }
     if (response.reject_reason.has_value()) {
         std::cout << "OrderRejected: " << response.reject_reason.value() << std::endl;
+        stop_async(true);
+    }
+
+    const size_t erased_cnt = m_pending_orders.erase(response.request_guid);
+    if (erased_cnt == 0) {
+        std::cout << "ERROR: unsolicited OrderResponseEvent" << std::endl;
     }
 }
 

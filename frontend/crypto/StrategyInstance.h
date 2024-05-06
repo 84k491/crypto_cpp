@@ -59,7 +59,7 @@ public:
     TimeseriesPublisher<Tpsl> & tpsl_publisher();
 
     void run_async();
-    void stop_async();
+    void stop_async(bool panic = false);
     [[nodiscard("wait in future")]] std::future<void> wait_for_finish();
 
 private:
@@ -118,6 +118,7 @@ private:
     std::set<xg::Guid> m_pending_orders;
 
     bool m_stop_request_handled = false;
+    WorkStatus m_status_on_stop = WorkStatus::Stopped;
     std::optional<std::promise<void>> m_finish_promise;
 
     bool m_backtest_in_progress = false;

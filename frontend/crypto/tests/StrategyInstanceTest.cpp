@@ -142,7 +142,9 @@ public:
                 md_gateway,
                 tr_gateway);
 
-        strategy_status = strategy_instance->status_publisher().get();
+        {
+            strategy_status = strategy_instance->status_publisher().get();
+        }
 
         status_sub = strategy_instance->status_publisher().subscribe([&](const auto & status) {
             strategy_status = status;
@@ -467,8 +469,48 @@ TEST_F(StrategyInstanceTest, ManyPricesReceivedWhileOrderIsPending_NoAdditionalO
     ASSERT_EQ(possible_extra_order_req.order.price(), order_req.order.price());
 }
 
-TEST_F(StrategyInstanceTest, EnterOrder_GetReject_Panic) {}
-TEST_F(StrategyInstanceTest, OpenPos_TpslReject_ClosePosAndPanic) {}
+TEST_F(StrategyInstanceTest, EnterOrder_GetReject_Panic)
+{
+    ASSERT_EQ(strategy_status, WorkStatus::Stopped);
+    strategy_instance->run_async();
+    ASSERT_EQ(md_gateway.live_requests_count(), 1);
+    ASSERT_EQ(strategy_status, WorkStatus::Live);
+    const auto live_req = md_gateway.m_last_live_request.value();
+
+    ASSERT_TRUE(tr_gateway.m_consumers);
+    strategy_ptr->signal_on_next_tick(Side::Buy);
+    {
+        const std::chrono::milliseconds price_ts = std::chrono::milliseconds(1000);
+        const double price = 10.1;
+        OHLC ohlc = {price_ts, price, price, price, price};
+        MDPriceEvent price_event;
+        price_event.ts_and_price = {price_ts, ohlc};
+        live_req.event_consumer->push(price_event);
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    StrategyResult result = strategy_instance->strategy_result_publisher().get();
+    ASSERT_EQ(result.trades_count, 0);
+    const auto strategy_res_sub = strategy_instance->strategy_result_publisher().subscribe(
+            [&](const auto & res) {
+                result = res;
+            });
+
+    ASSERT_TRUE(tr_gateway.m_last_order_request.has_value());
+    const auto order_req = tr_gateway.m_last_order_request.value();
+    const auto order_response = OrderResponseEvent{
+            order_req.order.guid(), "test_reject"};
+    order_req.event_consumer->push(order_response);
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+    ASSERT_EQ(strategy_status, WorkStatus::Panic);
+    ASSERT_FALSE(tr_gateway.m_consumers) << "Must unsubscribe on panic";
+    ASSERT_EQ(md_gateway.unsubscribed_count(), 1) << "Must unsubscribe on panic";
+}
+
+TEST_F(StrategyInstanceTest, OpenPos_TpslReject_ClosePosAndPanic)
+{
+}
 
 // TODO
 // TEST_F(StrategyInstanceTest, PanicOnMarketDataStop) {}
