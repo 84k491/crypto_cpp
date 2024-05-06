@@ -271,7 +271,7 @@ void StrategyInstance::handle_event(const MDPriceEvent & response)
 
     const auto signal = m_strategy->push_price({ts, ohlc.close});
     // TODO set position before sending order. because next check can be before execution arrives
-    if (m_position_manager.opened() == nullptr) {
+    if (m_position_manager.opened() == nullptr && m_pending_orders.empty()) {
         if (signal.has_value()) {
             on_signal(signal.value());
         }
@@ -280,7 +280,7 @@ void StrategyInstance::handle_event(const MDPriceEvent & response)
 
 void StrategyInstance::handle_event(const OrderResponseEvent & response)
 {
-    const size_t erased_cnt = m_pending_requests.erase(response.request_guid);
+    const size_t erased_cnt = m_pending_orders.erase(response.request_guid);
     if (erased_cnt == 0) {
         std::cout << "ERROR: unsolicited OrderAcceptedEvent" << std::endl;
     }
@@ -381,7 +381,7 @@ bool StrategyInstance::open_position(double price, SignedVolume target_absolute_
             order,
             m_event_loop,
             m_event_loop);
-    m_pending_requests.emplace(order.guid());
+    m_pending_orders.emplace(order.guid());
     m_tr_gateway.push_order_request(or_event);
     return true;
 }
@@ -408,7 +408,7 @@ bool StrategyInstance::close_position(double price, std::chrono::milliseconds ts
             order,
             m_event_loop,
             m_event_loop);
-    m_pending_requests.emplace(order.guid());
+    m_pending_orders.emplace(order.guid());
     m_tr_gateway.push_order_request(or_event);
     return true;
 }

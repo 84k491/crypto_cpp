@@ -115,6 +115,7 @@ private:
 
     std::set<xg::Guid> m_live_md_requests;
     std::set<xg::Guid> m_pending_requests;
+    std::set<xg::Guid> m_pending_orders;
 
     bool m_stop_request_handled = false;
     std::optional<std::promise<void>> m_finish_promise;

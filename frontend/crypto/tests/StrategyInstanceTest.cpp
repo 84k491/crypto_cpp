@@ -411,7 +411,7 @@ TEST_F(StrategyInstanceTest, OpenPositionWithTpsl_CloseOnGracefullStop)
     ASSERT_EQ(result.trades_count, 2);
 }
 
-TEST_F(StrategyInstanceTest, ManyPricesReceivedBetweenEnterOrderAndOpenTrade_NoAdditionalOrders)
+TEST_F(StrategyInstanceTest, ManyPricesReceivedWhileOrderIsPending_NoAdditionalOrders)
 {
     ASSERT_EQ(strategy_status, WorkStatus::Stopped);
     strategy_instance->run_async();
@@ -462,6 +462,7 @@ TEST_F(StrategyInstanceTest, ManyPricesReceivedBetweenEnterOrderAndOpenTrade_NoA
     ASSERT_TRUE(tr_gateway.m_last_order_request.has_value());
     const auto possible_extra_order_req = tr_gateway.m_last_order_request.value();
 
+    // last order request must not change
     ASSERT_EQ(possible_extra_order_req.order.guid(), order_req.order.guid());
     ASSERT_EQ(possible_extra_order_req.order.price(), order_req.order.price());
 }
@@ -469,7 +470,8 @@ TEST_F(StrategyInstanceTest, ManyPricesReceivedBetweenEnterOrderAndOpenTrade_NoA
 TEST_F(StrategyInstanceTest, EnterOrder_GetReject_Panic) {}
 TEST_F(StrategyInstanceTest, OpenPos_TpslReject_ClosePosAndPanic) {}
 
-TEST_F(StrategyInstanceTest, PanicOnMarketDataStop) {}
-TEST_F(StrategyInstanceTest, PanicOnTradingStop) {}
+// TODO
+// TEST_F(StrategyInstanceTest, PanicOnMarketDataStop) {}
+// TEST_F(StrategyInstanceTest, PanicOnTradingStop) {}
 
 } // namespace test
