@@ -10,8 +10,8 @@
         {
             "name": "interval_m",
             "min_value": 20,
-            "step": 2,
-            "max_value": 100
+            "step": 10,
+            "max_value": 300
         }
     ]
 }
