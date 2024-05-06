@@ -510,6 +510,97 @@ TEST_F(StrategyInstanceTest, EnterOrder_GetReject_Panic)
 
 TEST_F(StrategyInstanceTest, OpenPos_TpslReject_ClosePosAndPanic)
 {
+    ASSERT_EQ(strategy_status, WorkStatus::Stopped);
+    strategy_instance->run_async();
+    ASSERT_EQ(md_gateway.live_requests_count(), 1);
+    ASSERT_EQ(strategy_status, WorkStatus::Live);
+    const auto live_req = md_gateway.m_last_live_request.value();
+
+    ASSERT_TRUE(tr_gateway.m_consumers);
+    strategy_ptr->signal_on_next_tick(Side::Buy);
+    {
+        const std::chrono::milliseconds price_ts = std::chrono::milliseconds(1000);
+        const double price = 10.1;
+        OHLC ohlc = {price_ts, price, price, price, price};
+        MDPriceEvent price_event;
+        price_event.ts_and_price = {price_ts, ohlc};
+        live_req.event_consumer->push(price_event);
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    StrategyResult result = strategy_instance->strategy_result_publisher().get();
+    ASSERT_EQ(result.trades_count, 0);
+    const auto strategy_res_sub = strategy_instance->strategy_result_publisher().subscribe([&](const auto & res) {
+        result = res;
+    });
+
+    {
+        ASSERT_TRUE(tr_gateway.m_last_order_request.has_value());
+        const auto order_req = tr_gateway.m_last_order_request.value();
+        const auto open_trade_price = order_req.order.price();
+        const auto open_trade_volume = order_req.order.volume();
+        const auto open_trade_side = order_req.order.side();
+        const std::chrono::milliseconds open_trade_ts = std::chrono::milliseconds(1001);
+        const auto open_trade = Trade{
+                open_trade_ts,
+                m_symbol.symbol_name,
+                open_trade_price,
+                open_trade_volume,
+                open_trade_side,
+                0.1};
+        const auto open_trade_event = TradeEvent(open_trade);
+
+        const auto order_response = OrderResponseEvent{
+                order_req.order.guid(),
+        };
+
+        ASSERT_FALSE(tr_gateway.m_last_tpsl_request.has_value()) << "Tpsl request must be after position opened";
+        ASSERT_EQ(result.trades_count, 0);
+        tr_gateway.m_consumers->trade_consumer.push(open_trade_event);
+        tr_gateway.m_consumers->order_ack_consumer.push(order_response);
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        ASSERT_EQ(result.trades_count, 1);
+    }
+
+    {
+        ASSERT_TRUE(tr_gateway.m_last_tpsl_request.has_value());
+        const auto tpsl_req = tr_gateway.m_last_tpsl_request.value();
+        tpsl_req.event_consumer->push(TpslResponseEvent{tpsl_req.guid, tpsl_req.tpsl, "test_reject"});
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    // There must be a close pos request on panic
+    {
+        ASSERT_TRUE(tr_gateway.m_last_order_request.has_value());
+        const auto order_req = tr_gateway.m_last_order_request.value();
+        const auto close_trade_price = order_req.order.price();
+        const auto close_trade_volume = order_req.order.volume();
+        const auto close_trade_side = order_req.order.side();
+        const std::chrono::milliseconds close_trade_ts = std::chrono::milliseconds(1001);
+        const auto close_trade = Trade{
+                close_trade_ts,
+                m_symbol.symbol_name,
+                close_trade_price,
+                close_trade_volume,
+                close_trade_side,
+                0.1};
+        const auto close_trade_event = TradeEvent(close_trade);
+
+        const auto order_response = OrderResponseEvent{
+                order_req.order.guid(),
+        };
+
+        ASSERT_EQ(result.trades_count, 1);
+        tr_gateway.m_consumers->trade_consumer.push(close_trade_event);
+        tr_gateway.m_consumers->order_ack_consumer.push(order_response);
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        ASSERT_EQ(result.trades_count, 2);
+    }
+
+    ASSERT_EQ(strategy_status, WorkStatus::Panic);
+    ASSERT_FALSE(tr_gateway.m_consumers) << "Must unsubscribe on panic";
+    ASSERT_EQ(md_gateway.unsubscribed_count(), 1) << "Must unsubscribe on panic";
+    ASSERT_EQ(result.trades_count, 2);
 }
 
 // TODO

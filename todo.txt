@@ -1,4 +1,6 @@
 make publishers thread safe
 fix exit optimizer, now it returns both strategies' config
-implement TPSL in gateway
+
 ----after first launch
+
+polish frontend

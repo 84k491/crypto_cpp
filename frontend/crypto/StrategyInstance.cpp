@@ -313,20 +313,22 @@ void StrategyInstance::handle_event(const TradeEvent & response)
         set_tpsl(tpsl);
     }
 }
+
 void StrategyInstance::handle_event(const TpslResponseEvent & response)
 {
     if (!response.reject_reason.has_value()) {
         m_tpsl_publisher.push(m_last_ts_and_price.first, response.tpsl);
     }
+    else {
+        stop_async(true);
+        std::cout << "ERROR: Tpsl was rejected!: " << response.reject_reason.value() << std::endl;
+    }
     const size_t erased_cnt = m_pending_requests.erase(response.request_guid);
     if (erased_cnt == 0) {
         std::cout << "Unsolicited tpsl response" << std::endl;
     }
-    if (response.reject_reason.has_value()) {
-        // TODO close position, stop strategy ?
-        std::cout << "ERROR: Tpsl was rejected!: " << response.reject_reason.value() << std::endl;
-    }
 }
+
 void StrategyInstance::handle_event(const TpslUpdatedEvent &)
 {
     std::println("Received TpslUpdatedEvent");
@@ -338,7 +340,7 @@ void StrategyInstance::handle_event(const StrategyStopRequest &)
     if (m_position_manager.opened() != nullptr) {
         const bool success = close_position(m_last_ts_and_price.second, m_last_ts_and_price.first);
         if (!success) {
-            std::cout << "ERROR: can't close a position on stop/crash" << std::endl;
+            std::cout << "ERROR: can't close a position on stop/panic" << std::endl;
         }
     }
 
