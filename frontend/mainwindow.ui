@@ -113,10 +113,10 @@
                      </date>
                     </property>
                     <property name="displayFormat">
-                     <string>M/d/yy h:mm</string>
+                     <string>yyyy/M/d h:mm</string>
                     </property>
                     <property name="timeSpec">
-                     <enum>Qt::LocalTime</enum>
+                     <enum>Qt::TimeSpec::LocalTime</enum>
                     </property>
                    </widget>
                   </item>

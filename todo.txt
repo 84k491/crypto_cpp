@@ -4,3 +4,4 @@ fix exit optimizer, now it returns both strategies' config
 ----after first launch
 
 polish frontend
+use std::expected and error chains

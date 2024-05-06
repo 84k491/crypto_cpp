@@ -47,6 +47,7 @@ struct HistoricalMDRequestData
     std::chrono::milliseconds start;
     std::chrono::milliseconds end;
 };
+std::ostream & operator<<(std::ostream & os, const HistoricalMDRequestData & data);
 
 struct HistoricalMDRequest : public BasicEvent<HistoricalMDPackEvent>
 {

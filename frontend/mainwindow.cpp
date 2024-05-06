@@ -13,6 +13,7 @@
 #include <nlohmann/json.hpp>
 
 #include <openssl/hmac.h>
+#include <print>
 #include <qboxlayout.h>
 #include <qscatterseries.h>
 #include <qspinbox.h>
@@ -355,10 +356,15 @@ void MainWindow::optimized_config_slot(const JsonStrategyConfig & config)
 std::optional<Timerange> MainWindow::get_timerange() const
 {
     const auto start = std::chrono::milliseconds{ui->dt_from->dateTime().toMSecsSinceEpoch()};
+    std::cout << ui->dt_from->dateTime().toString().toStdString() << std::endl;
     const auto work_hours = std::chrono::hours{ui->sb_work_hours->value()};
     const auto end = std::chrono::milliseconds{start + work_hours};
 
     if (start >= end) {
+        std::cout << "ERROR Invalid timerange" << std::endl;
+        return {};
+    }
+    if (start.count() < 0 || end.count() < 0) {
         std::cout << "ERROR Invalid timerange" << std::endl;
         return {};
     }
