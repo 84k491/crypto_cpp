@@ -126,36 +126,45 @@ class StrategyInstanceTest : public Test
 public:
     StrategyInstanceTest()
         : m_symbol("BTCUSD")
+        , strategy_ptr(std::make_shared<MockStrategy>())
+        , exit_strategy_config(0.1, 0.8)
+        , strategy_instance(nullptr)
     {
         m_symbol.lot_size_filter.max_qty = 1'000'000;
         m_symbol.lot_size_filter.min_qty = 0.001;
         m_symbol.lot_size_filter.qty_step = 0.001;
+
+        strategy_instance = std::make_unique<StrategyInstance>(
+                m_symbol,
+                std::nullopt,
+                strategy_ptr,
+                exit_strategy_config,
+                md_gateway,
+                tr_gateway);
+
+        strategy_status = strategy_instance->status_publisher().get();
+
+        status_sub = strategy_instance->status_publisher().subscribe([&](const auto & status) {
+            strategy_status = status;
+        });
     }
 
 protected:
     Symbol m_symbol;
-};
 
-TEST_F(StrategyInstanceTest, SubForLiveMarketData_GetPrice_GracefullStop)
-{
     MockMDGateway md_gateway;
     MockTradingGateway tr_gateway;
 
     std::shared_ptr<MockStrategy> strategy_ptr = std::make_shared<MockStrategy>();
-    TpslExitStrategyConfig exit_strategy_config(0.1, 0.8);
-    auto strategy_instance = std::make_unique<StrategyInstance>(
-            m_symbol,
-            std::nullopt,
-            strategy_ptr,
-            exit_strategy_config,
-            md_gateway,
-            tr_gateway);
+    TpslExitStrategyConfig exit_strategy_config;
+    std::unique_ptr<StrategyInstance> strategy_instance;
 
-    WorkStatus strategy_status = strategy_instance->status_publisher().get();
-    const auto status_sub = strategy_instance->status_publisher().subscribe([&](const auto & status) {
-        strategy_status = status;
-    });
+    WorkStatus strategy_status = WorkStatus::Panic;
+    std::shared_ptr<ObjectSubscribtion<WorkStatus>> status_sub;
+};
 
+TEST_F(StrategyInstanceTest, SubForLiveMarketData_GetPrice_GracefullStop)
+{
     ASSERT_EQ(strategy_status, WorkStatus::Stopped);
     strategy_instance->run_async();
     ASSERT_EQ(md_gateway.live_requests_count(), 1);
@@ -191,26 +200,8 @@ TEST_F(StrategyInstanceTest, SubForLiveMarketData_GetPrice_GracefullStop)
     ASSERT_EQ(strategy_status, WorkStatus::Stopped);
 }
 
-TEST_F(StrategyInstanceTest, OpenAndClosePos_GetResult_DontCloseOnStop)
+TEST_F(StrategyInstanceTest, OpenAndClosePos_GetResult_DontCloseTwiceOnStop)
 {
-    MockMDGateway md_gateway;
-    MockTradingGateway tr_gateway;
-
-    std::shared_ptr<MockStrategy> mock_strategy_ptr = std::make_shared<MockStrategy>();
-    TpslExitStrategyConfig exit_strategy_config(0.1, 0.8);
-    auto strategy_instance = std::make_unique<StrategyInstance>(
-            m_symbol,
-            std::nullopt,
-            mock_strategy_ptr,
-            exit_strategy_config,
-            md_gateway,
-            tr_gateway);
-
-    WorkStatus strategy_status = strategy_instance->status_publisher().get();
-    const auto status_sub = strategy_instance->status_publisher().subscribe([&](const auto & status) {
-        strategy_status = status;
-    });
-
     ASSERT_EQ(strategy_status, WorkStatus::Stopped);
     strategy_instance->run_async();
     ASSERT_EQ(md_gateway.live_requests_count(), 1);
@@ -227,7 +218,7 @@ TEST_F(StrategyInstanceTest, OpenAndClosePos_GetResult_DontCloseOnStop)
             });
 
     ASSERT_TRUE(tr_gateway.m_consumers);
-    mock_strategy_ptr->signal_on_next_tick(Side::Buy);
+    strategy_ptr->signal_on_next_tick(Side::Buy);
     {
         const std::chrono::milliseconds price_ts = std::chrono::milliseconds(1000);
         const double price = 10.1;
@@ -310,24 +301,6 @@ TEST_F(StrategyInstanceTest, OpenAndClosePos_GetResult_DontCloseOnStop)
 
 TEST_F(StrategyInstanceTest, OpenPositionWithTpsl_CloseOnGracefullStop)
 {
-    MockMDGateway md_gateway;
-    MockTradingGateway tr_gateway;
-
-    std::shared_ptr<MockStrategy> mock_strategy_ptr = std::make_shared<MockStrategy>();
-    TpslExitStrategyConfig exit_strategy_config(0.1, 0.8);
-    auto strategy_instance = std::make_unique<StrategyInstance>(
-            m_symbol,
-            std::nullopt,
-            mock_strategy_ptr,
-            exit_strategy_config,
-            md_gateway,
-            tr_gateway);
-
-    WorkStatus strategy_status = strategy_instance->status_publisher().get();
-    const auto status_sub = strategy_instance->status_publisher().subscribe([&](const auto & status) {
-        strategy_status = status;
-    });
-
     ASSERT_EQ(strategy_status, WorkStatus::Stopped);
     strategy_instance->run_async();
     ASSERT_EQ(md_gateway.live_requests_count(), 1);
@@ -344,7 +317,7 @@ TEST_F(StrategyInstanceTest, OpenPositionWithTpsl_CloseOnGracefullStop)
             });
 
     ASSERT_TRUE(tr_gateway.m_consumers);
-    mock_strategy_ptr->signal_on_next_tick(Side::Buy);
+    strategy_ptr->signal_on_next_tick(Side::Buy);
     {
         const std::chrono::milliseconds price_ts = std::chrono::milliseconds(1000);
         const double price = 10.1;
@@ -438,10 +411,63 @@ TEST_F(StrategyInstanceTest, OpenPositionWithTpsl_CloseOnGracefullStop)
     ASSERT_EQ(result.trades_count, 2);
 }
 
-TEST_F(StrategyInstanceTest, OpenPos_CloseTradeFromWeb_PosClosed) {}
+TEST_F(StrategyInstanceTest, ManyPricesReceivedBetweenEnterOrderAndOpenTrade_NoAdditionalOrders)
+{
+    ASSERT_EQ(strategy_status, WorkStatus::Stopped);
+    strategy_instance->run_async();
+    ASSERT_EQ(md_gateway.live_requests_count(), 1);
+    ASSERT_EQ(strategy_status, WorkStatus::Live);
+    const auto live_req = md_gateway.m_last_live_request.value();
+
+    size_t prices_received = 0;
+    const auto price_sub = strategy_instance->klines_publisher().subscribe(
+            [](const auto & vec) {
+                EXPECT_EQ(vec.size(), 0);
+            },
+            [&](auto, const auto &) {
+                ++prices_received;
+            });
+
+    ASSERT_TRUE(tr_gateway.m_consumers);
+
+    // sending first price
+    strategy_ptr->signal_on_next_tick(Side::Buy);
+    {
+        const std::chrono::milliseconds price_ts = std::chrono::milliseconds(1000);
+        const double price = 10.1;
+        OHLC ohlc = {price_ts, price, price, price, price};
+        MDPriceEvent price_event;
+        price_event.ts_and_price = {price_ts, ohlc};
+        live_req.event_consumer->push(price_event);
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        ASSERT_EQ(prices_received, 1);
+    }
+
+    ASSERT_TRUE(tr_gateway.m_last_order_request.has_value());
+    const auto order_req = tr_gateway.m_last_order_request.value();
+
+    // sending second price
+    strategy_ptr->signal_on_next_tick(Side::Buy);
+    {
+        const std::chrono::milliseconds price_ts = std::chrono::milliseconds(1001);
+        const double price = 12.2;
+        OHLC ohlc = {price_ts, price, price, price, price};
+        MDPriceEvent price_event;
+        price_event.ts_and_price = {price_ts, ohlc};
+        live_req.event_consumer->push(price_event);
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        ASSERT_EQ(prices_received, 2);
+    }
+
+    ASSERT_TRUE(tr_gateway.m_last_order_request.has_value());
+    const auto possible_extra_order_req = tr_gateway.m_last_order_request.value();
+
+    ASSERT_EQ(possible_extra_order_req.order.guid(), order_req.order.guid());
+    ASSERT_EQ(possible_extra_order_req.order.price(), order_req.order.price());
+}
+
 TEST_F(StrategyInstanceTest, EnterOrder_GetReject_Panic) {}
 TEST_F(StrategyInstanceTest, OpenPos_TpslReject_ClosePosAndPanic) {}
-TEST_F(StrategyInstanceTest, ManyPricesReceivedBetweenEnterOrderAndOpenTrade_NoAdditionalOrders) {}
 
 TEST_F(StrategyInstanceTest, PanicOnMarketDataStop) {}
 TEST_F(StrategyInstanceTest, PanicOnTradingStop) {}

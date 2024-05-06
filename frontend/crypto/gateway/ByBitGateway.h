@@ -24,7 +24,7 @@ class ByBitGateway final : public IMarketDataGateway
     , private IEventInvoker<HistoricalMDRequest, LiveMDRequest>
 {
 private:
-    static constexpr double taker_fee = 0.0002; // 0.02%
+    static constexpr double taker_fee = 0.00055; // 0.055%
     static constexpr std::string_view s_test_ws_linear_endpoint_address = "wss://stream-testnet.bybit.com/v5/public/linear";
     static constexpr std::string_view s_test_rest_endpoint_address = "https://api-testnet.bybit.com";
     static constexpr std::string_view s_endpoint_address = "https://api.bybit.com";
