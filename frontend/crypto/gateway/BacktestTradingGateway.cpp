@@ -38,19 +38,19 @@ std::optional<Trade> BacktestTradingGateway::try_trade_tpsl(OHLC ohlc)
         switch (pos_side) {
         case Side::Buy: {
             if (last_price >= tpsl.take_profit_price) {
-                return last_price;
+                return tpsl.take_profit_price;
             }
             if (last_price <= tpsl.stop_loss_price) {
-                return last_price;
+                return tpsl.stop_loss_price;
             }
             break;
         }
         case Side::Sell: {
             if (last_price <= tpsl.take_profit_price) {
-                return last_price;
+                return tpsl.take_profit_price;
             }
             if (last_price >= tpsl.stop_loss_price) {
-                return last_price;
+                return tpsl.stop_loss_price;
             }
             break;
         }
