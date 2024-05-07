@@ -21,6 +21,17 @@ MainWindow::MainWindow(QWidget * parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+    ui->wt_entry_params->setTitle("Entry parameters");
+
+    {
+        const auto meta_info_opt = StrategyFactory::get_meta_info("TpslExit");
+        std::println("Meta info: {}", meta_info_opt.has_value());
+        if (meta_info_opt.has_value()) {
+            std::println("Got valid meta info");
+            ui->wt_exit_params->setup_widget(meta_info_opt.value());
+        }
+        ui->wt_exit_params->setTitle("Exit parameters");
+    }
 
     connect(this,
             &MainWindow::signal_price,
@@ -184,7 +195,7 @@ void MainWindow::on_pb_run_clicked()
             symbol.value(),
             md_request,
             strategy_ptr_opt.value(),
-            get_exit_config_from_ui(),
+            ui->wt_exit_params->get_config(),
             m_gateway,
             tr_gateway);
 
@@ -334,9 +345,10 @@ void MainWindow::render_result(StrategyResult result)
     ui->lb_win_rate->setText(QString::number(result.win_rate()));
 }
 
-void MainWindow::optimized_config_slot(const JsonStrategyConfig & config)
+void MainWindow::optimized_config_slot(const JsonStrategyConfig & entry_config, const JsonStrategyConfig & exit_config)
 {
-    ui->wt_entry_params->setup_values(config);
+    ui->wt_entry_params->setup_values(entry_config);
+    ui->wt_exit_params->setup_values(exit_config);
 }
 
 std::optional<Timerange> MainWindow::get_timerange() const
@@ -380,7 +392,7 @@ void MainWindow::on_pb_optimize_clicked()
             return exit_strategy_meta_info.value();
         }
         else {
-            return get_exit_config_from_ui();
+            return ui->wt_exit_params->get_config();
         }
     };
     OptimizerInputs optimizer_inputs = {entry_config(), exit_config()};
@@ -419,17 +431,10 @@ void MainWindow::on_pb_optimize_clicked()
             std::cout << "ERROR no best config" << std::endl;
             return;
         }
-        emit signal_optimized_config(best_config.value().first);
+        emit signal_optimized_config(best_config.value().first, best_config.value().second.to_json());
         std::cout << "Best config: " << best_config.value().first << "; " << best_config.value().second << std::endl;
     });
     t.detach();
-}
-
-TpslExitStrategyConfig MainWindow::get_exit_config_from_ui() const
-{
-    double risk = ui->dsb_risk->value();
-    double risk_reward_ratio = ui->dsb_risk_reward->value();
-    return {risk, risk_reward_ratio};
 }
 
 std::optional<JsonStrategyMetaInfo> MainWindow::get_strategy_parameters() const

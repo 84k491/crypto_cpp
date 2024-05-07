@@ -86,7 +86,7 @@ private slots:
     void on_pb_run_clicked();
     void on_pb_optimize_clicked();
     void render_result(StrategyResult result);
-    void optimized_config_slot(const JsonStrategyConfig & config);
+    void optimized_config_slot(const JsonStrategyConfig & entry_config, const JsonStrategyConfig & exit_config);
 
     void on_cb_strategy_currentTextChanged(const QString & arg1);
 
@@ -104,7 +104,7 @@ signals:
     void signal_depo(std::chrono::milliseconds ts, double depo);
     void signal_result(StrategyResult result);
     void signal_work_status(WorkStatus status);
-    void signal_optimized_config(JsonStrategyConfig config);
+    void signal_optimized_config(JsonStrategyConfig entry_config, JsonStrategyConfig exit_config);
     void signal_optimizer_passed_check(int passed_checks, int total_checks);
 
 private:
@@ -112,7 +112,6 @@ private:
     std::optional<Timerange> get_timerange() const;
 
     std::optional<JsonStrategyMetaInfo> get_strategy_parameters() const;
-    TpslExitStrategyConfig get_exit_config_from_ui() const;
 
     MultiSeriesChart & get_or_create_chart(const std::string & chart_name);
 

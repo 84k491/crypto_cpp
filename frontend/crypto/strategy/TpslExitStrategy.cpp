@@ -15,6 +15,14 @@ TpslExitStrategyConfig::TpslExitStrategyConfig(const JsonStrategyConfig & json)
     }
 }
 
+JsonStrategyConfig TpslExitStrategyConfig::to_json() const
+{
+    nlohmann::json json;
+    json["risk"] = m_risk;
+    json["risk_reward_ratio"] = m_risk_reward_ratio;
+    return json;
+}
+
 std::ostream & operator<<(std::ostream & os, const TpslExitStrategyConfig & config)
 {
     os << "risk = " << config.risk() << ", risk_reward_ratio = " << config.risk_reward_ratio();

@@ -12,6 +12,8 @@ public:
     TpslExitStrategyConfig(const JsonStrategyConfig & json);
     TpslExitStrategyConfig(double risk, double risk_reward_ratio);
 
+    JsonStrategyConfig to_json() const;
+
     bool is_valid() const;
 
     auto risk() const { return m_risk; }

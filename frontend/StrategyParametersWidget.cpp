@@ -7,7 +7,18 @@
 StrategyParametersWidget::StrategyParametersWidget(QWidget * parent)
     : QGroupBox(parent)
 {
-    setTitle("Entry parameters");
+}
+
+constexpr int decimals(double value)
+{
+    int pow = 0;
+    value -= static_cast<int>(value);
+    while (value != 0) {
+        value *= 10;
+        value -= static_cast<int>(value);
+        ++pow;
+    }
+    return pow;
 }
 
 void StrategyParametersWidget::setup_widget(const JsonStrategyMetaInfo & strategy_parameters)
@@ -34,6 +45,7 @@ void StrategyParametersWidget::setup_widget(const JsonStrategyMetaInfo & strateg
         auto * layout = new QHBoxLayout();
         auto * label = new QLabel(name.c_str());
         auto * double_spin_box = new QDoubleSpinBox();
+        double_spin_box->setDecimals(decimals(step));
         double_spin_box->setMinimum(min_value);
         double_spin_box->setSingleStep(step);
         double_spin_box->setMaximum(max_value);
