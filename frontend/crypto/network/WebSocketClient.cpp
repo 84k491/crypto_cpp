@@ -101,7 +101,6 @@ void WebSocketClient::on_connected()
 
 void WebSocketClient::send_ping()
 {
-    std::cout << "Sending ping" << std::endl;
     std::string ping_message = R"({"op": "ping"})";
     try {
         m_client.send(m_connection, ping_message, websocketpp::frame::opcode::text);

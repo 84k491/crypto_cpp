@@ -23,15 +23,10 @@ MainWindow::MainWindow(QWidget * parent)
     ui->setupUi(this);
     ui->wt_entry_params->setTitle("Entry parameters");
 
-    {
-        const auto meta_info_opt = StrategyFactory::get_meta_info("TpslExit");
-        std::println("Meta info: {}", meta_info_opt.has_value());
-        if (meta_info_opt.has_value()) {
-            std::println("Got valid meta info");
-            ui->wt_exit_params->setup_widget(meta_info_opt.value());
-        }
-        ui->wt_exit_params->setTitle("Exit parameters");
+    if (const auto meta_info_opt = StrategyFactory::get_meta_info("TpslExit"); meta_info_opt.has_value()) {
+        ui->wt_exit_params->setup_widget(meta_info_opt.value());
     }
+    ui->wt_exit_params->setTitle("Exit parameters");
 
     connect(this,
             &MainWindow::signal_price,
@@ -342,7 +337,7 @@ void MainWindow::render_result(StrategyResult result)
     ui->lb_min_depo->setText(QString::number(result.min_depo));
     ui->lb_longest_profit_pos->setText(QString::number(result.longest_profit_trade_time.count()));
     ui->lb_longest_loss_pos->setText(QString::number(result.longest_loss_trade_time.count()));
-    ui->lb_win_rate->setText(QString::number(result.win_rate()));
+    ui->lb_win_rate->setText(QString::number(result.win_rate() * 100.));
 }
 
 void MainWindow::optimized_config_slot(const JsonStrategyConfig & entry_config, const JsonStrategyConfig & exit_config)
@@ -461,10 +456,4 @@ MultiSeriesChart & MainWindow::get_or_create_chart(const std::string & chart_nam
     m_charts[chart_name] = new_chart;
     ui->verticalLayout_graph->addWidget(new_chart);
     return *new_chart;
-}
-
-void MainWindow::on_pb_test_clicked()
-{
-    // MarketOrder order("BTCUSDT", 0.002, Side::Sell);
-    // m_trading_gateway.send_order_sync(order);
 }
