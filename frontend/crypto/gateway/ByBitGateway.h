@@ -68,7 +68,16 @@ private:
     std::unique_ptr<WorkerThreadOnce> m_backtest_thread;
     std::unique_ptr<WorkerThreadLoop> m_live_thread;
 
-    std::unordered_map<std::string, std::unordered_map<Timerange, std::map<std::chrono::milliseconds, OHLC>>> m_ranges_by_symbol;
+    // ((prices by ts) by timerange) by symbol
+    std::unordered_map<
+            std::string,
+            std::unordered_map<
+                    Timerange,
+                    std::shared_ptr<std::map<
+                            std::chrono::milliseconds,
+                            OHLC>>>>
+            m_ranges_by_symbol;
+
     RestClient rest_client;
     WebSocketClient ws_client;
 };

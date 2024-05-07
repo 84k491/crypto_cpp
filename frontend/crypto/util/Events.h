@@ -37,7 +37,7 @@ struct MDPriceEvent : public BasicResponseEvent
 struct HistoricalMDPackEvent : public BasicResponseEvent
 {
     HistoricalMDPackEvent(xg::Guid request_guid);
-    std::map<std::chrono::milliseconds, OHLC> ts_and_price_pack;
+    std::shared_ptr<const std::map<std::chrono::milliseconds, OHLC>> ts_and_price_pack;
 
     xg::Guid request_guid;
 };

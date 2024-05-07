@@ -4,7 +4,6 @@
 #include "Ohlc.h"
 #include "ScopeExit.h"
 #include "Symbol.h"
-#include "WorkerThread.h"
 
 #include <chrono>
 #include <crossguid2/crossguid/guid.hpp>
@@ -319,10 +318,10 @@ void ByBitGateway::handle_request(const HistoricalMDRequest & request)
     }
 
     auto & range = m_ranges_by_symbol[symbol.symbol_name][histroical_timerange];
+    range = std::make_shared<std::map<std::chrono::milliseconds, OHLC>>(prices);
     HistoricalMDPackEvent ev(request.guid);
-    ev.ts_and_price_pack = prices;
+    ev.ts_and_price_pack = range;
     request.event_consumer->push(ev);
-    range.merge(prices);
 }
 
 void ByBitGateway::handle_request(const LiveMDRequest & request)

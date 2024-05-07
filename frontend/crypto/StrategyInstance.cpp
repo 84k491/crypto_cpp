@@ -249,7 +249,13 @@ void StrategyInstance::invoke(const std::variant<STRATEGY_EVENTS> & var)
 
 void StrategyInstance::handle_event(const HistoricalMDPackEvent & response)
 {
-    for (const auto & [ts, ohlc] : response.ts_and_price_pack) {
+    if (response.ts_and_price_pack == nullptr) {
+        std::println("ERROR! response.ts_and_price_pack == nullptr");
+        stop_async(true);
+        return;
+    }
+
+    for (const auto & [ts, ohlc] : *response.ts_and_price_pack) {
         MDPriceEvent ev;
         ev.ts_and_price = {ts, ohlc};
         static_cast<IEventConsumer<MDPriceEvent> &>(m_event_loop).push(ev);
