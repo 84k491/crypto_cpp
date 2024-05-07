@@ -46,28 +46,24 @@ std::optional<Signal> BollingerBandsStrategy::push_price(std::pair<std::chrono::
     m_strategy_internal_data_publisher.push(ts, {"trend", bb_res.m_trend});
     m_strategy_internal_data_publisher.push(ts, {"lower_band", bb_res.m_lower_band});
 
-    if (m_last_signal_side != Side::Close) {
-        switch (m_last_signal_side) {
-        case Side::Buy: {
-            if (price > bb_res.m_trend) {
-                const auto signal = Signal{.side = Side::Close, .timestamp = ts, .price = ts_and_price.second};
-                m_last_signal_side = signal.side;
-                return signal;
-            }
-            break;
+    switch (m_last_signal_side) {
+    case Side::Buy: {
+        if (price > bb_res.m_trend) {
+            const auto signal = Signal{.side = Side::Close, .timestamp = ts, .price = ts_and_price.second};
+            m_last_signal_side = signal.side;
+            return signal;
         }
-        case Side::Sell: {
-            if (price < bb_res.m_trend) {
-                const auto signal = Signal{.side = Side::Close, .timestamp = ts, .price = ts_and_price.second};
-                m_last_signal_side = signal.side;
-                return signal;
-            }
-            break;
-        }
-        case Side::Close: break;
-        }
+        break;
     }
-    else {
+    case Side::Sell: {
+        if (price < bb_res.m_trend) {
+            const auto signal = Signal{.side = Side::Close, .timestamp = ts, .price = ts_and_price.second};
+            m_last_signal_side = signal.side;
+            return signal;
+        }
+        break;
+    }
+    case Side::Close:
         if (price > bb_res.m_upper_band) {
             const auto signal = Signal{.side = Side::Sell, .timestamp = ts, .price = ts_and_price.second};
             m_last_signal_side = signal.side;
@@ -78,6 +74,7 @@ std::optional<Signal> BollingerBandsStrategy::push_price(std::pair<std::chrono::
             m_last_signal_side = signal.side;
             return signal;
         }
+        break;
     }
     return std::nullopt;
 }

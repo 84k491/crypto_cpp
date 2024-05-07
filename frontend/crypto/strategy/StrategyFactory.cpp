@@ -4,6 +4,7 @@
 #include "DebugEveryTickStrategy.h"
 #include "DoubleSmaStrategy.h"
 #include "StrategyInterface.h"
+#include "TunedBollingerBandsStrategy.h"
 
 #include <fstream>
 #include <iostream>
@@ -20,6 +21,10 @@ std::optional<JsonStrategyMetaInfo> StrategyFactory::get_meta_info(const std::st
             {
                     "BollingerBands",
                     "BollingerBands.json",
+            },
+            {
+                    "TunedBB",
+                    "TunedBB.json",
             },
             {
                     "DebugEveryTick",
@@ -63,6 +68,10 @@ std::optional<std::shared_ptr<IStrategy>> StrategyFactory::build_strategy(
     }
     if (strategy_name == "BollingerBands") {
         std::shared_ptr<IStrategy> res = std::make_shared<BollingerBandsStrategy>(config);
+        return res;
+    }
+    if (strategy_name == "TunedBB") {
+        std::shared_ptr<IStrategy> res = std::make_shared<TunedBollingerBandsStrategy>(config);
         return res;
     }
     if (strategy_name == "DebugEveryTick") {
