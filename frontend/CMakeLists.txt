@@ -18,9 +18,10 @@ set(PROJECT_SOURCES
         mainwindow.cpp
         mainwindow.h
         mainwindow.ui
-        DragableChart.cpp
         MultiSeriesChart.h
         MultiSeriesChart.cpp
+        StrategyParametersWidget.h
+        StrategyParametersWidget.cpp
 )
 
 add_subdirectory(crypto)
@@ -32,10 +33,10 @@ qt_add_executable(frontend
 target_compile_options(frontend PRIVATE "-g" "-O0")
 
 
+target_include_directories(frontend PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(frontend PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)
 target_link_libraries(${PROJECT_NAME} PRIVATE qcustomplot)
 target_link_libraries(frontend PRIVATE
-    Qt6::Charts
     nlohmann_json::nlohmann_json
     crossguid2
     crypto_local

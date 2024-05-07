@@ -1,27 +1,20 @@
 #include "mainwindow.h"
 
 #include "./ui_mainwindow.h"
-#include "DoubleSmaStrategy.h"
 #include "ITradingGateway.h"
 #include "JsonStrategyConfig.h"
 #include "Optimizer.h"
 #include "StrategyInstance.h"
+#include "StrategyParametersWidget.h"
 #include "Symbol.h"
 #include "Tpsl.h"
 #include "WorkStatus.h"
 
 #include <nlohmann/json.hpp>
 
-#include <openssl/hmac.h>
 #include <print>
-#include <qboxlayout.h>
-#include <qscatterseries.h>
-#include <qspinbox.h>
 #include <qtypes.h>
 #include <thread>
-#include <websocketpp/client.hpp>
-#include <websocketpp/config/asio.hpp>
-#include <websocketpp/roles/client_endpoint.hpp>
 
 MainWindow::MainWindow(QWidget * parent)
     : QMainWindow(parent)
@@ -148,7 +141,8 @@ void MainWindow::on_pb_run_clicked()
     const auto & timerange = *timerange_opt;
 
     const auto strategy_name = ui->cb_strategy->currentText().toStdString();
-    const auto strategy_ptr_opt = StrategyFactory::build_strategy(strategy_name, get_entry_config_from_ui());
+    const auto entry_config = ui->wt_entry_params->get_config();
+    const auto strategy_ptr_opt = StrategyFactory::build_strategy(strategy_name, entry_config);
     if (!strategy_ptr_opt.has_value() || !strategy_ptr_opt.value() || !strategy_ptr_opt.value()->is_valid()) {
         std::cout << "ERROR Failed to build strategy" << std::endl;
         return;
@@ -342,15 +336,7 @@ void MainWindow::render_result(StrategyResult result)
 
 void MainWindow::optimized_config_slot(const JsonStrategyConfig & config)
 {
-    DoubleSmaStrategyConfig new_config(config); // TODO there is not only DSMA
-    for (auto it = config.get().begin(); it != config.get().end(); ++it) {
-        auto spinbox_it = m_strategy_parameters_spinboxes.find(it.key());
-        if (spinbox_it == m_strategy_parameters_spinboxes.end()) {
-            std::cout << "ERROR: Could not find spinbox for " << it.key() << std::endl;
-            continue;
-        }
-        m_strategy_parameters_spinboxes.at(it.key())->setValue(it.value().get<double>());
-    }
+    ui->wt_entry_params->setup_values(config);
 }
 
 std::optional<Timerange> MainWindow::get_timerange() const
@@ -386,7 +372,7 @@ void MainWindow::on_pb_optimize_clicked()
             return entry_strategy_meta_info.value();
         }
         else {
-            return get_entry_config_from_ui();
+            return ui->wt_entry_params->get_config();
         }
     };
     const auto exit_config = [&]() -> std::variant<JsonStrategyMetaInfo, TpslExitStrategyConfig> {
@@ -439,63 +425,6 @@ void MainWindow::on_pb_optimize_clicked()
     t.detach();
 }
 
-void MainWindow::setup_specific_parameters(const JsonStrategyMetaInfo & strategy_parameters)
-{
-    qDeleteAll(ui->gb_specific_parameters->children());
-    m_strategy_parameters_spinboxes.clear();
-
-    m_last_set_strategy_parameters = strategy_parameters;
-    if (!strategy_parameters.got_parameters()) {
-        return;
-    }
-    const auto params = strategy_parameters.get()["parameters"].get<std::vector<nlohmann::json>>();
-    auto * top_layout = new QVBoxLayout();
-
-    auto * name_layout = new QHBoxLayout();
-    auto * strategy_name_label = new QLabel(strategy_parameters.get()["strategy_name"].get<std::string>().c_str());
-    name_layout->addWidget(strategy_name_label);
-    top_layout->addItem(name_layout);
-    for (const auto & param : params) {
-        const auto name = param["name"].get<std::string>();
-        const auto max_value = param["max_value"].get<double>();
-        const auto step = param["step"].get<double>();
-        const auto min_value = param["min_value"].get<double>();
-
-        auto * layout = new QHBoxLayout();
-        auto * label = new QLabel(name.c_str());
-        auto * double_spin_box = new QDoubleSpinBox();
-        double_spin_box->setMinimum(min_value);
-        double_spin_box->setSingleStep(step);
-        double_spin_box->setMaximum(max_value);
-
-        double_spin_box->setValue(min_value);
-        m_strategy_parameters_values[name] = min_value;
-        m_strategy_parameters_spinboxes[name] = double_spin_box;
-        connect(
-                double_spin_box,
-                &QDoubleSpinBox::valueChanged,
-                this,
-                [this, name](double value) {
-                    on_strategy_parameters_changed(name, value);
-                });
-
-        label->setText(name.c_str());
-        layout->addWidget(label);
-        layout->addWidget(double_spin_box);
-        top_layout->addItem(layout);
-    }
-    ui->gb_specific_parameters->setLayout(top_layout);
-}
-
-JsonStrategyConfig MainWindow::get_entry_config_from_ui() const
-{
-    nlohmann::json config;
-    for (const auto & [name, value] : m_strategy_parameters_values) {
-        config[name] = value;
-    }
-    return config;
-}
-
 TpslExitStrategyConfig MainWindow::get_exit_config_from_ui() const
 {
     double risk = ui->dsb_risk->value();
@@ -509,16 +438,11 @@ std::optional<JsonStrategyMetaInfo> MainWindow::get_strategy_parameters() const
     return json_data;
 }
 
-void MainWindow::on_strategy_parameters_changed(const std::string & name, double value)
-{
-    m_strategy_parameters_values[name] = value;
-}
-
 void MainWindow::on_cb_strategy_currentTextChanged(const QString &)
 {
     const auto params_opt = get_strategy_parameters();
     if (params_opt) {
-        setup_specific_parameters(*params_opt);
+        ui->wt_entry_params->setup_widget(params_opt.value());
     }
 }
 

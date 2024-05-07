@@ -150,10 +150,8 @@
               </widget>
              </item>
              <item>
-              <widget class="QGroupBox" name="gb_specific_parameters">
-               <property name="title">
-                <string>Specific open parameters</string>
-               </property>
+              <widget class="StrategyParametersWidget" name="wt_entry_params">
+               <layout class="QVBoxLayout" name="lo_entry_params"/>
               </widget>
              </item>
              <item>
@@ -547,6 +545,14 @@
    </layout>
   </widget>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>StrategyParametersWidget</class>
+   <extends>QGroupBox</extends>
+   <header>StrategyParametersWidget.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

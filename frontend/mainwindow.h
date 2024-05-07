@@ -14,11 +14,8 @@
 #include "WorkStatus.h"
 
 #include <QMainWindow>
-#include <QScatterSeries>
-#include <QtCharts>
 #include <fstream>
 #include <memory>
-#include <qtypes.h>
 #include <string>
 
 QT_BEGIN_NAMESPACE
@@ -73,8 +70,8 @@ public:
 
     uint64_t m_start_ts_unix_time = {};
     int m_work_hours = {};
-    std::string m_symbol = {};
-    std::string m_strategy_name = {};
+    std::string m_symbol;
+    std::string m_strategy_name;
 };
 
 class MainWindow : public QMainWindow
@@ -90,7 +87,6 @@ private slots:
     void on_pb_optimize_clicked();
     void render_result(StrategyResult result);
     void optimized_config_slot(const JsonStrategyConfig & config);
-    void on_strategy_parameters_changed(const std::string & name, double value);
 
     void on_cb_strategy_currentTextChanged(const QString & arg1);
 
@@ -109,7 +105,6 @@ signals:
     void signal_result(StrategyResult result);
     void signal_work_status(WorkStatus status);
     void signal_optimized_config(JsonStrategyConfig config);
-    void signal_strategy_parameters_changed(std::string name, double value);
     void signal_optimizer_passed_check(int passed_checks, int total_checks);
 
 private:
@@ -117,13 +112,10 @@ private:
     std::optional<Timerange> get_timerange() const;
 
     std::optional<JsonStrategyMetaInfo> get_strategy_parameters() const;
-    void setup_specific_parameters(const JsonStrategyMetaInfo & strategy_parameters);
-    JsonStrategyConfig get_entry_config_from_ui() const;
     TpslExitStrategyConfig get_exit_config_from_ui() const;
 
     MultiSeriesChart & get_or_create_chart(const std::string & chart_name);
 
-    void get_strategy_data_snapshots();
     void subscribe_to_strategy();
 
 private:
