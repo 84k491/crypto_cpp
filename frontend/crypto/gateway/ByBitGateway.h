@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ConnectionWatcher.h"
 #include "EventLoop.h"
 #include "Events.h"
 #include "Guarded.h"
@@ -20,7 +21,8 @@
 #include <vector>
 
 class WorkerThreadLoop;
-class ByBitGateway final : public IMarketDataGateway
+class ByBitGateway final
+    : public IMarketDataGateway
     , private IEventInvoker<HistoricalMDRequest, LiveMDRequest>
 {
 private:

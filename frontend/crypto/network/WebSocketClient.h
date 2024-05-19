@@ -29,16 +29,15 @@ public:
     void subscribe(const std::string & topic);
     void unsubscribe(const std::string & topic);
 
-private:
-    void send_ping();
+    bool send_ping();
 
+private:
     static std::string sign_message(const std::string & message, const std::string & secret);
     std::string build_auth_message() const;
 
 private:
     void on_ws_message_received(const std::string & message);
     void on_auth_response(const json & j);
-    static void on_ping_response(const json & j);
     void on_sub_response(const json & j);
 
     void on_connected();

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ByBitTradingMessages.h"
+#include "ConnectionWatcher.h"
 #include "EventLoop.h"
 #include "Events.h"
 #include "Guarded.h"
@@ -12,10 +13,11 @@
 
 class ByBitTradingGateway final
     : public ITradingGateway
-    , private IEventInvoker<OrderRequestEvent, TpslRequestEvent>
+    , public IPingSender
+    , private IEventInvoker<OrderRequestEvent, TpslRequestEvent, PingCheckEvent>
 {
     static constexpr std::string_view s_rest_base_url = "https://api-testnet.bybit.com";
-    static constexpr std::chrono::seconds ws_wait_timeout = std::chrono::seconds(5);
+    static constexpr std::chrono::seconds ws_ping_interval = std::chrono::seconds(5);
 
 public:
     ByBitTradingGateway();
@@ -29,24 +31,32 @@ public:
 private:
     bool check_consumers(const std::string & symbol);
 
-    void invoke(const std::variant<OrderRequestEvent, TpslRequestEvent> & value) override;
+    void invoke(const std::variant<OrderRequestEvent, TpslRequestEvent, PingCheckEvent> & value) override;
     void process_event(const OrderRequestEvent & order);
     void process_event(const TpslRequestEvent & tpsl);
+    void process_event(const PingCheckEvent & ping_event);
+
+    bool reconnect_ws_client();
 
     void on_ws_message(const json & j);
     void on_order_response(const json & j);
     void on_tpsl_update(const std::array<ByBitMessages::OrderResponse, 2> & updates);
     void on_execution(const json & j);
 
+    // IPingSender
+    void send_ping() override;
+    void on_connection_lost() override;
+
 private:
-    EventLoop<OrderRequestEvent, TpslRequestEvent> m_event_loop;
+    EventLoop<OrderRequestEvent, TpslRequestEvent, PingCheckEvent> m_event_loop;
 
     std::string m_url;
     std::string m_api_key;
     std::string m_secret_key;
 
     RestClient rest_client;
-    WebSocketClient m_ws_client;
+    std::unique_ptr<WebSocketClient> m_ws_client;
+    ConnectionWatcher m_connection_watcher;
 
     Guarded<std::map<std::string, std::pair<xg::Guid, TradingGatewayConsumers>>> m_consumers;
 };

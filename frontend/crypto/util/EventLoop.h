@@ -38,7 +38,7 @@ public:
 
     bool push_delayed(std::chrono::milliseconds delay, const EventT value)
     {
-        return push_delayed(delay, std::move(value));
+        return push_to_queue_delayed(delay, std::move(value));
     };
 
     bool push_in_this_thread(const EventT value)
@@ -49,7 +49,7 @@ public:
 private:
     virtual bool push_to_queue(const std::any value) = 0;
     virtual bool invoke_in_this_thread(const std::any value) = 0;
-    virtual bool push_delayed(std::chrono::milliseconds delay, const std::any value) = 0;
+    virtual bool push_to_queue_delayed(std::chrono::milliseconds delay, const std::any value) = 0;
 };
 
 template <class... Args>
@@ -175,7 +175,7 @@ protected:
         return true;
     }
 
-    bool push_delayed(std::chrono::milliseconds delay, const std::any value) override
+    bool push_to_queue_delayed(std::chrono::milliseconds delay, const std::any value) override
     {
         m_scheduler.delay(delay, [this, value] { push_to_queue(value); });
         return true;

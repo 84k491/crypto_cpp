@@ -99,14 +99,16 @@ void WebSocketClient::on_connected()
     m_ready = true;
 }
 
-void WebSocketClient::send_ping()
+bool WebSocketClient::send_ping()
 {
     std::string ping_message = R"({"op": "ping"})";
     try {
         m_client.send(m_connection, ping_message, websocketpp::frame::opcode::text);
+        return true;
     }
     catch (std::exception & e) {
         std::cout << "ERROR on sending ping" << e.what() << std::endl;
+        return false;
     }
 }
 
@@ -174,13 +176,11 @@ void WebSocketClient::on_sub_response(const nlohmann::json & j)
 void WebSocketClient::on_ws_message_received(const std::string & message)
 {
     nlohmann::json j = json::parse(message);
-    // std::cout << "WS message received: " << message << std::endl;
     if (j.find("op") != j.end()) {
         const auto op = j.at("op");
         const std::map<std::string, std::function<void(const json &)>> op_handlers = {
                 {"auth", [&](const json & j) { on_auth_response(j); }},
                 {"subscribe", [&](const json & j) { on_sub_response(j); }},
-                {"pong", [&](const json & j) { on_ping_response(j); }},
         };
         if (const auto it = op_handlers.find(op); it == op_handlers.end()) {
             std::cout << "Unregistered operation: " << j.dump() << std::endl;
@@ -192,11 +192,6 @@ void WebSocketClient::on_ws_message_received(const std::string & message)
         return;
     }
     m_callback(j);
-}
-
-void WebSocketClient::on_ping_response(const json & j)
-{
-    std::cout << "Pong received: " << j << std::endl;
 }
 
 void WebSocketClient::on_auth_response(const json & j)

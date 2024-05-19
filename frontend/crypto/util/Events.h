@@ -143,3 +143,6 @@ struct TpslRequestEvent : public BasicEvent<TpslResponseEvent>
     Tpsl tpsl;
     xg::Guid guid;
 };
+
+using TimerEvent = BasicResponseEvent;
+using PingCheckEvent = TimerEvent;

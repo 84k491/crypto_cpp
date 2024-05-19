@@ -11,18 +11,11 @@ ByBitTradingGateway::ByBitTradingGateway()
     , m_url("wss://stream-testnet.bybit.com/v5/private")
     , m_api_key("HW1YEA13Q3msvHOMxx") // will expire at Jul 17, 2024
     , m_secret_key("Oi3u9iesDxzSN7aSmSsQKvBUG2Sp6A6Txzk1")
-    , m_ws_client(
-              m_url,
-              {{m_api_key, m_secret_key}},
-              [this](const json & j) { on_ws_message(j); })
+    , m_connection_watcher(*this)
 {
-    if (!m_ws_client.wait_until_ready()) {
-        std::cout << "Failed to connect to ByBit trading" << std::endl;
-        return;
+    if (!reconnect_ws_client()) {
+        std::println("Failed to connect to ByBit trading");
     }
-
-    m_ws_client.subscribe("order");
-    m_ws_client.subscribe("execution");
 }
 
 void ByBitTradingGateway::on_order_response(const json & j)
@@ -110,12 +103,13 @@ void ByBitTradingGateway::push_tpsl_request(const TpslRequestEvent & tpsl_ev)
     m_event_loop.as_consumer<TpslRequestEvent>().push(tpsl_ev);
 }
 
-void ByBitTradingGateway::invoke(const std::variant<OrderRequestEvent, TpslRequestEvent> & variant)
+void ByBitTradingGateway::invoke(const std::variant<OrderRequestEvent, TpslRequestEvent, PingCheckEvent> & variant)
 {
     std::visit(
             VariantMatcher{
                     [&](const OrderRequestEvent & order) { process_event(order); },
                     [&](const TpslRequestEvent & tpsl) { process_event(tpsl); },
+                    [&](const PingCheckEvent & ping) { process_event(ping); },
             },
             variant);
 }
@@ -202,6 +196,13 @@ void ByBitTradingGateway::process_event(const TpslRequestEvent & tpsl)
     tpsl.event_consumer->push(TpslResponseEvent(tpsl.guid, tpsl.tpsl));
 }
 
+void ByBitTradingGateway::process_event(const PingCheckEvent & ping_event)
+{
+    if (m_connection_watcher.handle_request(ping_event)) {
+        m_event_loop.as_consumer<PingCheckEvent>().push_delayed(ws_ping_interval, PingCheckEvent{});
+    }
+}
+
 void ByBitTradingGateway::on_ws_message(const json & j)
 {
     std::cout << "on_ws_message: " << j.dump() << std::endl;
@@ -210,6 +211,7 @@ void ByBitTradingGateway::on_ws_message(const json & j)
         const std::map<std::string, std::function<void(const json &)>> topic_handlers = {
                 {"order", [&](const json & j) { on_order_response(j); }},
                 {"execution", [&](const json & j) { on_execution(j); }},
+                {"pong", [&](const json &) { m_connection_watcher.on_pong_received(); }},
         };
         if (const auto it = topic_handlers.find(topic); it == topic_handlers.end()) {
             std::cout << "Unregistered topic: " << j.dump() << std::endl;
@@ -244,4 +246,38 @@ bool ByBitTradingGateway::check_consumers(const std::string & symbol)
 {
     auto lref = m_consumers.lock();
     return lref.get().contains(symbol);
+}
+
+void ByBitTradingGateway::send_ping()
+{
+    if (!m_ws_client->send_ping()) {
+        on_connection_lost();
+    }
+}
+
+bool ByBitTradingGateway::reconnect_ws_client()
+{
+    m_ws_client = std::make_unique<WebSocketClient>(
+            m_url,
+            std::make_optional(WsKeys{m_api_key, m_secret_key}),
+            [this](const json & j) { on_ws_message(j); });
+
+    if (!m_ws_client->wait_until_ready()) {
+        return false;
+    }
+
+    m_ws_client->subscribe("order");
+    m_ws_client->subscribe("execution");
+
+    send_ping();
+    m_event_loop.as_consumer<PingCheckEvent>().push_delayed(ws_ping_interval, PingCheckEvent{});
+    return true;
+}
+
+void ByBitTradingGateway::on_connection_lost()
+{
+    std::println("Connection lost, reconnecting...");
+    if (!reconnect_ws_client()) {
+        std::println("Failed to connect to ByBit trading");
+    }
 }
