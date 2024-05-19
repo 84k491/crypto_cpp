@@ -21,11 +21,11 @@ public:
     virtual void invoke(const std::variant<Args...> & value) = 0;
 };
 
-template <
-        class EventT,
-        std::enable_if_t<std::is_polymorphic_v<EventT>, bool> = true> // event type must be polymorphic to use typeid
+template <class EventT>
 class IEventConsumer
 {
+    static_assert(std::is_polymorphic_v<EventT>, "Event type must be polymorphic to use typeid");
+
 public:
     virtual ~IEventConsumer() = default;
 

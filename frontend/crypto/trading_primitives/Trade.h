@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Volume.h"
+#include "Symbol.h"
 
 #include <chrono>
 
@@ -26,7 +27,7 @@ public:
     }
 
     std::chrono::milliseconds ts() const { return m_ts; }
-    std::string symbol() const { return m_symbol; }
+    const auto& symbol() const { return m_symbol; }
     double price() const { return m_price; }
     UnsignedVolume unsigned_volume() const { return m_unsigned_volume; }
     SignedVolume signed_volume() const { return {m_unsigned_volume, m_side}; }
@@ -35,7 +36,7 @@ public:
 
 private:
     std::chrono::milliseconds m_ts;
-    std::string m_symbol; // TODO use Symbol type
+    Symbol m_symbol;
     double m_price{};
     UnsignedVolume m_unsigned_volume;
     Side m_side = Side::Buy;

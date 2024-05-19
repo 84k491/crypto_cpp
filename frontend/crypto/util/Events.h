@@ -20,7 +20,7 @@ struct BasicEvent
     }
     virtual ~BasicEvent() = default;
     // TODO rename to base_consumer
-    IEventConsumer<T> * event_consumer = nullptr; // TODO use shared_ptr
+    IEventConsumer<T> * event_consumer = nullptr; // TODO use shared_ptr?
 };
 
 struct BasicResponseEvent

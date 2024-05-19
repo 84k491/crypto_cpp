@@ -8,6 +8,8 @@
 
 struct Symbol
 {
+    friend std::ostream & operator<<(std::ostream & os, const Symbol & symbol);
+
     struct LotSizeFilter
     {
         double min_qty = {};
