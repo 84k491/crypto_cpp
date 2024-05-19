@@ -12,8 +12,7 @@ public:
     ObjectPublisherTest() = default;
 };
 
-// TODO use CamelCase
-TEST(ObjectPublisherTest, subscribe_unsubscribe_raii)
+TEST(ObjectPublisherTest, SubscripeUnsubscribeRaii)
 {
     ObjectPublisher<int> publisher;
 
@@ -39,7 +38,7 @@ TEST(ObjectPublisherTest, subscribe_unsubscribe_raii)
     ASSERT_THAT(outer_values, ElementsAre(1, 2, 3, 4));
 }
 
-TEST(ObjectPublisherTest, update)
+TEST(ObjectPublisherTest, Update)
 {
     ObjectPublisher<int> publisher;
 
@@ -67,7 +66,7 @@ TEST(ObjectPublisherTest, update)
     EXPECT_EQ(inner_value, 1);
 }
 
-TEST(ObjectPublisherTest, delete_dangling_sub)
+TEST(ObjectPublisherTest, DeleteDanglingSub)
 {
     int value = 0;
     {
@@ -81,14 +80,14 @@ TEST(ObjectPublisherTest, delete_dangling_sub)
     EXPECT_EQ(value, 1);
 }
 
-TEST(ObjectPublisherTest, get_without_subs)
+TEST(ObjectPublisherTest, GetWithoutSubs)
 {
     ObjectPublisher<int> publisher;
     publisher.push(1);
     EXPECT_EQ(publisher.get(), 1);
 }
 
-TEST(ObjectPublisherTest, orderding)
+TEST(ObjectPublisherTest, Ordering)
 {
     int coeff = 0;
     int first_value = 0;
