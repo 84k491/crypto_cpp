@@ -3,7 +3,9 @@
 #include "ThreadSafeQueue.h"
 
 #include <any>
+#include <functional>
 #include <iostream>
+#include <map>
 #include <variant>
 
 template <class... Ts>
@@ -34,6 +36,11 @@ public:
         return push_to_queue(std::move(value));
     }
 
+    bool push_delayed(std::chrono::milliseconds delay, const EventT value)
+    {
+        return push_delayed(delay, std::move(value));
+    };
+
     bool push_in_this_thread(const EventT value)
     {
         return invoke_in_this_thread(std::move(value));
@@ -42,6 +49,7 @@ public:
 private:
     virtual bool push_to_queue(const std::any value) = 0;
     virtual bool invoke_in_this_thread(const std::any value) = 0;
+    virtual bool push_delayed(std::chrono::milliseconds delay, const std::any value) = 0;
 };
 
 template <class... Args>
@@ -61,6 +69,70 @@ auto any_to_variant_cast(std::any a) -> std::variant<Args...>
 
     return std::move(*v);
 }
+
+class Scheduler
+{
+    using CallbackT = std::function<void()>;
+
+public:
+    Scheduler()
+    {
+        m_thread = std::thread([this] { run(); });
+    }
+
+    ~Scheduler()
+    {
+        m_running = false;
+        m_cv.notify_all();
+        m_thread.join();
+    }
+
+    void delay(std::chrono::milliseconds delay, CallbackT && callback)
+    {
+        const auto now = std::chrono::steady_clock::now();
+        const auto future_ts = now + delay;
+        std::unique_lock<std::mutex> lock(m_mutex);
+        m_delayed_events.emplace(future_ts, std::move(callback));
+        m_cv.notify_all();
+    }
+
+private:
+    void run()
+    {
+        while (m_running) {
+            const auto now = std::chrono::steady_clock::now();
+            std::unique_lock<std::mutex> lock(m_mutex);
+            for (auto it = m_delayed_events.begin(), end = m_delayed_events.end(); it != end;) {
+                if (it->first <= now) {
+                    it->second();
+                    it = m_delayed_events.erase(it);
+                }
+                else {
+                    ++it;
+                }
+            }
+
+            if (m_delayed_events.empty()) {
+                m_cv.wait(lock, [this] { return !m_running || !m_delayed_events.empty(); });
+            }
+            else {
+                m_cv.wait_until(
+                        lock,
+                        m_delayed_events.begin()->first,
+                        [this, now] { return !m_running || m_delayed_events.begin()->first <= now; });
+            }
+        }
+    }
+
+private:
+    std::mutex m_mutex;
+    std::condition_variable m_cv;
+
+    std::multimap<std::chrono::time_point<std::chrono::steady_clock>, CallbackT> m_delayed_events;
+
+    std::atomic_bool m_running = true;
+    std::thread m_thread;
+};
 
 template <class... Args>
 class EventLoop : public IEventConsumer<Args>...
@@ -103,6 +175,12 @@ protected:
         return true;
     }
 
+    bool push_delayed(std::chrono::milliseconds delay, const std::any value) override
+    {
+        m_scheduler.delay(delay, [this, value] { push_to_queue(value); });
+        return true;
+    }
+
 private:
     void run()
     {
@@ -119,6 +197,7 @@ private:
 private:
     IEventInvoker<Args...> & m_invoker;
 
+    Scheduler m_scheduler;
     ThreadSafeQueue<std::variant<Args...>> m_queue{};
     std::thread m_thread;
 };
