@@ -146,3 +146,14 @@ struct TpslRequestEvent : public BasicEvent<TpslResponseEvent>
 
 using TimerEvent = BasicResponseEvent;
 using PingCheckEvent = TimerEvent;
+
+struct LambdaEvent : public BasicResponseEvent
+{
+    LambdaEvent(std::function<void()> func)
+        : func(std::move(func))
+    {
+    }
+
+    std::function<void()> func;
+    xg::Guid guid;
+};

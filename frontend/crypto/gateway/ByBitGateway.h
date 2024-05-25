@@ -2,6 +2,7 @@
 
 #include "ConnectionWatcher.h"
 #include "EventLoop.h"
+#include "EventObjectPublisher.h"
 #include "Events.h"
 #include "Guarded.h"
 #include "IMarketDataGateway.h"
@@ -44,7 +45,7 @@ public:
 
     void unsubscribe_from_live(xg::Guid guid) override;
 
-    ObjectPublisher<WorkStatus> & status_publisher() override;
+    EventObjectPublisher<WorkStatus> & status_publisher() override;
 
     std::vector<Symbol> get_symbols(const std::string & currency);
 
@@ -73,7 +74,7 @@ private:
 
     std::chrono::milliseconds m_last_server_time = std::chrono::milliseconds{0};
 
-    ObjectPublisher<WorkStatus> m_status;
+    EventObjectPublisher<WorkStatus> m_status;
     TimeseriesPublisher<OHLC> m_klines_publisher;
 
     std::unique_ptr<WorkerThreadOnce> m_backtest_thread;

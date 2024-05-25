@@ -36,7 +36,7 @@ public:
         ++m_unsubscribed_count;
     }
 
-    ObjectPublisher<WorkStatus> & status_publisher() override
+    EventObjectPublisher<WorkStatus> & status_publisher() override
     {
         return m_status;
     }
@@ -48,7 +48,7 @@ public:
     std::optional<LiveMDRequest> m_last_live_request;
 
 private:
-    ObjectPublisher<WorkStatus> m_status;
+    EventObjectPublisher<WorkStatus> m_status;
 
     size_t m_live_requests_count = 0;
     size_t m_unsubscribed_count = 0;
@@ -121,7 +121,9 @@ private:
 };
 
 // TODO don't use sleeps
-class StrategyInstanceTest : public Test
+class StrategyInstanceTest
+    : public Test
+    , public IEventConsumer<LambdaEvent>
 {
 public:
     StrategyInstanceTest()
@@ -149,6 +151,23 @@ public:
         status_sub = strategy_instance->status_publisher().subscribe([&](const auto & status) {
             strategy_status = status;
         });
+    }
+
+    bool push_to_queue(std::any value) override
+    {
+        auto & lambda_event = std::any_cast<LambdaEvent &>(value);
+        lambda_event.func();
+        return true;
+    }
+
+    bool invoke_in_this_thread(const std::any) override
+    {
+        throw std::runtime_error("Not implemented");
+    }
+
+    bool push_to_queue_delayed(std::chrono::milliseconds, const std::any) override
+    {
+        throw std::runtime_error("Not implemented");
     }
 
 protected:
@@ -234,9 +253,11 @@ TEST_F(StrategyInstanceTest, OpenAndClosePos_GetResult_DontCloseTwiceOnStop)
 
     StrategyResult result = strategy_instance->strategy_result_publisher().get();
     ASSERT_EQ(result.trades_count, 0);
-    const auto strategy_res_sub = strategy_instance->strategy_result_publisher().subscribe([&](const auto & res) {
-        result = res;
-    });
+    const auto strategy_res_sub = strategy_instance->strategy_result_publisher().subscribe(
+            *this,
+            [&](const auto & res) {
+                result = res;
+            });
 
     // opening position
     ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -333,9 +354,11 @@ TEST_F(StrategyInstanceTest, OpenPositionWithTpsl_CloseOnGracefullStop)
 
     StrategyResult result = strategy_instance->strategy_result_publisher().get();
     ASSERT_EQ(result.trades_count, 0);
-    const auto strategy_res_sub = strategy_instance->strategy_result_publisher().subscribe([&](const auto & res) {
-        result = res;
-    });
+    const auto strategy_res_sub = strategy_instance->strategy_result_publisher().subscribe(
+            *this,
+            [&](const auto & res) {
+                result = res;
+            });
 
     // opening position
     {
@@ -492,6 +515,7 @@ TEST_F(StrategyInstanceTest, EnterOrder_GetReject_Panic)
     StrategyResult result = strategy_instance->strategy_result_publisher().get();
     ASSERT_EQ(result.trades_count, 0);
     const auto strategy_res_sub = strategy_instance->strategy_result_publisher().subscribe(
+            *this,
             [&](const auto & res) {
                 result = res;
             });
@@ -530,9 +554,11 @@ TEST_F(StrategyInstanceTest, OpenPos_TpslReject_ClosePosAndPanic)
 
     StrategyResult result = strategy_instance->strategy_result_publisher().get();
     ASSERT_EQ(result.trades_count, 0);
-    const auto strategy_res_sub = strategy_instance->strategy_result_publisher().subscribe([&](const auto & res) {
-        result = res;
-    });
+    const auto strategy_res_sub = strategy_instance->strategy_result_publisher().subscribe(
+            *this,
+            [&](const auto & res) {
+                result = res;
+            });
 
     {
         ASSERT_TRUE(tr_gateway.m_last_order_request.has_value());

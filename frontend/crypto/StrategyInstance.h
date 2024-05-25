@@ -25,7 +25,8 @@
                         TradeEvent,            \
                         TpslResponseEvent,     \
                         TpslUpdatedEvent,      \
-                        StrategyStopRequest
+                        StrategyStopRequest,   \
+                        LambdaEvent
 
 struct StrategyStopRequest : public BasicResponseEvent
 {
@@ -34,11 +35,6 @@ struct StrategyStopRequest : public BasicResponseEvent
 class StrategyInstance : public IEventInvoker<STRATEGY_EVENTS>
 {
 public:
-    using KlineCallback =
-            std::function<void(std::pair<std::chrono::milliseconds, OHLC>)>;
-    using DepoCallback =
-            std::function<void(std::chrono::milliseconds ts, double value)>;
-
     StrategyInstance(
             const Symbol & symbol,
             const std::optional<HistoricalMDRequestData> & historical_md_request,
@@ -54,7 +50,7 @@ public:
     strategy_internal_data_publisher();
     TimeseriesPublisher<OHLC> & klines_publisher();
     TimeseriesPublisher<double> & depo_publisher();
-    ObjectPublisher<StrategyResult> & strategy_result_publisher();
+    EventObjectPublisher<StrategyResult> & strategy_result_publisher();
     ObjectPublisher<WorkStatus> & status_publisher();
     TimeseriesPublisher<Tpsl> & tpsl_publisher();
 
@@ -71,6 +67,7 @@ private:
     void handle_event(const TpslResponseEvent & response);
     static void handle_event(const TpslUpdatedEvent & response);
     void handle_event(const StrategyStopRequest & response);
+    static void handle_event(const LambdaEvent & response);
 
     void on_signal(const Signal & signal);
     void process_position_result(const PositionResult & new_result,
@@ -93,7 +90,7 @@ private:
     std::shared_ptr<IStrategy> m_strategy;
     TpslExitStrategy m_exit_strategy;
 
-    ObjectPublisher<StrategyResult> m_strategy_result;
+    EventObjectPublisher<StrategyResult> m_strategy_result;
 
     TimeseriesPublisher<Signal> m_signal_publisher; // TODO publish trades instead of signals
     TimeseriesPublisher<OHLC> m_klines_publisher;
@@ -106,7 +103,7 @@ private:
 
     const std::optional<HistoricalMDRequestData> m_historical_md_request;
 
-    std::shared_ptr<ObjectSubscribtion<WorkStatus>> m_gw_status_sub;
+    std::shared_ptr<EventObjectSubscribtion<WorkStatus>> m_gw_status_sub;
     bool first_price_received = false;
 
     std::pair<std::chrono::milliseconds, double> m_last_ts_and_price;

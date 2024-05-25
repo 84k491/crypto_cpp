@@ -4,7 +4,6 @@
 
 #include <crossguid2/crossguid/guid.hpp>
 #include <functional>
-#include <map>
 #include <memory>
 #include <vector>
 
@@ -65,7 +64,7 @@ template <typename ObjectT>
 void ObjectPublisher<ObjectT>::push(const ObjectT & object)
 {
     m_data = object;
-    for (const auto & [uuid, cb, wptr] : m_update_callbacks) {
+    for (const auto & [uuid, cb, wptr] : m_update_callbacks) { // TODO check wptr?
         cb(object);
     }
 }
@@ -73,7 +72,7 @@ template <typename ObjectT>
 void ObjectPublisher<ObjectT>::update(std::function<void(ObjectT &)> && update_callback)
 {
     update_callback(m_data);
-    for (const auto & [uuid, cb, wptr] : m_update_callbacks) {
+    for (const auto & [uuid, cb, wptr] : m_update_callbacks) { // TODO check wptr?
         cb(m_data);
     }
 }

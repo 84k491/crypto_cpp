@@ -28,6 +28,8 @@ MainWindow::MainWindow(QWidget * parent)
     }
     ui->wt_exit_params->setTitle("Exit parameters");
 
+    connect(this, &MainWindow::signal_lambda, this, &MainWindow::on_lambda);
+
     connect(this,
             &MainWindow::signal_price,
             this,
@@ -64,11 +66,6 @@ MainWindow::MainWindow(QWidget * parent)
             [this](std::chrono::milliseconds ts, double depo) {
                 get_or_create_chart(m_depo_chart_name).push_series_value("depo", ts, depo);
             });
-
-    connect(this,
-            &MainWindow::signal_result,
-            this,
-            &MainWindow::render_result);
 
     connect(this, &MainWindow::signal_optimizer_passed_check, this, [this](int passed_checks, int total_checks) {
         if (passed_checks == total_checks) {
@@ -205,7 +202,7 @@ void MainWindow::on_pb_run_clicked()
                 switch (status) {
                 case WorkStatus::Backtesting: break;
                 default: {
-                    emit signal_result(m_strategy_instance->strategy_result_publisher().get());
+                    render_result(m_strategy_instance->strategy_result_publisher().get());
                     break;
                 }
                 }
@@ -300,12 +297,13 @@ void MainWindow::subscribe_to_strategy()
                 emit signal_depo(ts, depo);
             }));
     m_subscriptions.push_back(m_strategy_instance->strategy_result_publisher().subscribe(
+            *this,
             [&](const StrategyResult & result) {
                 const auto status = m_strategy_instance->status_publisher().get();
                 switch (status) {
                 case WorkStatus::Backtesting: break;
                 default: {
-                    emit signal_result(result);
+                    render_result(result);
                     break;
                 }
                 }
@@ -457,4 +455,26 @@ MultiSeriesChart & MainWindow::get_or_create_chart(const std::string & chart_nam
     m_charts[chart_name] = new_chart;
     ui->verticalLayout_graph->addWidget(new_chart);
     return *new_chart;
+}
+
+bool MainWindow::push_to_queue(std::any value)
+{
+    auto & lambda_event = std::any_cast<LambdaEvent &>(value);
+    signal_lambda(std::move(lambda_event.func));
+    return true;
+}
+
+void MainWindow::on_lambda(const std::function<void()> & lambda)
+{
+    lambda();
+}
+
+bool MainWindow::invoke_in_this_thread(const std::any)
+{
+    throw std::runtime_error("Not implemented");
+}
+
+bool MainWindow::push_to_queue_delayed(std::chrono::milliseconds, const std::any)
+{
+    throw std::runtime_error("Not implemented");
 }

@@ -74,7 +74,9 @@ public:
     std::string m_strategy_name;
 };
 
-class MainWindow : public QMainWindow
+class MainWindow final
+    : public QMainWindow
+    , public IEventConsumer<LambdaEvent>
 {
     Q_OBJECT
 
@@ -92,6 +94,8 @@ private slots:
 
     void on_pb_stop_clicked();
 
+    void on_lambda(const std::function<void()> & lambda);
+
 signals:
     void signal_price(std::chrono::milliseconds ts, double price);
     void signal_tpsl(std::chrono::milliseconds ts, Tpsl tpsl);
@@ -100,10 +104,16 @@ signals:
                                   std::chrono::milliseconds ts,
                                   double data);
     void signal_depo(std::chrono::milliseconds ts, double depo);
-    void signal_result(StrategyResult result);
     void signal_work_status(WorkStatus status);
     void signal_optimized_config(JsonStrategyConfig entry_config, JsonStrategyConfig exit_config);
     void signal_optimizer_passed_check(int passed_checks, int total_checks);
+    void signal_lambda(std::function<void()> lambda);
+
+private:
+    // IEventConsumer<LambdaEvent>
+    bool push_to_queue(std::any value) override;
+    bool invoke_in_this_thread(const std::any value) override;
+    bool push_to_queue_delayed(std::chrono::milliseconds delay, const std::any value) override;
 
 private:
     void construct_optimizer_ui();

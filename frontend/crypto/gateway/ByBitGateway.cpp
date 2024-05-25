@@ -291,7 +291,7 @@ std::chrono::milliseconds ByBitGateway::get_server_time()
     return server_time;
 }
 
-ObjectPublisher<WorkStatus> & ByBitGateway::status_publisher()
+EventObjectPublisher<WorkStatus> & ByBitGateway::status_publisher()
 {
     return m_status;
 }

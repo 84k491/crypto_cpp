@@ -30,26 +30,31 @@ StrategyInstance::StrategyInstance(
     , m_historical_md_request(historical_md_request)
 {
     m_status.push(WorkStatus::Stopped);
-    m_tr_gateway.register_consumers(m_strategy_guid, symbol, TradingGatewayConsumers{
-                                                                     .trade_consumer = m_event_loop,
-                                                                     .order_ack_consumer = m_event_loop,
-                                                                     .tpsl_response_consumer = m_event_loop,
-                                                                     .tpsl_update_consumer = m_event_loop,
-                                                             });
+    m_tr_gateway.register_consumers(
+            m_strategy_guid,
+            symbol,
+            TradingGatewayConsumers{
+                    .trade_consumer = m_event_loop,
+                    .order_ack_consumer = m_event_loop,
+                    .tpsl_response_consumer = m_event_loop,
+                    .tpsl_update_consumer = m_event_loop,
+            });
     m_strategy_result.update([&](StrategyResult & res) {
         res.position_currency_amount = m_pos_currency_amount;
     });
 
-    m_gw_status_sub = m_md_gateway.status_publisher().subscribe([this](const WorkStatus & status) {
-        if (status == WorkStatus::Stopped || status == WorkStatus::Panic) {
-            if (m_position_manager.opened() != nullptr) {
-                const bool success = close_position(m_last_ts_and_price.second, m_last_ts_and_price.first);
-                if (!success) {
-                    std::cout << "ERROR: can't close a position on stop/crash" << std::endl;
+    m_gw_status_sub = m_md_gateway.status_publisher().subscribe(
+            m_event_loop,
+            [this](const WorkStatus & status) {
+                if (status == WorkStatus::Stopped || status == WorkStatus::Panic) {
+                    if (m_position_manager.opened() != nullptr) {
+                        const bool success = close_position(m_last_ts_and_price.second, m_last_ts_and_price.first);
+                        if (!success) {
+                            std::cout << "ERROR: can't close a position on stop/crash" << std::endl;
+                        }
+                    }
                 }
-            }
-        }
-    });
+            });
 }
 
 StrategyInstance::~StrategyInstance()
@@ -197,7 +202,7 @@ TimeseriesPublisher<double> & StrategyInstance::depo_publisher()
     return m_depo_publisher;
 }
 
-ObjectPublisher<StrategyResult> & StrategyInstance::strategy_result_publisher()
+EventObjectPublisher<StrategyResult> & StrategyInstance::strategy_result_publisher()
 {
     return m_strategy_result;
 }
@@ -232,6 +237,9 @@ void StrategyInstance::invoke(const std::variant<STRATEGY_EVENTS> & var)
                         handle_event(response);
                     },
                     [&](const TpslUpdatedEvent & response) {
+                        handle_event(response);
+                    },
+                    [&](const LambdaEvent & response) {
                         handle_event(response);
                     },
                     [&](const StrategyStopRequest & response) {
@@ -354,6 +362,11 @@ void StrategyInstance::handle_event(const StrategyStopRequest &)
 
     m_backtest_in_progress = false;
     m_stop_request_handled = true;
+}
+
+void StrategyInstance::handle_event(const LambdaEvent & response)
+{
+    response.func();
 }
 
 void StrategyInstance::set_tpsl(Tpsl tpsl)

@@ -47,6 +47,7 @@ public:
     }
 
 private:
+    // TODO remove constness
     virtual bool push_to_queue(const std::any value) = 0;
     virtual bool invoke_in_this_thread(const std::any value) = 0;
     virtual bool push_to_queue_delayed(std::chrono::milliseconds delay, const std::any value) = 0;
