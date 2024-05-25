@@ -37,9 +37,6 @@ bool ByBitGateway::reconnect_ws_client()
         return false;
     }
 
-    m_ws_client->subscribe("order");
-    m_ws_client->subscribe("execution");
-
     auto weak_ptr = std::weak_ptr<IPingSender>(m_ws_client);
     m_connection_watcher.set_ping_sender(weak_ptr);
     m_event_loop.as_consumer<PingCheckEvent>().push_delayed(ws_ping_interval, PingCheckEvent{});
@@ -416,7 +413,7 @@ void ByBitGateway::unsubscribe_from_live(xg::Guid guid)
 
 void ByBitGateway::on_connection_lost()
 {
-    std::println("Connection lost, reconnecting...");
+    std::println("Connection lost on market data, reconnecting...");
     if (!reconnect_ws_client()) {
         std::println("Failed to connect to ByBit trading");
     }

@@ -48,6 +48,7 @@ private:
     void on_connected();
 
 private:
+
     std::string m_url;
     std::optional<WsKeys> m_keys;
 

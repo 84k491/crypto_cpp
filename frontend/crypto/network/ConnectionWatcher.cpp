@@ -9,7 +9,7 @@ ConnectionWatcher::ConnectionWatcher(IConnectionSupervisor & supervisor)
 
 void ConnectionWatcher::set_ping_sender(std::weak_ptr<IPingSender> & ping_sender)
 {
-    if (const auto sptr = m_ping_sender.lock(); sptr) {
+    if (const auto sptr = ping_sender.lock(); sptr) {
         sptr->send_ping();
     }
     else {
@@ -34,5 +34,7 @@ void ConnectionWatcher::handle_request(const PingCheckEvent &)
         m_supervisor.on_connection_lost();
         return;
     }
+
     m_supervisor.on_connection_verified();
+    m_pong_received = false;
 }

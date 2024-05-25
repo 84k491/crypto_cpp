@@ -268,7 +268,7 @@ bool ByBitTradingGateway::reconnect_ws_client()
 
 void ByBitTradingGateway::on_connection_lost()
 {
-    std::println("Connection lost, reconnecting...");
+    std::println("Connection lost on trading, reconnecting...");
     if (!reconnect_ws_client()) {
         std::println("Failed to connect to ByBit trading");
     }
