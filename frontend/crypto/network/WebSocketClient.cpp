@@ -2,10 +2,14 @@
 
 #include <nlohmann/json.hpp>
 
-WebSocketClient::WebSocketClient(std::string url, std::optional<WsKeys> ws_keys, BusinessLogicCallback callback)
+WebSocketClient::WebSocketClient(std::string url,
+                                 std::optional<WsKeys> ws_keys,
+                                 BusinessLogicCallback callback,
+                                 ConnectionWatcher & connection_watcher)
     : m_url(std::move(url))
     , m_keys(std::move(ws_keys))
     , m_callback(std::move(callback))
+    , m_connection_watcher(connection_watcher)
 {
     std::thread t([this]() {
         std::cout << "websocket thread start" << std::endl;
@@ -181,6 +185,7 @@ void WebSocketClient::on_ws_message_received(const std::string & message)
         const std::map<std::string, std::function<void(const json &)>> op_handlers = {
                 {"auth", [&](const json & j) { on_auth_response(j); }},
                 {"subscribe", [&](const json & j) { on_sub_response(j); }},
+                {"pong", [&](const json &) { m_connection_watcher.on_pong_received(); }},
         };
         if (const auto it = op_handlers.find(op); it == op_handlers.end()) {
             std::cout << "Unregistered operation: " << j.dump() << std::endl;

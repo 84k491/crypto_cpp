@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ConnectionWatcher.h"
 #include "WorkerThread.h"
 
 #include "nlohmann/json_fwd.hpp"
@@ -14,7 +15,7 @@ struct WsKeys
     std::string m_secret_key;
 };
 
-class WebSocketClient
+class WebSocketClient : public IPingSender
 {
     using WsConfigClient = websocketpp::config::asio_tls;
     using WsClient = websocketpp::client<WsConfigClient>;
@@ -24,12 +25,16 @@ class WebSocketClient
     using BusinessLogicCallback = std::function<void(const json &)>;
 
 public:
-    WebSocketClient(std::string url, std::optional<WsKeys> ws_keys, BusinessLogicCallback callback);
+    WebSocketClient(
+            std::string url,
+            std::optional<WsKeys> ws_keys,
+            BusinessLogicCallback callback,
+            ConnectionWatcher & connection_watcher);
     bool wait_until_ready(std::chrono::milliseconds timeout = std::chrono::milliseconds(5000)) const;
     void subscribe(const std::string & topic);
     void unsubscribe(const std::string & topic);
 
-    bool send_ping();
+    bool send_ping() override;
 
 private:
     static std::string sign_message(const std::string & message, const std::string & secret);
@@ -47,11 +52,12 @@ private:
     std::optional<WsKeys> m_keys;
 
     BusinessLogicCallback m_callback;
+    ConnectionWatcher & m_connection_watcher;
 
     WsClient m_client;
     WsClient::connection_ptr m_connection;
 
-    std::unique_ptr<WorkerThreadLoop> m_ping_worker;
+    std::unique_ptr<WorkerThreadLoop> m_ping_worker; // TODO remove
 
     bool m_ready = false;
 };

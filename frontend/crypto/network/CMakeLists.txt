@@ -13,6 +13,7 @@ target_include_directories(network
 
 target_link_libraries(network PRIVATE
     nlohmann_json::nlohmann_json
+    trading_primitives
     curl
     ssl
     util

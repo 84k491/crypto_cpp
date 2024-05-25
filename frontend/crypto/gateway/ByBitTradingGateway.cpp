@@ -198,9 +198,7 @@ void ByBitTradingGateway::process_event(const TpslRequestEvent & tpsl)
 
 void ByBitTradingGateway::process_event(const PingCheckEvent & ping_event)
 {
-    if (m_connection_watcher.handle_request(ping_event)) {
-        m_event_loop.as_consumer<PingCheckEvent>().push_delayed(ws_ping_interval, PingCheckEvent{});
-    }
+    m_connection_watcher.handle_request(ping_event);
 }
 
 void ByBitTradingGateway::on_ws_message(const json & j)
@@ -211,7 +209,6 @@ void ByBitTradingGateway::on_ws_message(const json & j)
         const std::map<std::string, std::function<void(const json &)>> topic_handlers = {
                 {"order", [&](const json & j) { on_order_response(j); }},
                 {"execution", [&](const json & j) { on_execution(j); }},
-                {"pong", [&](const json &) { m_connection_watcher.on_pong_received(); }},
         };
         if (const auto it = topic_handlers.find(topic); it == topic_handlers.end()) {
             std::cout << "Unregistered topic: " << j.dump() << std::endl;
@@ -248,19 +245,13 @@ bool ByBitTradingGateway::check_consumers(const std::string & symbol)
     return lref.get().contains(symbol);
 }
 
-void ByBitTradingGateway::send_ping()
-{
-    if (!m_ws_client->send_ping()) {
-        on_connection_lost();
-    }
-}
-
 bool ByBitTradingGateway::reconnect_ws_client()
 {
-    m_ws_client = std::make_unique<WebSocketClient>(
+    m_ws_client = std::make_shared<WebSocketClient>(
             m_url,
             std::make_optional(WsKeys{m_api_key, m_secret_key}),
-            [this](const json & j) { on_ws_message(j); });
+            [this](const json & j) { on_ws_message(j); },
+            m_connection_watcher);
 
     if (!m_ws_client->wait_until_ready()) {
         return false;
@@ -269,7 +260,8 @@ bool ByBitTradingGateway::reconnect_ws_client()
     m_ws_client->subscribe("order");
     m_ws_client->subscribe("execution");
 
-    send_ping();
+    auto weak_ptr = std::weak_ptr<IPingSender>(m_ws_client);
+    m_connection_watcher.set_ping_sender(weak_ptr);
     m_event_loop.as_consumer<PingCheckEvent>().push_delayed(ws_ping_interval, PingCheckEvent{});
     return true;
 }
@@ -280,4 +272,9 @@ void ByBitTradingGateway::on_connection_lost()
     if (!reconnect_ws_client()) {
         std::println("Failed to connect to ByBit trading");
     }
+}
+
+void ByBitTradingGateway::on_connection_verified()
+{
+    m_event_loop.as_consumer<PingCheckEvent>().push_delayed(ws_ping_interval, PingCheckEvent{});
 }

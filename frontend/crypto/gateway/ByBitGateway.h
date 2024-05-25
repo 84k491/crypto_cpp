@@ -23,13 +23,15 @@
 class WorkerThreadLoop;
 class ByBitGateway final
     : public IMarketDataGateway
-    , private IEventInvoker<HistoricalMDRequest, LiveMDRequest>
+    , public IConnectionSupervisor
+    , private IEventInvoker<HistoricalMDRequest, LiveMDRequest, PingCheckEvent>
 {
 private:
     static constexpr double taker_fee = 0.00055; // 0.055%
     static constexpr std::string_view s_test_ws_linear_endpoint_address = "wss://stream-testnet.bybit.com/v5/public/linear";
     static constexpr std::string_view s_test_rest_endpoint_address = "https://api-testnet.bybit.com";
     static constexpr std::string_view s_endpoint_address = "https://api.bybit.com";
+    static constexpr std::chrono::seconds ws_ping_interval = std::chrono::seconds(5);
 
 public:
     static constexpr std::chrono::minutes min_historical_interval = std::chrono::minutes{1};
@@ -47,9 +49,10 @@ public:
     std::vector<Symbol> get_symbols(const std::string & currency);
 
 private:
-    void invoke(const std::variant<HistoricalMDRequest, LiveMDRequest> & value) override;
+    void invoke(const std::variant<HistoricalMDRequest, LiveMDRequest, PingCheckEvent> & value) override;
     void handle_request(const HistoricalMDRequest & request);
     void handle_request(const LiveMDRequest & request);
+    void handle_request(const PingCheckEvent & event);
 
     void on_price_received(const nlohmann::json & json);
 
@@ -58,8 +61,14 @@ private:
     using KlinePackCallback = std::function<void(std::map<std::chrono::milliseconds, OHLC> &&)>;
     bool request_historical_klines(const std::string & symbol, const Timerange & timerange, KlinePackCallback && cb);
 
+    bool reconnect_ws_client();
+
+    // IConnectionSupervisor
+    void on_connection_lost() override;
+    void on_connection_verified() override;
+
 private:
-    EventLoop<HistoricalMDRequest, LiveMDRequest> m_event_loop;
+    EventLoop<HistoricalMDRequest, LiveMDRequest, PingCheckEvent> m_event_loop;
     Guarded<std::vector<LiveMDRequest>> m_live_requests;
 
     std::chrono::milliseconds m_last_server_time = std::chrono::milliseconds{0};
@@ -81,5 +90,6 @@ private:
             m_ranges_by_symbol;
 
     RestClient rest_client;
-    WebSocketClient ws_client;
+    std::shared_ptr<WebSocketClient> m_ws_client;
+    ConnectionWatcher m_connection_watcher;
 };

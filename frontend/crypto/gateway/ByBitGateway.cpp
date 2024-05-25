@@ -8,19 +8,42 @@
 #include <chrono>
 #include <crossguid2/crossguid/guid.hpp>
 #include <future>
+#include <print>
 #include <string>
 #include <vector>
 
 ByBitGateway::ByBitGateway()
     : m_event_loop(*this)
-    , ws_client(
-              std::string(s_test_ws_linear_endpoint_address),
-              std::nullopt,
-              [this](const json & j) {
-                  on_price_received(j);
-              })
+    , m_connection_watcher(*this)
 {
     m_last_server_time = get_server_time();
+
+    if (!reconnect_ws_client()) {
+        std::println("Failed to connect to ByBit market data");
+    }
+}
+
+bool ByBitGateway::reconnect_ws_client()
+{
+    m_ws_client = std::make_shared<WebSocketClient>(
+            std::string(s_test_ws_linear_endpoint_address),
+            std::nullopt,
+            [this](const json & j) {
+                on_price_received(j);
+            },
+            m_connection_watcher);
+
+    if (!m_ws_client->wait_until_ready()) {
+        return false;
+    }
+
+    m_ws_client->subscribe("order");
+    m_ws_client->subscribe("execution");
+
+    auto weak_ptr = std::weak_ptr<IPingSender>(m_ws_client);
+    m_connection_watcher.set_ping_sender(weak_ptr);
+    m_event_loop.as_consumer<PingCheckEvent>().push_delayed(ws_ping_interval, PingCheckEvent{});
+    return true;
 }
 
 struct OhlcResult
@@ -333,13 +356,18 @@ void ByBitGateway::handle_request(const LiveMDRequest & request)
         return;
     }
 
-    if (!ws_client.wait_until_ready()) {
+    if (!m_ws_client) {
         std::cout << "ERROR! websocket not ready" << std::endl;
         return;
     }
 
-    ws_client.subscribe("publicTrade." + live_request.symbol.symbol_name);
+    m_ws_client->subscribe("publicTrade." + live_request.symbol.symbol_name);
     locked_ref.get().push_back(live_request);
+}
+
+void ByBitGateway::handle_request(const PingCheckEvent & event)
+{
+    m_connection_watcher.handle_request(event);
 }
 
 void ByBitGateway::on_price_received(const nlohmann::json & json)
@@ -360,12 +388,13 @@ void ByBitGateway::on_price_received(const nlohmann::json & json)
     }
 }
 
-void ByBitGateway::invoke(const std::variant<HistoricalMDRequest, LiveMDRequest> & request)
+void ByBitGateway::invoke(const std::variant<HistoricalMDRequest, LiveMDRequest, PingCheckEvent> & request)
 {
     std::visit(
             VariantMatcher{
                     [&](const HistoricalMDRequest & r) { handle_request(r); },
                     [&](const LiveMDRequest & r) { handle_request(r); },
+                    [&](const PingCheckEvent & r) { handle_request(r); },
             },
             request);
 }
@@ -376,12 +405,24 @@ void ByBitGateway::unsubscribe_from_live(xg::Guid guid)
     for (auto it = live_req_locked.get().begin(), end = live_req_locked.get().end(); it != end; ++it) {
         if (it->guid == guid) {
             std::cout << "Erasing live request: " << guid << std::endl;
-            ws_client.unsubscribe("publicTrade." + it->symbol.symbol_name);
+            if (m_ws_client) {
+                m_ws_client->unsubscribe("publicTrade." + it->symbol.symbol_name);
+            }
             live_req_locked.get().erase(it);
-            // if (live_req_locked.get().empty()) {
-            //     m_live_thread->stop_async();
-            // }
             break;
         }
     }
+}
+
+void ByBitGateway::on_connection_lost()
+{
+    std::println("Connection lost, reconnecting...");
+    if (!reconnect_ws_client()) {
+        std::println("Failed to connect to ByBit trading");
+    }
+}
+
+void ByBitGateway::on_connection_verified()
+{
+    m_event_loop.as_consumer<PingCheckEvent>().push_delayed(ws_ping_interval, PingCheckEvent{});
 }

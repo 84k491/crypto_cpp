@@ -13,7 +13,7 @@
 
 class ByBitTradingGateway final
     : public ITradingGateway
-    , public IPingSender
+    , public IConnectionSupervisor
     , private IEventInvoker<OrderRequestEvent, TpslRequestEvent, PingCheckEvent>
 {
     static constexpr std::string_view s_rest_base_url = "https://api-testnet.bybit.com";
@@ -43,9 +43,9 @@ private:
     void on_tpsl_update(const std::array<ByBitMessages::OrderResponse, 2> & updates);
     void on_execution(const json & j);
 
-    // IPingSender
-    void send_ping() override;
+    // IConnectionSupervisor
     void on_connection_lost() override;
+    void on_connection_verified() override;
 
 private:
     EventLoop<OrderRequestEvent, TpslRequestEvent, PingCheckEvent> m_event_loop;
@@ -55,7 +55,7 @@ private:
     std::string m_secret_key;
 
     RestClient rest_client;
-    std::unique_ptr<WebSocketClient> m_ws_client;
+    std::shared_ptr<WebSocketClient> m_ws_client;
     ConnectionWatcher m_connection_watcher;
 
     Guarded<std::map<std::string, std::pair<xg::Guid, TradingGatewayConsumers>>> m_consumers;
