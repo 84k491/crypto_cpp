@@ -51,6 +51,7 @@ public:
     void update(std::function<void(ObjectT &)> && update_callback);
     const ObjectT & get() const
     {
+        // TODO make thread safe
         return m_data;
     }
 

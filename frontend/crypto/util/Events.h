@@ -1,6 +1,6 @@
 #pragma once
 
-#include "EventLoop.h"
+#include "EventLoop.h" // TODO there must be no dep from loop
 #include "MarketOrder.h"
 #include "Ohlc.h"
 #include "Symbol.h"
@@ -19,6 +19,7 @@ struct BasicEvent
     {
     }
     virtual ~BasicEvent() = default;
+    virtual Priority priority() const { return Priority::Normal; }
     // TODO rename to base_consumer
     IEventConsumer<T> * event_consumer = nullptr; // TODO use shared_ptr?
 };
@@ -26,6 +27,7 @@ struct BasicEvent
 struct BasicResponseEvent
 {
     virtual ~BasicResponseEvent() = default;
+    virtual Priority priority() const { return Priority::Normal; }
 };
 
 struct MDPriceEvent : public BasicResponseEvent

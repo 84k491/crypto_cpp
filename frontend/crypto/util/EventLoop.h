@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ThreadSafeQueue.h"
+#include "ThreadSafePriorityQueue.h"
 
 #include <any>
 #include <functional>
@@ -199,6 +199,6 @@ private:
     IEventInvoker<Args...> & m_invoker;
 
     Scheduler m_scheduler;
-    ThreadSafeQueue<std::variant<Args...>> m_queue{};
+    ThreadSafePriorityQueue<std::variant<Args...>> m_queue{};
     std::thread m_thread;
 };

@@ -1,17 +1,25 @@
 #pragma once
 
 #include <condition_variable>
+#include <map>
 #include <mutex>
 #include <optional>
 #include <queue>
 
+enum class Priority
+{
+    High = 0,
+    Normal = 1,
+    Low = 2,
+};
+
 template <typename T>
-class ThreadSafeQueue
+class ThreadSafePriorityQueue
 {
 public:
-    ThreadSafeQueue() = default;
+    ThreadSafePriorityQueue() = default;
 
-    ~ThreadSafeQueue()
+    ~ThreadSafePriorityQueue()
     {
         stop();
     }
@@ -28,8 +36,10 @@ public:
         if (!m_keep_waiting) {
             return false;
         }
+        const auto priority = std::visit([](auto && v) -> Priority { return v.priority(); }, value);
         std::lock_guard lock(m_mutex);
-        m_queue.push(value);
+        auto & queue = m_queue_map[priority];
+        queue.push(value);
         m_cv.notify_one();
         return true;
     }
@@ -37,19 +47,23 @@ public:
     std::optional<T> wait_and_pop()
     {
         std::unique_lock<std::mutex> lock(m_mutex);
-        m_cv.wait(lock, [this] { return !m_queue.empty() || !m_keep_waiting; });
+        m_cv.wait(lock, [this] { return !m_queue_map.empty() || !m_keep_waiting; });
         if (!m_keep_waiting) {
             return std::nullopt;
         }
 
-        T value = std::move(m_queue.front());
-        m_queue.pop();
+        auto & queue = m_queue_map.begin()->second;
+        T value = std::move(queue.front());
+        queue.pop();
+        if (queue.empty()) {
+            m_queue_map.erase(m_queue_map.begin());
+        }
         return value;
     }
 
 private:
     std::mutex m_mutex;
-    std::queue<T> m_queue;
+    std::map<Priority, std::queue<T>> m_queue_map;
     std::condition_variable m_cv;
     bool m_keep_waiting{true};
 };
