@@ -41,15 +41,9 @@ public:
         return push_to_queue_delayed(delay, std::move(value));
     };
 
-    bool push_in_this_thread(const EventT value)
-    {
-        return invoke_in_this_thread(std::move(value));
-    }
-
 private:
     // TODO remove constness
     virtual bool push_to_queue(const std::any value) = 0;
-    virtual bool invoke_in_this_thread(const std::any value) = 0;
     virtual bool push_to_queue_delayed(std::chrono::milliseconds delay, const std::any value) = 0;
 };
 
@@ -167,13 +161,6 @@ protected:
     {
         auto var = any_to_variant_cast<Args...>(value);
         return m_queue.push(std::move(var));
-    }
-
-    bool invoke_in_this_thread(const std::any value) override
-    {
-        auto var = any_to_variant_cast<Args...>(value);
-        m_invoker.invoke(var);
-        return true;
     }
 
     bool push_to_queue_delayed(std::chrono::milliseconds delay, const std::any value) override

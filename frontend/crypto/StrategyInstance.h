@@ -30,6 +30,10 @@
 
 struct StrategyStopRequest : public BasicResponseEvent
 {
+    Priority priority() const override
+    {
+        return Priority::Low;
+    }
 };
 
 class StrategyInstance : public IEventInvoker<STRATEGY_EVENTS>

@@ -160,11 +160,6 @@ public:
         return true;
     }
 
-    bool invoke_in_this_thread(const std::any) override
-    {
-        throw std::runtime_error("Not implemented");
-    }
-
     bool push_to_queue_delayed(std::chrono::milliseconds, const std::any) override
     {
         throw std::runtime_error("Not implemented");

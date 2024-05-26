@@ -33,6 +33,7 @@ struct BasicResponseEvent
 struct MDPriceEvent : public BasicResponseEvent
 {
     MDPriceEvent() = default; // no need for guid here, there will be many responses
+    Priority priority() const override { return Priority::Low; }
     std::pair<std::chrono::milliseconds, OHLC> ts_and_price;
 };
 

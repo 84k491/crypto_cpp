@@ -469,11 +469,6 @@ void MainWindow::on_lambda(const std::function<void()> & lambda)
     lambda();
 }
 
-bool MainWindow::invoke_in_this_thread(const std::any)
-{
-    throw std::runtime_error("Not implemented");
-}
-
 bool MainWindow::push_to_queue_delayed(std::chrono::milliseconds, const std::any)
 {
     throw std::runtime_error("Not implemented");

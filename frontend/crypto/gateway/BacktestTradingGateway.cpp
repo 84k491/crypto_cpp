@@ -4,6 +4,8 @@
 #include "Events.h"
 #include "Volume.h"
 
+#include <print>
+
 BacktestTradingGateway::BacktestTradingGateway() = default;
 
 void BacktestTradingGateway::set_price_source(TimeseriesPublisher<OHLC> & publisher)
@@ -16,7 +18,7 @@ void BacktestTradingGateway::set_price_source(TimeseriesPublisher<OHLC> & publis
                 if (m_tpsl.has_value() && tpsl_trade.has_value()) {
                     auto lref = m_consumers.lock();
                     for (auto & it : lref.get()) {
-                        it.second.second.trade_consumer.push_in_this_thread(TradeEvent(tpsl_trade.value()));
+                        it.second.second.trade_consumer.push(TradeEvent(tpsl_trade.value()));
                     }
                     m_pos_volume = SignedVolume();
                     m_tpsl.reset();
@@ -86,7 +88,7 @@ void BacktestTradingGateway::push_order_request(const OrderRequestEvent & req)
     }
 
     const auto & order = req.order;
-    req.event_consumer->push_in_this_thread(OrderResponseEvent(req.order.guid()));
+    req.event_consumer->push(OrderResponseEvent(req.order.guid()));
     m_symbol = order.symbol();
 
     const auto & price = m_last_trade_price;
@@ -105,7 +107,7 @@ void BacktestTradingGateway::push_order_request(const OrderRequestEvent & req)
 
     m_pos_volume += SignedVolume(volume, order.side());
 
-    req.trade_ev_consumer->push_in_this_thread(TradeEvent(std::move(trade)));
+    req.trade_ev_consumer->push(TradeEvent(std::move(trade)));
 }
 
 void BacktestTradingGateway::push_tpsl_request(const TpslRequestEvent & tpsl_ev)
@@ -118,11 +120,12 @@ void BacktestTradingGateway::push_tpsl_request(const TpslRequestEvent & tpsl_ev)
 
     m_tpsl = tpsl_ev;
     TpslResponseEvent resp_ev(m_tpsl.value().guid, tpsl_ev.tpsl);
-    m_tpsl.value().event_consumer->push_in_this_thread(resp_ev);
+    m_tpsl.value().event_consumer->push(resp_ev);
 }
 
 void BacktestTradingGateway::register_consumers(xg::Guid guid, const Symbol & symbol, TradingGatewayConsumers consumers)
 {
+    std::println("Registering consumers for symbol: {}", symbol.symbol_name);
     auto lref = m_consumers.lock();
     lref.get().emplace(symbol.symbol_name, std::make_pair(guid, consumers));
 }

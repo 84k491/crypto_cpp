@@ -112,7 +112,6 @@ signals:
 private:
     // IEventConsumer<LambdaEvent>
     bool push_to_queue(std::any value) override;
-    bool invoke_in_this_thread(const std::any value) override;
     bool push_to_queue_delayed(std::chrono::milliseconds delay, const std::any value) override;
 
 private:
