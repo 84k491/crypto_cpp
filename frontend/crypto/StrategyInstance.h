@@ -55,7 +55,7 @@ public:
     TimeseriesPublisher<OHLC> & klines_publisher();
     TimeseriesPublisher<double> & depo_publisher();
     EventObjectPublisher<StrategyResult> & strategy_result_publisher();
-    ObjectPublisher<WorkStatus> & status_publisher();
+    EventObjectPublisher<WorkStatus> & status_publisher();
     TimeseriesPublisher<Tpsl> & tpsl_publisher();
 
     void run_async();
@@ -112,7 +112,7 @@ private:
 
     std::pair<std::chrono::milliseconds, double> m_last_ts_and_price;
 
-    ObjectPublisher<WorkStatus> m_status;
+    EventObjectPublisher<WorkStatus> m_status;
 
     std::set<xg::Guid> m_live_md_requests;
     std::set<xg::Guid> m_pending_requests;

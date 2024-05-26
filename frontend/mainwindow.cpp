@@ -79,25 +79,6 @@ MainWindow::MainWindow(QWidget * parent)
     });
 
     ui->pb_stop->setEnabled(false);
-    connect(this, &MainWindow::signal_work_status, this, [this](const WorkStatus status) {
-        std::cout << "Work status: " << to_string(status) << std::endl;
-        ui->lb_work_status->setText(to_string(status).c_str());
-        if (status == WorkStatus::Backtesting || status == WorkStatus::Live) {
-            ui->pb_run->setEnabled(false);
-            ui->pb_stop->setEnabled(true);
-        }
-        if (status == WorkStatus::Stopped || status == WorkStatus::Live) {
-            subscribe_to_strategy();
-        }
-        if (status == WorkStatus::Stopped || status == WorkStatus::Panic) {
-            ui->pb_run->setEnabled(true);
-            ui->pb_stop->setEnabled(false);
-            m_subscriptions.clear();
-            std::cout << "Resetting strategy instance" << std::endl;
-            m_strategy_instance.reset();
-        }
-    });
-
     connect(this,
             &MainWindow::signal_optimized_config,
             this,
@@ -121,6 +102,33 @@ MainWindow::MainWindow(QWidget * parent)
     ui->cb_symbol->setCurrentText(saved_state.m_symbol.c_str());
 
     std::cout << "End of mainwindow constructor" << std::endl;
+}
+
+void MainWindow::handle_status_changed(WorkStatus status)
+{
+    std::cout << "Work status: " << to_string(status) << std::endl;
+    ui->lb_work_status->setText(to_string(status).c_str());
+    if (status == WorkStatus::Backtesting || status == WorkStatus::Live) {
+        ui->pb_run->setEnabled(false);
+        ui->pb_stop->setEnabled(true);
+    }
+    if (status == WorkStatus::Stopped || status == WorkStatus::Live) {
+        subscribe_to_strategy();
+    }
+    if (status == WorkStatus::Stopped || status == WorkStatus::Panic) {
+        ui->pb_run->setEnabled(true);
+        ui->pb_stop->setEnabled(false);
+        m_subscriptions.clear();
+        std::cout << "Resetting strategy instance" << std::endl;
+        m_strategy_instance.reset();
+    }
+    switch (status) {
+    case WorkStatus::Backtesting: break;
+    default: {
+        render_result(m_strategy_instance->strategy_result_publisher().get());
+        break;
+    }
+    }
 }
 
 void MainWindow::on_pb_stop_clicked()
@@ -197,16 +205,8 @@ void MainWindow::on_pb_run_clicked()
     }
 
     m_subscriptions.push_back(m_strategy_instance->status_publisher().subscribe(
-            [&](const WorkStatus & status) {
-                emit signal_work_status(status);
-                switch (status) {
-                case WorkStatus::Backtesting: break;
-                default: {
-                    render_result(m_strategy_instance->strategy_result_publisher().get());
-                    break;
-                }
-                }
-            }));
+            *this,
+            [&](const WorkStatus & status) { handle_status_changed(status); }));
 
     m_strategy_instance->run_async();
     std::cout << "strategy started" << std::endl;

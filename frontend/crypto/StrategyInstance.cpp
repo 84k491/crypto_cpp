@@ -207,7 +207,7 @@ EventObjectPublisher<StrategyResult> & StrategyInstance::strategy_result_publish
     return m_strategy_result;
 }
 
-ObjectPublisher<WorkStatus> & StrategyInstance::status_publisher()
+EventObjectPublisher<WorkStatus> & StrategyInstance::status_publisher()
 {
     return m_status;
 }

@@ -148,9 +148,11 @@ public:
             strategy_status = strategy_instance->status_publisher().get();
         }
 
-        status_sub = strategy_instance->status_publisher().subscribe([&](const auto & status) {
-            strategy_status = status;
-        });
+        status_sub = strategy_instance->status_publisher().subscribe(
+                *this,
+                [&](const auto & status) {
+                    strategy_status = status;
+                });
     }
 
     bool push_to_queue(std::any value) override
@@ -176,7 +178,7 @@ protected:
     std::unique_ptr<StrategyInstance> strategy_instance;
 
     WorkStatus strategy_status = WorkStatus::Panic;
-    std::shared_ptr<ObjectSubscribtion<WorkStatus>> status_sub;
+    std::shared_ptr<EventObjectSubscribtion<WorkStatus>> status_sub;
 };
 
 TEST_F(StrategyInstanceTest, SubForLiveMarketData_GetPrice_GracefullStop)

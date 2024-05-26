@@ -10,7 +10,6 @@
 #include "StrategyInstance.h"
 #include "StrategyResult.h"
 #include "Tpsl.h"
-#include "TpslExitStrategy.h"
 #include "WorkStatus.h"
 
 #include <QMainWindow>
@@ -104,7 +103,6 @@ signals:
                                   std::chrono::milliseconds ts,
                                   double data);
     void signal_depo(std::chrono::milliseconds ts, double depo);
-    void signal_work_status(WorkStatus status);
     void signal_optimized_config(JsonStrategyConfig entry_config, JsonStrategyConfig exit_config);
     void signal_optimizer_passed_check(int passed_checks, int total_checks);
     void signal_lambda(std::function<void()> lambda);
@@ -115,6 +113,7 @@ private:
     bool push_to_queue_delayed(std::chrono::milliseconds delay, const std::any value) override;
 
 private:
+    void handle_status_changed(WorkStatus status);
     void construct_optimizer_ui();
     std::optional<Timerange> get_timerange() const;
 
