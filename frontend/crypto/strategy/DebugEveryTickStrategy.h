@@ -36,7 +36,7 @@ public:
 
     DebugEveryTickStrategy(const DebugEveryTickStrategyConfig & conf);
     std::optional<Signal> push_price(std::pair<std::chrono::milliseconds, double> ts_and_price) override;
-    TimeseriesPublisher<std::pair<std::string, double>> & strategy_internal_data_publisher() override;
+    EventTimeseriesPublisher<std::pair<std::string, double>> & strategy_internal_data_publisher() override;
     bool is_valid() const override;
 
 private:
@@ -46,5 +46,5 @@ private:
 
     unsigned iteration = 0;
 
-    TimeseriesPublisher<std::pair<std::string, double>> m_strategy_internal_data_publisher;
+    EventTimeseriesPublisher<std::pair<std::string, double>> m_strategy_internal_data_publisher;
 };

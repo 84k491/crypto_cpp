@@ -35,7 +35,7 @@ public:
 
     std::optional<Signal> push_price(std::pair<std::chrono::milliseconds, double> ts_and_price) override;
 
-    TimeseriesPublisher<std::pair<std::string, double>>& strategy_internal_data_publisher() override;
+    EventTimeseriesPublisher<std::pair<std::string, double>>& strategy_internal_data_publisher() override;
 
     bool is_valid() const override;
 
@@ -52,8 +52,8 @@ private:
     std::vector<std::pair<std::chrono::milliseconds, double>> m_slow_avg_history;
     std::vector<std::pair<std::chrono::milliseconds, double>> m_fast_avg_history;
 
-    std::optional<double> m_prev_slow_avg{};
-    std::optional<double> m_prev_fast_avg{};
+    std::optional<double> m_prev_slow_avg;
+    std::optional<double> m_prev_fast_avg;
 
-    TimeseriesPublisher<std::pair<std::string, double>> m_strategy_internal_data_publisher;
+    EventTimeseriesPublisher<std::pair<std::string, double>> m_strategy_internal_data_publisher;
 };

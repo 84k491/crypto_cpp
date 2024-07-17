@@ -182,12 +182,12 @@ void StrategyInstance::process_position_result(const PositionResult & new_result
     }
 }
 
-TimeseriesPublisher<Signal> & StrategyInstance::signals_publisher()
+EventTimeseriesPublisher<Signal> & StrategyInstance::signals_publisher()
 {
     return m_signal_publisher;
 }
 
-TimeseriesPublisher<std::pair<std::string, double>> & StrategyInstance::strategy_internal_data_publisher()
+EventTimeseriesPublisher<std::pair<std::string, double>> & StrategyInstance::strategy_internal_data_publisher()
 {
     return m_strategy->strategy_internal_data_publisher();
 }
@@ -212,7 +212,7 @@ EventObjectPublisher<WorkStatus> & StrategyInstance::status_publisher()
     return m_status;
 }
 
-TimeseriesPublisher<Tpsl> & StrategyInstance::tpsl_publisher()
+EventTimeseriesPublisher<Tpsl> & StrategyInstance::tpsl_publisher()
 {
     return m_tpsl_publisher;
 }

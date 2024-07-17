@@ -50,14 +50,14 @@ public:
 
     ~StrategyInstance() override;
 
-    TimeseriesPublisher<Signal> & signals_publisher();
-    TimeseriesPublisher<std::pair<std::string, double>> &
+    EventTimeseriesPublisher<Signal> & signals_publisher();
+    EventTimeseriesPublisher<std::pair<std::string, double>> &
     strategy_internal_data_publisher();
     TimeseriesPublisher<OHLC> & klines_publisher();
     EventTimeseriesPublisher<double> & depo_publisher();
     EventObjectPublisher<StrategyResult> & strategy_result_publisher();
     EventObjectPublisher<WorkStatus> & status_publisher();
-    TimeseriesPublisher<Tpsl> & tpsl_publisher();
+    EventTimeseriesPublisher<Tpsl> & tpsl_publisher();
 
     void run_async();
     void stop_async(bool panic = false);
@@ -97,10 +97,10 @@ private:
 
     EventObjectPublisher<StrategyResult> m_strategy_result;
 
-    TimeseriesPublisher<Signal> m_signal_publisher; // TODO publish trades instead of signals
+    EventTimeseriesPublisher<Signal> m_signal_publisher; // TODO publish trades instead of signals
     TimeseriesPublisher<OHLC> m_klines_publisher;
     EventTimeseriesPublisher<double> m_depo_publisher;
-    TimeseriesPublisher<Tpsl> m_tpsl_publisher;
+    EventTimeseriesPublisher<Tpsl> m_tpsl_publisher;
 
     const Symbol m_symbol;
     static constexpr double m_pos_currency_amount = 100.;

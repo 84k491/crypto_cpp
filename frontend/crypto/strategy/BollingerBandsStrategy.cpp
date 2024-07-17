@@ -79,7 +79,7 @@ std::optional<Signal> BollingerBandsStrategy::push_price(std::pair<std::chrono::
     return std::nullopt;
 }
 
-TimeseriesPublisher<std::pair<std::string, double>> & BollingerBandsStrategy::strategy_internal_data_publisher()
+EventTimeseriesPublisher<std::pair<std::string, double>> & BollingerBandsStrategy::strategy_internal_data_publisher()
 {
     return m_strategy_internal_data_publisher;
 }

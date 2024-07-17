@@ -94,7 +94,7 @@ std::optional<Signal> TunedBollingerBandsStrategy::push_price(std::pair<std::chr
     return std::nullopt;
 }
 
-TimeseriesPublisher<std::pair<std::string, double>> & TunedBollingerBandsStrategy::strategy_internal_data_publisher()
+EventTimeseriesPublisher<std::pair<std::string, double>> & TunedBollingerBandsStrategy::strategy_internal_data_publisher()
 {
     return m_strategy_internal_data_publisher;
 }

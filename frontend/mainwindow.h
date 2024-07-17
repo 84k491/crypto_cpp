@@ -97,11 +97,6 @@ private slots:
 
 signals:
     void signal_price(std::chrono::milliseconds ts, double price);
-    void signal_tpsl(std::chrono::milliseconds ts, Tpsl tpsl);
-    void signal_signal(Signal signal);
-    void signal_strategy_internal(const std::string name,
-                                  std::chrono::milliseconds ts,
-                                  double data);
     void signal_optimized_config(JsonStrategyConfig entry_config, JsonStrategyConfig exit_config);
     void signal_optimizer_passed_check(int passed_checks, int total_checks);
     void signal_lambda(std::function<void()> lambda);

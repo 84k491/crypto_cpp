@@ -51,7 +51,7 @@ bool DebugEveryTickStrategy::is_valid() const
     return m_config.is_valid();
 }
 
-TimeseriesPublisher<std::pair<std::string, double>> & DebugEveryTickStrategy::strategy_internal_data_publisher()
+EventTimeseriesPublisher<std::pair<std::string, double>> & DebugEveryTickStrategy::strategy_internal_data_publisher()
 {
     return m_strategy_internal_data_publisher;
 }

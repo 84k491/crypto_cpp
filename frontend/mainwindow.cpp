@@ -37,29 +37,6 @@ MainWindow::MainWindow(QWidget * parent)
                 get_or_create_chart(m_price_chart_name).push_series_value("price", ts, price);
             });
 
-    connect(this,
-            &MainWindow::signal_tpsl,
-            this,
-            [this](std::chrono::milliseconds ts, Tpsl tpsl) {
-                get_or_create_chart(m_price_chart_name).push_tpsl(ts, tpsl);
-            });
-
-    connect(this,
-            &MainWindow::signal_signal,
-            this,
-            [this](Signal signal) {
-                get_or_create_chart(m_price_chart_name).push_signal(signal);
-            });
-
-    connect(this,
-            &MainWindow::signal_strategy_internal,
-            this,
-            [this](const std::string & name,
-                   std::chrono::milliseconds ts,
-                   double data) {
-                get_or_create_chart(m_price_chart_name).push_series_value(name, ts, data);
-            });
-
     connect(this, &MainWindow::signal_optimizer_passed_check, this, [this](int passed_checks, int total_checks) {
         if (passed_checks == total_checks) {
             ui->pb_optimize->setEnabled(true);
@@ -222,6 +199,7 @@ void MainWindow::subscribe_to_strategy()
                 emit signal_price(ts, ohlc.close);
             }));
     m_subscriptions.push_back(m_strategy_instance->tpsl_publisher().subscribe(
+            *this,
             [this](const std::vector<std::pair<std::chrono::milliseconds, Tpsl>> & input_vec) {
                 std::vector<std::pair<std::chrono::milliseconds, double>> tp, sl;
                 for (const auto & [ts, tpsl] : input_vec) {
@@ -233,12 +211,13 @@ void MainWindow::subscribe_to_strategy()
                 plot.push_scatter_series_vector("stop_loss", sl);
             },
             [&](std::chrono::milliseconds ts, const Tpsl & tpsl) {
-                emit signal_tpsl(ts, tpsl);
+                get_or_create_chart(m_price_chart_name).push_tpsl(ts, tpsl);
             }));
     m_subscriptions.push_back(
             m_strategy_instance
                     ->strategy_internal_data_publisher()
                     .subscribe(
+                            *this,
                             [this](
                                     const std::vector<
                                             std::pair<
@@ -256,9 +235,10 @@ void MainWindow::subscribe_to_strategy()
                             },
                             [&](std::chrono::milliseconds ts, const std::pair<const std::string, double> & data_pair) {
                                 const auto & [name, data] = data_pair;
-                                emit signal_strategy_internal(name, ts, data);
+                get_or_create_chart(m_price_chart_name).push_series_value(name, ts, data);
                             }));
     m_subscriptions.push_back(m_strategy_instance->signals_publisher().subscribe(
+            *this,
             [this](const std::vector<std::pair<std::chrono::milliseconds, Signal>> & input_vec) {
                 std::vector<std::pair<std::chrono::milliseconds, double>> buy, sell;
                 for (const auto & [ts, signal] : input_vec) {
@@ -279,7 +259,7 @@ void MainWindow::subscribe_to_strategy()
                 plot.push_scatter_series_vector("sell_trade", sell);
             },
             [&](std::chrono::milliseconds, const Signal & signal) {
-                emit signal_signal(signal);
+                get_or_create_chart(m_price_chart_name).push_signal(signal);
             }));
     m_subscriptions.push_back(m_strategy_instance->depo_publisher().subscribe(
             *this,
