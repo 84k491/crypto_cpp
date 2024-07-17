@@ -1,13 +1,11 @@
 #pragma once
 
 #include "Signal.h"
-#include "nlohmann/json.hpp"
 #include "SimpleMovingAverage.h"
 #include "JsonStrategyConfig.h"
 #include "StrategyInterface.h"
 
 #include <chrono>
-#include <functional>
 #include <map>
 #include <optional>
 #include <vector>

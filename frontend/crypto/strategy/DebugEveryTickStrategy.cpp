@@ -1,7 +1,5 @@
 #include "DebugEveryTickStrategy.h"
 
-#include "ScopeExit.h"
-
 DebugEveryTickStrategyConfig::DebugEveryTickStrategyConfig(const JsonStrategyConfig &)
 {
 }
@@ -10,7 +8,7 @@ DebugEveryTickStrategyConfig::DebugEveryTickStrategyConfig(std::chrono::millisec
 {
 }
 
-bool DebugEveryTickStrategyConfig::is_valid() const
+bool DebugEveryTickStrategyConfig::is_valid()
 {
     return true;
 }

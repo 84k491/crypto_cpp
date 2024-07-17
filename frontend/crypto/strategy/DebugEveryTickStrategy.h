@@ -2,16 +2,10 @@
 
 #include "JsonStrategyConfig.h"
 #include "Signal.h"
-#include "SimpleMovingAverage.h"
 #include "StrategyInterface.h"
 
-#include "nlohmann/json.hpp"
-
 #include <chrono>
-#include <functional>
-#include <map>
 #include <optional>
-#include <vector>
 
 class DebugEveryTickStrategyConfig
 {
@@ -19,7 +13,7 @@ public:
     DebugEveryTickStrategyConfig(const JsonStrategyConfig & json);
     DebugEveryTickStrategyConfig(std::chrono::milliseconds slow_interval, std::chrono::milliseconds fast_interval);
 
-    bool is_valid() const;
+    static bool is_valid();
 
     JsonStrategyConfig to_json() const;
 
