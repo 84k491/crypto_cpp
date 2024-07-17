@@ -102,7 +102,6 @@ signals:
     void signal_strategy_internal(const std::string name,
                                   std::chrono::milliseconds ts,
                                   double data);
-    void signal_depo(std::chrono::milliseconds ts, double depo);
     void signal_optimized_config(JsonStrategyConfig entry_config, JsonStrategyConfig exit_config);
     void signal_optimizer_passed_check(int passed_checks, int total_checks);
     void signal_lambda(std::function<void()> lambda);

@@ -60,13 +60,6 @@ MainWindow::MainWindow(QWidget * parent)
                 get_or_create_chart(m_price_chart_name).push_series_value(name, ts, data);
             });
 
-    connect(this,
-            &MainWindow::signal_depo,
-            this,
-            [this](std::chrono::milliseconds ts, double depo) {
-                get_or_create_chart(m_depo_chart_name).push_series_value("depo", ts, depo);
-            });
-
     connect(this, &MainWindow::signal_optimizer_passed_check, this, [this](int passed_checks, int total_checks) {
         if (passed_checks == total_checks) {
             ui->pb_optimize->setEnabled(true);
@@ -289,12 +282,13 @@ void MainWindow::subscribe_to_strategy()
                 emit signal_signal(signal);
             }));
     m_subscriptions.push_back(m_strategy_instance->depo_publisher().subscribe(
+            *this,
             [this](const auto & vec) {
                 auto & plot = get_or_create_chart(m_depo_chart_name);
                 plot.push_series_vector("depo", vec);
             },
             [&](std::chrono::milliseconds ts, double depo) {
-                emit signal_depo(ts, depo);
+                get_or_create_chart(m_depo_chart_name).push_series_value("depo", ts, depo);
             }));
     m_subscriptions.push_back(m_strategy_instance->strategy_result_publisher().subscribe(
             *this,

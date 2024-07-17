@@ -1,6 +1,7 @@
 #pragma once
 
 #include "EventLoop.h"
+#include "EventTimeseriesPublisher.h"
 #include "IMarketDataGateway.h"
 #include "ITradingGateway.h"
 #include "ObjectPublisher.h"
@@ -53,7 +54,7 @@ public:
     TimeseriesPublisher<std::pair<std::string, double>> &
     strategy_internal_data_publisher();
     TimeseriesPublisher<OHLC> & klines_publisher();
-    TimeseriesPublisher<double> & depo_publisher();
+    EventTimeseriesPublisher<double> & depo_publisher();
     EventObjectPublisher<StrategyResult> & strategy_result_publisher();
     EventObjectPublisher<WorkStatus> & status_publisher();
     TimeseriesPublisher<Tpsl> & tpsl_publisher();
@@ -98,7 +99,7 @@ private:
 
     TimeseriesPublisher<Signal> m_signal_publisher; // TODO publish trades instead of signals
     TimeseriesPublisher<OHLC> m_klines_publisher;
-    TimeseriesPublisher<double> m_depo_publisher;
+    EventTimeseriesPublisher<double> m_depo_publisher;
     TimeseriesPublisher<Tpsl> m_tpsl_publisher;
 
     const Symbol m_symbol;

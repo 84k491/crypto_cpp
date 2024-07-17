@@ -12,7 +12,7 @@ template <typename ObjectT>
 class EventObjectPublisher;
 
 template <typename ObjectT>
-class EventObjectSubscribtion final : public ISubsription
+class EventObjectSubscribtion final : public ISubsription // TODO rename to SubsriPtion
 {
     friend class EventObjectPublisher<ObjectT>;
 

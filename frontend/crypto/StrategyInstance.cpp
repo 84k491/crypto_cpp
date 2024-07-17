@@ -197,7 +197,7 @@ TimeseriesPublisher<OHLC> & StrategyInstance::klines_publisher()
     return m_klines_publisher;
 }
 
-TimeseriesPublisher<double> & StrategyInstance::depo_publisher()
+EventTimeseriesPublisher<double> & StrategyInstance::depo_publisher()
 {
     return m_depo_publisher;
 }
