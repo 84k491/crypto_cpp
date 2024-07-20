@@ -82,8 +82,6 @@ void MainWindow::handle_status_changed(WorkStatus status)
         ui->pb_run->setEnabled(true);
         ui->pb_stop->setEnabled(false);
         m_subscriptions.clear();
-        std::cout << "Resetting strategy instance" << std::endl;
-        m_strategy_instance.reset();
     }
     switch (status) {
     case WorkStatus::Backtesting: break;
