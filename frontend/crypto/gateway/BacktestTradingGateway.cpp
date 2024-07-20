@@ -147,3 +147,15 @@ bool BacktestTradingGateway::check_consumers(const std::string & symbol)
     auto it = lref.get().find(symbol);
     return it != lref.get().end();
 }
+
+bool BacktestTradingGateway::push_to_queue(const std::any value)
+{
+    const auto & event = std::any_cast<LambdaEvent>(value);
+    event.func();
+    return true;
+}
+
+bool BacktestTradingGateway::push_to_queue_delayed(std::chrono::milliseconds, const std::any)
+{
+    throw std::runtime_error("Not implemented");
+}

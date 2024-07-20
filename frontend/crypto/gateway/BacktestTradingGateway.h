@@ -9,7 +9,9 @@
 
 #include <optional>
 
-class BacktestTradingGateway : public ITradingGateway
+class BacktestTradingGateway
+    : public ITradingGateway
+    , public IEventConsumer<LambdaEvent>
 {
 public:
     static constexpr double taker_fee_rate = 0.00055;
@@ -26,6 +28,11 @@ public:
 private:
     bool check_consumers(const std::string & symbol);
     std::optional<Trade> try_trade_tpsl(OHLC ohlc);
+
+private:
+    // IEventConsumer<LambdaEvent>
+    bool push_to_queue(const std::any value) override;
+    bool push_to_queue_delayed(std::chrono::milliseconds delay, const std::any value) override;
 
 private:
     std::string m_symbol; // backtest GW can only trade a single symbol now
