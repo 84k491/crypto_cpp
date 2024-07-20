@@ -88,8 +88,8 @@ struct OrderResponseEvent : public BasicResponseEvent // TODO rename to AckEvent
 
 struct TpslResponseEvent : public OrderResponseEvent
 {
-    TpslResponseEvent(xg::Guid request_guid, Tpsl tpsl, std::optional<std::string> reason = std::nullopt)
-        : OrderResponseEvent(request_guid, std::move(reason))
+    TpslResponseEvent(xg::Guid request_guid, Tpsl tpsl, std::optional<std::string> reject_reason = std::nullopt)
+        : OrderResponseEvent(request_guid, std::move(reject_reason))
         , tpsl(tpsl)
     {
     }

@@ -145,12 +145,14 @@ void ByBitTradingGateway::process_event(const OrderRequestEvent & req)
             m_api_key,
             m_secret_key,
             1000ms);
-    request_future.wait();
+    const std::future_status status = request_future.wait_for(5000ms);
+    if (status != std::future_status::ready) {
+        // TODO specify guid
+        req.event_consumer->push(OrderResponseEvent(req.order.guid(), "Empty REST response"));
+        return;
+    }
     const std::string request_result = request_future.get();
     std::cout << "Enter order response: " << request_result << std::endl;
-    if (request_result.empty()) {
-        req.event_consumer->push(OrderResponseEvent(req.order.guid(), "Empty REST response"));
-    }
 }
 
 void ByBitTradingGateway::process_event(const TpslRequestEvent & tpsl)
@@ -164,6 +166,7 @@ void ByBitTradingGateway::process_event(const TpslRequestEvent & tpsl)
         tpsl.event_consumer->push(TpslResponseEvent(tpsl.guid, tpsl.tpsl, "No consumer for this symbol"));
         return;
     }
+    // TODO validate stop and take prices
 
     json json_order = {
             {"category", "linear"},
@@ -185,14 +188,20 @@ void ByBitTradingGateway::process_event(const TpslRequestEvent & tpsl)
             m_api_key,
             m_secret_key,
             1000ms);
-    request_future.wait();
-    const std::string request_result = request_future.get();
-    if (request_result.empty()) {
-        tpsl.event_consumer->push(TpslResponseEvent(tpsl.guid, tpsl.tpsl, "Empty REST response"));
+    const std::future_status status = request_future.wait_for(5000ms);
+    if (status != std::future_status::ready) {
+        // TODO specify guid
+        tpsl.event_consumer->push(TpslResponseEvent(tpsl.guid, tpsl.tpsl, "Request timed out"));
         return;
     }
+    const std::string request_result = request_future.get();
+    std::cout << "TP/SL response: " << request_result << std::endl;
     const auto j = json::parse(request_result);
     const ByBitMessages::TpslResult result = j.get<ByBitMessages::TpslResult>();
+    if (result.ret_code != 0) {
+        tpsl.event_consumer->push(TpslResponseEvent(tpsl.guid, tpsl.tpsl, result.ret_msg));
+        return;
+    }
     tpsl.event_consumer->push(TpslResponseEvent(tpsl.guid, tpsl.tpsl));
 }
 
