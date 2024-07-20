@@ -8,9 +8,10 @@
 
 BacktestTradingGateway::BacktestTradingGateway() = default;
 
-void BacktestTradingGateway::set_price_source(TimeseriesPublisher<OHLC> & publisher)
+void BacktestTradingGateway::set_price_source(EventTimeseriesPublisher<OHLC> & publisher)
 {
     m_price_sub = publisher.subscribe(
+            *this,
             [](auto &) {},
             [this](auto, const OHLC & ohlc) {
                 m_last_trade_price = ohlc.close;

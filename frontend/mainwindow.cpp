@@ -30,13 +30,6 @@ MainWindow::MainWindow(QWidget * parent)
 
     connect(this, &MainWindow::signal_lambda, this, &MainWindow::on_lambda);
 
-    connect(this,
-            &MainWindow::signal_price,
-            this,
-            [this](std::chrono::milliseconds ts, double price) {
-                get_or_create_chart(m_price_chart_name).push_series_value("price", ts, price);
-            });
-
     connect(this, &MainWindow::signal_optimizer_passed_check, this, [this](int passed_checks, int total_checks) {
         if (passed_checks == total_checks) {
             ui->pb_optimize->setEnabled(true);
@@ -186,6 +179,7 @@ void MainWindow::subscribe_to_strategy()
 {
     std::cout << "subscribe_to_strategy" << std::endl;
     m_subscriptions.push_back(m_strategy_instance->klines_publisher().subscribe(
+            *this,
             [this](const auto & vec) {
                 std::vector<std::pair<std::chrono::milliseconds, double>> new_data;
                 new_data.reserve(vec.size());
@@ -196,7 +190,7 @@ void MainWindow::subscribe_to_strategy()
                 plot.push_series_vector("price", new_data);
             },
             [&](std::chrono::milliseconds ts, const OHLC & ohlc) {
-                emit signal_price(ts, ohlc.close);
+                get_or_create_chart(m_price_chart_name).push_series_value("price", ts, ohlc.close);
             }));
     m_subscriptions.push_back(m_strategy_instance->tpsl_publisher().subscribe(
             *this,
@@ -235,7 +229,7 @@ void MainWindow::subscribe_to_strategy()
                             },
                             [&](std::chrono::milliseconds ts, const std::pair<const std::string, double> & data_pair) {
                                 const auto & [name, data] = data_pair;
-                get_or_create_chart(m_price_chart_name).push_series_value(name, ts, data);
+                                get_or_create_chart(m_price_chart_name).push_series_value(name, ts, data);
                             }));
     m_subscriptions.push_back(m_strategy_instance->signals_publisher().subscribe(
             *this,

@@ -192,7 +192,7 @@ EventTimeseriesPublisher<std::pair<std::string, double>> & StrategyInstance::str
     return m_strategy->strategy_internal_data_publisher();
 }
 
-TimeseriesPublisher<OHLC> & StrategyInstance::klines_publisher()
+EventTimeseriesPublisher<OHLC> & StrategyInstance::klines_publisher()
 {
     return m_klines_publisher;
 }

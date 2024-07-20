@@ -8,7 +8,6 @@
 #include "Signal.h"
 #include "StrategyInterface.h"
 #include "StrategyResult.h"
-#include "TimeseriesPublisher.h"
 #include "TpslExitStrategy.h"
 #include "WorkStatus.h"
 
@@ -52,7 +51,7 @@ public:
     EventTimeseriesPublisher<Signal> & signals_publisher();
     EventTimeseriesPublisher<std::pair<std::string, double>> &
     strategy_internal_data_publisher();
-    TimeseriesPublisher<OHLC> & klines_publisher();
+    EventTimeseriesPublisher<OHLC> & klines_publisher();
     EventTimeseriesPublisher<double> & depo_publisher();
     EventObjectPublisher<StrategyResult> & strategy_result_publisher();
     EventObjectPublisher<WorkStatus> & status_publisher();
@@ -97,7 +96,7 @@ private:
     EventObjectPublisher<StrategyResult> m_strategy_result;
 
     EventTimeseriesPublisher<Signal> m_signal_publisher; // TODO publish trades instead of signals
-    TimeseriesPublisher<OHLC> m_klines_publisher;
+    EventTimeseriesPublisher<OHLC> m_klines_publisher;
     EventTimeseriesPublisher<double> m_depo_publisher;
     EventTimeseriesPublisher<Tpsl> m_tpsl_publisher;
 

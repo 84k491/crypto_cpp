@@ -96,7 +96,6 @@ private slots:
     void on_lambda(const std::function<void()> & lambda);
 
 signals:
-    void signal_price(std::chrono::milliseconds ts, double price);
     void signal_optimized_config(JsonStrategyConfig entry_config, JsonStrategyConfig exit_config);
     void signal_optimizer_passed_check(int passed_checks, int total_checks);
     void signal_lambda(std::function<void()> lambda);

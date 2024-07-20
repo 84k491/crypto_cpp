@@ -1,10 +1,10 @@
 #pragma once
 
+#include "EventTimeseriesPublisher.h"
 #include "Events.h"
 #include "Guarded.h"
 #include "ITradingGateway.h"
 #include "Ohlc.h"
-#include "TimeseriesPublisher.h"
 #include "Volume.h"
 
 #include <optional>
@@ -17,7 +17,7 @@ public:
     static constexpr double taker_fee_rate = 0.00055;
     BacktestTradingGateway();
 
-    void set_price_source(TimeseriesPublisher<OHLC> & publisher);
+    void set_price_source(EventTimeseriesPublisher<OHLC> & publisher);
 
     void push_order_request(const OrderRequestEvent & order) override;
     void push_tpsl_request(const TpslRequestEvent & tpsl_ev) override;

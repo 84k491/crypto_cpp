@@ -192,6 +192,7 @@ TEST_F(StrategyInstanceTest, SubForLiveMarketData_GetPrice_GracefullStop)
 
     size_t prices_received = 0;
     const auto price_sub = strategy_instance->klines_publisher().subscribe(
+            *this,
             [](const auto & vec) {
                 EXPECT_EQ(vec.size(), 0);
             },
@@ -228,6 +229,7 @@ TEST_F(StrategyInstanceTest, OpenAndClosePos_GetResult_DontCloseTwiceOnStop)
 
     size_t prices_received = 0;
     const auto price_sub = strategy_instance->klines_publisher().subscribe(
+            *this,
             [](const auto & vec) {
                 EXPECT_EQ(vec.size(), 0);
             },
@@ -329,6 +331,7 @@ TEST_F(StrategyInstanceTest, OpenPositionWithTpsl_CloseOnGracefullStop)
 
     size_t prices_received = 0;
     const auto price_sub = strategy_instance->klines_publisher().subscribe(
+            *this,
             [](const auto & vec) {
                 EXPECT_EQ(vec.size(), 0);
             },
@@ -443,6 +446,7 @@ TEST_F(StrategyInstanceTest, ManyPricesReceivedWhileOrderIsPending_NoAdditionalO
 
     size_t prices_received = 0;
     const auto price_sub = strategy_instance->klines_publisher().subscribe(
+            *this,
             [](const auto & vec) {
                 EXPECT_EQ(vec.size(), 0);
             },
