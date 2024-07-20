@@ -9,8 +9,8 @@
 ByBitTradingGateway::ByBitTradingGateway()
     : m_event_loop(*this)
     , m_url("wss://stream-testnet.bybit.com/v5/private")
-    , m_api_key("HW1YEA13Q3msvHOMxx") // will expire at Jul 17, 2024
-    , m_secret_key("Oi3u9iesDxzSN7aSmSsQKvBUG2Sp6A6Txzk1")
+    , m_api_key("EzxMilnOJadmXdhy7r") // will expire at Oct 20, 2024
+    , m_secret_key("8J0teoEQbIuGf86F3zgKAStEyoIETkhidUTQ")
     , m_connection_watcher(*this)
 {
     if (!reconnect_ws_client()) {
