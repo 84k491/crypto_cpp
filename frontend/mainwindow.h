@@ -5,16 +5,16 @@
 #include "ByBitGateway.h"
 #include "ByBitTradingGateway.h"
 #include "JsonStrategyConfig.h"
-#include "MultiSeriesChart.h"
 #include "StrategyFactory.h"
 #include "StrategyInstance.h"
 #include "StrategyResult.h"
-#include "Tpsl.h"
 #include "WorkStatus.h"
+#include "chart_window.h"
 
 #include <QMainWindow>
 #include <fstream>
 #include <memory>
+#include <qspinbox.h>
 #include <string>
 
 QT_BEGIN_NAMESPACE
@@ -86,12 +86,12 @@ public:
 private slots:
     void on_pb_run_clicked();
     void on_pb_optimize_clicked();
-    void render_result(StrategyResult result);
-    void optimized_config_slot(const JsonStrategyConfig & entry_config, const JsonStrategyConfig & exit_config);
-
+    void on_pb_stop_clicked();
     void on_cb_strategy_currentTextChanged(const QString & arg1);
 
-    void on_pb_stop_clicked();
+    void on_pb_charts_clicked();
+    void render_result(StrategyResult result);
+    void optimized_config_slot(const JsonStrategyConfig & entry_config, const JsonStrategyConfig & exit_config);
 
     void on_lambda(const std::function<void()> & lambda);
 
@@ -108,13 +108,10 @@ private:
 private:
     void handle_status_changed(WorkStatus status);
     void construct_optimizer_ui();
+    void subscribe_to_strategy();
     std::optional<Timerange> get_timerange() const;
 
     std::optional<JsonStrategyMetaInfo> get_strategy_parameters() const;
-
-    MultiSeriesChart & get_or_create_chart(const std::string & chart_name);
-
-    void subscribe_to_strategy();
 
 private:
     Ui::MainWindow * ui;
@@ -125,17 +122,15 @@ private:
     std::unique_ptr<BacktestTradingGateway> m_backtest_tr_gateway;
     ByBitTradingGateway m_trading_gateway;
 
-    std::unique_ptr<StrategyInstance> m_strategy_instance;
+    std::shared_ptr<StrategyInstance> m_strategy_instance;
     std::list<std::shared_ptr<ISubsription>> m_subscriptions;
-
-    const std::string m_price_chart_name = "prices";
-    const std::string m_depo_chart_name = "depo";
-    std::map<std::string, MultiSeriesChart *> m_charts;
 
     std::optional<JsonStrategyMetaInfo> m_last_set_strategy_parameters;
     std::map<std::string, QDoubleSpinBox *> m_strategy_parameters_spinboxes;
     std::map<std::string, double> m_strategy_parameters_values;
 
     SavedStateUi saved_state;
+
+    std::unique_ptr<ChartWindow> m_chart_window;
 };
 #endif // MAINWINDOW_H
