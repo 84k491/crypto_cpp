@@ -14,6 +14,8 @@ add_executable(position_manager_test
 target_link_libraries(position_manager_test
     ${GTEST_BOTH_LIBRARIES}
     trading_primitives
+    util
+    nlohmann_json
 )
 set(UNIT_TEST position_manager_test)
 add_test(NAME ${UNIT_TEST} COMMAND ${UNIT_TEST})

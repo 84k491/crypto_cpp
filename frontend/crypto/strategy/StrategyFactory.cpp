@@ -3,11 +3,11 @@
 #include "BollingerBandsStrategy.h"
 #include "DebugEveryTickStrategy.h"
 #include "DoubleSmaStrategy.h"
+#include "Logger.h"
 #include "StrategyInterface.h"
 #include "TunedBollingerBandsStrategy.h"
 
 #include <fstream>
-#include <iostream>
 #include <optional>
 
 std::optional<JsonStrategyMetaInfo> StrategyFactory::get_meta_info(const std::string & strategy_name)
@@ -37,7 +37,7 @@ std::optional<JsonStrategyMetaInfo> StrategyFactory::get_meta_info(const std::st
     };
 
     if (name_to_filename.find(strategy_name) == name_to_filename.end()) {
-        std::cout << "ERROR: Unknown strategy name: " << strategy_name << std::endl;
+        Logger::logf<LogLevel::Error>("Unknown strategy name: {}", strategy_name);
         return {};
     }
     std::string json_file_path = "./";
@@ -52,7 +52,7 @@ std::optional<JsonStrategyMetaInfo> StrategyFactory::get_meta_info(const std::st
             file.close();
             return json_data;
         }
-        std::cout << "ERROR: Failed to open JSON file: " << json_file_path << std::endl;
+        Logger::logf<LogLevel::Error>("Failed to open JSON file: {}", json_file_path);
         return {};
     }();
     return json_data;
@@ -78,6 +78,6 @@ std::optional<std::shared_ptr<IStrategy>> StrategyFactory::build_strategy(
         std::shared_ptr<IStrategy> res = std::make_shared<DebugEveryTickStrategy>(config);
         return res;
     }
-    std::cout << "ERROR: Unknown strategy name: " << strategy_name << std::endl;
+    Logger::logf<LogLevel::Error>("Unknown strategy name: {}", strategy_name);
     return {};
 }

@@ -1,8 +1,8 @@
 #include "WebSocketClient.h"
 
-#include <nlohmann/json.hpp>
+#include "Logger.h"
 
-#include <print>
+#include <nlohmann/json.hpp>
 
 WebSocketClient::WebSocketClient(
         std::string url,
@@ -15,7 +15,7 @@ WebSocketClient::WebSocketClient(
     , m_connection_watcher(connection_watcher)
 {
     std::thread t([this]() {
-        std::cout << "websocket thread start" << std::endl;
+        Logger::logf<LogLevel::Debug>("websocket thread start");
 
         // Set logging to be pretty verbose (everything except message payloads)
         m_client.set_access_channels(websocketpp::log::alevel::fail);
@@ -33,7 +33,7 @@ WebSocketClient::WebSocketClient(
                                  boost::asio::ssl::context::single_dh_use);
             }
             catch (std::exception & e) {
-                std::cout << e.what() << std::endl;
+                Logger::logf<LogLevel::Error>("Failed to set WS options: {}", e.what());
             }
             return ctx;
         });
@@ -44,14 +44,14 @@ WebSocketClient::WebSocketClient(
             on_ws_message_received(payload_string);
         });
         m_client.set_open_handler([this](auto con_ptr) {
-            std::cout << "Ws connection created" << std::endl;
+            Logger::log<LogLevel::Status>("Ws connection created");
             if (m_keys.has_value()) {
                 std::string auth_msg = build_auth_message();
                 try {
                     m_client.send(con_ptr, auth_msg, websocketpp::frame::opcode::text);
                 }
                 catch (std::exception & e) {
-                    std::cout << e.what() << std::endl;
+                    Logger::logf<LogLevel::Error>("Failed to send auth message: {}", e.what());
                 }
             }
             else {
@@ -64,7 +64,7 @@ WebSocketClient::WebSocketClient(
         websocketpp::lib::error_code ec;
         m_connection = m_client.get_connection(m_url, ec);
         if (ec) {
-            std::cout << "could not create connection because: " << ec.message() << std::endl;
+            Logger::logf<LogLevel::Error>("could not create connection because: {}", ec.message());
             return 0;
         }
 
@@ -75,10 +75,10 @@ WebSocketClient::WebSocketClient(
         // Start the ASIO io_service run loop
         // this will cause a single connection to be made to the server. c.run()
         // will exit when this connection is closed.
-        std::cout << "Running WS client" << std::endl;
+        Logger::log<LogLevel::Debug>("Running WS client");
         m_client.run();
 
-        std::cout << "websocket client stopped" << std::endl;
+        Logger::log<LogLevel::Debug>("websocket client stopped");
         return 0;
     });
     t.detach();
@@ -86,7 +86,7 @@ WebSocketClient::WebSocketClient(
 
 void WebSocketClient::subscribe(const std::string & topic)
 {
-    std::cout << "Subscribing to " << topic << std::endl;
+    Logger::logf<LogLevel::Status>("Subscribing to {}", topic);
     std::stringstream ss;
     ss << R"({"op": "subscribe", "args": [")" << topic << R"("]})";
     m_client.send(m_connection, ss.str(), websocketpp::frame::opcode::text);
@@ -94,7 +94,7 @@ void WebSocketClient::subscribe(const std::string & topic)
 
 void WebSocketClient::unsubscribe(const std::string & topic)
 {
-    std::cout << "Unsubscribing from " << topic << std::endl;
+    Logger::logf<LogLevel::Status>("Unsubscribing from {}", topic);
     std::stringstream ss;
     ss << R"({"op": "unsubscribe", "args": [")" << topic << R"("]})";
     m_client.send(m_connection, ss.str(), websocketpp::frame::opcode::text);
@@ -102,7 +102,7 @@ void WebSocketClient::unsubscribe(const std::string & topic)
 
 void WebSocketClient::on_connected()
 {
-    std::cout << "WS client connected to " << m_url << std::endl;
+    Logger::logf<LogLevel::Status>("WS client connected to {}", m_url);
     m_ready = true;
 }
 
@@ -114,7 +114,7 @@ bool WebSocketClient::send_ping()
         return true;
     }
     catch (std::exception & e) {
-        std::cout << "ERROR on sending ping" << e.what() << std::endl;
+        Logger::logf<LogLevel::Error>("Failed to send ping: {}", e.what());
         return false;
     }
 }
@@ -140,7 +140,7 @@ std::string WebSocketClient::sign_message(const std::string & message, const std
 std::string WebSocketClient::build_auth_message() const
 {
     if (!m_keys.has_value()) {
-        std::cout << "No keys provided" << std::endl;
+        Logger::logf<LogLevel::Error>("No keys provided");
         return "";
     }
 
@@ -157,17 +157,17 @@ std::string WebSocketClient::build_auth_message() const
             {"op", "auth"},
             {"args", {m_keys.value().m_api_key, expires, signature}}};
 
-    std::cout << "Auth message: " << auth_msg.dump() << std::endl;
+    Logger::logf<LogLevel::Debug>("Auth message: {}", auth_msg.dump());
     return auth_msg.dump();
 }
 
 void WebSocketClient::on_sub_response(const nlohmann::json & j)
 {
     if (j.at("success") != true) {
-        std::cout << "Subscription error: " << j.dump() << std::endl;
+        Logger::logf<LogLevel::Error>("Subscription error: {}", j.dump());
         return;
     }
-    std::cout << "Subscribed" << std::endl;
+    Logger::logf<LogLevel::Status>("Subscribed: ", j.dump());
     m_ping_worker = std::make_unique<WorkerThreadLoop>(
             [this](const std::atomic_bool & running) -> bool {
                 constexpr std::chrono::seconds ping_interval = std::chrono::seconds(20);
@@ -196,7 +196,7 @@ void WebSocketClient::on_ws_message_received(const std::string & message)
                  }},
         };
         if (const auto it = op_handlers.find(op); it == op_handlers.end()) {
-            std::cout << "ERROR Unregistered operation: " << j.dump() << std::endl;
+            Logger::logf<LogLevel::Error>("Unregistered operation: {}", j.dump());
             return;
         }
         else {
@@ -210,7 +210,7 @@ void WebSocketClient::on_ws_message_received(const std::string & message)
 void WebSocketClient::on_auth_response(const json & j)
 {
     if (j.at("success") != true) {
-        std::cout << "Auth error: " << j.dump() << std::endl;
+        Logger::logf<LogLevel::Error>("Auth error: {}", j.dump());
         return;
     }
 

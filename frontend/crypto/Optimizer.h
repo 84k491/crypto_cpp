@@ -2,6 +2,7 @@
 
 #include "ByBitGateway.h"
 #include "JsonStrategyConfig.h"
+#include "Logger.h"
 #include "TpslExitStrategy.h"
 
 #include <nlohmann/json.hpp>
@@ -50,7 +51,7 @@ public:
     void subscribe_for_passed_check(std::function<void(int, int)> && on_passed_checks)
     {
         if (m_on_passed_check) {
-            std::cout << "ERROR: on_passed_check already set" << std::endl;
+            Logger::log<LogLevel::Error>("on_passed_check already set");
         }
         m_on_passed_check = std::move(on_passed_checks);
     }

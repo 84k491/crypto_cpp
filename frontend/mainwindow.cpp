@@ -3,6 +3,7 @@
 #include "./ui_mainwindow.h"
 #include "ITradingGateway.h"
 #include "JsonStrategyConfig.h"
+#include "Logger.h"
 #include "Optimizer.h"
 #include "StrategyInstance.h"
 #include "StrategyParametersWidget.h"
@@ -12,7 +13,6 @@
 
 #include <nlohmann/json.hpp>
 
-#include <print>
 #include <qtypes.h>
 #include <thread>
 
@@ -64,12 +64,12 @@ MainWindow::MainWindow(QWidget * parent)
     }
     ui->cb_symbol->setCurrentText(saved_state.m_symbol.c_str());
 
-    std::cout << "End of mainwindow constructor" << std::endl;
+    Logger::log<LogLevel::Status>("End of mainwindow constructor");
 }
 
 void MainWindow::handle_status_changed(WorkStatus status)
 {
-    std::cout << "Work status: " << to_string(status) << std::endl;
+    Logger::logf<LogLevel::Status>("Work status: {}", to_string(status));
     ui->lb_work_status->setText(to_string(status).c_str());
     if (status == WorkStatus::Backtesting || status == WorkStatus::Live) {
         ui->pb_run->setEnabled(false);
@@ -94,7 +94,7 @@ void MainWindow::handle_status_changed(WorkStatus status)
 
 void MainWindow::subscribe_to_strategy()
 {
-    std::cout << "mainwindow subscribe_to_strategy" << std::endl;
+    Logger::log<LogLevel::Status>("mainwindow subscribe_to_strategy");
     m_subscriptions.push_back(m_strategy_instance->strategy_result_publisher().subscribe(
             *this,
             [&](const StrategyResult & result) {
@@ -113,7 +113,7 @@ void MainWindow::on_pb_stop_clicked()
 {
     m_strategy_instance->stop_async();
     m_strategy_instance->wait_for_finish().wait();
-    std::cout << "Strategy stopped" << std::endl;
+    Logger::log<LogLevel::Status>("Strategy stopped");
 }
 
 void MainWindow::on_pb_run_clicked()
@@ -123,7 +123,7 @@ void MainWindow::on_pb_run_clicked()
 
     const auto timerange_opt = get_timerange();
     if (!timerange_opt) {
-        std::cout << "ERROR Invalid timerange" << std::endl;
+        Logger::log<LogLevel::Error>("Invalid timerange");
         return;
     }
     const auto & timerange = *timerange_opt;
@@ -132,7 +132,7 @@ void MainWindow::on_pb_run_clicked()
     const auto entry_config = ui->wt_entry_params->get_config();
     const auto strategy_ptr_opt = StrategyFactory::build_strategy(strategy_name, entry_config);
     if (!strategy_ptr_opt.has_value() || !strategy_ptr_opt.value() || !strategy_ptr_opt.value()->is_valid()) {
-        std::cout << "ERROR Failed to build strategy" << std::endl;
+        Logger::log<LogLevel::Error>("Failed to build strategy");
         return;
     }
 
@@ -154,7 +154,9 @@ void MainWindow::on_pb_run_clicked()
         return std::nullopt;
     }();
     if (!symbol.has_value()) {
-        std::cout << "ERROR Invalid symbol on starting strategy" << std::endl;
+        Logger::logf<LogLevel::Error>(
+                "Invalid symbol on starting strategy: {}",
+                ui->cb_symbol->currentText().toStdString());
         return;
     }
 
@@ -187,7 +189,7 @@ void MainWindow::on_pb_run_clicked()
             [&](const WorkStatus & status) { handle_status_changed(status); }));
 
     m_strategy_instance->run_async();
-    std::cout << "strategy started" << std::endl;
+    Logger::log<LogLevel::Status>("Strategy started");
 }
 
 MainWindow::~MainWindow()
@@ -228,16 +230,15 @@ void MainWindow::optimized_config_slot(const JsonStrategyConfig & entry_config, 
 std::optional<Timerange> MainWindow::get_timerange() const
 {
     const auto start = std::chrono::milliseconds{ui->dt_from->dateTime().toMSecsSinceEpoch()};
-    std::cout << ui->dt_from->dateTime().toString().toStdString() << std::endl;
     const auto work_hours = std::chrono::hours{ui->sb_work_hours->value()};
     const auto end = std::chrono::milliseconds{start + work_hours};
 
     if (start >= end) {
-        std::cout << "ERROR Invalid timerange" << std::endl;
+        Logger::log<LogLevel::Error>("Invalid timerange");
         return {};
     }
     if (start.count() < 0 || end.count() < 0) {
-        std::cout << "ERROR Invalid timerange" << std::endl;
+        Logger::log<LogLevel::Error>("Invalid timerange");
         return {};
     }
     return {{start, end}};
@@ -249,7 +250,7 @@ void MainWindow::on_pb_optimize_clicked()
     const auto timerange_opt = get_timerange();
     const auto exit_strategy_meta_info = StrategyFactory::get_meta_info("TpslExit");
     if (!timerange_opt || !entry_strategy_meta_info || !exit_strategy_meta_info) {
-        std::cout << "ERROR no value in required optional" << std::endl;
+        Logger::log<LogLevel::Error>("No value in required optional");
         return;
     }
     std::string strategy_name = ui->cb_strategy->currentText().toStdString();
@@ -284,7 +285,9 @@ void MainWindow::on_pb_optimize_clicked()
     }();
 
     if (!symbol.has_value()) {
-        std::cout << "ERROR Invalid symbol on starting optimizer" << std::endl;
+        Logger::logf<LogLevel::Error>(
+                "Invalid symbol on starting optimizer: {}",
+                ui->cb_symbol->currentText().toStdString());
         return;
     }
 
@@ -302,11 +305,11 @@ void MainWindow::on_pb_optimize_clicked()
 
         const auto best_config = optimizer.optimize();
         if (!best_config.has_value()) {
-            std::cout << "ERROR no best config" << std::endl;
+            Logger::log<LogLevel::Error>("No best config");
             return;
         }
         emit signal_optimized_config(best_config.value().first, best_config.value().second.to_json());
-        std::cout << "Best config: " << best_config.value().first << "; " << best_config.value().second << std::endl;
+        Logger::logf<LogLevel::Info>("Best config: {}; ", best_config.value().first, best_config.value().second.to_json());
     });
     t.detach();
 }
@@ -347,4 +350,3 @@ void MainWindow::on_pb_charts_clicked()
     m_chart_window = std::make_unique<ChartWindow>(m_strategy_instance);
     m_chart_window->show();
 }
-

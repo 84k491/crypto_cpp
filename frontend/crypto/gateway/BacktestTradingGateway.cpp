@@ -2,9 +2,8 @@
 
 #include "Enums.h"
 #include "Events.h"
+#include "Logger.h"
 #include "Volume.h"
-
-#include <print>
 
 BacktestTradingGateway::BacktestTradingGateway() = default;
 
@@ -81,7 +80,7 @@ std::optional<Trade> BacktestTradingGateway::try_trade_tpsl(OHLC ohlc)
 void BacktestTradingGateway::push_order_request(const OrderRequestEvent & req)
 {
     if (!m_price_sub) {
-        std::cout << "No price sub. Did you forgot to subscribe backtest TRGW for prices?" << std::endl;
+        Logger::log<LogLevel::Error>("No price sub. Did you forgot to subscribe backtest TRGW for prices?");
     }
     if (!check_consumers(req.order.symbol())) {
         req.event_consumer->push(OrderResponseEvent(req.order.guid(), "No trade consumer for this symbol"));
@@ -114,7 +113,7 @@ void BacktestTradingGateway::push_order_request(const OrderRequestEvent & req)
 void BacktestTradingGateway::push_tpsl_request(const TpslRequestEvent & tpsl_ev)
 {
     if (!check_consumers(tpsl_ev.symbol.symbol_name)) {
-        std::cout << "ERROR: No consumer for this symbol" << std::endl;
+        Logger::logf<LogLevel::Error>("No consumer for this symbol: {}", tpsl_ev.symbol.symbol_name);
         tpsl_ev.event_consumer->push(TpslResponseEvent(tpsl_ev.guid, tpsl_ev.tpsl, "No consumer for this symbol"));
         return;
     }
@@ -126,7 +125,7 @@ void BacktestTradingGateway::push_tpsl_request(const TpslRequestEvent & tpsl_ev)
 
 void BacktestTradingGateway::register_consumers(xg::Guid guid, const Symbol & symbol, TradingGatewayConsumers consumers)
 {
-    std::println("Registering consumers for symbol: {}", symbol.symbol_name);
+    Logger::logf<LogLevel::Debug>("Registering consumers for symbol: {}", symbol.symbol_name);
     auto lref = m_consumers.lock();
     lref.get().emplace(symbol.symbol_name, std::make_pair(guid, consumers));
 }

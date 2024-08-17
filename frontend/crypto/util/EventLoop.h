@@ -4,7 +4,6 @@
 
 #include <any>
 #include <functional>
-#include <iostream>
 #include <map>
 #include <variant>
 
@@ -175,7 +174,6 @@ private:
         while (true) {
             const auto opt = m_queue.wait_and_pop();
             if (!opt) {
-                std::cout << "No event opt in EL, stopping" << std::endl;
                 return;
             }
             m_invoker.invoke(opt.value());

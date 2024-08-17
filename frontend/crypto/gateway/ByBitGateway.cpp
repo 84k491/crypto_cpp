@@ -1,5 +1,6 @@
 #include "ByBitGateway.h"
 
+#include "Logger.h"
 #include "MarketDataMessages.h"
 #include "Ohlc.h"
 #include "ScopeExit.h"
@@ -8,7 +9,6 @@
 #include <chrono>
 #include <crossguid2/crossguid/guid.hpp>
 #include <future>
-#include <print>
 #include <string>
 #include <vector>
 
@@ -19,7 +19,7 @@ ByBitGateway::ByBitGateway()
     m_last_server_time = get_server_time();
 
     if (!reconnect_ws_client()) {
-        std::println("Failed to connect to ByBit market data");
+        Logger::log<LogLevel::Warning>("Failed to connect to ByBit market data");
     }
 }
 
@@ -175,7 +175,9 @@ void from_json(const json & j, SymbolResponse & response)
 
 bool ByBitGateway::request_historical_klines(const std::string & symbol, const Timerange & timerange, KlinePackCallback && pack_callback)
 {
-    std::cout << "Whole requested interval seconds: " << std::chrono::duration_cast<std::chrono::seconds>(timerange.duration()).count() << std::endl;
+    Logger::logf<LogLevel::Debug>(
+            "Whole requested interval seconds: {}",
+            std::chrono::duration_cast<std::chrono::seconds>(timerange.duration()).count());
 
     auto last_start = timerange.start();
     while (last_start < timerange.end()) {
@@ -195,7 +197,7 @@ bool ByBitGateway::request_historical_klines(const std::string & symbol, const T
         });
 
         const std::chrono::milliseconds remaining_delta = timerange.end() - last_start;
-        std::cout << "Remaining time delta: " << remaining_delta.count() << "ms" << std::endl;
+        Logger::logf<LogLevel::Debug>("Remaining time delta: {}ms", remaining_delta.count());
 
         const std::string category = "linear";
 
@@ -223,20 +225,28 @@ bool ByBitGateway::request_historical_klines(const std::string & symbol, const T
             inter_result.try_emplace(ohlc.timestamp, ohlc);
         }
 
-        std::cout << "Got " << inter_result.size() << " prices" << std::endl;
+        Logger::logf<LogLevel::Debug>("Got {} prices", inter_result.size());
         if (inter_result.empty()) {
-            std::cout << "Empty kline result" << std::endl;
+            Logger::log<LogLevel::Warning>("Empty kline result");
             return false;
         }
         if (const auto delta = inter_result.begin()->first - last_start; delta > min_historical_interval) {
-            std::cout << "ERROR inconsistent time delta: " << std::chrono::duration_cast<std::chrono::seconds>(delta).count() << "s. Stopping" << std::endl;
-            std::cout << "First timestamp: " << inter_result.begin()->first.count() << std::endl;
+            Logger::logf<LogLevel::Error>(
+                    "ERROR inconsistent time delta: {}s. Stopping",
+                    std::chrono::duration_cast<std::chrono::seconds>(delta).count());
+
+            Logger::logf<LogLevel::Error>(
+                    "First timestamp: {}s",
+                    std::chrono::duration_cast<std::chrono::seconds>(inter_result.begin()->first).count());
             return false;
         }
         pack_callback(std::move(inter_result));
     }
 
-    std::cout << "All prices received for interval: " << timerange.start().count() << "-" << timerange.end().count() << std::endl;
+    Logger::logf<LogLevel::Debug>(
+            "All prices received for interval: {}-{}",
+            timerange.start().count(),
+            timerange.end().count());
     return true;
 }
 
@@ -271,7 +281,7 @@ std::vector<Symbol> ByBitGateway::get_symbols(const std::string & currency)
                     }),
             response.result.symbol_vec.end());
 
-    std::cout << "Got " << response.result.symbol_vec.size() << " symbols with currency " << currency << std::endl;
+    Logger::logf<LogLevel::Info>("Got {} symbols with currency {}", response.result.symbol_vec.size(), currency);
     return response.result.symbol_vec;
 }
 
@@ -287,7 +297,7 @@ std::chrono::milliseconds ByBitGateway::get_server_time()
     j.get_to(response);
 
     const auto server_time = std::chrono::duration_cast<std::chrono::milliseconds>(response.result.time_nano);
-    std::cout << "Server time: " << server_time.count() << std::endl;
+    Logger::logf<LogLevel::Debug>("Server time: {}", server_time.count());
     return server_time;
 }
 
@@ -332,7 +342,7 @@ void ByBitGateway::handle_request(const HistoricalMDRequest & request)
             });
 
     if (!success) {
-        std::cout << "ERROR: Failed to request klines" << std::endl;
+        Logger::log<LogLevel::Error>("Failed to request klines");
         m_status.push(WorkStatus::Panic);
         return;
     }
@@ -349,12 +359,12 @@ void ByBitGateway::handle_request(const LiveMDRequest & request)
     const LiveMDRequest & live_request = request;
     auto locked_ref = m_live_requests.lock();
     if (!locked_ref.get().empty()) {
-        std::cout << "ERROR! more than one MD live request" << std::endl;
+        Logger::log<LogLevel::Error>("More than one MD live request");
         return;
     }
 
     if (!m_ws_client) {
-        std::cout << "ERROR! websocket not ready" << std::endl;
+        Logger::log<LogLevel::Error>("websocket is not ready");
         return;
     }
 
@@ -371,7 +381,7 @@ void ByBitGateway::on_price_received(const nlohmann::json & json)
 {
     auto locked_ref = m_live_requests.lock();
     if (locked_ref.get().empty()) {
-        std::cout << "ERROR! no request on MD received" << std::endl;
+        Logger::log<LogLevel::Error>("no request on MD received");
         return;
     }
 
@@ -401,7 +411,7 @@ void ByBitGateway::unsubscribe_from_live(xg::Guid guid)
     auto live_req_locked = m_live_requests.lock();
     for (auto it = live_req_locked.get().begin(), end = live_req_locked.get().end(); it != end; ++it) {
         if (it->guid == guid) {
-            std::cout << "Erasing live request: " << guid << std::endl;
+            Logger::logf<LogLevel::Debug>("Erasing live request: {}", guid);
             if (m_ws_client) {
                 m_ws_client->unsubscribe("publicTrade." + it->symbol.symbol_name);
             }
@@ -413,9 +423,9 @@ void ByBitGateway::unsubscribe_from_live(xg::Guid guid)
 
 void ByBitGateway::on_connection_lost()
 {
-    std::println("Connection lost on market data, reconnecting...");
+    Logger::log<LogLevel::Warning>("Connection lost on market data, reconnecting...");
     if (!reconnect_ws_client()) {
-        std::println("Failed to connect to ByBit trading");
+        Logger::log<LogLevel::Warning>("Failed to connect to ByBit trading");
     }
 }
 

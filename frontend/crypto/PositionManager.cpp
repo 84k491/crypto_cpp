@@ -1,5 +1,6 @@
 #include "PositionManager.h"
 
+#include "Logger.h"
 #include "Trade.h"
 #include "Volume.h"
 
@@ -31,7 +32,7 @@ std::optional<PositionResult> PositionManager::on_trade_received(const Trade & t
     }
 
     if (!m_closed_position.has_value()) {
-        std::cout << "ERROR: No closed position when opened vol == 0" << std::endl;
+        Logger::log<LogLevel::Error>("ERROR: No closed position when opened vol == 0");
     }
     const auto & closed_pos = m_closed_position.value();
 
@@ -63,7 +64,7 @@ std::ostream & operator<<(std::ostream & os, const PositionResult & res)
 std::optional<PositionManager::ClosedPosition> PositionManager::OpenedPosition::on_trade(double price, const SignedVolume & vol, double fee)
 {
     if (vol.is_zero()) {
-        std::cout << "ERROR! Zero volume on trade" << std::endl;
+        Logger::log<LogLevel::Error>("Zero volume on trade");
         return std::nullopt;
     }
 
@@ -83,12 +84,8 @@ std::optional<PositionManager::ClosedPosition> PositionManager::OpenedPosition::
 
     const auto old_opened_currency_amount = m_currency_amount;
     m_currency_amount -= -vol.sign() * (m_currency_amount / m_absolute_opened_volume.value()) * vol.as_unsigned_and_side().first.value();
-    // std::cout << "old currency amount: " << old_opened_currency_amount << ", "
-    //           << "new currency amount: " << m_currency_amount << std::endl;
     const auto entry_amount_closed = (old_opened_currency_amount - m_currency_amount);
-    // std::cout << "closed currency amount: " << closed_pos.m_currency_amount << ", entry currency amount closed: " << entry_amount_closed << std::endl;
     auto raw_profit_on_close = (closed_pos.m_currency_amount + entry_amount_closed);
-    // std::cout << "raw profit on close: " << raw_profit_on_close << std::endl;
     m_absolute_opened_volume += vol;
     closed_pos.m_rpnl = raw_profit_on_close - fee;
 

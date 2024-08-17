@@ -26,11 +26,11 @@ void Logger::invoke(const std::variant<LogEvent> & var)
 void Logger::handle_event(const LogEvent & ev)
 {
     const auto ts = std::chrono::system_clock::now();
-    std::println("[{}][{}]:\n"
-                 "{}",
-                 ts,
-                 to_string(ev.level),
-                 ev.log_str);
+    const std::string str = std::format("[{}][{}]: {}",
+                                 ts,
+                                 to_string(ev.level),
+                                 ev.log_str);
+    std::cout << str << std::endl;
 }
 
 template <LogLevel level>

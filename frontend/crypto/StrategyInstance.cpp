@@ -300,8 +300,7 @@ void StrategyInstance::handle_event(const MDPriceEvent & response)
 void StrategyInstance::handle_event(const OrderResponseEvent & response)
 {
     if (response.reject_reason.has_value()) {
-        std::cout << "OrderRejected: " << response.reject_reason.value() << std::endl;
-        Logger::logf<LogLevel::Error>("OrderRejected: {}", response.reject_reason.value());
+        Logger::logf<LogLevel::Warning>("OrderRejected: {}", response.reject_reason.value());
         stop_async(true);
     }
 

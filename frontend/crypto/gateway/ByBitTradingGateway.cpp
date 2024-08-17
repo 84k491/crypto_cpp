@@ -1,9 +1,9 @@
 #include "ByBitTradingGateway.h"
 
 #include "Events.h"
+#include "Logger.h"
 #include "Ohlc.h"
 
-#include <print>
 #include <set>
 
 ByBitTradingGateway::ByBitTradingGateway()
@@ -14,7 +14,7 @@ ByBitTradingGateway::ByBitTradingGateway()
     , m_connection_watcher(*this)
 {
     if (!reconnect_ws_client()) {
-        std::println("Failed to connect to ByBit trading");
+        Logger::log<LogLevel::Warning>("Failed to connect to ByBit trading");
     }
 }
 
@@ -37,7 +37,7 @@ void ByBitTradingGateway::on_order_response(const json & j)
         auto lref = m_consumers.lock();
         auto it = lref.get().find(response.symbol);
         if (it == lref.get().end()) {
-            std::println("Failed to find consumer for symbol: {}", response.symbol);
+            Logger::logf<LogLevel::Warning>("Failed to find consumer for symbol: {}", response.symbol);
             continue;
         }
         auto & consumers = it->second.second;
@@ -62,7 +62,7 @@ void ByBitTradingGateway::on_tpsl_update(const std::array<ByBitMessages::OrderRe
     auto lref = m_consumers.lock();
     auto it = lref.get().find(response.symbol);
     if (it == lref.get().end()) {
-        std::println("Failed to find consumer for symbol: {}", response.symbol);
+        Logger::logf<LogLevel::Warning>("Failed to find consumer for symbol: {}", response.symbol);
         return;
     }
     auto & consumers = it->second.second;
@@ -71,7 +71,7 @@ void ByBitTradingGateway::on_tpsl_update(const std::array<ByBitMessages::OrderRe
 
 void ByBitTradingGateway::on_execution(const json & j)
 {
-    std::cout << "Execution successfull " << std::endl;
+    Logger::logf<LogLevel::Info>("Execution successfull");
 
     ByBitMessages::ExecutionResult result;
     from_json(j, result);
@@ -79,13 +79,13 @@ void ByBitTradingGateway::on_execution(const json & j)
     for (const auto & response : result.executions) {
         auto trade_opt = response.to_trade();
         if (!trade_opt.has_value()) {
-            std::cout << "ERROR can't get proper trade on execution: " << j << std::endl;
+            Logger::logf<LogLevel::Error>("ERROR can't get proper trade on execution: {}", j);
             return;
         }
         auto lref = m_consumers.lock();
         auto it = lref.get().find(response.symbol);
         if (it == lref.get().end()) {
-            std::println("Failed to find consumer for symbol: {}", response.symbol);
+            Logger::logf<LogLevel::Warning>("Failed to find consumer for symbol: {}", response.symbol);
             continue;
         }
         auto & consumers = it->second.second;
@@ -152,18 +152,21 @@ void ByBitTradingGateway::process_event(const OrderRequestEvent & req)
         return;
     }
     const std::string request_result = request_future.get();
-    std::cout << "Enter order response: " << request_result << std::endl;
+    Logger::logf<LogLevel::Debug>("Enter order response: {}", request_result);
 }
 
 void ByBitTradingGateway::process_event(const TpslRequestEvent & tpsl)
 {
     using namespace std::chrono_literals;
-    std::cout << "Got TpslRequestEvent" << std::endl;
+    Logger::logf<LogLevel::Debug>("Got TpslRequestEvent");
 
     if (!check_consumers(tpsl.symbol.symbol_name)) {
-        std::cout << "ERROR: No trade consumer for this symbol: " << tpsl.symbol.symbol_name << std::endl;
-        // TODO specify symbol std::print/fmt::format?
-        tpsl.event_consumer->push(TpslResponseEvent(tpsl.guid, tpsl.tpsl, "No consumer for this symbol"));
+        Logger::logf<LogLevel::Warning>("No trade consumer for this symbol: {}", tpsl.symbol.symbol_name);
+        tpsl.event_consumer->push(
+                TpslResponseEvent(
+                        tpsl.guid,
+                        tpsl.tpsl,
+                        std::format("No consumer for this symbol", tpsl.symbol.symbol_name)));
         return;
     }
     // TODO validate stop and take prices
@@ -195,7 +198,7 @@ void ByBitTradingGateway::process_event(const TpslRequestEvent & tpsl)
         return;
     }
     const std::string request_result = request_future.get();
-    std::cout << "TP/SL response: " << request_result << std::endl;
+    Logger::logf<LogLevel::Debug>("Enter TPSL response: {}", request_result);
     const auto j = json::parse(request_result);
     const ByBitMessages::TpslResult result = j.get<ByBitMessages::TpslResult>();
     if (result.ret_code != 0) {
@@ -212,7 +215,7 @@ void ByBitTradingGateway::process_event(const PingCheckEvent & ping_event)
 
 void ByBitTradingGateway::on_ws_message(const json & j)
 {
-    std::cout << "on_ws_message: " << j.dump() << std::endl;
+    Logger::logf<LogLevel::Info>("on_ws_message: {}", j.dump());
     if (j.find("topic") != j.end()) {
         const auto & topic = j.at("topic");
         const std::map<std::string, std::function<void(const json &)>> topic_handlers = {
@@ -220,7 +223,7 @@ void ByBitTradingGateway::on_ws_message(const json & j)
                 {"execution", [&](const json & j) { on_execution(j); }},
         };
         if (const auto it = topic_handlers.find(topic); it == topic_handlers.end()) {
-            std::cout << "Unregistered topic: " << j.dump() << std::endl;
+            Logger::logf<LogLevel::Error>("Unregistered topic: {}", j.dump());
             return;
         }
         else {
@@ -228,7 +231,7 @@ void ByBitTradingGateway::on_ws_message(const json & j)
         }
         return;
     }
-    std::cout << "Unrecognized message: " << j.dump() << std::endl;
+    Logger::logf<LogLevel::Error>("Unrecognized message: {}", j.dump());
 }
 
 void ByBitTradingGateway::register_consumers(xg::Guid guid, const Symbol & symbol, TradingGatewayConsumers consumers)
@@ -277,9 +280,9 @@ bool ByBitTradingGateway::reconnect_ws_client()
 
 void ByBitTradingGateway::on_connection_lost()
 {
-    std::println("Connection lost on trading, reconnecting...");
+    Logger::log<LogLevel::Warning>("Connection lost on trading, reconnecting...");
     if (!reconnect_ws_client()) {
-        std::println("Failed to connect to ByBit trading");
+        Logger::log<LogLevel::Warning>("Failed to connect to ByBit trading");
     }
 }
 

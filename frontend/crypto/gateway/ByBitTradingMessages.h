@@ -2,8 +2,8 @@
 #include "Trade.h"
 #include "Volume.h"
 
+#include <Logger.h>
 #include <cstdint>
-#include <iostream>
 #include <list>
 #include <string>
 
@@ -55,7 +55,7 @@ struct Execution
     {
         const auto volume_opt = UnsignedVolume::from(qty);
         if (!volume_opt.has_value()) {
-            std::cout << "Failed to create UnsignedVolume from qty: " << qty << std::endl;
+            Logger::logf<LogLevel::Error>("Failed to create UnsignedVolume from qty: {}", qty);
             return std::nullopt;
         }
 

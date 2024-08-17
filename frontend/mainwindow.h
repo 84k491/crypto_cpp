@@ -5,6 +5,7 @@
 #include "ByBitGateway.h"
 #include "ByBitTradingGateway.h"
 #include "JsonStrategyConfig.h"
+#include "Logger.h"
 #include "StrategyFactory.h"
 #include "StrategyInstance.h"
 #include "StrategyResult.h"
@@ -30,7 +31,7 @@ public:
     {
         std::ifstream save_file("saved_state.json");
         if (!save_file.is_open()) {
-            std::cout << "ERROR Failed to open saved state file" << std::endl;
+            Logger::log<LogLevel::Error>("Failed to open saved state file");
             return;
         }
 
@@ -54,7 +55,7 @@ public:
     {
         std::ofstream save_file("saved_state.json");
         if (!save_file.is_open()) {
-            std::cout << "ERROR Failed to open saved state file" << std::endl;
+            Logger::log<LogLevel::Error>("Failed to open saved state file");
             return;
         }
 

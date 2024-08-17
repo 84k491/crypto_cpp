@@ -48,7 +48,7 @@ std::vector<TpslExitStrategyConfig> OptimizerParser::get_possible_exit_configs()
         config != nullptr) {
         return {*config};
     }
-    std::cout << "ERROR Invalid exit strategy" << std::endl;
+    Logger::log<LogLevel::Error>("Invalid exit strategy");
     return {};
 }
 
@@ -56,7 +56,7 @@ std::vector<nlohmann::json> OptimizerParser::get_possible_configs(const JsonStra
 {
     if (const auto strategy_name = meta_info.get().find("strategy_name");
         strategy_name != meta_info.get().end()) {
-        std::cout << "Reading JSON file for " << strategy_name->get<std::string>() << std::endl;
+        Logger::logf<LogLevel::Info>("Reading JSON file for {}", strategy_name->get<std::string>().c_str());
     }
 
     std::vector<nlohmann::json> ouput_jsons;

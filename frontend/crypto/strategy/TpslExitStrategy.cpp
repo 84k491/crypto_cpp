@@ -60,7 +60,6 @@ Tpsl TpslExitStrategy::calc_tpsl(const Trade & trade)
     }
     }
 
-    // std::cout << "Calculated from price " << entry_price << ", side: " << (trade.side == Side::Buy ? "Buy" : "Sell") << " Tpsl: " << tpsl << std::endl;
     return tpsl;
 }
 
