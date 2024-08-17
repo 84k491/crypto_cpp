@@ -2,6 +2,7 @@
 
 #include "Events.h"
 #include "ITradingGateway.h"
+#include "Logger.h"
 #include "Signal.h"
 #include "TpslExitStrategy.h"
 #include "Volume.h"
@@ -59,7 +60,7 @@ StrategyInstance::StrategyInstance(
 
 StrategyInstance::~StrategyInstance()
 {
-    std::cout << "StrategyInstance destructor" << std::endl;
+    Logger::log<LogLevel::Status>("StrategyInstance destructor");
     m_tr_gateway.unregister_consumers(m_strategy_guid);
 }
 
@@ -87,7 +88,7 @@ void StrategyInstance::run_async()
 
 void StrategyInstance::stop_async(bool panic)
 {
-    std::cout << "stop_async" << std::endl;
+    Logger::log<LogLevel::Status>("stop_async");
     for (const auto & req : m_live_md_requests) {
         m_md_gateway.unsubscribe_from_live(req);
     }
@@ -114,7 +115,7 @@ void StrategyInstance::on_signal(const Signal & signal)
         if (m_position_manager.opened() != nullptr) {
             const bool success = close_position(signal.price, signal.timestamp);
             if (!success) {
-                std::cout << "ERROR failed to close a position" << std::endl;
+                Logger::log<LogLevel::Error>("Failed to close a position");
             }
         }
     }
@@ -123,7 +124,7 @@ void StrategyInstance::on_signal(const Signal & signal)
     if (Side::Close != signal.side) {
         const auto default_pos_size_opt = UnsignedVolume::from(m_pos_currency_amount / signal.price);
         if (!default_pos_size_opt.has_value()) {
-            std::cout << "ERROR can't get proper default position size" << std::endl;
+            Logger::log<LogLevel::Error>("can't get proper default position size");
             return;
         }
         const bool success = open_position(signal.price,
@@ -132,7 +133,7 @@ void StrategyInstance::on_signal(const Signal & signal)
                                                    signal.side),
                                            signal.timestamp);
         if (!success) {
-            std::cout << "ERROR Failed to open position" << std::endl;
+            Logger::log<LogLevel::Error>("Failed to open position");
             return;
         }
     }
@@ -258,7 +259,7 @@ void StrategyInstance::invoke(const std::variant<STRATEGY_EVENTS> & var)
 void StrategyInstance::handle_event(const HistoricalMDPackEvent & response)
 {
     if (response.ts_and_price_pack == nullptr) {
-        std::println("ERROR! response.ts_and_price_pack == nullptr");
+        Logger::log<LogLevel::Error>("response.ts_and_price_pack == nullptr");
         stop_async(true);
         return;
     }
@@ -273,7 +274,7 @@ void StrategyInstance::handle_event(const HistoricalMDPackEvent & response)
     static_cast<IEventConsumer<StrategyStopRequest> &>(m_event_loop).push(StrategyStopRequest{});
     const size_t erased_cnt = m_pending_requests.erase(response.request_guid);
     if (erased_cnt == 0) {
-        std::cout << "ERROR: unsolicited HistoricalMDPackEvent" << std::endl;
+        Logger::log<LogLevel::Error>("unsolicited HistoricalMDPackEvent");
     }
 }
 
@@ -300,12 +301,13 @@ void StrategyInstance::handle_event(const OrderResponseEvent & response)
 {
     if (response.reject_reason.has_value()) {
         std::cout << "OrderRejected: " << response.reject_reason.value() << std::endl;
+        Logger::logf<LogLevel::Error>("OrderRejected: {}", response.reject_reason.value());
         stop_async(true);
     }
 
     const size_t erased_cnt = m_pending_orders.erase(response.request_guid);
     if (erased_cnt == 0) {
-        std::cout << "ERROR: unsolicited OrderResponseEvent" << std::endl;
+        Logger::log<LogLevel::Error>("unsolicited OrderResponseEvent");
     }
 }
 
@@ -335,26 +337,26 @@ void StrategyInstance::handle_event(const TpslResponseEvent & response)
     }
     else {
         stop_async(true);
-        std::cout << "ERROR: Tpsl was rejected!: " << response.reject_reason.value() << std::endl;
+        Logger::logf<LogLevel::Error>("Tpsl was rejected!: {}", response.reject_reason.value());
     }
     const size_t erased_cnt = m_pending_requests.erase(response.request_guid);
     if (erased_cnt == 0) {
-        std::cout << "Unsolicited tpsl response" << std::endl;
+        Logger::log<LogLevel::Error>("Unsolicited tpsl response");
     }
 }
 
 void StrategyInstance::handle_event(const TpslUpdatedEvent &)
 {
-    std::println("Received TpslUpdatedEvent");
+    Logger::log<LogLevel::Debug>("TpslUpdatedEvent");
 }
 
 void StrategyInstance::handle_event(const StrategyStopRequest &)
 {
-    std::cout << "StrategyStopRequest" << std::endl;
+    Logger::log<LogLevel::Status>("StrategyStopRequest");
     if (m_position_manager.opened() != nullptr) {
         const bool success = close_position(m_last_ts_and_price.second, m_last_ts_and_price.first);
         if (!success) {
-            std::cout << "ERROR: can't close a position on stop/panic" << std::endl;
+            Logger::log<LogLevel::Error>("ERROR: can't close a position on stop/panic");
         }
     }
 
@@ -380,7 +382,7 @@ bool StrategyInstance::open_position(double price, SignedVolume target_absolute_
 {
     const std::optional<SignedVolume> adjusted_target_volume_opt = m_symbol.get_qty_floored(target_absolute_volume);
     if (!adjusted_target_volume_opt.has_value()) {
-        std::println(
+        Logger::logf<LogLevel::Error>(
                 "ERROR can't get proper volume on open_or_move, target_absolute_volume = {}, qty_step = {}",
                 target_absolute_volume.value(),
                 m_symbol.lot_size_filter.qty_step);
@@ -389,12 +391,12 @@ bool StrategyInstance::open_position(double price, SignedVolume target_absolute_
     const SignedVolume adjusted_target_volume = adjusted_target_volume_opt.value();
 
     if (0. == adjusted_target_volume.value()) {
-        std::cout << "ERROR: closing on open_or_move" << std::endl;
+        Logger::log<LogLevel::Error>("closing on open_or_move");
         return false;
     }
 
     if (m_position_manager.opened() != nullptr) {
-        std::cout << "ERROR: opening already opened position" << std::endl;
+        Logger::log<LogLevel::Error>("opening already opened position");
         return false;
     }
 
@@ -446,7 +448,7 @@ bool StrategyInstance::ready_to_finish() const
     const bool got_active_requests = m_pending_requests.empty() && m_live_md_requests.empty();
     const bool res = pos_closed && got_active_requests && !m_backtest_in_progress;
     if (res) {
-        std::cout << "StrategyInstance is ready to finish" << std::endl;
+        Logger::log<LogLevel::Status>("StrategyInstance is ready to finish");
     }
     return res;
 }

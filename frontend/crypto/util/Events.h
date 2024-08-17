@@ -1,6 +1,7 @@
 #pragma once
 
 #include "EventLoop.h" // TODO there must be no dep from loop
+#include "LogLevel.h"
 #include "MarketOrder.h"
 #include "Ohlc.h"
 #include "Symbol.h"
@@ -159,4 +160,16 @@ struct LambdaEvent : public BasicResponseEvent
 
     std::function<void()> func;
     xg::Guid guid;
+};
+
+struct LogEvent : public BasicResponseEvent
+{
+    LogEvent(LogLevel level, std::string && log)
+        : log_str(std::move(log))
+        , level(level)
+    {
+    }
+
+    std::string log_str;
+    LogLevel level;
 };
