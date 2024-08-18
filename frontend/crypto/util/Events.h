@@ -13,31 +13,31 @@
 #include <utility>
 
 template <class T>
-struct BasicEvent
+struct EventWithResponse
 {
-    BasicEvent(IEventConsumer<T> & consumer)
+    EventWithResponse(IEventConsumer<T> & consumer)
         : response_consumer(&consumer)
     {
     }
-    virtual ~BasicEvent() = default;
+    virtual ~EventWithResponse() = default;
     virtual Priority priority() const { return Priority::Normal; }
     IEventConsumer<T> * response_consumer = nullptr; // TODO use shared_ptr?
 };
 
-struct BasicResponseEvent
+struct OneWayEvent
 {
-    virtual ~BasicResponseEvent() = default;
+    virtual ~OneWayEvent() = default;
     virtual Priority priority() const { return Priority::Normal; }
 };
 
-struct MDPriceEvent : public BasicResponseEvent
+struct MDPriceEvent : public OneWayEvent
 {
     MDPriceEvent() = default; // no need for guid here, there will be many responses
     Priority priority() const override { return Priority::Low; }
     std::pair<std::chrono::milliseconds, OHLC> ts_and_price;
 };
 
-struct HistoricalMDPackEvent : public BasicResponseEvent
+struct HistoricalMDPackEvent : public OneWayEvent
 {
     HistoricalMDPackEvent(xg::Guid request_guid);
     std::shared_ptr<const std::map<std::chrono::milliseconds, OHLC>> ts_and_price_pack;
@@ -52,7 +52,7 @@ struct HistoricalMDRequestData
 };
 std::ostream & operator<<(std::ostream & os, const HistoricalMDRequestData & data);
 
-struct HistoricalMDRequest : public BasicEvent<HistoricalMDPackEvent>
+struct HistoricalMDRequest : public EventWithResponse<HistoricalMDPackEvent>
 {
     HistoricalMDRequest(
             IEventConsumer<HistoricalMDPackEvent> & consumer,
@@ -64,7 +64,7 @@ struct HistoricalMDRequest : public BasicEvent<HistoricalMDPackEvent>
     xg::Guid guid;
 };
 
-struct LiveMDRequest : public BasicEvent<MDPriceEvent>
+struct LiveMDRequest : public EventWithResponse<MDPriceEvent>
 {
     LiveMDRequest(IEventConsumer<MDPriceEvent> & consumer, const Symbol & symbol);
 
@@ -72,7 +72,7 @@ struct LiveMDRequest : public BasicEvent<MDPriceEvent>
     xg::Guid guid;
 };
 
-struct OrderResponseEvent : public BasicResponseEvent // TODO rename to AckEvent?
+struct OrderResponseEvent : public OneWayEvent // TODO rename to AckEvent?
 {
     OrderResponseEvent(
             xg::Guid request_guid,
@@ -97,7 +97,7 @@ struct TpslResponseEvent : public OrderResponseEvent
     Tpsl tpsl;
 };
 
-struct TradeEvent : public BasicResponseEvent
+struct TradeEvent : public OneWayEvent
 {
     TradeEvent(Trade trade)
         : trade(std::move(trade))
@@ -106,12 +106,12 @@ struct TradeEvent : public BasicResponseEvent
     Trade trade;
 };
 
-struct OrderRequestEvent : public BasicEvent<OrderResponseEvent>
+struct OrderRequestEvent : public EventWithResponse<OrderResponseEvent>
 {
     OrderRequestEvent(MarketOrder order,
                       IEventConsumer<OrderResponseEvent> & response_consumer,
                       IEventConsumer<TradeEvent> & trade_consumer)
-        : BasicEvent<OrderResponseEvent>(response_consumer)
+        : EventWithResponse<OrderResponseEvent>(response_consumer)
         , order(std::move(order))
         , trade_ev_consumer(&trade_consumer)
     {
@@ -120,7 +120,7 @@ struct OrderRequestEvent : public BasicEvent<OrderResponseEvent>
     IEventConsumer<TradeEvent> * trade_ev_consumer = nullptr;
 };
 
-struct TpslUpdatedEvent : public BasicResponseEvent
+struct TpslUpdatedEvent : public OneWayEvent
 {
     TpslUpdatedEvent(std::string symbol_name, bool set_up)
         : symbol_name(std::move(symbol_name))
@@ -132,10 +132,10 @@ struct TpslUpdatedEvent : public BasicResponseEvent
     bool set_up = false;
 };
 
-struct TpslRequestEvent : public BasicEvent<TpslResponseEvent>
+struct TpslRequestEvent : public EventWithResponse<TpslResponseEvent>
 {
     TpslRequestEvent(Symbol symbol, Tpsl tpsl, IEventConsumer<TpslResponseEvent> & ack_consumer)
-        : BasicEvent<TpslResponseEvent>(ack_consumer)
+        : EventWithResponse<TpslResponseEvent>(ack_consumer)
         , symbol(std::move(symbol))
         , tpsl(tpsl)
         , guid(xg::newGuid())
@@ -147,10 +147,10 @@ struct TpslRequestEvent : public BasicEvent<TpslResponseEvent>
     xg::Guid guid;
 };
 
-using TimerEvent = BasicResponseEvent;
+using TimerEvent = OneWayEvent;
 using PingCheckEvent = TimerEvent;
 
-struct LambdaEvent : public BasicResponseEvent
+struct LambdaEvent : public OneWayEvent
 {
     LambdaEvent(std::function<void()> func)
         : func(std::move(func))
@@ -161,7 +161,7 @@ struct LambdaEvent : public BasicResponseEvent
     xg::Guid guid;
 };
 
-struct LogEvent : public BasicResponseEvent
+struct LogEvent : public OneWayEvent
 {
     LogEvent(LogLevel level, std::string && log)
         : log_str(std::move(log))

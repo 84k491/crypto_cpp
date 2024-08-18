@@ -27,7 +27,7 @@
                         StrategyStopRequest,   \
                         LambdaEvent
 
-struct StrategyStopRequest : public BasicResponseEvent
+struct StrategyStopRequest : public OneWayEvent
 {
     Priority priority() const override
     {

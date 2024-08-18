@@ -3,7 +3,7 @@
 HistoricalMDRequest::HistoricalMDRequest(IEventConsumer<HistoricalMDPackEvent> & consumer,
                                          const Symbol & symbol,
                                          HistoricalMDRequestData data)
-    : BasicEvent<HistoricalMDPackEvent>(consumer)
+    : EventWithResponse<HistoricalMDPackEvent>(consumer)
     , data(data)
     , symbol(symbol)
     , guid(xg::newGuid())
@@ -11,7 +11,7 @@ HistoricalMDRequest::HistoricalMDRequest(IEventConsumer<HistoricalMDPackEvent> &
 }
 
 LiveMDRequest::LiveMDRequest(IEventConsumer<MDPriceEvent> & consumer, const Symbol & symbol)
-    : BasicEvent<MDPriceEvent>(consumer)
+    : EventWithResponse<MDPriceEvent>(consumer)
     , symbol(symbol)
     , guid(xg::newGuid())
 {
