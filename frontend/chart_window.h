@@ -11,9 +11,25 @@ namespace Ui {
 class ChartWindow;
 }
 
-class ChartWindow
-    : public QWidget
-    , public IEventConsumer<LambdaEvent>
+class ChartWindow;
+class ChartWindowEventConsumer : public IEventConsumer<LambdaEvent>
+{
+public:
+    ChartWindowEventConsumer(ChartWindow & cw)
+        : m_cw(cw)
+    {
+    }
+
+private:
+    // IEventConsumer<LambdaEvent>
+    bool push_to_queue(std::any value) override;
+    bool push_to_queue_delayed(std::chrono::milliseconds delay, const std::any value) override;
+
+private:
+    ChartWindow & m_cw;
+};
+
+class ChartWindow : public QWidget
 {
     Q_OBJECT
 
@@ -30,15 +46,11 @@ private slots:
     void on_lambda(const std::function<void()> & lambda);
 
 private:
-    // IEventConsumer<LambdaEvent>
-    bool push_to_queue(std::any value) override;
-    bool push_to_queue_delayed(std::chrono::milliseconds delay, const std::any value) override;
-
-private:
     void subscribe_to_strategy();
 
 private:
     Ui::ChartWindow * ui;
+    std::shared_ptr<ChartWindowEventConsumer> m_event_consumer;
 
     const std::string m_price_chart_name = "prices";
     const std::string m_depo_chart_name = "depo";

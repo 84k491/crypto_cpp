@@ -1,6 +1,6 @@
 #include "Events.h"
 
-HistoricalMDRequest::HistoricalMDRequest(IEventConsumer<HistoricalMDPackEvent> & consumer,
+HistoricalMDRequest::HistoricalMDRequest(const std::shared_ptr<IEventConsumer<HistoricalMDPackEvent>> & consumer,
                                          const Symbol & symbol,
                                          HistoricalMDRequestData data)
     : EventWithResponse<HistoricalMDPackEvent>(consumer)
@@ -10,7 +10,9 @@ HistoricalMDRequest::HistoricalMDRequest(IEventConsumer<HistoricalMDPackEvent> &
 {
 }
 
-LiveMDRequest::LiveMDRequest(IEventConsumer<MDPriceEvent> & consumer, const Symbol & symbol)
+LiveMDRequest::LiveMDRequest(
+        const std::shared_ptr<IEventConsumer<MDPriceEvent>> & consumer,
+        const Symbol & symbol)
     : EventWithResponse<MDPriceEvent>(consumer)
     , symbol(symbol)
     , guid(xg::newGuid())
@@ -24,5 +26,6 @@ HistoricalMDPackEvent::HistoricalMDPackEvent(xg::Guid request_guid)
 
 std::ostream & operator<<(std::ostream & os, const HistoricalMDRequestData & data)
 {
-    return os << "HistoricalMDRequestData{" << "start: " << data.start << ", end: " << data.end << "}";
+    return os << "HistoricalMDRequestData{"
+              << "start: " << data.start << ", end: " << data.end << "}";
 }

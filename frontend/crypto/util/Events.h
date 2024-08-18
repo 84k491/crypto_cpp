@@ -15,13 +15,13 @@
 template <class T>
 struct EventWithResponse
 {
-    EventWithResponse(IEventConsumer<T> & consumer)
-        : response_consumer(&consumer)
+    EventWithResponse(const std::shared_ptr<IEventConsumer<T>> & consumer)
+        : response_consumer(consumer)
     {
     }
     virtual ~EventWithResponse() = default;
     virtual Priority priority() const { return Priority::Normal; }
-    IEventConsumer<T> * response_consumer = nullptr; // TODO use shared_ptr?
+    std::weak_ptr<IEventConsumer<T>> response_consumer = nullptr;
 };
 
 struct OneWayEvent
@@ -55,7 +55,7 @@ std::ostream & operator<<(std::ostream & os, const HistoricalMDRequestData & dat
 struct HistoricalMDRequest : public EventWithResponse<HistoricalMDPackEvent>
 {
     HistoricalMDRequest(
-            IEventConsumer<HistoricalMDPackEvent> & consumer,
+            const std::shared_ptr<IEventConsumer<HistoricalMDPackEvent>> & consumer,
             const Symbol & symbol,
             HistoricalMDRequestData data);
     HistoricalMDRequestData data;
@@ -66,7 +66,9 @@ struct HistoricalMDRequest : public EventWithResponse<HistoricalMDPackEvent>
 
 struct LiveMDRequest : public EventWithResponse<MDPriceEvent>
 {
-    LiveMDRequest(IEventConsumer<MDPriceEvent> & consumer, const Symbol & symbol);
+    LiveMDRequest(
+            const std::shared_ptr<IEventConsumer<MDPriceEvent>> & consumer,
+            const Symbol & symbol);
 
     Symbol symbol;
     xg::Guid guid;
@@ -109,15 +111,15 @@ struct TradeEvent : public OneWayEvent
 struct OrderRequestEvent : public EventWithResponse<OrderResponseEvent>
 {
     OrderRequestEvent(MarketOrder order,
-                      IEventConsumer<OrderResponseEvent> & response_consumer,
-                      IEventConsumer<TradeEvent> & trade_consumer)
+                      const std::shared_ptr<IEventConsumer<OrderResponseEvent>> & response_consumer,
+                      const std::shared_ptr<IEventConsumer<TradeEvent>> & trade_consumer)
         : EventWithResponse<OrderResponseEvent>(response_consumer)
         , order(std::move(order))
-        , trade_ev_consumer(&trade_consumer)
+        , trade_ev_consumer(trade_consumer)
     {
     }
     MarketOrder order;
-    IEventConsumer<TradeEvent> * trade_ev_consumer = nullptr;
+    std::weak_ptr<IEventConsumer<TradeEvent>> trade_ev_consumer;
 };
 
 struct TpslUpdatedEvent : public OneWayEvent
@@ -134,7 +136,10 @@ struct TpslUpdatedEvent : public OneWayEvent
 
 struct TpslRequestEvent : public EventWithResponse<TpslResponseEvent>
 {
-    TpslRequestEvent(Symbol symbol, Tpsl tpsl, IEventConsumer<TpslResponseEvent> & ack_consumer)
+    TpslRequestEvent(
+            Symbol symbol,
+            Tpsl tpsl,
+            const std::shared_ptr<IEventConsumer<TpslResponseEvent>> & ack_consumer)
         : EventWithResponse<TpslResponseEvent>(ack_consumer)
         , symbol(std::move(symbol))
         , tpsl(tpsl)

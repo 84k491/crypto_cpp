@@ -86,7 +86,7 @@ private:
 private:
     xg::Guid m_strategy_guid;
 
-    EventLoop<STRATEGY_EVENTS> m_event_loop;
+    std::shared_ptr<EventLoop<STRATEGY_EVENTS>> m_event_loop;
 
     IMarketDataGateway & m_md_gateway;
     ITradingGateway & m_tr_gateway;

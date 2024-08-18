@@ -21,7 +21,7 @@ StrategyInstance::StrategyInstance(
         IMarketDataGateway & md_gateway,
         ITradingGateway & tr_gateway)
     : m_strategy_guid(xg::newGuid())
-    , m_event_loop(*this)
+    , m_event_loop(std::make_shared<EventLoop<STRATEGY_EVENTS>>(*this))
     , m_md_gateway(md_gateway)
     , m_tr_gateway(tr_gateway)
     , m_strategy(strategy_ptr)
@@ -35,10 +35,11 @@ StrategyInstance::StrategyInstance(
             m_strategy_guid,
             symbol,
             TradingGatewayConsumers{
-                    .trade_consumer = m_event_loop,
-                    .order_ack_consumer = m_event_loop,
-                    .tpsl_response_consumer = m_event_loop,
-                    .tpsl_update_consumer = m_event_loop,
+                    // TODO remove this class
+                    .trade_consumer = *m_event_loop,
+                    .order_ack_consumer = *m_event_loop,
+                    .tpsl_response_consumer = *m_event_loop,
+                    .tpsl_update_consumer = *m_event_loop,
             });
     m_strategy_result.update([&](StrategyResult & res) {
         res.position_currency_amount = m_pos_currency_amount;
@@ -95,7 +96,7 @@ void StrategyInstance::stop_async(bool panic)
     if (panic) {
         m_status_on_stop = WorkStatus::Panic;
     }
-    static_cast<IEventConsumer<StrategyStopRequest> &>(m_event_loop).push(StrategyStopRequest{});
+    static_cast<IEventConsumer<StrategyStopRequest> &>(*m_event_loop).push(StrategyStopRequest{});
 }
 
 std::future<void> StrategyInstance::wait_for_finish()
@@ -267,11 +268,11 @@ void StrategyInstance::handle_event(const HistoricalMDPackEvent & response)
     for (const auto & [ts, ohlc] : *response.ts_and_price_pack) {
         MDPriceEvent ev;
         ev.ts_and_price = {ts, ohlc};
-        static_cast<IEventConsumer<MDPriceEvent> &>(m_event_loop).push(ev);
+        static_cast<IEventConsumer<MDPriceEvent> &>(*m_event_loop).push(ev);
     }
 
     m_backtest_in_progress = true;
-    static_cast<IEventConsumer<StrategyStopRequest> &>(m_event_loop).push(StrategyStopRequest{});
+    static_cast<IEventConsumer<StrategyStopRequest> &>(*m_event_loop).push(StrategyStopRequest{});
     const size_t erased_cnt = m_pending_requests.erase(response.request_guid);
     if (erased_cnt == 0) {
         Logger::log<LogLevel::Error>("unsolicited HistoricalMDPackEvent");

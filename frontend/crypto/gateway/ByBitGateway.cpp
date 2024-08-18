@@ -1,6 +1,7 @@
 #include "ByBitGateway.h"
 
 #include "Logger.h"
+#include "Macros.h"
 #include "MarketDataMessages.h"
 #include "Ohlc.h"
 #include "ScopeExit.h"
@@ -326,7 +327,8 @@ void ByBitGateway::handle_request(const HistoricalMDRequest & request)
             const auto & prices = it->second;
             HistoricalMDPackEvent ev(request.guid);
             ev.ts_and_price_pack = prices;
-            request.response_consumer->push(ev);
+            UNWRAP_RET_VOID(consumer, request.response_consumer.lock());
+            consumer.push(ev);
             return;
         }
     }
@@ -351,7 +353,8 @@ void ByBitGateway::handle_request(const HistoricalMDRequest & request)
     range = std::make_shared<std::map<std::chrono::milliseconds, OHLC>>(prices);
     HistoricalMDPackEvent ev(request.guid);
     ev.ts_and_price_pack = range;
-    request.response_consumer->push(ev);
+    UNWRAP_RET_VOID(consumer, request.response_consumer.lock());
+    consumer.push(ev);
 }
 
 void ByBitGateway::handle_request(const LiveMDRequest & request)
@@ -391,7 +394,8 @@ void ByBitGateway::on_price_received(const nlohmann::json & json)
         OHLC ohlc = {trade.timestamp, trade.price, trade.price, trade.price, trade.price};
         MDPriceEvent ev;
         ev.ts_and_price = {trade.timestamp, ohlc};
-        live_request.response_consumer->push(ev);
+        UNWRAP_RET_VOID(consumer, live_request.response_consumer.lock());
+        consumer.push(ev);
     }
 }
 

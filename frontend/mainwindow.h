@@ -74,9 +74,27 @@ public:
     std::string m_strategy_name;
 };
 
+// TODO make template class QtEventConsumer
+class MainWindow;
+class MainWindowEventConsumer : public IEventConsumer<LambdaEvent>
+{
+public:
+    MainWindowEventConsumer(MainWindow & mw)
+        : m_mw(mw)
+    {
+    }
+
+private:
+    // IEventConsumer<LambdaEvent>
+    bool push_to_queue(std::any value) override;
+    bool push_to_queue_delayed(std::chrono::milliseconds delay, const std::any value) override;
+
+private:
+    MainWindow & m_mw;
+};
+
 class MainWindow final
     : public QMainWindow
-    , public IEventConsumer<LambdaEvent>
 {
     Q_OBJECT
 
@@ -102,11 +120,6 @@ signals:
     void signal_lambda(std::function<void()> lambda);
 
 private:
-    // IEventConsumer<LambdaEvent>
-    bool push_to_queue(std::any value) override;
-    bool push_to_queue_delayed(std::chrono::milliseconds delay, const std::any value) override;
-
-private:
     void handle_status_changed(WorkStatus status);
     void construct_optimizer_ui();
     void subscribe_to_strategy();
@@ -116,6 +129,7 @@ private:
 
 private:
     Ui::MainWindow * ui;
+    std::shared_ptr<MainWindowEventConsumer> m_event_consumer;
 
     StrategyFactory m_strategy_factory;
 

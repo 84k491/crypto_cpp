@@ -2,6 +2,7 @@
 
 #include "Events.h"
 #include "ISubsription.h"
+#include "Macros.h"
 
 #include <crossguid2/crossguid/guid.hpp>
 #include <functional>
@@ -18,7 +19,7 @@ class EventObjectSubscribtion final : public ISubsription // TODO rename to Subs
 
 public:
     EventObjectSubscribtion(
-            IEventConsumer<LambdaEvent> & consumer,
+            const std::shared_ptr<IEventConsumer<LambdaEvent>> & consumer,
             EventObjectPublisher<ObjectT> & publisher,
             xg::Guid guid)
         : m_consumer(consumer)
@@ -35,7 +36,7 @@ public:
     }
 
 private:
-    IEventConsumer<LambdaEvent> & m_consumer; // TODO referenced object can be destroyed before the subscription
+    std::weak_ptr<IEventConsumer<LambdaEvent>> m_consumer;
     EventObjectPublisher<ObjectT> * m_publisher;
     xg::Guid m_guid;
 };
@@ -57,7 +58,7 @@ public:
 
     [[nodiscard]] std::shared_ptr<EventObjectSubscribtion<ObjectT>>
     subscribe(
-            IEventConsumer<LambdaEvent> & consumer,
+            const std::shared_ptr<IEventConsumer<LambdaEvent>> & consumer,
             std::function<void(const ObjectT &)> && update_callback);
     void unsubscribe(xg::Guid guid);
 
@@ -74,9 +75,11 @@ template <typename ObjectT>
 void EventObjectPublisher<ObjectT>::push(const ObjectT & object)
 {
     m_data = object;
+    // TODO erase if nullptr
     for (const auto & [uuid, cb, wptr] : m_update_callbacks) {
-        const std::shared_ptr<EventObjectSubscribtion<ObjectT>> sptr = wptr.lock();
-        sptr->m_consumer.push(LambdaEvent([cb, object] { cb(object); }));
+        UNWRAP_RET_VOID(subscribtion, wptr.lock());
+        UNWRAP_RET_VOID(consumer, subscribtion.m_consumer.lock());
+        consumer.push(LambdaEvent([cb, object] { cb(object); }));
     }
 }
 
@@ -84,16 +87,18 @@ template <typename ObjectT>
 void EventObjectPublisher<ObjectT>::update(std::function<void(ObjectT &)> && update_callback)
 {
     update_callback(m_data);
+    // TODO erase if nullptr
     for (const auto & [uuid, cb, wptr] : m_update_callbacks) {
-        const std::shared_ptr<EventObjectSubscribtion<ObjectT>> sptr = wptr.lock();
-        sptr->m_consumer.push(LambdaEvent([cb, object = m_data] { cb(object); }));
+        UNWRAP_RET_VOID(subscribtion, wptr.lock());
+        UNWRAP_RET_VOID(consumer, subscribtion.m_consumer.lock());
+        consumer.push(LambdaEvent([cb, object = m_data] { cb(object); }));
     }
 }
 
 template <typename ObjectT>
 std::shared_ptr<EventObjectSubscribtion<ObjectT>>
 EventObjectPublisher<ObjectT>::subscribe(
-        IEventConsumer<LambdaEvent> & consumer,
+        const std::shared_ptr<IEventConsumer<LambdaEvent>> & consumer,
         std::function<void(const ObjectT &)> && update_callback)
 {
     const auto guid = xg::newGuid();

@@ -12,7 +12,7 @@ class MockStrategy : public IEventInvoker<OrderResponseEvent, TradeEvent>
 {
 public:
     MockStrategy()
-        : m_loop(*this)
+        : m_loop(std::make_shared<EventLoop<OrderResponseEvent, TradeEvent>>(*this))
     {
     }
     ~MockStrategy() override = default;
@@ -27,7 +27,7 @@ public:
                 var);
     }
 
-    EventLoop<OrderResponseEvent, TradeEvent> m_loop;
+    std::shared_ptr<EventLoop<OrderResponseEvent, TradeEvent>> m_loop;
 
     bool order_acked = false;
 };
@@ -36,7 +36,7 @@ class MockGateway : public IEventInvoker<OrderRequestEvent>
 {
 public:
     MockGateway()
-        : m_loop(*this)
+        : m_loop(std::make_shared<EventLoop<OrderRequestEvent>>(*this))
     {
     }
     ~MockGateway() override = default;
@@ -47,16 +47,17 @@ public:
                 VariantMatcher{
                         [&](const OrderRequestEvent & order) {
                             trade_consumer = order.trade_ev_consumer;
-                            order.response_consumer->push(
-                                    OrderResponseEvent(order.order.guid()));
+                            const auto p = order.response_consumer.lock();
+                            ASSERT_TRUE(p);
+                            p->push(OrderResponseEvent(order.order.guid()));
                         },
                 },
                 var);
     }
 
-    EventLoop<OrderRequestEvent> m_loop;
+    std::shared_ptr<EventLoop<OrderRequestEvent>> m_loop;
 
-    IEventConsumer<TradeEvent> * trade_consumer = nullptr;
+    std::weak_ptr<IEventConsumer<TradeEvent>> trade_consumer;
 };
 
 class EventLoopTest : public Test
@@ -67,11 +68,11 @@ protected:
 
 TEST_F(EventLoopTest, EventLoopTest)
 {
-    std::unique_ptr<MockStrategy> strategy;
+    auto strategy = std::make_unique<MockStrategy>();
     MockGateway gateway;
 
     // strategy pushes order to gw
-    gateway.m_loop.as_consumer<OrderRequestEvent>().push(
+    gateway.m_loop->as_consumer<OrderRequestEvent>().push(
             OrderRequestEvent{
                     MarketOrder{
                             "BTCUSDT",
@@ -88,19 +89,7 @@ TEST_F(EventLoopTest, EventLoopTest)
     // destroy strategy
     strategy.reset();
 
-    // gw pushes trade to strategy
-    gateway.trade_consumer->push(
-            TradeEvent{
-                    Trade{
-                            std::chrono::milliseconds{1},
-                            "BTCUSDT",
-                            1.1,
-                            UnsignedVolume::from(1.1).value(),
-                            Side::Buy,
-                            0.01},
-            });
-
-    // no segfault
+    ASSERT_TRUE(gateway.trade_consumer.expired());
 }
 
 } // namespace test

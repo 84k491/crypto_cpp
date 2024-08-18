@@ -2,6 +2,7 @@
 
 #include "Events.h"
 #include "Logger.h"
+#include "Macros.h"
 #include "Ohlc.h"
 
 #include <set>
@@ -120,7 +121,8 @@ void ByBitTradingGateway::process_event(const OrderRequestEvent & req)
     const auto & order = req.order;
 
     if (!check_consumers(order.symbol())) {
-        req.response_consumer->push(OrderResponseEvent(req.order.guid(), "No trade consumer for symbol"));
+        UNWRAP_RET_VOID(consumer, req.response_consumer.lock());
+        consumer.push(OrderResponseEvent(req.order.guid(), "No trade consumer for symbol"));
         return;
     }
 
@@ -148,7 +150,8 @@ void ByBitTradingGateway::process_event(const OrderRequestEvent & req)
     const std::future_status status = request_future.wait_for(5000ms);
     if (status != std::future_status::ready) {
         // TODO specify guid
-        req.response_consumer->push(
+        UNWRAP_RET_VOID(consumer, req.response_consumer.lock());
+        consumer.push(
                 OrderResponseEvent(req.order.guid(),
                                    "Order request timeout"));
         return;
@@ -164,7 +167,8 @@ void ByBitTradingGateway::process_event(const TpslRequestEvent & tpsl)
 
     if (!check_consumers(tpsl.symbol.symbol_name)) {
         Logger::logf<LogLevel::Warning>("No trade consumer for this symbol: {}", tpsl.symbol.symbol_name);
-        tpsl.response_consumer->push(
+        UNWRAP_RET_VOID(consumer, tpsl.response_consumer.lock());
+        consumer.push(
                 TpslResponseEvent(
                         tpsl.guid,
                         tpsl.tpsl,
@@ -196,7 +200,8 @@ void ByBitTradingGateway::process_event(const TpslRequestEvent & tpsl)
     const std::future_status status = request_future.wait_for(5000ms);
     if (status != std::future_status::ready) {
         // TODO specify guid
-        tpsl.response_consumer->push(TpslResponseEvent(tpsl.guid, tpsl.tpsl, "Request timed out"));
+        UNWRAP_RET_VOID(consumer, tpsl.response_consumer.lock());
+        consumer.push(TpslResponseEvent(tpsl.guid, tpsl.tpsl, "Request timed out"));
         return;
     }
     const std::string request_result = request_future.get();
@@ -204,10 +209,12 @@ void ByBitTradingGateway::process_event(const TpslRequestEvent & tpsl)
     const auto j = json::parse(request_result);
     const ByBitMessages::TpslResult result = j.get<ByBitMessages::TpslResult>();
     if (result.ret_code != 0) {
-        tpsl.response_consumer->push(TpslResponseEvent(tpsl.guid, tpsl.tpsl, result.ret_msg));
+        UNWRAP_RET_VOID(consumer, tpsl.response_consumer.lock());
+        consumer.push(TpslResponseEvent(tpsl.guid, tpsl.tpsl, result.ret_msg));
         return;
     }
-    tpsl.response_consumer->push(TpslResponseEvent(tpsl.guid, tpsl.tpsl));
+    UNWRAP_RET_VOID(consumer, tpsl.response_consumer.lock());
+    consumer.push(TpslResponseEvent(tpsl.guid, tpsl.tpsl));
 }
 
 void ByBitTradingGateway::process_event(const PingCheckEvent & ping_event)

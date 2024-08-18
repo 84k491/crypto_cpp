@@ -9,9 +9,14 @@
 
 #include <optional>
 
-class BacktestTradingGateway
-    : public ITradingGateway
-    , public IEventConsumer<LambdaEvent>
+class BacktestEventConsumer : public IEventConsumer<LambdaEvent>
+{
+    // IEventConsumer<LambdaEvent>
+    bool push_to_queue(const std::any value) override;
+    bool push_to_queue_delayed(std::chrono::milliseconds delay, const std::any value) override;
+};
+
+class BacktestTradingGateway : public ITradingGateway
 {
 public:
     static constexpr double taker_fee_rate = 0.00055;
@@ -30,11 +35,8 @@ private:
     std::optional<Trade> try_trade_tpsl(OHLC ohlc);
 
 private:
-    // IEventConsumer<LambdaEvent>
-    bool push_to_queue(const std::any value) override;
-    bool push_to_queue_delayed(std::chrono::milliseconds delay, const std::any value) override;
+    std::shared_ptr<BacktestEventConsumer> m_event_consumer;
 
-private:
     std::string m_symbol; // backtest GW can only trade a single symbol now
     std::optional<TpslRequestEvent> m_tpsl;
     double m_last_trade_price = 0.;

@@ -7,6 +7,7 @@
 ChartWindow::ChartWindow(const std::shared_ptr<StrategyInstance> & strategy, QWidget * parent)
     : QWidget(parent)
     , ui(new Ui::ChartWindow)
+    , m_event_consumer(std::make_shared<ChartWindowEventConsumer>(*this))
     , m_strategy_instance(strategy)
 {
     ui->setupUi(this);
@@ -41,7 +42,7 @@ void ChartWindow::subscribe_to_strategy()
     }
     std::println("charts subscribe_to_strategy");
     m_subscriptions.push_back(str_instance->klines_publisher().subscribe(
-            *this,
+            m_event_consumer,
             [this](const auto & vec) {
                 std::vector<std::pair<std::chrono::milliseconds, double>> new_data;
                 new_data.reserve(vec.size());
@@ -55,7 +56,7 @@ void ChartWindow::subscribe_to_strategy()
                 get_or_create_chart(m_price_chart_name).push_series_value("price", ts, ohlc.close);
             }));
     m_subscriptions.push_back(str_instance->tpsl_publisher().subscribe(
-            *this,
+            m_event_consumer,
             [this](const std::vector<std::pair<std::chrono::milliseconds, Tpsl>> & input_vec) {
                 std::vector<std::pair<std::chrono::milliseconds, double>> tp, sl;
                 for (const auto & [ts, tpsl] : input_vec) {
@@ -73,7 +74,7 @@ void ChartWindow::subscribe_to_strategy()
             str_instance
                     ->strategy_internal_data_publisher()
                     .subscribe(
-                            *this,
+                            m_event_consumer,
                             [this](
                                     const std::vector<
                                             std::pair<
@@ -94,7 +95,7 @@ void ChartWindow::subscribe_to_strategy()
                                 get_or_create_chart(m_price_chart_name).push_series_value(name, ts, data);
                             }));
     m_subscriptions.push_back(str_instance->signals_publisher().subscribe(
-            *this,
+            m_event_consumer,
             [this](const std::vector<std::pair<std::chrono::milliseconds, Signal>> & input_vec) {
                 std::vector<std::pair<std::chrono::milliseconds, double>> buy, sell;
                 for (const auto & [ts, signal] : input_vec) {
@@ -118,7 +119,7 @@ void ChartWindow::subscribe_to_strategy()
                 get_or_create_chart(m_price_chart_name).push_signal(signal);
             }));
     m_subscriptions.push_back(str_instance->depo_publisher().subscribe(
-            *this,
+            m_event_consumer,
             [this](const auto & vec) {
                 auto & plot = get_or_create_chart(m_depo_chart_name);
                 plot.push_series_vector("depo", vec);
@@ -128,14 +129,14 @@ void ChartWindow::subscribe_to_strategy()
             }));
 }
 
-bool ChartWindow::push_to_queue(std::any value)
+bool ChartWindowEventConsumer::push_to_queue(std::any value)
 {
     auto & lambda_event = std::any_cast<LambdaEvent &>(value);
-    signal_lambda(std::move(lambda_event.func));
+    m_cw.signal_lambda(std::move(lambda_event.func));
     return true;
 }
 
-bool ChartWindow::push_to_queue_delayed(std::chrono::milliseconds, const std::any)
+bool ChartWindowEventConsumer::push_to_queue_delayed(std::chrono::milliseconds, const std::any)
 {
     throw std::runtime_error("Not implemented");
 }

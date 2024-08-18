@@ -2,6 +2,7 @@
 
 #include "Events.h"
 #include "ISubsription.h"
+#include "Macros.h"
 
 #include <chrono>
 #include <crossguid2/crossguid/guid.hpp>
@@ -19,7 +20,7 @@ class EventTimeseriesSubsription final : public ISubsription
     friend class EventTimeseriesPublisher<ObjectT>;
 
 public:
-    EventTimeseriesSubsription(IEventConsumer<LambdaEvent> & consumer,
+    EventTimeseriesSubsription(const std::shared_ptr<IEventConsumer<LambdaEvent>> & consumer,
                                EventTimeseriesPublisher<ObjectT> & publisher,
                                xg::Guid guid)
         : m_consumer(consumer)
@@ -36,7 +37,7 @@ public:
     }
 
 private:
-    IEventConsumer<LambdaEvent> & m_consumer; // TODO referenced object can be destroyed before the subscription
+    std::weak_ptr<IEventConsumer<LambdaEvent>> m_consumer;
     EventTimeseriesPublisher<ObjectT> * m_publisher;
     xg::Guid m_guid;
 };
@@ -52,7 +53,7 @@ public:
 
     void push(TimeT timestamp, const ObjectT & object);
     [[nodiscard]] std::shared_ptr<EventTimeseriesSubsription<ObjectT>> subscribe(
-            IEventConsumer<LambdaEvent> & consumer,
+            const std::shared_ptr<IEventConsumer<LambdaEvent>> & consumer,
             std::function<void(const std::vector<std::pair<TimeT, ObjectT>> &)> && snapshot_callback,
             std::function<void(TimeT, const ObjectT &)> && increment_callback);
 
@@ -72,8 +73,9 @@ void EventTimeseriesPublisher<ObjectT>::push(EventTimeseriesPublisher::TimeT tim
 {
     m_data.emplace_back(timestamp, object);
     for (const auto & [uuid, cb, wptr] : m_increment_callbacks) {
-        const std::shared_ptr<EventTimeseriesSubsription<ObjectT>> sptr = wptr.lock();
-        sptr->m_consumer.push(LambdaEvent(
+        UNWRAP_RET_VOID(subscribtion, wptr.lock());
+        UNWRAP_RET_VOID(consumer, subscribtion.m_consumer.lock());
+        consumer.push(LambdaEvent(
                 [cb,
                  timestamp,
                  object] { cb(timestamp, object); }));
@@ -82,7 +84,7 @@ void EventTimeseriesPublisher<ObjectT>::push(EventTimeseriesPublisher::TimeT tim
 
 template <typename ObjectT>
 std::shared_ptr<EventTimeseriesSubsription<ObjectT>> EventTimeseriesPublisher<ObjectT>::subscribe(
-        IEventConsumer<LambdaEvent> & consumer,
+        const std::shared_ptr<IEventConsumer<LambdaEvent>> & consumer,
         std::function<void(const std::vector<std::pair<TimeT, ObjectT>> &)> && snapshot_callback,
         std::function<void(TimeT, const ObjectT &)> && increment_callback)
 {
@@ -90,7 +92,7 @@ std::shared_ptr<EventTimeseriesSubsription<ObjectT>> EventTimeseriesPublisher<Ob
     auto sptr = std::make_shared<EventTimeseriesSubsription<ObjectT>>(consumer, *this, guid);
 
     m_increment_callbacks.emplace_back(guid, std::move(increment_callback), std::weak_ptr{sptr});
-    consumer.push(LambdaEvent(
+    consumer->push(LambdaEvent(
             [cb = std::move(snapshot_callback),
              d = m_data] { cb(d); }));
 
@@ -111,10 +113,10 @@ void EventTimeseriesPublisher<ObjectT>::unsubscribe(xg::Guid guid)
 template <typename ObjectT>
 EventTimeseriesPublisher<ObjectT>::~EventTimeseriesPublisher()
 {
+    // TODO erase if nullptr
     for (auto & [uuid, _, wptr] : m_increment_callbacks) {
-        if (auto sptr = wptr.lock()) {
-            sptr->m_publisher = nullptr;
-        }
+        UNWRAP_RET_VOID(subscribtion, wptr.lock());
+        subscribtion.m_publisher = nullptr;
     }
     m_increment_callbacks.clear();
 }

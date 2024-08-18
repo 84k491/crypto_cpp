@@ -19,6 +19,7 @@
 MainWindow::MainWindow(QWidget * parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
+    , m_event_consumer(std::make_shared<MainWindowEventConsumer>(*this))
 {
     ui->setupUi(this);
     ui->wt_entry_params->setTitle("Entry parameters");
@@ -96,7 +97,7 @@ void MainWindow::subscribe_to_strategy()
 {
     Logger::log<LogLevel::Status>("mainwindow subscribe_to_strategy");
     m_subscriptions.push_back(m_strategy_instance->strategy_result_publisher().subscribe(
-            *this,
+            m_event_consumer,
             [&](const StrategyResult & result) {
                 const auto status = m_strategy_instance->status_publisher().get();
                 switch (status) {
@@ -185,7 +186,7 @@ void MainWindow::on_pb_run_clicked()
     }
 
     m_subscriptions.push_back(m_strategy_instance->status_publisher().subscribe(
-            *this,
+            m_event_consumer,
             [&](const WorkStatus & status) { handle_status_changed(status); }));
 
     m_strategy_instance->run_async();
@@ -328,10 +329,10 @@ void MainWindow::on_cb_strategy_currentTextChanged(const QString &)
     }
 }
 
-bool MainWindow::push_to_queue(std::any value)
+bool MainWindowEventConsumer::push_to_queue(std::any value)
 {
     auto & lambda_event = std::any_cast<LambdaEvent &>(value);
-    signal_lambda(std::move(lambda_event.func));
+    m_mw.signal_lambda(std::move(lambda_event.func));
     return true;
 }
 
@@ -340,7 +341,7 @@ void MainWindow::on_lambda(const std::function<void()> & lambda)
     lambda();
 }
 
-bool MainWindow::push_to_queue_delayed(std::chrono::milliseconds, const std::any)
+bool MainWindowEventConsumer::push_to_queue_delayed(std::chrono::milliseconds, const std::any)
 {
     throw std::runtime_error("Not implemented");
 }
