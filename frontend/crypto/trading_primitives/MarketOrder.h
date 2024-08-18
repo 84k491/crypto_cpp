@@ -26,7 +26,11 @@ public:
     {
     }
 
-    MarketOrder(std::string symbol, double price, SignedVolume signed_volume, std::chrono::milliseconds signal_ts)
+    MarketOrder(
+            std::string symbol,
+            double price,
+            SignedVolume signed_volume,
+            std::chrono::milliseconds signal_ts)
         : m_guid(xg::newGuid())
         , m_symbol(std::move(symbol))
         , m_volume(signed_volume.as_unsigned_and_side().first)
