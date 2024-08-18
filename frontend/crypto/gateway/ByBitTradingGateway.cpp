@@ -71,7 +71,7 @@ void ByBitTradingGateway::on_tpsl_update(const std::array<ByBitMessages::OrderRe
 
 void ByBitTradingGateway::on_execution(const json & j)
 {
-    Logger::logf<LogLevel::Info>("Execution successfull");
+    Logger::logf<LogLevel::Info>("Execution received {}", j);
 
     ByBitMessages::ExecutionResult result;
     from_json(j, result);
@@ -120,7 +120,7 @@ void ByBitTradingGateway::process_event(const OrderRequestEvent & req)
     const auto & order = req.order;
 
     if (!check_consumers(order.symbol())) {
-        req.event_consumer->push(OrderResponseEvent(req.order.guid(), "No trade consumer for symbol"));
+        req.response_consumer->push(OrderResponseEvent(req.order.guid(), "No trade consumer for symbol"));
         return;
     }
 
@@ -148,7 +148,9 @@ void ByBitTradingGateway::process_event(const OrderRequestEvent & req)
     const std::future_status status = request_future.wait_for(5000ms);
     if (status != std::future_status::ready) {
         // TODO specify guid
-        req.event_consumer->push(OrderResponseEvent(req.order.guid(), "Empty REST response"));
+        req.response_consumer->push(
+                OrderResponseEvent(req.order.guid(),
+                                   "Order request timeout"));
         return;
     }
     const std::string request_result = request_future.get();
@@ -162,11 +164,11 @@ void ByBitTradingGateway::process_event(const TpslRequestEvent & tpsl)
 
     if (!check_consumers(tpsl.symbol.symbol_name)) {
         Logger::logf<LogLevel::Warning>("No trade consumer for this symbol: {}", tpsl.symbol.symbol_name);
-        tpsl.event_consumer->push(
+        tpsl.response_consumer->push(
                 TpslResponseEvent(
                         tpsl.guid,
                         tpsl.tpsl,
-                        std::format("No consumer for this symbol", tpsl.symbol.symbol_name)));
+                        std::format("No consumer for this symbol: {}", tpsl.symbol.symbol_name)));
         return;
     }
     // TODO validate stop and take prices
@@ -194,7 +196,7 @@ void ByBitTradingGateway::process_event(const TpslRequestEvent & tpsl)
     const std::future_status status = request_future.wait_for(5000ms);
     if (status != std::future_status::ready) {
         // TODO specify guid
-        tpsl.event_consumer->push(TpslResponseEvent(tpsl.guid, tpsl.tpsl, "Request timed out"));
+        tpsl.response_consumer->push(TpslResponseEvent(tpsl.guid, tpsl.tpsl, "Request timed out"));
         return;
     }
     const std::string request_result = request_future.get();
@@ -202,10 +204,10 @@ void ByBitTradingGateway::process_event(const TpslRequestEvent & tpsl)
     const auto j = json::parse(request_result);
     const ByBitMessages::TpslResult result = j.get<ByBitMessages::TpslResult>();
     if (result.ret_code != 0) {
-        tpsl.event_consumer->push(TpslResponseEvent(tpsl.guid, tpsl.tpsl, result.ret_msg));
+        tpsl.response_consumer->push(TpslResponseEvent(tpsl.guid, tpsl.tpsl, result.ret_msg));
         return;
     }
-    tpsl.event_consumer->push(TpslResponseEvent(tpsl.guid, tpsl.tpsl));
+    tpsl.response_consumer->push(TpslResponseEvent(tpsl.guid, tpsl.tpsl));
 }
 
 void ByBitTradingGateway::process_event(const PingCheckEvent & ping_event)
@@ -215,7 +217,7 @@ void ByBitTradingGateway::process_event(const PingCheckEvent & ping_event)
 
 void ByBitTradingGateway::on_ws_message(const json & j)
 {
-    Logger::logf<LogLevel::Info>("on_ws_message: {}", j.dump());
+    Logger::logf<LogLevel::Debug>("on_ws_message: {}", j.dump());
     if (j.find("topic") != j.end()) {
         const auto & topic = j.at("topic");
         const std::map<std::string, std::function<void(const json &)>> topic_handlers = {
@@ -223,7 +225,7 @@ void ByBitTradingGateway::on_ws_message(const json & j)
                 {"execution", [&](const json & j) { on_execution(j); }},
         };
         if (const auto it = topic_handlers.find(topic); it == topic_handlers.end()) {
-            Logger::logf<LogLevel::Error>("Unregistered topic: {}", j.dump());
+            Logger::logf<LogLevel::Warning>("Unregistered topic: {}", j.dump());
             return;
         }
         else {
@@ -231,7 +233,7 @@ void ByBitTradingGateway::on_ws_message(const json & j)
         }
         return;
     }
-    Logger::logf<LogLevel::Error>("Unrecognized message: {}", j.dump());
+    Logger::logf<LogLevel::Warning>("Unrecognized message: {}", j.dump());
 }
 
 void ByBitTradingGateway::register_consumers(xg::Guid guid, const Symbol & symbol, TradingGatewayConsumers consumers)

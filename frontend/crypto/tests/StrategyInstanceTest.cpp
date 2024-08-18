@@ -205,7 +205,7 @@ TEST_F(StrategyInstanceTest, SubForLiveMarketData_GetPrice_GracefullStop)
     OHLC ohlc = {ts, price, price, price, price};
     MDPriceEvent ev;
     ev.ts_and_price = {ts, ohlc};
-    live_req.event_consumer->push(ev);
+    live_req.response_consumer->push(ev);
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
     ASSERT_EQ(prices_received, 1);
 
@@ -245,7 +245,7 @@ TEST_F(StrategyInstanceTest, OpenAndClosePos_GetResult_DontCloseTwiceOnStop)
         OHLC ohlc = {price_ts, price, price, price, price};
         MDPriceEvent price_event;
         price_event.ts_and_price = {price_ts, ohlc};
-        live_req.event_consumer->push(price_event);
+        live_req.response_consumer->push(price_event);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         ASSERT_EQ(prices_received, 1);
     }
@@ -290,7 +290,7 @@ TEST_F(StrategyInstanceTest, OpenAndClosePos_GetResult_DontCloseTwiceOnStop)
     {
         ASSERT_TRUE(tr_gateway.m_last_tpsl_request.has_value());
         const auto tpsl_req = tr_gateway.m_last_tpsl_request.value();
-        tpsl_req.event_consumer->push(TpslResponseEvent{tpsl_req.guid, tpsl_req.tpsl});
+        tpsl_req.response_consumer->push(TpslResponseEvent{tpsl_req.guid, tpsl_req.tpsl});
         // TODO here should be TpslUpdateEvent
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
@@ -347,7 +347,7 @@ TEST_F(StrategyInstanceTest, OpenPositionWithTpsl_CloseOnGracefullStop)
         OHLC ohlc = {price_ts, price, price, price, price};
         MDPriceEvent price_event;
         price_event.ts_and_price = {price_ts, ohlc};
-        live_req.event_consumer->push(price_event);
+        live_req.response_consumer->push(price_event);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         ASSERT_EQ(prices_received, 1);
     }
@@ -389,7 +389,7 @@ TEST_F(StrategyInstanceTest, OpenPositionWithTpsl_CloseOnGracefullStop)
     {
         ASSERT_TRUE(tr_gateway.m_last_tpsl_request.has_value());
         const auto tpsl_req = tr_gateway.m_last_tpsl_request.value();
-        tpsl_req.event_consumer->push(TpslResponseEvent{tpsl_req.guid, tpsl_req.tpsl});
+        tpsl_req.response_consumer->push(TpslResponseEvent{tpsl_req.guid, tpsl_req.tpsl});
         // TODO here should be TpslUpdateEvent
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
@@ -464,7 +464,7 @@ TEST_F(StrategyInstanceTest, ManyPricesReceivedWhileOrderIsPending_NoAdditionalO
         OHLC ohlc = {price_ts, price, price, price, price};
         MDPriceEvent price_event;
         price_event.ts_and_price = {price_ts, ohlc};
-        live_req.event_consumer->push(price_event);
+        live_req.response_consumer->push(price_event);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         ASSERT_EQ(prices_received, 1);
     }
@@ -480,7 +480,7 @@ TEST_F(StrategyInstanceTest, ManyPricesReceivedWhileOrderIsPending_NoAdditionalO
         OHLC ohlc = {price_ts, price, price, price, price};
         MDPriceEvent price_event;
         price_event.ts_and_price = {price_ts, ohlc};
-        live_req.event_consumer->push(price_event);
+        live_req.response_consumer->push(price_event);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         ASSERT_EQ(prices_received, 2);
     }
@@ -509,7 +509,7 @@ TEST_F(StrategyInstanceTest, EnterOrder_GetReject_Panic)
         OHLC ohlc = {price_ts, price, price, price, price};
         MDPriceEvent price_event;
         price_event.ts_and_price = {price_ts, ohlc};
-        live_req.event_consumer->push(price_event);
+        live_req.response_consumer->push(price_event);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
@@ -525,7 +525,7 @@ TEST_F(StrategyInstanceTest, EnterOrder_GetReject_Panic)
     const auto order_req = tr_gateway.m_last_order_request.value();
     const auto order_response = OrderResponseEvent{
             order_req.order.guid(), "test_reject"};
-    order_req.event_consumer->push(order_response);
+    order_req.response_consumer->push(order_response);
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     ASSERT_EQ(strategy_status, WorkStatus::Panic);
@@ -549,7 +549,7 @@ TEST_F(StrategyInstanceTest, OpenPos_TpslReject_ClosePosAndPanic)
         OHLC ohlc = {price_ts, price, price, price, price};
         MDPriceEvent price_event;
         price_event.ts_and_price = {price_ts, ohlc};
-        live_req.event_consumer->push(price_event);
+        live_req.response_consumer->push(price_event);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
@@ -592,7 +592,7 @@ TEST_F(StrategyInstanceTest, OpenPos_TpslReject_ClosePosAndPanic)
     {
         ASSERT_TRUE(tr_gateway.m_last_tpsl_request.has_value());
         const auto tpsl_req = tr_gateway.m_last_tpsl_request.value();
-        tpsl_req.event_consumer->push(TpslResponseEvent{tpsl_req.guid, tpsl_req.tpsl, "test_reject"});
+        tpsl_req.response_consumer->push(TpslResponseEvent{tpsl_req.guid, tpsl_req.tpsl, "test_reject"});
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 

@@ -16,13 +16,12 @@ template <class T>
 struct BasicEvent
 {
     BasicEvent(IEventConsumer<T> & consumer)
-        : event_consumer(&consumer)
+        : response_consumer(&consumer)
     {
     }
     virtual ~BasicEvent() = default;
     virtual Priority priority() const { return Priority::Normal; }
-    // TODO rename to base_consumer
-    IEventConsumer<T> * event_consumer = nullptr; // TODO use shared_ptr?
+    IEventConsumer<T> * response_consumer = nullptr; // TODO use shared_ptr?
 };
 
 struct BasicResponseEvent

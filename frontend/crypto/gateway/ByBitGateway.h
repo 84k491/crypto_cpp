@@ -6,7 +6,6 @@
 #include "Events.h"
 #include "Guarded.h"
 #include "IMarketDataGateway.h"
-#include "ObjectPublisher.h"
 #include "Ohlc.h"
 #include "RestClient.h"
 #include "Symbol.h"

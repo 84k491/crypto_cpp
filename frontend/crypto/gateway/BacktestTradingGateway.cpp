@@ -83,12 +83,12 @@ void BacktestTradingGateway::push_order_request(const OrderRequestEvent & req)
         Logger::log<LogLevel::Error>("No price sub. Did you forgot to subscribe backtest TRGW for prices?");
     }
     if (!check_consumers(req.order.symbol())) {
-        req.event_consumer->push(OrderResponseEvent(req.order.guid(), "No trade consumer for this symbol"));
+        req.response_consumer->push(OrderResponseEvent(req.order.guid(), "No trade consumer for this symbol"));
         return;
     }
 
     const auto & order = req.order;
-    req.event_consumer->push(OrderResponseEvent(req.order.guid()));
+    req.response_consumer->push(OrderResponseEvent(req.order.guid()));
     m_symbol = order.symbol();
 
     const auto & price = m_last_trade_price;
@@ -114,13 +114,13 @@ void BacktestTradingGateway::push_tpsl_request(const TpslRequestEvent & tpsl_ev)
 {
     if (!check_consumers(tpsl_ev.symbol.symbol_name)) {
         Logger::logf<LogLevel::Error>("No consumer for this symbol: {}", tpsl_ev.symbol.symbol_name);
-        tpsl_ev.event_consumer->push(TpslResponseEvent(tpsl_ev.guid, tpsl_ev.tpsl, "No consumer for this symbol"));
+        tpsl_ev.response_consumer->push(TpslResponseEvent(tpsl_ev.guid, tpsl_ev.tpsl, "No consumer for this symbol"));
         return;
     }
 
     m_tpsl = tpsl_ev;
     TpslResponseEvent resp_ev(m_tpsl.value().guid, tpsl_ev.tpsl);
-    m_tpsl.value().event_consumer->push(resp_ev);
+    m_tpsl.value().response_consumer->push(resp_ev);
 }
 
 void BacktestTradingGateway::register_consumers(xg::Guid guid, const Symbol & symbol, TradingGatewayConsumers consumers)
