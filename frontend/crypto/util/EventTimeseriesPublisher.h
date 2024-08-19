@@ -73,8 +73,8 @@ void EventTimeseriesPublisher<ObjectT>::push(EventTimeseriesPublisher::TimeT tim
 {
     m_data.emplace_back(timestamp, object);
     for (const auto & [uuid, cb, wptr] : m_increment_callbacks) {
-        UNWRAP_RET_VOID(subscribtion, wptr.lock());
-        UNWRAP_RET_VOID(consumer, subscribtion.m_consumer.lock());
+        UNWRAP_CONTINUE(subscribtion, wptr.lock());
+        UNWRAP_CONTINUE(consumer, subscribtion.m_consumer.lock());
         consumer.push(LambdaEvent(
                 [cb,
                  timestamp,
@@ -115,7 +115,7 @@ EventTimeseriesPublisher<ObjectT>::~EventTimeseriesPublisher()
 {
     // TODO erase if nullptr
     for (auto & [uuid, _, wptr] : m_increment_callbacks) {
-        UNWRAP_RET_VOID(subscribtion, wptr.lock());
+        UNWRAP_CONTINUE(subscribtion, wptr.lock());
         subscribtion.m_publisher = nullptr;
     }
     m_increment_callbacks.clear();
