@@ -30,6 +30,7 @@ public:
             std::optional<WsKeys> ws_keys,
             BusinessLogicCallback callback,
             ConnectionWatcher & connection_watcher);
+    ~WebSocketClient();
     bool wait_until_ready(std::chrono::milliseconds timeout = std::chrono::milliseconds(5000)) const;
     void subscribe(const std::string & topic);
     void unsubscribe(const std::string & topic);
@@ -59,6 +60,7 @@ private:
     WsClient::connection_ptr m_connection;
 
     std::unique_ptr<WorkerThreadLoop> m_ping_worker; // TODO remove
+    std::unique_ptr<std::thread> m_client_thread;
 
     bool m_ready = false;
 };

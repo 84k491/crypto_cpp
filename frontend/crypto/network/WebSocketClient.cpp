@@ -14,7 +14,7 @@ WebSocketClient::WebSocketClient(
     , m_callback(std::move(callback))
     , m_connection_watcher(connection_watcher)
 {
-    std::thread t([this]() {
+    m_client_thread = std::make_unique<std::thread>([this]() {
         Logger::logf<LogLevel::Debug>("websocket thread start");
 
         // Set logging to be pretty verbose (everything except message payloads)
@@ -81,7 +81,12 @@ WebSocketClient::WebSocketClient(
         Logger::log<LogLevel::Debug>("websocket client stopped");
         return 0;
     });
-    t.detach();
+}
+
+WebSocketClient::~WebSocketClient() {
+    m_client.stop();
+    m_client_thread->join();
+    m_client_thread.reset();
 }
 
 void WebSocketClient::subscribe(const std::string & topic)
