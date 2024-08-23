@@ -38,8 +38,8 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} \
     -ggdb \
     -g3 \
     -O0 \
-    -fsanitize=address \
     ")
+    # -fsanitize=address \
 
 add_subdirectory(frontend)
 set(JSON_BuildTests OFF CACHE INTERNAL "")

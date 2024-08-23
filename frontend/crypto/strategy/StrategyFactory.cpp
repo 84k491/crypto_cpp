@@ -6,6 +6,7 @@
 #include "Logger.h"
 #include "StrategyInterface.h"
 #include "TunedBollingerBandsStrategy.h"
+#include "RateOfChangeStrategy.h"
 
 #include <fstream>
 #include <optional>
@@ -29,6 +30,10 @@ std::optional<JsonStrategyMetaInfo> StrategyFactory::get_meta_info(const std::st
             {
                     "DebugEveryTick",
                     "DebugEveryTick.json",
+            },
+            {
+                    "RateOfChange",
+                    "RateOfChange.json",
             },
             {
                     "TpslExit",
@@ -76,6 +81,10 @@ std::optional<std::shared_ptr<IStrategy>> StrategyFactory::build_strategy(
     }
     if (strategy_name == "DebugEveryTick") {
         std::shared_ptr<IStrategy> res = std::make_shared<DebugEveryTickStrategy>(config);
+        return res;
+    }
+    if (strategy_name == "RateOfChange") {
+        std::shared_ptr<IStrategy> res = std::make_shared<RateOfChangeStrategy>(config);
         return res;
     }
     Logger::logf<LogLevel::Error>("Unknown strategy name: {}", strategy_name);
