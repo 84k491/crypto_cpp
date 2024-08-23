@@ -1,0 +1,4 @@
+leak:initializeClientBufferIntegration
+leak:libfontconfig.so
+leak:QWaylandDisplay
+leak:<unknown module>
