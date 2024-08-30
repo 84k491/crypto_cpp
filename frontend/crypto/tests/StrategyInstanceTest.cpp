@@ -102,7 +102,7 @@ public:
         return std::nullopt;
     }
 
-    EventTimeseriesPublisher<std::pair<std::string, double>> & strategy_internal_data_publisher() override
+    EventTimeseriesPublisher<std::tuple<std::string, std::string, double>> & strategy_internal_data_publisher() override
     {
         return m_strategy_internal_data_publisher;
     }
@@ -116,7 +116,7 @@ public:
     }
 
 private:
-    EventTimeseriesPublisher<std::pair<std::string, double>> m_strategy_internal_data_publisher;
+    EventTimeseriesPublisher<std::tuple<std::string, std::string, double>> m_strategy_internal_data_publisher;
 
     std::optional<Side> m_next_signal_side;
 };

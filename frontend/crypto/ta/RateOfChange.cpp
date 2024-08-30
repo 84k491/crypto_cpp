@@ -18,7 +18,7 @@ std::optional<double> RateOfChange::push_value(std::pair<std::chrono::millisecon
     }
     const auto head_value = m_data.front().second;
     const auto tail_value = m_data.back().second;
-    const auto res = (tail_value - head_value) / static_cast<double>(head_value);
+    const auto res = 100 * (tail_value - head_value) / static_cast<double>(head_value);
 
     while (ts_diff() > m_interval) {
         m_data.pop_front();

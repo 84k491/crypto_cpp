@@ -30,8 +30,7 @@ public:
 
     std::optional<Signal> push_price(std::pair<std::chrono::milliseconds, double> ts_and_price) override;
 
-    EventTimeseriesPublisher<std::pair<std::string, double>> & strategy_internal_data_publisher() override;
-
+    EventTimeseriesPublisher<std::tuple<std::string, std::string, double>> & strategy_internal_data_publisher() override;
     bool is_valid() const override;
 
 private:
@@ -44,5 +43,5 @@ private:
 
     Side m_last_signal_side = Side::Close;
 
-    EventTimeseriesPublisher<std::pair<std::string, double>> m_strategy_internal_data_publisher;
+    EventTimeseriesPublisher<std::tuple<std::string, std::string, double>> m_strategy_internal_data_publisher;
 };

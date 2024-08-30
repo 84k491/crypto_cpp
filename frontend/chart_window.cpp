@@ -1,5 +1,6 @@
 #include "chart_window.h"
 
+#include "Logger.h"
 #include "ui_chart_window.h"
 
 #include <print>
@@ -26,6 +27,7 @@ MultiSeriesChart & ChartWindow::get_or_create_chart(const std::string & chart_na
     if (auto it = m_charts.find(chart_name); it != m_charts.end()) {
         return *it->second;
     }
+    Logger::logf<LogLevel::Status>("Creating new chart: {}", chart_name);
     auto * new_chart = new MultiSeriesChart();
     new_chart->set_title(chart_name);
     m_charts[chart_name] = new_chart;
@@ -75,24 +77,34 @@ void ChartWindow::subscribe_to_strategy()
                     ->strategy_internal_data_publisher()
                     .subscribe(
                             m_event_consumer,
-                            [this](
-                                    const std::vector<
-                                            std::pair<
-                                                    std::chrono::milliseconds,
-                                                    std::pair<std::string, double>>> & vec) {
-                                std::map<std::string, std::vector<std::pair<std::chrono::milliseconds, double>>> vec_map;
+                            [this](const std::vector<
+                                    std::pair<
+                                            std::chrono::milliseconds,
+                                            std::tuple<std::string, std::string, double>>> & vec) {
+                                // chart_name -> series_name -> timestamp, value
+                                std::map<std::string,
+                                         std::map<std::string,
+                                                  std::vector<std::pair<std::chrono::milliseconds, double>>>>
+                                        vec_map;
+
                                 for (const auto & [ts, v] : vec) {
-                                    const auto & [name, value] = v;
-                                    vec_map[name].emplace_back(ts, value);
+                                    const auto & [chart_name, series_name, value] = v;
+                                    vec_map[chart_name][series_name].emplace_back(ts, value);
                                 }
-                                auto & plot = get_or_create_chart(m_price_chart_name);
-                                for (const auto & [name, out_vec] : vec_map) {
-                                    plot.push_series_vector(name, out_vec);
+                                for (const auto & [chart_name, series_map] : vec_map) {
+                                    for (const auto & [series_name, out_vec] : series_map) {
+                                        auto & plot = get_or_create_chart(chart_name);
+                                        plot.push_series_vector(series_name, out_vec);
+                                    }
                                 }
                             },
-                            [&](std::chrono::milliseconds ts, const std::pair<const std::string, double> & data_pair) {
-                                const auto & [name, data] = data_pair;
-                                get_or_create_chart(m_price_chart_name).push_series_value(name, ts, data);
+                            [&](
+                                    std::chrono::milliseconds ts,
+                                    const std::tuple<const std::string,
+                                                     const std::string,
+                                                     double> & data_pair) {
+                                const auto & [chart_name, name, data] = data_pair;
+                                get_or_create_chart(chart_name).push_series_value(name, ts, data);
                             }));
     m_subscriptions.push_back(str_instance->signals_publisher().subscribe(
             m_event_consumer,

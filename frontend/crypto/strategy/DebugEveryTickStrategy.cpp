@@ -46,10 +46,10 @@ std::optional<Signal> DebugEveryTickStrategy::push_price(std::pair<std::chrono::
 
 bool DebugEveryTickStrategy::is_valid() const
 {
-    return m_config.is_valid();
+    return DebugEveryTickStrategyConfig::is_valid();
 }
 
-EventTimeseriesPublisher<std::pair<std::string, double>> & DebugEveryTickStrategy::strategy_internal_data_publisher()
+EventTimeseriesPublisher<std::tuple<std::string, std::string, double>> & DebugEveryTickStrategy::strategy_internal_data_publisher()
 {
     return m_strategy_internal_data_publisher;
 }

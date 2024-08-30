@@ -189,7 +189,7 @@ EventTimeseriesPublisher<Signal> & StrategyInstance::signals_publisher()
     return m_signal_publisher;
 }
 
-EventTimeseriesPublisher<std::pair<std::string, double>> & StrategyInstance::strategy_internal_data_publisher()
+EventTimeseriesPublisher<std::tuple<std::string, std::string, double>> & StrategyInstance::strategy_internal_data_publisher()
 {
     return m_strategy->strategy_internal_data_publisher();
 }

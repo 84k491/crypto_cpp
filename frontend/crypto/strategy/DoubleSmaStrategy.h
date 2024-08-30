@@ -1,8 +1,8 @@
 #pragma once
 
+#include "JsonStrategyConfig.h"
 #include "Signal.h"
 #include "SimpleMovingAverage.h"
-#include "JsonStrategyConfig.h"
 #include "StrategyInterface.h"
 
 #include <chrono>
@@ -13,7 +13,7 @@
 class DoubleSmaStrategyConfig
 {
 public:
-    DoubleSmaStrategyConfig(const JsonStrategyConfig& json);
+    DoubleSmaStrategyConfig(const JsonStrategyConfig & json);
     DoubleSmaStrategyConfig(std::chrono::milliseconds slow_interval, std::chrono::milliseconds fast_interval);
 
     bool is_valid() const;
@@ -33,13 +33,12 @@ public:
 
     std::optional<Signal> push_price(std::pair<std::chrono::milliseconds, double> ts_and_price) override;
 
-    EventTimeseriesPublisher<std::pair<std::string, double>>& strategy_internal_data_publisher() override;
+    EventTimeseriesPublisher<std::tuple<std::string, std::string, double>> & strategy_internal_data_publisher() override;
 
     bool is_valid() const override;
 
     std::map<std::string, std::vector<std::pair<std::chrono::milliseconds, double>>>
     get_internal_data_history() const;
-
 
 private:
     const DoubleSmaStrategyConfig m_config;
@@ -53,5 +52,5 @@ private:
     std::optional<double> m_prev_slow_avg;
     std::optional<double> m_prev_fast_avg;
 
-    EventTimeseriesPublisher<std::pair<std::string, double>> m_strategy_internal_data_publisher;
+    EventTimeseriesPublisher<std::tuple<std::string, std::string, double>> m_strategy_internal_data_publisher;
 };

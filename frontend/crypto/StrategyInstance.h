@@ -49,7 +49,7 @@ public:
     ~StrategyInstance() override;
 
     EventTimeseriesPublisher<Signal> & signals_publisher();
-    EventTimeseriesPublisher<std::pair<std::string, double>> &
+    EventTimeseriesPublisher<std::tuple<std::string, std::string, double>> &
     strategy_internal_data_publisher();
     EventTimeseriesPublisher<OHLC> & klines_publisher();
     EventTimeseriesPublisher<double> & depo_publisher();

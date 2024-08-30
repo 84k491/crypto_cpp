@@ -60,7 +60,9 @@ void MultiSeriesChart::push_series_value_dont_replot(const std::string & series_
     auto * graph = get_graph_for_series(series_name, is_scatter);
     // casting to seconds
     graph->addData(static_cast<double>(ts.count()) / 1000., data);
-    graph->rescaleAxes();
+    if (!is_scatter) {
+        graph->rescaleAxes();
+    }
 }
 
 void MultiSeriesChart::push_series_value(const std::string & series_name,

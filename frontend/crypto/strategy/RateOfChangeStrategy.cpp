@@ -44,7 +44,7 @@ bool RateOfChangeStrategy::is_valid() const
     return m_config.is_valid();
 }
 
-EventTimeseriesPublisher<std::pair<std::string, double>> & RateOfChangeStrategy::strategy_internal_data_publisher()
+EventTimeseriesPublisher<std::tuple<std::string, std::string, double>> & RateOfChangeStrategy::strategy_internal_data_publisher()
 {
     return m_strategy_internal_data_publisher;
 }
@@ -55,15 +55,30 @@ std::optional<Signal> RateOfChangeStrategy::push_price(std::pair<std::chrono::mi
     if (!rate_of_change_opt.has_value()) {
         return std::nullopt;
     }
+
     const auto & rate_of_change = rate_of_change_opt.value();
+    m_strategy_internal_data_publisher.push(
+            ts_and_price.first,
+            {"rate_of_change",
+             "rate_of_change",
+             rate_of_change});
+    m_strategy_internal_data_publisher.push(
+            ts_and_price.first,
+            {"rate_of_change",
+             "upper_threshold",
+             m_config.m_signal_threshold});
+    m_strategy_internal_data_publisher.push(
+            ts_and_price.first,
+            {"rate_of_change",
+             "lower_threshold",
+             -m_config.m_signal_threshold});
+
     if (rate_of_change > m_config.m_signal_threshold) {
         const auto signal = Signal{.side = Side::Buy, .timestamp = ts_and_price.first, .price = ts_and_price.second};
-        m_strategy_internal_data_publisher.push(ts_and_price.first, {"rate_of_change", rate_of_change});
         return signal;
     }
     if (rate_of_change < -m_config.m_signal_threshold) {
         const auto signal = Signal{.side = Side::Sell, .timestamp = ts_and_price.first, .price = ts_and_price.second};
-        m_strategy_internal_data_publisher.push(ts_and_price.first, {"rate_of_change", rate_of_change});
         return signal;
     }
     return std::nullopt;

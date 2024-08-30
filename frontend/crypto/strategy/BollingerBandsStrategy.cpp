@@ -42,9 +42,9 @@ std::optional<Signal> BollingerBandsStrategy::push_price(std::pair<std::chrono::
     }
     const auto & bb_res = bb_res_opt.value();
     const auto & [ts, price] = ts_and_price;
-    m_strategy_internal_data_publisher.push(ts, {"upper_band", bb_res.m_upper_band});
-    m_strategy_internal_data_publisher.push(ts, {"trend", bb_res.m_trend});
-    m_strategy_internal_data_publisher.push(ts, {"lower_band", bb_res.m_lower_band});
+    m_strategy_internal_data_publisher.push(ts, {"prices", "upper_band", bb_res.m_upper_band});
+    m_strategy_internal_data_publisher.push(ts, {"prices", "trend", bb_res.m_trend});
+    m_strategy_internal_data_publisher.push(ts, {"prices", "lower_band", bb_res.m_lower_band});
 
     switch (m_last_signal_side) {
     case Side::Buy: {
@@ -79,7 +79,7 @@ std::optional<Signal> BollingerBandsStrategy::push_price(std::pair<std::chrono::
     return std::nullopt;
 }
 
-EventTimeseriesPublisher<std::pair<std::string, double>> & BollingerBandsStrategy::strategy_internal_data_publisher()
+EventTimeseriesPublisher<std::tuple<std::string, std::string, double>> & BollingerBandsStrategy::strategy_internal_data_publisher()
 {
     return m_strategy_internal_data_publisher;
 }

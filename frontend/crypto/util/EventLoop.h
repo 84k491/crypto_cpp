@@ -113,7 +113,10 @@ private:
                 m_cv.wait_until(
                         lock,
                         m_delayed_events.begin()->first,
-                        [this, now] { return !m_running || m_delayed_events.begin()->first <= now; });
+                        [this] {
+                            return !m_running ||
+                                    m_delayed_events.begin()->first <= std::chrono::steady_clock::now();
+                        });
             }
         }
     }
