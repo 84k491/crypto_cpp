@@ -3,12 +3,24 @@
     "parameters": [
         {
             "name": "signal_threshold",
-            "min_value": 1.0,
-            "step": 0.2,
-            "max_value": 3.0
+            "min_value": 0.1,
+            "step": 0.1,
+            "max_value": 2.0
         },
         {
-            "name": "interval_m",
+            "name": "sma_interval_m",
+            "min_value": 1,
+            "step": 1,
+            "max_value": 10
+        },
+        {
+            "name": "trigger_interval_m",
+            "min_value": 1,
+            "step": 1,
+            "max_value": 10
+        },
+        {
+            "name": "roc_interval_m",
             "min_value": 1,
             "step": 1,
             "max_value": 10

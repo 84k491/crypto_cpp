@@ -10,3 +10,6 @@ target_include_directories(ta
     PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
+target_include_directories(ta PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../util
+)

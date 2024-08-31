@@ -7,6 +7,13 @@
     }                              \
     auto &(VAR) = *VAR##_PTR;
 
+#define UNWRAP_RET_EMPTY(VAR, EXPR) \
+    auto VAR##_PTR = EXPR;          \
+    if (!VAR##_PTR) {               \
+        return {};                  \
+    }                               \
+    auto &(VAR) = *VAR##_PTR;
+
 #define UNWRAP_CONTINUE(VAR, EXPR) \
     auto VAR##_PTR = EXPR;         \
     if (!VAR##_PTR) {              \

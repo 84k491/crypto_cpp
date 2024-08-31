@@ -2,6 +2,7 @@
 
 #include "JsonStrategyConfig.h"
 #include "RateOfChange.h"
+#include "SimpleMovingAverage.h"
 #include "StrategyInterface.h"
 
 class RateOfChangeStrategyConfig
@@ -13,7 +14,9 @@ public:
 
     JsonStrategyConfig to_json() const;
 
-    std::chrono::milliseconds m_interval = {};
+    std::chrono::milliseconds m_sma_interval = {};
+    std::chrono::milliseconds m_trigger_interval = {};
+    std::chrono::milliseconds m_roc_interval = {};
     double m_signal_threshold = 0.;
 };
 
@@ -30,5 +33,7 @@ public:
 private:
     RateOfChangeStrategyConfig m_config;
     RateOfChange m_rate_of_change;
+    MovingAverage m_moving_average;
+    std::chrono::milliseconds m_last_below_trigger_ts = {};
     EventTimeseriesPublisher<std::tuple<std::string, std::string, double>> m_strategy_internal_data_publisher;
 };
