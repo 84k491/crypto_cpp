@@ -7,6 +7,7 @@
 #include "Symbol.h"
 #include "Tpsl.h"
 #include "Trade.h"
+#include "StopLoss.h"
 
 #include <crossguid2/crossguid/guid.hpp>
 #include <map>
@@ -152,6 +153,34 @@ struct TpslRequestEvent : public EventWithResponse<TpslResponseEvent>
     xg::Guid guid;
 };
 
+struct StopLossResponseEvent : public OneWayEvent
+{
+    StopLossResponseEvent(StopLoss stop_loss)
+        : stop_loss(std::move(stop_loss))
+    {
+    }
+
+    StopLoss stop_loss;
+};
+
+struct StopLossRequestEvent : public EventWithResponse<StopLossResponseEvent>
+{
+    StopLossRequestEvent(
+            Symbol symbol,
+            StopLoss stop_loss,
+            const std::shared_ptr<IEventConsumer<StopLossResponseEvent>> & ack_consumer)
+        : EventWithResponse<StopLossResponseEvent>(ack_consumer)
+        , symbol(std::move(symbol))
+        , stop_loss(std::move(stop_loss))
+        , guid(xg::newGuid())
+    {
+    }
+
+    Symbol symbol;
+    StopLoss stop_loss;
+    xg::Guid guid;
+};
+
 using TimerEvent = OneWayEvent;
 using PingCheckEvent = TimerEvent;
 
@@ -177,3 +206,20 @@ struct LogEvent : public OneWayEvent
     std::string log_str;
     LogLevel level;
 };
+
+struct StrategyStopRequest : public OneWayEvent
+{
+    Priority priority() const override
+    {
+        return Priority::Low;
+    }
+};
+
+#define STRATEGY_EVENTS HistoricalMDPackEvent, \
+                        MDPriceEvent,          \
+                        OrderResponseEvent,    \
+                        TradeEvent,            \
+                        TpslResponseEvent,     \
+                        TpslUpdatedEvent,      \
+                        StrategyStopRequest,   \
+                        LambdaEvent

@@ -18,23 +18,6 @@
 #include <set>
 #include <variant>
 
-#define STRATEGY_EVENTS HistoricalMDPackEvent, \
-                        MDPriceEvent,          \
-                        OrderResponseEvent,    \
-                        TradeEvent,            \
-                        TpslResponseEvent,     \
-                        TpslUpdatedEvent,      \
-                        StrategyStopRequest,   \
-                        LambdaEvent
-
-struct StrategyStopRequest : public OneWayEvent
-{
-    Priority priority() const override
-    {
-        return Priority::Low;
-    }
-};
-
 class StrategyInstance : public IEventInvoker<STRATEGY_EVENTS>
 {
 public:
@@ -78,7 +61,6 @@ private:
 
     bool open_position(double price, SignedVolume target_absolute_volume, std::chrono::milliseconds ts);
     bool close_position(double price, std::chrono::milliseconds ts);
-    void set_tpsl(Tpsl tpsl);
 
     bool ready_to_finish() const;
     void finish_if_needed_and_ready();
@@ -91,7 +73,6 @@ private:
     IMarketDataGateway & m_md_gateway;
     ITradingGateway & m_tr_gateway;
     std::shared_ptr<IStrategy> m_strategy;
-    TpslExitStrategy m_exit_strategy;
 
     EventObjectPublisher<StrategyResult> m_strategy_result;
 
@@ -103,6 +84,7 @@ private:
     const Symbol m_symbol;
     static constexpr double m_pos_currency_amount = 100.;
     PositionManager m_position_manager;
+    TpslExitStrategy m_exit_strategy;
 
     const std::optional<HistoricalMDRequestData> m_historical_md_request;
 

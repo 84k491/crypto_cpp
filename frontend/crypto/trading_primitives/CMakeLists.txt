@@ -13,4 +13,5 @@ target_include_directories(trading_primitives
 
 target_link_libraries(trading_primitives PRIVATE
     nlohmann_json::nlohmann_json
+    util
 )

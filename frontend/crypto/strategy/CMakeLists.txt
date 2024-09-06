@@ -15,5 +15,6 @@ target_link_libraries(strategy PRIVATE
     nlohmann_json::nlohmann_json
     trading_primitives
     util
+    gateway # needed for exit strat. TODO remove
     ta
 )

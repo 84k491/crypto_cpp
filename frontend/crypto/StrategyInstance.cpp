@@ -25,9 +25,9 @@ StrategyInstance::StrategyInstance(
     , m_md_gateway(md_gateway)
     , m_tr_gateway(tr_gateway)
     , m_strategy(strategy_ptr)
-    , m_exit_strategy(exit_strategy_config)
     , m_symbol(symbol)
     , m_position_manager(symbol)
+    , m_exit_strategy(m_symbol, exit_strategy_config, m_event_loop, m_tr_gateway)
     , m_historical_md_request(historical_md_request)
 {
     m_status.push(WorkStatus::Stopped);
@@ -324,25 +324,36 @@ void StrategyInstance::handle_event(const TradeEvent & response)
     m_strategy_result.update([&](StrategyResult & res) {
         res.trades_count++;
     });
-    if (m_position_manager.opened() != nullptr) {
-        const auto tpsl = m_exit_strategy.calc_tpsl(trade);
-        set_tpsl(tpsl);
+
+    const auto pos = [&]() -> std::optional<OpenedPosition> {
+        if (m_position_manager.opened() == nullptr) {
+            return std::nullopt;
+        }
+        else {
+            return *m_position_manager.opened();
+        }
+    }();
+
+    if (const auto err = m_exit_strategy.on_trade(pos, trade); err.has_value()) {
+        // stop_async(true);
+        Logger::log<LogLevel::Error>(std::string{err.value()});
     }
 }
 
 void StrategyInstance::handle_event(const TpslResponseEvent & response)
 {
-    if (!response.reject_reason.has_value()) {
-        m_tpsl_publisher.push(m_last_ts_and_price.first, response.tpsl);
+    // TODO make an Error class
+    const auto err_pair_opt = m_exit_strategy.handle_event(response);
+
+    if (err_pair_opt.has_value()) {
+        const auto & [err, do_panic] = err_pair_opt.value();
+        Logger::log<LogLevel::Error>(std::string(err));
+        stop_async(do_panic);
+        return;
     }
-    else {
-        stop_async(true);
-        Logger::logf<LogLevel::Error>("Tpsl was rejected!: {}", response.reject_reason.value());
-    }
-    const size_t erased_cnt = m_pending_requests.erase(response.request_guid);
-    if (erased_cnt == 0) {
-        Logger::log<LogLevel::Error>("Unsolicited tpsl response");
-    }
+
+    // TODO move publisher to exit strategy class
+    m_tpsl_publisher.push(m_last_ts_and_price.first, response.tpsl);
 }
 
 void StrategyInstance::handle_event(const TpslUpdatedEvent &)
@@ -369,13 +380,6 @@ void StrategyInstance::handle_event(const StrategyStopRequest &)
 void StrategyInstance::handle_event(const LambdaEvent & response)
 {
     response.func();
-}
-
-void StrategyInstance::set_tpsl(Tpsl tpsl)
-{
-    TpslRequestEvent req(m_symbol, tpsl, m_event_loop);
-    m_pending_requests.emplace(req.guid);
-    m_tr_gateway.push_tpsl_request(req);
 }
 
 bool StrategyInstance::open_position(double price, SignedVolume target_absolute_volume, std::chrono::milliseconds ts)

@@ -3,8 +3,6 @@
 #include "Logger.h"
 #include "ui_chart_window.h"
 
-#include <print>
-
 ChartWindow::ChartWindow(const std::shared_ptr<StrategyInstance> & strategy, QWidget * parent)
     : QWidget(parent)
     , ui(new Ui::ChartWindow)
@@ -39,10 +37,8 @@ void ChartWindow::subscribe_to_strategy()
 {
     const auto str_instance = m_strategy_instance.lock();
     if (str_instance == nullptr) {
-        std::println("no strategy for charts");
         return;
     }
-    std::println("charts subscribe_to_strategy");
     m_subscriptions.push_back(str_instance->klines_publisher().subscribe(
             m_event_consumer,
             [this](const auto & vec) {

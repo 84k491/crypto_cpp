@@ -1,9 +1,11 @@
 #include "TpslExitStrategy.h"
 
 #include "Enums.h"
+#include "Logger.h"
 #include "Trade.h"
 
 #include <iostream>
+#include <utility>
 
 TpslExitStrategyConfig::TpslExitStrategyConfig(const JsonStrategyConfig & json)
 {
@@ -33,6 +35,47 @@ TpslExitStrategyConfig::TpslExitStrategyConfig(double risk, double risk_reward_r
     : m_risk(risk)
     , m_risk_reward_ratio(risk_reward_ratio)
 {
+}
+
+TpslExitStrategy::TpslExitStrategy(Symbol symbol,
+                                   TpslExitStrategyConfig config,
+                                   std::shared_ptr<EventLoop<STRATEGY_EVENTS>> & event_loop,
+                                   ITradingGateway & gateway)
+    : ExitStrategyBase(gateway)
+    , m_config(config)
+    , m_event_loop(event_loop)
+    , m_symbol(std::move(symbol))
+{
+}
+
+std::optional<std::string> TpslExitStrategy::on_price_changed(std::pair<std::chrono::milliseconds, double>)
+{
+    return std::nullopt;
+}
+
+std::optional<std::string> TpslExitStrategy::on_trade(const std::optional<OpenedPosition> & opened_position, const Trade & trade)
+{
+    if (m_opened_position.has_value() && m_active_tpsl.has_value()) {
+        const std::string_view msg = "TpslExitStrategy: active tpsl already exists";
+        Logger::log<LogLevel::Warning>(std::string(msg));
+        return std::string(msg);
+    }
+
+    m_opened_position = opened_position;
+
+    // TODO handle a double trade case, add test
+    if (opened_position) {
+        const auto tpsl = calc_tpsl(trade);
+        send_tpsl(tpsl);
+    }
+    return std::nullopt;
+}
+
+void TpslExitStrategy::send_tpsl(Tpsl tpsl)
+{
+    TpslRequestEvent req(m_symbol, tpsl, m_event_loop);
+    m_pending_requests.emplace(req.guid);
+    m_tr_gateway.push_tpsl_request(req);
 }
 
 Tpsl TpslExitStrategy::calc_tpsl(const Trade & trade)
@@ -69,7 +112,18 @@ bool TpslExitStrategyConfig::is_valid() const
     return limits_ok;
 }
 
-TpslExitStrategy::TpslExitStrategy(TpslExitStrategyConfig config)
-    : m_config(config)
+std::optional<std::pair<std::string, bool>> TpslExitStrategy::handle_event(const TpslResponseEvent & response)
 {
+    if (response.reject_reason.has_value()) {
+        std::string err = "Rejected tpsl: " + response.reject_reason.value();
+        return {{err, true}};
+    }
+
+    const size_t erased_cnt = m_pending_requests.erase(response.request_guid);
+    if (erased_cnt == 0) {
+        std::string err = "Unsolicited tpsl response";
+        return {{err, false}};
+    }
+
+    return std::nullopt;
 }
