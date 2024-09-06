@@ -1,5 +1,6 @@
 #pragma once
 
+#include "EventTimeseriesPublisher.h"
 #include "ExitStrategyInterface.h"
 #include "ITradingGateway.h"
 
@@ -15,6 +16,9 @@ public:
     {
     }
 
+    EventTimeseriesPublisher<Tpsl> & tpsl_publisher() { return m_tpsl_publisher; }
+
 protected:
     ITradingGateway & m_tr_gateway;
+    EventTimeseriesPublisher<Tpsl> m_tpsl_publisher;
 };

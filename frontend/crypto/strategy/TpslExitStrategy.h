@@ -47,6 +47,9 @@ public:
     [[nodiscard]] std::optional<std::pair<std::string, bool>>
     handle_event(const TpslResponseEvent & response) override;
 
+    [[nodiscard]] std::optional<std::pair<std::string, bool>>
+    handle_event(const TpslUpdatedEvent & response) override;
+
 private:
     Tpsl calc_tpsl(const Trade & trade);
     void send_tpsl(Tpsl tpsl);
@@ -54,6 +57,8 @@ private:
 private:
     TpslExitStrategyConfig m_config;
     std::shared_ptr<EventLoop<STRATEGY_EVENTS>> & m_event_loop; // TODO remove ref?
+
+    std::pair<std::chrono::milliseconds, double> m_last_ts_and_price;
 
     Symbol m_symbol;
     std::set<xg::Guid> m_pending_requests;

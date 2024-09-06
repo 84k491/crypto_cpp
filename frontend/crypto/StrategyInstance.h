@@ -51,7 +51,7 @@ private:
     void handle_event(const OrderResponseEvent & response);
     void handle_event(const TradeEvent & response);
     void handle_event(const TpslResponseEvent & response);
-    static void handle_event(const TpslUpdatedEvent & response);
+    void handle_event(const TpslUpdatedEvent & response);
     void handle_event(const StrategyStopRequest & response);
     static void handle_event(const LambdaEvent & response);
 
@@ -79,7 +79,6 @@ private:
     EventTimeseriesPublisher<Signal> m_signal_publisher; // TODO publish trades instead of signals
     EventTimeseriesPublisher<OHLC> m_klines_publisher;
     EventTimeseriesPublisher<double> m_depo_publisher;
-    EventTimeseriesPublisher<Tpsl> m_tpsl_publisher;
 
     const Symbol m_symbol;
     static constexpr double m_pos_currency_amount = 100.;

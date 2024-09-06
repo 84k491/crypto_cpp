@@ -48,8 +48,9 @@ TpslExitStrategy::TpslExitStrategy(Symbol symbol,
 {
 }
 
-std::optional<std::string> TpslExitStrategy::on_price_changed(std::pair<std::chrono::milliseconds, double>)
+std::optional<std::string> TpslExitStrategy::on_price_changed(std::pair<std::chrono::milliseconds, double> ts_and_price)
 {
+    m_last_ts_and_price = std::move(ts_and_price);
     return std::nullopt;
 }
 
@@ -125,5 +126,13 @@ std::optional<std::pair<std::string, bool>> TpslExitStrategy::handle_event(const
         return {{err, false}};
     }
 
+    m_tpsl_publisher.push(m_last_ts_and_price.first, response.tpsl);
+    return std::nullopt;
+}
+
+[[nodiscard]] std::optional<std::pair<std::string, bool>>
+TpslExitStrategy::handle_event(const TpslUpdatedEvent &)
+{
+    Logger::log<LogLevel::Debug>("TpslUpdatedEvent");
     return std::nullopt;
 }

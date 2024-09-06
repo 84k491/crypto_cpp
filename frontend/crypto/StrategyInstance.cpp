@@ -216,7 +216,7 @@ EventObjectPublisher<WorkStatus> & StrategyInstance::status_publisher()
 
 EventTimeseriesPublisher<Tpsl> & StrategyInstance::tpsl_publisher()
 {
-    return m_tpsl_publisher;
+    return m_exit_strategy.tpsl_publisher();
 }
 
 void StrategyInstance::invoke(const std::variant<STRATEGY_EVENTS> & var)
@@ -349,16 +349,17 @@ void StrategyInstance::handle_event(const TpslResponseEvent & response)
         const auto & [err, do_panic] = err_pair_opt.value();
         Logger::log<LogLevel::Error>(std::string(err));
         stop_async(do_panic);
-        return;
     }
-
-    // TODO move publisher to exit strategy class
-    m_tpsl_publisher.push(m_last_ts_and_price.first, response.tpsl);
 }
 
-void StrategyInstance::handle_event(const TpslUpdatedEvent &)
+void StrategyInstance::handle_event(const TpslUpdatedEvent & response)
 {
-    Logger::log<LogLevel::Debug>("TpslUpdatedEvent");
+    const auto err_pair_opt = m_exit_strategy.handle_event(response);
+    if (err_pair_opt.has_value()) {
+        const auto & [err, do_panic] = err_pair_opt.value();
+        Logger::log<LogLevel::Error>(std::string(err));
+        stop_async(do_panic);
+    }
 }
 
 void StrategyInstance::handle_event(const StrategyStopRequest &)
