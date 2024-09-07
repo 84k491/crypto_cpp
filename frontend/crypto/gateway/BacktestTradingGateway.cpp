@@ -136,6 +136,10 @@ void BacktestTradingGateway::push_tpsl_request(const TpslRequestEvent & tpsl_ev)
     consumer.push(resp_ev);
 }
 
+void BacktestTradingGateway::push_trailing_stop_request(const TrailingStopLossRequestEvent & trailing_stop_ev)
+{
+}
+
 void BacktestTradingGateway::register_consumers(xg::Guid guid, const Symbol & symbol, TradingGatewayConsumers consumers)
 {
     Logger::logf<LogLevel::Debug>("Registering consumers for symbol: {}", symbol.symbol_name);

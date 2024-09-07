@@ -70,6 +70,11 @@ public:
         m_last_tpsl_request = tpsl_ev;
     }
 
+    void push_trailing_stop_request(const TrailingStopLossRequestEvent &) override
+    {
+        // not implemented
+    }
+
     void register_consumers(xg::Guid, const Symbol &, TradingGatewayConsumers consumers) override
     {
         m_consumers = std::make_unique<TradingGatewayConsumers>(consumers);

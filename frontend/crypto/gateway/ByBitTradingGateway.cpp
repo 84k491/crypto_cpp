@@ -1,6 +1,7 @@
 #include "ByBitTradingGateway.h"
 
 #include "Events.h"
+#include "LogLevel.h"
 #include "Logger.h"
 #include "Macros.h"
 #include "Ohlc.h"
@@ -102,6 +103,18 @@ void ByBitTradingGateway::push_order_request(const OrderRequestEvent & order)
 void ByBitTradingGateway::push_tpsl_request(const TpslRequestEvent & tpsl_ev)
 {
     m_event_loop.as_consumer<TpslRequestEvent>().push(tpsl_ev);
+}
+
+void ByBitTradingGateway::push_trailing_stop_request(const TrailingStopLossRequestEvent & trailing_stop_ev) 
+{
+    Logger::logf<LogLevel::Error>("Handing of TrailingStopLossRequestEvent is not implemented");
+    
+    UNWRAP_RET_VOID(consumer, trailing_stop_ev.response_consumer.lock())
+    consumer.push(
+        TrailingStopLossResponseEvent(
+            trailing_stop_ev.guid,
+            trailing_stop_ev.trailing_stop_loss,
+            "Not imlemented"));
 }
 
 void ByBitTradingGateway::invoke(const std::variant<OrderRequestEvent, TpslRequestEvent, PingCheckEvent> & variant)

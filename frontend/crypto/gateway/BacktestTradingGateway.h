@@ -26,6 +26,7 @@ public:
 
     void push_order_request(const OrderRequestEvent & order) override;
     void push_tpsl_request(const TpslRequestEvent & tpsl_ev) override;
+    void push_trailing_stop_request(const TrailingStopLossRequestEvent & trailing_stop_ev) override;
 
     void register_consumers(xg::Guid guid, const Symbol & symbol, TradingGatewayConsumers consumers) override;
     void unregister_consumers(xg::Guid guid) override;
