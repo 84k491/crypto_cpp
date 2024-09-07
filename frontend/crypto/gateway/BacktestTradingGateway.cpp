@@ -18,14 +18,27 @@ void BacktestTradingGateway::set_price_source(EventTimeseriesPublisher<OHLC> & p
             [](auto &) {},
             [this](auto, const OHLC & ohlc) {
                 m_last_trade_price = ohlc.close;
-                const auto tpsl_trade = try_trade_tpsl(ohlc);
-                if (m_tpsl.has_value() && tpsl_trade.has_value()) {
-                    auto lref = m_consumers.lock();
-                    for (auto & it : lref.get()) {
-                        it.second.second.trade_consumer.push(TradeEvent(tpsl_trade.value()));
+                if (m_tpsl.has_value()) {
+                    const auto tpsl_trade = try_trade_tpsl(ohlc);
+                    if (tpsl_trade.has_value()) {
+                        auto lref = m_consumers.lock();
+                        for (auto & it : lref.get()) {
+                            it.second.second.trade_consumer.push(TradeEvent(tpsl_trade.value()));
+                        }
+                        m_pos_volume = SignedVolume();
+                        m_tpsl.reset();
                     }
-                    m_pos_volume = SignedVolume();
-                    m_tpsl.reset();
+                }
+                if (m_trailing_stop.has_value()) {
+                    const auto trail_stop_trade = m_trailing_stop->on_price_updated(ohlc);
+                    if (trail_stop_trade.has_value()) {
+                        auto lref = m_consumers.lock();
+                        for (auto & it : lref.get()) {
+                            it.second.second.trade_consumer.push(TradeEvent(trail_stop_trade.value()));
+                        }
+                        m_pos_volume = SignedVolume();
+                        m_trailing_stop.reset();
+                    }
                 }
             });
 }
@@ -138,6 +151,29 @@ void BacktestTradingGateway::push_tpsl_request(const TpslRequestEvent & tpsl_ev)
 
 void BacktestTradingGateway::push_trailing_stop_request(const TrailingStopLossRequestEvent & trailing_stop_ev)
 {
+    UNWRAP_RET_VOID(consumer, trailing_stop_ev.response_consumer.lock());
+
+    if (!check_consumers(trailing_stop_ev.symbol.symbol_name)) {
+        Logger::logf<LogLevel::Error>("No trade consumer for this symbol: {}", trailing_stop_ev.symbol.symbol_name);
+        consumer.push(
+                TrailingStopLossResponseEvent(
+                        trailing_stop_ev.guid,
+                        trailing_stop_ev.trailing_stop_loss,
+                        "No consumer for this symbol"));
+        return;
+    }
+
+    m_trailing_stop = BacktestTrailingStopLoss(
+        m_symbol,
+        m_pos_volume,
+        m_last_trade_price,
+        trailing_stop_ev.trailing_stop_loss.price_distance());
+
+    consumer.push(
+            TrailingStopLossResponseEvent(
+                    trailing_stop_ev.guid,
+                    trailing_stop_ev.trailing_stop_loss));
+    // TODO push TrailingStopUpdated?
 }
 
 void BacktestTradingGateway::register_consumers(xg::Guid guid, const Symbol & symbol, TradingGatewayConsumers consumers)
@@ -175,4 +211,60 @@ bool BacktestEventConsumer::push_to_queue(const std::any value)
 bool BacktestEventConsumer::push_to_queue_delayed(std::chrono::milliseconds, const std::any)
 {
     throw std::runtime_error("Not implemented");
+}
+
+BacktestTrailingStopLoss::BacktestTrailingStopLoss(std::string symbol, SignedVolume pos_volume, double current_price, double price_delta)
+    : m_symbol(std::move(symbol))
+    , m_pos_volume(pos_volume)
+    , m_price_delta(price_delta)
+{
+    const auto [vol, side] = m_pos_volume.as_unsigned_and_side();
+    const int side_sign = side == Side::Buy ? 1 : -1;
+    m_current_stop_price = current_price + (side_sign * price_delta);
+}
+
+std::optional<Trade> BacktestTrailingStopLoss::on_price_updated(const OHLC & ohlc)
+{
+    const double current_price = ohlc.close;
+    const auto [vol, side] = m_pos_volume.as_unsigned_and_side();
+    const int side_sign = side == Side::Buy ? 1 : -1;
+    const auto possible_new_stop_price = current_price + (side_sign * m_price_delta);
+
+    bool triggered = false;
+    bool pull_up = false;
+    switch (side) {
+    case Side::Buy: {
+        triggered = current_price < m_current_stop_price;
+        pull_up = possible_new_stop_price > m_current_stop_price;
+        break;
+    }
+    case Side::Sell: {
+        triggered = current_price > m_current_stop_price;
+        pull_up = possible_new_stop_price < m_current_stop_price;
+        break;
+    }
+    case Side::Close: {
+        throw std::runtime_error("Close side");
+        break;
+    }
+    };
+
+    if (pull_up) {
+        m_current_stop_price = possible_new_stop_price;
+    }
+    if (!triggered) {
+        return std::nullopt;
+    }
+
+    const auto opposite_side = (side == Side::Buy) ? Side::Sell : Side::Buy;
+
+    Trade trade{
+            ohlc.timestamp,
+            m_symbol,
+            m_current_stop_price,
+            vol,
+            opposite_side,
+            (m_pos_volume.value() * current_price) * taker_fee_rate,
+    };
+    return trade;
 }
