@@ -53,6 +53,8 @@ private:
     void handle_event(const TpslResponseEvent & response);
     void handle_event(const TpslUpdatedEvent & response);
     void handle_event(const StrategyStopRequest & response);
+    void handle_event(const TrailingStopLossResponseEvent & response);
+    void handle_event(const TrailingStopLossUpdatedEvent & response);
     static void handle_event(const LambdaEvent & response);
 
     void on_signal(const Signal & signal);

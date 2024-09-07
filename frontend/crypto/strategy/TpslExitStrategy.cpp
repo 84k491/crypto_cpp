@@ -38,7 +38,7 @@ TpslExitStrategyConfig::TpslExitStrategyConfig(double risk, double risk_reward_r
 }
 
 TpslExitStrategy::TpslExitStrategy(Symbol symbol,
-                                   TpslExitStrategyConfig config,
+                                   const JsonStrategyConfig & config,
                                    std::shared_ptr<EventLoop<STRATEGY_EVENTS>> & event_loop,
                                    ITradingGateway & gateway)
     : ExitStrategyBase(gateway)
@@ -56,6 +56,7 @@ std::optional<std::string> TpslExitStrategy::on_price_changed(std::pair<std::chr
 
 std::optional<std::string> TpslExitStrategy::on_trade(const std::optional<OpenedPosition> & opened_position, const Trade & trade)
 {
+    // TODO set active tpsl
     if (m_opened_position.has_value() && m_active_tpsl.has_value()) {
         const std::string_view msg = "TpslExitStrategy: active tpsl already exists";
         Logger::log<LogLevel::Warning>(std::string(msg));
@@ -133,6 +134,18 @@ std::optional<std::pair<std::string, bool>> TpslExitStrategy::handle_event(const
 [[nodiscard]] std::optional<std::pair<std::string, bool>>
 TpslExitStrategy::handle_event(const TpslUpdatedEvent &)
 {
-    Logger::log<LogLevel::Debug>("TpslUpdatedEvent");
+    Logger::log<LogLevel::Debug>("TpslUpdatedEvent"); // TODO print it out
     return std::nullopt;
+}
+
+std::optional<std::pair<std::string, bool>>
+TpslExitStrategy::handle_event(const TrailingStopLossResponseEvent &)
+{
+    return {{"Trailing stop in tpsl", true}};
+}
+
+std::optional<std::pair<std::string, bool>>
+TpslExitStrategy::handle_event(const TrailingStopLossUpdatedEvent &)
+{
+    return {{"Trailing stop in tpsl", true}};
 }

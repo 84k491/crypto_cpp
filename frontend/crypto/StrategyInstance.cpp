@@ -27,7 +27,7 @@ StrategyInstance::StrategyInstance(
     , m_strategy(strategy_ptr)
     , m_symbol(symbol)
     , m_position_manager(symbol)
-    , m_exit_strategy(m_symbol, exit_strategy_config, m_event_loop, m_tr_gateway)
+    , m_exit_strategy(m_symbol, exit_strategy_config.to_json(), m_event_loop, m_tr_gateway)
     , m_historical_md_request(historical_md_request)
 {
     m_status.push(WorkStatus::Stopped);
@@ -239,6 +239,12 @@ void StrategyInstance::invoke(const std::variant<STRATEGY_EVENTS> & var)
                         handle_event(response);
                     },
                     [&](const TpslUpdatedEvent & response) {
+                        handle_event(response);
+                    },
+                    [&](const TrailingStopLossResponseEvent & response) {
+                        handle_event(response);
+                    },
+                    [&](const TrailingStopLossUpdatedEvent & response) {
                         handle_event(response);
                     },
                     [&](const LambdaEvent & response) {
@@ -469,5 +475,23 @@ void StrategyInstance::finish_if_needed_and_ready()
             // std::cout << "Waiting for all criterias to be satisfied for finish" << std::endl;
             return;
         }
+    }
+}
+
+void StrategyInstance::handle_event(const TrailingStopLossResponseEvent & response)
+{
+    if (const auto err = m_exit_strategy.handle_event(response); err.has_value()) {
+        const auto & [err_str, do_panic] = err.value();
+        Logger::log<LogLevel::Error>(std::string(err_str));
+        stop_async(do_panic);
+    }
+}
+
+void StrategyInstance::handle_event(const TrailingStopLossUpdatedEvent & response)
+{
+    if (const auto err = m_exit_strategy.handle_event(response); err.has_value()) {
+        const auto & [err_str, do_panic] = err.value();
+        Logger::log<LogLevel::Error>(std::string(err_str));
+        stop_async(do_panic);
     }
 }

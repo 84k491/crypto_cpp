@@ -7,7 +7,7 @@
 #include "Symbol.h"
 #include "Tpsl.h"
 #include "Trade.h"
-#include "StopLoss.h"
+#include "TrailingStopLoss.h"
 
 #include <crossguid2/crossguid/guid.hpp>
 #include <map>
@@ -153,31 +153,44 @@ struct TpslRequestEvent : public EventWithResponse<TpslResponseEvent>
     xg::Guid guid;
 };
 
-struct StopLossResponseEvent : public OneWayEvent
+struct TrailingStopLossResponseEvent : public OrderResponseEvent
 {
-    StopLossResponseEvent(StopLoss stop_loss)
-        : stop_loss(std::move(stop_loss))
+    TrailingStopLossResponseEvent(xg::Guid request_guid, TrailingStopLoss trailing_stop_loss, std::optional<std::string> reject_reason = std::nullopt)
+        : OrderResponseEvent(request_guid, std::move(reject_reason))
+        , trailing_stop_loss(std::move(trailing_stop_loss))
     {
     }
 
-    StopLoss stop_loss;
+    TrailingStopLoss trailing_stop_loss;
 };
 
-struct StopLossRequestEvent : public EventWithResponse<StopLossResponseEvent>
+struct TrailingStopLossUpdatedEvent : public OneWayEvent
 {
-    StopLossRequestEvent(
+    TrailingStopLossUpdatedEvent(std::string symbol_name, bool set_up)
+        : symbol_name(std::move(symbol_name))
+        , set_up(set_up)
+    {
+    }
+
+    std::string symbol_name;
+    bool set_up = false;
+};
+
+struct TrailingStopLossRequestEvent : public EventWithResponse<TrailingStopLossResponseEvent>
+{
+    TrailingStopLossRequestEvent(
             Symbol symbol,
-            StopLoss stop_loss,
-            const std::shared_ptr<IEventConsumer<StopLossResponseEvent>> & ack_consumer)
-        : EventWithResponse<StopLossResponseEvent>(ack_consumer)
+            TrailingStopLoss trailing_stop_loss,
+            const std::shared_ptr<IEventConsumer<TrailingStopLossResponseEvent>> & ack_consumer)
+        : EventWithResponse<TrailingStopLossResponseEvent>(ack_consumer)
         , symbol(std::move(symbol))
-        , stop_loss(std::move(stop_loss))
+        , trailing_stop_loss(std::move(trailing_stop_loss))
         , guid(xg::newGuid())
     {
     }
 
     Symbol symbol;
-    StopLoss stop_loss;
+    TrailingStopLoss trailing_stop_loss;
     xg::Guid guid;
 };
 
@@ -215,11 +228,13 @@ struct StrategyStopRequest : public OneWayEvent
     }
 };
 
-#define STRATEGY_EVENTS HistoricalMDPackEvent, \
-                        MDPriceEvent,          \
-                        OrderResponseEvent,    \
-                        TradeEvent,            \
-                        TpslResponseEvent,     \
-                        TpslUpdatedEvent,      \
-                        StrategyStopRequest,   \
+#define STRATEGY_EVENTS HistoricalMDPackEvent,         \
+                        MDPriceEvent,                  \
+                        OrderResponseEvent,            \
+                        TradeEvent,                    \
+                        TpslResponseEvent,             \
+                        TpslUpdatedEvent,              \
+                        TrailingStopLossResponseEvent, \
+                        TrailingStopLossUpdatedEvent,  \
+                        StrategyStopRequest,           \
                         LambdaEvent

@@ -21,4 +21,5 @@ public:
 protected:
     ITradingGateway & m_tr_gateway;
     EventTimeseriesPublisher<Tpsl> m_tpsl_publisher;
+    EventTimeseriesPublisher<TrailingStopLoss> m_trailing_stop_publisher;
 };

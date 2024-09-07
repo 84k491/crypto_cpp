@@ -24,4 +24,10 @@ public:
 
     [[nodiscard]] virtual std::optional<std::pair<std::string, bool>>
     handle_event(const TpslUpdatedEvent & response) = 0;
+
+    [[nodiscard]] virtual std::optional<std::pair<std::string, bool>>
+    handle_event(const TrailingStopLossResponseEvent & response) = 0;
+
+    [[nodiscard]] virtual std::optional<std::pair<std::string, bool>>
+    handle_event(const TrailingStopLossUpdatedEvent & response) = 0;
 };

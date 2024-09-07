@@ -2,41 +2,30 @@
 
 #include "ExitStrategyBase.h"
 #include "JsonStrategyConfig.h"
-#include "Position.h"
-#include "Tpsl.h"
 
 #include <set>
 
-class Trade;
-
-class TpslExitStrategyConfig
+class TrailigStopLossStrategyConfig
 {
-    friend std::ostream & operator<<(std::ostream & os, const TpslExitStrategyConfig & config);
-
 public:
-    TpslExitStrategyConfig(const JsonStrategyConfig & json);
-    TpslExitStrategyConfig(double risk, double risk_reward_ratio);
-
-    JsonStrategyConfig to_json() const;
-
-    bool is_valid() const;
+    TrailigStopLossStrategyConfig(const JsonStrategyConfig & config);
+    TrailigStopLossStrategyConfig(double risk);
 
     auto risk() const { return m_risk; }
-    auto risk_reward_ratio() const { return m_risk_reward_ratio; }
 
 private:
-    double m_risk = 1.;
-    double m_risk_reward_ratio = 1.;
+    double m_risk;
 };
 
-class TpslExitStrategy : public ExitStrategyBase
+class TrailigStopLossStrategy : ExitStrategyBase
 {
 public:
-    TpslExitStrategy(
-            Symbol symbol,
-            const JsonStrategyConfig& config,
-            std::shared_ptr<EventLoop<STRATEGY_EVENTS>> & event_loop,
-            ITradingGateway & gateway);
+    TrailigStopLossStrategy(Symbol symbol,
+                            JsonStrategyConfig config,
+                            std::shared_ptr<EventLoop<STRATEGY_EVENTS>> & event_loop,
+                            ITradingGateway & gateway);
+
+    ~TrailigStopLossStrategy() override = default;
 
     [[nodiscard]] std::optional<std::string> on_price_changed(
             std::pair<std::chrono::milliseconds, double> ts_and_price) override;
@@ -57,17 +46,18 @@ public:
     handle_event(const TrailingStopLossUpdatedEvent & response) override;
 
 private:
-    Tpsl calc_tpsl(const Trade & trade);
-    void send_tpsl(Tpsl tpsl);
+    TrailingStopLoss calc_trailing_stop(const Trade & trade);
+    void send_trailing_stop(TrailingStopLoss trailing_stop);
 
 private:
-    TpslExitStrategyConfig m_config;
+    Symbol m_symbol;
+
     std::shared_ptr<EventLoop<STRATEGY_EVENTS>> & m_event_loop; // TODO remove ref?
 
     std::pair<std::chrono::milliseconds, double> m_last_ts_and_price;
 
-    Symbol m_symbol;
     std::set<xg::Guid> m_pending_requests;
     std::optional<OpenedPosition> m_opened_position;
-    std::optional<Tpsl> m_active_tpsl;
+    std::optional<TrailingStopLoss> m_active_stop;
+    TrailigStopLossStrategyConfig m_config;
 };
