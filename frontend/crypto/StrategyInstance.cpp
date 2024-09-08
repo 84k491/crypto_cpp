@@ -17,7 +17,7 @@ StrategyInstance::StrategyInstance(
         const Symbol & symbol,
         const std::optional<HistoricalMDRequestData> & historical_md_request,
         const std::shared_ptr<IStrategy> & strategy_ptr,
-        JsonStrategyConfig exit_strategy_config,
+        const std::shared_ptr<IExitStrategy> & exit_strategy,
         IMarketDataGateway & md_gateway,
         ITradingGateway & tr_gateway)
     : m_strategy_guid(xg::newGuid())
@@ -27,7 +27,7 @@ StrategyInstance::StrategyInstance(
     , m_strategy(strategy_ptr)
     , m_symbol(symbol)
     , m_position_manager(symbol)
-    , m_exit_strategy(m_symbol, exit_strategy_config, m_event_loop, m_tr_gateway)
+    , m_exit_strategy(exit_strategy)
     , m_historical_md_request(historical_md_request)
 {
     m_status.push(WorkStatus::Stopped);
@@ -216,7 +216,7 @@ EventObjectPublisher<WorkStatus> & StrategyInstance::status_publisher()
 
 EventTimeseriesPublisher<Tpsl> & StrategyInstance::tpsl_publisher()
 {
-    return m_exit_strategy.tpsl_publisher();
+    return m_exit_strategy->tpsl_publisher();
 }
 
 void StrategyInstance::invoke(const std::variant<STRATEGY_EVENTS> & var)
@@ -340,7 +340,7 @@ void StrategyInstance::handle_event(const TradeEvent & response)
         }
     }();
 
-    if (const auto err = m_exit_strategy.on_trade(pos, trade); err.has_value()) {
+    if (const auto err = m_exit_strategy->on_trade(pos, trade); err.has_value()) {
         // stop_async(true);
         Logger::log<LogLevel::Error>(std::string{err.value()});
     }
@@ -349,7 +349,7 @@ void StrategyInstance::handle_event(const TradeEvent & response)
 void StrategyInstance::handle_event(const TpslResponseEvent & response)
 {
     // TODO make an Error class
-    const auto err_pair_opt = m_exit_strategy.handle_event(response);
+    const auto err_pair_opt = m_exit_strategy->handle_event(response);
 
     if (err_pair_opt.has_value()) {
         const auto & [err, do_panic] = err_pair_opt.value();
@@ -360,7 +360,7 @@ void StrategyInstance::handle_event(const TpslResponseEvent & response)
 
 void StrategyInstance::handle_event(const TpslUpdatedEvent & response)
 {
-    const auto err_pair_opt = m_exit_strategy.handle_event(response);
+    const auto err_pair_opt = m_exit_strategy->handle_event(response);
     if (err_pair_opt.has_value()) {
         const auto & [err, do_panic] = err_pair_opt.value();
         Logger::log<LogLevel::Error>(std::string(err));
@@ -480,7 +480,7 @@ void StrategyInstance::finish_if_needed_and_ready()
 
 void StrategyInstance::handle_event(const TrailingStopLossResponseEvent & response)
 {
-    if (const auto err = m_exit_strategy.handle_event(response); err.has_value()) {
+    if (const auto err = m_exit_strategy->handle_event(response); err.has_value()) {
         const auto & [err_str, do_panic] = err.value();
         Logger::log<LogLevel::Error>(std::string(err_str));
         stop_async(do_panic);
@@ -489,7 +489,7 @@ void StrategyInstance::handle_event(const TrailingStopLossResponseEvent & respon
 
 void StrategyInstance::handle_event(const TrailingStopLossUpdatedEvent & response)
 {
-    if (const auto err = m_exit_strategy.handle_event(response); err.has_value()) {
+    if (const auto err = m_exit_strategy->handle_event(response); err.has_value()) {
         const auto & [err_str, do_panic] = err.value();
         Logger::log<LogLevel::Error>(std::string(err_str));
         stop_async(do_panic);

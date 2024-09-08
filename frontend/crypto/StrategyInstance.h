@@ -25,7 +25,7 @@ public:
             const Symbol & symbol,
             const std::optional<HistoricalMDRequestData> & historical_md_request,
             const std::shared_ptr<IStrategy> & strategy_ptr,
-            JsonStrategyConfig exit_strategy_config,
+            const std::shared_ptr<IExitStrategy> & exit_strategy,
             IMarketDataGateway & md_gateway,
             ITradingGateway & tr_gateway);
 
@@ -85,7 +85,7 @@ private:
     const Symbol m_symbol;
     static constexpr double m_pos_currency_amount = 100.;
     PositionManager m_position_manager;
-    TpslExitStrategy m_exit_strategy;
+    const std::shared_ptr<IExitStrategy> m_exit_strategy;
 
     const std::optional<HistoricalMDRequestData> m_historical_md_request;
 

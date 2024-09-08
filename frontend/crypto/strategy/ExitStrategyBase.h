@@ -16,7 +16,7 @@ public:
     {
     }
 
-    EventTimeseriesPublisher<Tpsl> & tpsl_publisher() { return m_tpsl_publisher; }
+    EventTimeseriesPublisher<Tpsl> & tpsl_publisher() override { return m_tpsl_publisher; }
 
 protected:
     ITradingGateway & m_tr_gateway;
