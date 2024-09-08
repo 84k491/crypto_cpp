@@ -14,40 +14,13 @@
 std::optional<JsonStrategyMetaInfo> StrategyFactory::get_meta_info(const std::string & strategy_name)
 {
     static constexpr std::string_view strategy_parameters_dir = "strategy_parameters/";
-    static const std::map<std::string, std::string> name_to_filename = {
-            {
-                    "DoubleSma",
-                    "DoubleSma.json",
-            },
-            {
-                    "BollingerBands",
-                    "BollingerBands.json",
-            },
-            {
-                    "TunedBB",
-                    "TunedBB.json",
-            },
-            {
-                    "DebugEveryTick",
-                    "DebugEveryTick.json",
-            },
-            {
-                    "RateOfChange",
-                    "RateOfChange.json",
-            },
-            {
-                    "TpslExit",
-                    "TpslExit.json",
-            },
+    const auto name_to_filename = [&](const std::string &name) {
+        return name+ ".json";
     };
 
-    if (name_to_filename.find(strategy_name) == name_to_filename.end()) {
-        Logger::logf<LogLevel::Error>("Unknown strategy name: {}", strategy_name);
-        return {};
-    }
     std::string json_file_path = "./";
     json_file_path += strategy_parameters_dir;
-    json_file_path += name_to_filename.at(strategy_name);
+    json_file_path += name_to_filename(strategy_name);
 
     const auto json_data = [&]() -> std::optional<JsonStrategyMetaInfo> {
         std::ifstream file(json_file_path);

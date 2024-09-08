@@ -68,6 +68,20 @@
              </layout>
             </item>
             <item>
+             <layout class="QHBoxLayout" name="horizontalLayout_6">
+              <item>
+               <widget class="QLabel" name="label_5">
+                <property name="text">
+                 <string>Exit strategy:</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QComboBox" name="cb_exit_strategy"/>
+              </item>
+             </layout>
+            </item>
+            <item>
              <widget class="QCheckBox" name="cb_live">
               <property name="text">
                <string>Live trading</string>

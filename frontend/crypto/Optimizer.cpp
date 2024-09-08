@@ -117,7 +117,7 @@ std::optional<std::pair<JsonStrategyConfig, TpslExitStrategyConfig>> Optimizer::
                 m_symbol,
                 md_request_data,
                 strategy_opt.value(),
-                exit_config,
+                exit_config.to_json(),
                 m_gateway,
                 tr_gateway);
         tr_gateway.set_price_source(strategy_instance.klines_publisher());

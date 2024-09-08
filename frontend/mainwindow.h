@@ -106,7 +106,8 @@ private slots:
     void on_pb_run_clicked();
     void on_pb_optimize_clicked();
     void on_pb_stop_clicked();
-    void on_cb_strategy_currentTextChanged(const QString & arg1);
+    void on_cb_strategy_currentTextChanged(const QString &);
+    void on_cb_exit_strategy_currentTextChanged(const QString &);
 
     void on_pb_charts_clicked();
     void render_result(StrategyResult result);
@@ -125,7 +126,8 @@ private:
     void subscribe_to_strategy();
     std::optional<Timerange> get_timerange() const;
 
-    std::optional<JsonStrategyMetaInfo> get_strategy_parameters() const;
+    std::optional<JsonStrategyMetaInfo> get_entry_strategy_parameters() const;
+    std::optional<JsonStrategyMetaInfo> get_exit_strategy_parameters() const;
 
 private:
     Ui::MainWindow * ui;

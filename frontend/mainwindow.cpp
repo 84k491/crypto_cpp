@@ -59,6 +59,9 @@ MainWindow::MainWindow(QWidget * parent)
     ui->cb_strategy->addItem("DebugEveryTick");
     ui->cb_strategy->addItem("RateOfChange");
     ui->cb_strategy->setCurrentText(saved_state.m_strategy_name.c_str());
+    ui->cb_exit_strategy->addItem("TpslExit");
+    ui->cb_exit_strategy->addItem("TrailingStop");
+    ui->cb_exit_strategy->setCurrentText("TrailingStop");
 
     const auto symbols = m_gateway.get_symbols("USDT");
     for (const auto & symbol : symbols) {
@@ -248,7 +251,7 @@ std::optional<Timerange> MainWindow::get_timerange() const
 
 void MainWindow::on_pb_optimize_clicked()
 {
-    const auto entry_strategy_meta_info = get_strategy_parameters();
+    const auto entry_strategy_meta_info = get_entry_strategy_parameters();
     const auto timerange_opt = get_timerange();
     const auto exit_strategy_meta_info = StrategyFactory::get_meta_info("TpslExit");
     if (!timerange_opt || !entry_strategy_meta_info || !exit_strategy_meta_info) {
@@ -316,17 +319,31 @@ void MainWindow::on_pb_optimize_clicked()
     t.detach();
 }
 
-std::optional<JsonStrategyMetaInfo> MainWindow::get_strategy_parameters() const
+std::optional<JsonStrategyMetaInfo> MainWindow::get_entry_strategy_parameters() const
 {
     const auto json_data = StrategyFactory::get_meta_info(ui->cb_strategy->currentText().toStdString());
     return json_data;
 }
 
+std::optional<JsonStrategyMetaInfo> MainWindow::get_exit_strategy_parameters() const
+{
+    const auto json_data = StrategyFactory::get_meta_info(ui->cb_exit_strategy->currentText().toStdString());
+    return json_data;
+}
+
 void MainWindow::on_cb_strategy_currentTextChanged(const QString &)
 {
-    const auto params_opt = get_strategy_parameters();
-    if (params_opt) {
-        ui->wt_entry_params->setup_widget(params_opt.value());
+    const auto entry_params_opt = get_entry_strategy_parameters();
+    if (entry_params_opt) {
+        ui->wt_entry_params->setup_widget(entry_params_opt.value());
+    }
+}
+
+void MainWindow::on_cb_exit_strategy_currentTextChanged(const QString &)
+{
+    const auto exit_params_opt = get_exit_strategy_parameters();
+    if (exit_params_opt) {
+        ui->wt_exit_params->setup_widget(exit_params_opt.value());
     }
 }
 

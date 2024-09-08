@@ -25,7 +25,7 @@ public:
             const Symbol & symbol,
             const std::optional<HistoricalMDRequestData> & historical_md_request,
             const std::shared_ptr<IStrategy> & strategy_ptr,
-            TpslExitStrategyConfig exit_strategy_config,
+            JsonStrategyConfig exit_strategy_config,
             IMarketDataGateway & md_gateway,
             ITradingGateway & tr_gateway);
 

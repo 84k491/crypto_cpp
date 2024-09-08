@@ -17,7 +17,7 @@ StrategyInstance::StrategyInstance(
         const Symbol & symbol,
         const std::optional<HistoricalMDRequestData> & historical_md_request,
         const std::shared_ptr<IStrategy> & strategy_ptr,
-        TpslExitStrategyConfig exit_strategy_config,
+        JsonStrategyConfig exit_strategy_config,
         IMarketDataGateway & md_gateway,
         ITradingGateway & tr_gateway)
     : m_strategy_guid(xg::newGuid())
@@ -27,7 +27,7 @@ StrategyInstance::StrategyInstance(
     , m_strategy(strategy_ptr)
     , m_symbol(symbol)
     , m_position_manager(symbol)
-    , m_exit_strategy(m_symbol, exit_strategy_config.to_json(), m_event_loop, m_tr_gateway)
+    , m_exit_strategy(m_symbol, exit_strategy_config, m_event_loop, m_tr_gateway)
     , m_historical_md_request(historical_md_request)
 {
     m_status.push(WorkStatus::Stopped);

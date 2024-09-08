@@ -161,7 +161,7 @@ public:
                 m_symbol,
                 std::nullopt,
                 strategy_ptr,
-                exit_strategy_config,
+                exit_strategy_config.to_json(),
                 md_gateway,
                 tr_gateway);
 
