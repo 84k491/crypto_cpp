@@ -5,19 +5,44 @@
 #include "Logger.h"
 #include "Signal.h"
 #include "TpslExitStrategy.h"
+#include "TrailingStopStrategy.h"
 #include "Volume.h"
 #include "WorkStatus.h"
 
 #include <chrono>
 #include <future>
 #include <optional>
-#include <print>
+
+// TODO move it to a separate file
+class ExitStrategyFactory
+{
+public:
+    static std::optional<std::shared_ptr<IExitStrategy>> build_exit_strategy(
+            const std::string & strategy_name,
+            const JsonStrategyConfig & config,
+            const Symbol & symbol,
+            std::shared_ptr<EventLoop<STRATEGY_EVENTS>> & event_loop,
+            ITradingGateway & gateway)
+    {
+        if (strategy_name == "TpslExit") {
+            std::shared_ptr<IExitStrategy> res = std::make_shared<TpslExitStrategy>(symbol, config, event_loop, gateway);
+            return res;
+        }
+        if (strategy_name == "TrailingStop") {
+            std::shared_ptr<IExitStrategy> res = std::make_shared<TrailigStopLossStrategy>(symbol, config, event_loop, gateway);
+            return res;
+        }
+        Logger::logf<LogLevel::Error>("Unknown exit strategy name: {}", strategy_name);
+        return {};
+    }
+};
 
 StrategyInstance::StrategyInstance(
         const Symbol & symbol,
         const std::optional<HistoricalMDRequestData> & historical_md_request,
         const std::shared_ptr<IStrategy> & strategy_ptr,
-        const std::shared_ptr<IExitStrategy> & exit_strategy,
+        const std::string & exit_strategy_name,
+        const JsonStrategyConfig & exit_strategy_config,
         IMarketDataGateway & md_gateway,
         ITradingGateway & tr_gateway)
     : m_strategy_guid(xg::newGuid())
@@ -27,9 +52,22 @@ StrategyInstance::StrategyInstance(
     , m_strategy(strategy_ptr)
     , m_symbol(symbol)
     , m_position_manager(symbol)
-    , m_exit_strategy(exit_strategy)
+    , m_exit_strategy(nullptr)
     , m_historical_md_request(historical_md_request)
 {
+    const auto exit_strategy_opt = ExitStrategyFactory::build_exit_strategy(
+            exit_strategy_name,
+            exit_strategy_config,
+            symbol,
+            m_event_loop,
+            tr_gateway);
+    if (!exit_strategy_opt) {
+        Logger::log<LogLevel::Error>("Can't build exit strategy");
+        m_status.push(WorkStatus::Panic);
+        return;
+    }
+    m_exit_strategy = *exit_strategy_opt;
+
     m_status.push(WorkStatus::Stopped);
     m_tr_gateway.register_consumers(
             m_strategy_guid,

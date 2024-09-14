@@ -17,6 +17,18 @@ TrailigStopLossStrategyConfig::TrailigStopLossStrategyConfig(double risk)
 {
 }
 
+TrailigStopLossStrategy::TrailigStopLossStrategy(Symbol symbol,
+                                                 JsonStrategyConfig config,
+                                                 std::shared_ptr<EventLoop<STRATEGY_EVENTS>> & event_loop,
+                                                 ITradingGateway & gateway)
+
+    : ExitStrategyBase(gateway)
+    , m_symbol(std::move(symbol))
+    , m_event_loop(event_loop)
+    , m_config(config)
+{
+}
+
 std::optional<std::string> TrailigStopLossStrategy::on_price_changed(std::pair<std::chrono::milliseconds, double> ts_and_price)
 {
     m_last_ts_and_price = std::move(ts_and_price);

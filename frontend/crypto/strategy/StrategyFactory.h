@@ -15,6 +15,4 @@ public:
     static std::optional<std::shared_ptr<IStrategy>> build_strategy(
             const std::string & strategy_name,
             const JsonStrategyConfig & config);
-
-private:
 };

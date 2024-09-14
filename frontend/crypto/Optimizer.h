@@ -37,12 +37,19 @@ private:
 class Optimizer
 {
 public:
-    Optimizer(ByBitGateway & gateway, Symbol symbol, Timerange timerange, std::string strategy_name, OptimizerInputs optimizer_data)
+    Optimizer(
+            ByBitGateway & gateway,
+            Symbol symbol,
+            Timerange timerange,
+            std::string strategy_name,
+            std::string exit_strategy_name,
+            OptimizerInputs optimizer_data)
         : m_gateway(gateway)
         , m_symbol(std::move(symbol))
         , m_timerange(timerange)
         , m_optimizer_inputs(std::move(optimizer_data))
         , m_strategy_name(std::move(strategy_name))
+        , m_exit_strategy_name(std::move(exit_strategy_name))
     {
     }
 
@@ -63,4 +70,5 @@ private:
     OptimizerInputs m_optimizer_inputs;
     std::function<void(unsigned, unsigned)> m_on_passed_check = [](unsigned, unsigned) {};
     std::string m_strategy_name;
+    std::string m_exit_strategy_name;
 };

@@ -2,13 +2,14 @@
 
 #include "EventLoop.h"
 #include "EventTimeseriesPublisher.h"
+#include "ExitStrategyInterface.h"
 #include "IMarketDataGateway.h"
 #include "ITradingGateway.h"
+#include "JsonStrategyConfig.h"
 #include "PositionManager.h"
 #include "Signal.h"
 #include "StrategyInterface.h"
 #include "StrategyResult.h"
-#include "TpslExitStrategy.h"
 #include "WorkStatus.h"
 
 #include <chrono>
@@ -25,7 +26,8 @@ public:
             const Symbol & symbol,
             const std::optional<HistoricalMDRequestData> & historical_md_request,
             const std::shared_ptr<IStrategy> & strategy_ptr,
-            const std::shared_ptr<IExitStrategy> & exit_strategy,
+            const std::string & exit_strategy_name,
+            const JsonStrategyConfig & exit_strategy_config,
             IMarketDataGateway & md_gateway,
             ITradingGateway & tr_gateway);
 
@@ -85,7 +87,7 @@ private:
     const Symbol m_symbol;
     static constexpr double m_pos_currency_amount = 100.;
     PositionManager m_position_manager;
-    const std::shared_ptr<IExitStrategy> m_exit_strategy;
+    std::shared_ptr<IExitStrategy> m_exit_strategy;
 
     const std::optional<HistoricalMDRequestData> m_historical_md_request;
 

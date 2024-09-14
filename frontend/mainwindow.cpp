@@ -180,6 +180,7 @@ void MainWindow::on_pb_run_clicked()
             symbol.value(),
             md_request,
             strategy_ptr_opt.value(),
+            ui->cb_exit_strategy->currentText().toStdString(),
             ui->wt_exit_params->get_config(),
             m_gateway,
             tr_gateway);
@@ -267,6 +268,7 @@ void MainWindow::on_pb_optimize_clicked()
             return ui->wt_entry_params->get_config();
         }
     };
+    std::string exit_strategy_name = ui->cb_strategy->currentText().toStdString();
     const auto exit_config = [&]() -> std::variant<JsonStrategyMetaInfo, TpslExitStrategyConfig> {
         if (ui->cb_optimize_exit->isChecked()) {
             return exit_strategy_meta_info.value();
@@ -296,12 +298,18 @@ void MainWindow::on_pb_optimize_clicked()
         return;
     }
 
-    std::thread t([this, timerange, optimizer_inputs, symbol, strategy_name]() {
+    std::thread t([this,
+                   timerange,
+                   optimizer_inputs,
+                   symbol,
+                   strategy_name,
+                   exit_strategy_name]() {
         Optimizer optimizer(
                 m_gateway,
                 symbol.value(),
                 timerange,
                 strategy_name,
+                exit_strategy_name,
                 optimizer_inputs);
 
         optimizer.subscribe_for_passed_check([this](int passed_checks, int total_checks) {

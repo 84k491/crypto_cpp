@@ -117,6 +117,7 @@ std::optional<std::pair<JsonStrategyConfig, TpslExitStrategyConfig>> Optimizer::
                 m_symbol,
                 md_request_data,
                 strategy_opt.value(),
+                m_exit_strategy_name,
                 exit_config.to_json(),
                 m_gateway,
                 tr_gateway);

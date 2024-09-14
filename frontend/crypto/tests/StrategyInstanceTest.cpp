@@ -2,6 +2,7 @@
 
 #include "Macros.h"
 #include "ScopeExit.h"
+#include "TpslExitStrategy.h"
 #include "Trade.h"
 
 #include <gmock/gmock.h>
@@ -161,6 +162,7 @@ public:
                 m_symbol,
                 std::nullopt,
                 strategy_ptr,
+                "TpslExit",
                 exit_strategy_config.to_json(),
                 md_gateway,
                 tr_gateway);
