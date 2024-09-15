@@ -164,10 +164,10 @@ void BacktestTradingGateway::push_trailing_stop_request(const TrailingStopLossRe
     }
 
     m_trailing_stop = BacktestTrailingStopLoss(
-        m_symbol,
-        m_pos_volume,
-        m_last_trade_price,
-        trailing_stop_ev.trailing_stop_loss.price_distance());
+            m_symbol,
+            m_pos_volume,
+            m_last_trade_price,
+            trailing_stop_ev.trailing_stop_loss.price_distance());
 
     consumer.push(
             TrailingStopLossResponseEvent(
@@ -220,27 +220,35 @@ BacktestTrailingStopLoss::BacktestTrailingStopLoss(std::string symbol, SignedVol
 {
     const auto [vol, side] = m_pos_volume.as_unsigned_and_side();
     const int side_sign = side == Side::Buy ? 1 : -1;
-    m_current_stop_price = current_price + (side_sign * price_delta);
+    m_current_stop_price = current_price + (-side_sign * price_delta);
 }
 
 std::optional<Trade> BacktestTrailingStopLoss::on_price_updated(const OHLC & ohlc)
 {
-    const double current_price = ohlc.close;
+    const double tick_price = ohlc.close;
     const auto [vol, side] = m_pos_volume.as_unsigned_and_side();
     const int side_sign = side == Side::Buy ? 1 : -1;
-    const auto possible_new_stop_price = current_price + (side_sign * m_price_delta);
+    const auto possible_new_stop_price = tick_price + (-side_sign * m_price_delta);
+    Logger::logf<LogLevel::Debug>(
+            "Tick price: {}, signed volume: {}, current stop price: {}, possible new stop price: {}",
+            tick_price,
+            m_pos_volume.value(),
+            m_current_stop_price,
+            possible_new_stop_price);
 
     bool triggered = false;
     bool pull_up = false;
     switch (side) {
     case Side::Buy: {
-        triggered = current_price < m_current_stop_price;
+        triggered = tick_price < m_current_stop_price;
         pull_up = possible_new_stop_price > m_current_stop_price;
+        Logger::logf<LogLevel::Debug>("Triggered buy: {}", triggered);
         break;
     }
     case Side::Sell: {
-        triggered = current_price > m_current_stop_price;
+        triggered = tick_price > m_current_stop_price;
         pull_up = possible_new_stop_price < m_current_stop_price;
+        Logger::logf<LogLevel::Debug>("Triggered sell: {}", triggered);
         break;
     }
     case Side::Close: {
@@ -250,11 +258,13 @@ std::optional<Trade> BacktestTrailingStopLoss::on_price_updated(const OHLC & ohl
     };
 
     if (pull_up) {
+        Logger::logf<LogLevel::Debug>("Pulling stop price up from {} to {}", m_current_stop_price, possible_new_stop_price);
         m_current_stop_price = possible_new_stop_price;
     }
     if (!triggered) {
         return std::nullopt;
     }
+    Logger::logf<LogLevel::Debug>("Triggered");
 
     const auto opposite_side = (side == Side::Buy) ? Side::Sell : Side::Buy;
 
@@ -264,7 +274,7 @@ std::optional<Trade> BacktestTrailingStopLoss::on_price_updated(const OHLC & ohl
             m_current_stop_price,
             vol,
             opposite_side,
-            (m_pos_volume.value() * current_price) * taker_fee_rate,
+            (m_pos_volume.value() * tick_price) * taker_fee_rate,
     };
     return trade;
 }
