@@ -35,11 +35,9 @@ MultiSeriesChart & ChartWindow::get_or_create_chart(const std::string & chart_na
 
 void ChartWindow::subscribe_to_strategy()
 {
-    const auto str_instance = m_strategy_instance.lock();
-    if (str_instance == nullptr) {
-        return;
-    }
-    m_subscriptions.push_back(str_instance->klines_publisher().subscribe(
+    UNWRAP_RET_VOID(str_instance, m_strategy_instance.lock());
+
+    m_subscriptions.push_back(str_instance.klines_publisher().subscribe(
             m_event_consumer,
             [this](const auto & vec) {
                 std::vector<std::pair<std::chrono::milliseconds, double>> new_data;
@@ -53,7 +51,7 @@ void ChartWindow::subscribe_to_strategy()
             [&](std::chrono::milliseconds ts, const OHLC & ohlc) {
                 get_or_create_chart(m_price_chart_name).push_series_value("price", ts, ohlc.close);
             }));
-    m_subscriptions.push_back(str_instance->tpsl_publisher().subscribe(
+    m_subscriptions.push_back(str_instance.tpsl_publisher().subscribe(
             m_event_consumer,
             [this](const std::vector<std::pair<std::chrono::milliseconds, Tpsl>> & input_vec) {
                 std::vector<std::pair<std::chrono::milliseconds, double>> tp, sl;
@@ -68,9 +66,25 @@ void ChartWindow::subscribe_to_strategy()
             [&](std::chrono::milliseconds ts, const Tpsl & tpsl) {
                 get_or_create_chart(m_price_chart_name).push_tpsl(ts, tpsl);
             }));
+    m_subscriptions.push_back(str_instance.trailing_stop_publisher().subscribe(
+            m_event_consumer,
+            [this](const std::vector<std::pair<std::chrono::milliseconds, StopLoss>> & input_vec) {
+                std::vector<std::pair<std::chrono::milliseconds, double>> tsl_vec;
+                tsl_vec.reserve(input_vec.size());
+                for (const auto & [ts, tsl] : input_vec) {
+                    tsl_vec.emplace_back(ts, tsl.stop_price());
+                }
+                auto & plot = get_or_create_chart(m_price_chart_name);
+                Logger::logf<LogLevel::Status>("Pushing trailing stop snapshot to chart; first stop: {}", tsl_vec.front().second);
+                plot.push_scatter_series_vector("trailing_stop_loss", tsl_vec);
+            },
+            [&](std::chrono::milliseconds ts, const StopLoss & stop_loss) {
+                Logger::logf<LogLevel::Status>("Pushing trailing stop update to chart: {}", stop_loss.stop_price());
+                get_or_create_chart(m_price_chart_name).push_stop_loss(ts, stop_loss.stop_price());
+            }));
     m_subscriptions.push_back(
             str_instance
-                    ->strategy_internal_data_publisher()
+                    .strategy_internal_data_publisher()
                     .subscribe(
                             m_event_consumer,
                             [this](const std::vector<
@@ -102,7 +116,7 @@ void ChartWindow::subscribe_to_strategy()
                                 const auto & [chart_name, name, data] = data_pair;
                                 get_or_create_chart(chart_name).push_series_value(name, ts, data);
                             }));
-    m_subscriptions.push_back(str_instance->signals_publisher().subscribe(
+    m_subscriptions.push_back(str_instance.signals_publisher().subscribe(
             m_event_consumer,
             [this](const std::vector<std::pair<std::chrono::milliseconds, Signal>> & input_vec) {
                 std::vector<std::pair<std::chrono::milliseconds, double>> buy, sell;
@@ -126,7 +140,7 @@ void ChartWindow::subscribe_to_strategy()
             [&](std::chrono::milliseconds, const Signal & signal) {
                 get_or_create_chart(m_price_chart_name).push_signal(signal);
             }));
-    m_subscriptions.push_back(str_instance->depo_publisher().subscribe(
+    m_subscriptions.push_back(str_instance.depo_publisher().subscribe(
             m_event_consumer,
             [this](const auto & vec) {
                 auto & plot = get_or_create_chart(m_depo_chart_name);

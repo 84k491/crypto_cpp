@@ -257,6 +257,12 @@ EventTimeseriesPublisher<Tpsl> & StrategyInstance::tpsl_publisher()
     return m_exit_strategy->tpsl_publisher();
 }
 
+EventTimeseriesPublisher<StopLoss> & StrategyInstance::trailing_stop_publisher()
+{
+    return m_exit_strategy->trailing_stop_publisher();
+}
+
+
 void StrategyInstance::invoke(const std::variant<STRATEGY_EVENTS> & var)
 {
     std::visit(
@@ -325,7 +331,7 @@ void StrategyInstance::handle_event(const HistoricalMDPackEvent & response)
 
 void StrategyInstance::handle_event(const MDPriceEvent & response)
 {
-    const auto & [ts, ohlc] = std::tie(response.ts_and_price.first, response.ts_and_price.second);
+    const auto & [ts, ohlc] = response.ts_and_price;
     m_last_ts_and_price = {ts, ohlc.close};
     m_klines_publisher.push(ts, ohlc);
     if (!first_price_received) {
@@ -339,6 +345,10 @@ void StrategyInstance::handle_event(const MDPriceEvent & response)
         if (signal.has_value()) {
             on_signal(signal.value());
         }
+    }
+
+    if (const auto err = m_exit_strategy->on_price_changed({ts, ohlc.close})) {
+        Logger::logf<LogLevel::Error>("Exit strategy error on price update: {}", err.value());
     }
 }
 

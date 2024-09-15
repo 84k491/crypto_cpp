@@ -41,6 +41,7 @@ public:
     EventObjectPublisher<StrategyResult> & strategy_result_publisher();
     EventObjectPublisher<WorkStatus> & status_publisher();
     EventTimeseriesPublisher<Tpsl> & tpsl_publisher();
+    EventTimeseriesPublisher<StopLoss> & trailing_stop_publisher();
 
     void run_async();
     void stop_async(bool panic = false);

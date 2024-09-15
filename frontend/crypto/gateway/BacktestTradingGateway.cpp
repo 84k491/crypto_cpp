@@ -164,10 +164,9 @@ void BacktestTradingGateway::push_trailing_stop_request(const TrailingStopLossRe
     }
 
     m_trailing_stop = BacktestTrailingStopLoss(
-            m_symbol,
             m_pos_volume,
             m_last_trade_price,
-            trailing_stop_ev.trailing_stop_loss.price_distance());
+            trailing_stop_ev.trailing_stop_loss);
 
     consumer.push(
             TrailingStopLossResponseEvent(
@@ -213,42 +212,40 @@ bool BacktestEventConsumer::push_to_queue_delayed(std::chrono::milliseconds, con
     throw std::runtime_error("Not implemented");
 }
 
-BacktestTrailingStopLoss::BacktestTrailingStopLoss(std::string symbol, SignedVolume pos_volume, double current_price, double price_delta)
-    : m_symbol(std::move(symbol))
-    , m_pos_volume(pos_volume)
-    , m_price_delta(price_delta)
+BacktestTrailingStopLoss::BacktestTrailingStopLoss(SignedVolume pos_volume, double current_price, const TrailingStopLoss & trailing_stop)
+    : m_pos_volume(pos_volume)
+    , m_current_stop_loss(
+              trailing_stop.calc_new_stop_loss(current_price, std::nullopt).value()) // there must be a value
+    , m_trailing_stop(trailing_stop)
 {
-    const auto [vol, side] = m_pos_volume.as_unsigned_and_side();
-    const int side_sign = side == Side::Buy ? 1 : -1;
-    m_current_stop_price = current_price + (-side_sign * price_delta);
 }
 
 std::optional<Trade> BacktestTrailingStopLoss::on_price_updated(const OHLC & ohlc)
 {
     const double tick_price = ohlc.close;
     const auto [vol, side] = m_pos_volume.as_unsigned_and_side();
-    const int side_sign = side == Side::Buy ? 1 : -1;
-    const auto possible_new_stop_price = tick_price + (-side_sign * m_price_delta);
-    Logger::logf<LogLevel::Debug>(
-            "Tick price: {}, signed volume: {}, current stop price: {}, possible new stop price: {}",
-            tick_price,
-            m_pos_volume.value(),
-            m_current_stop_price,
-            possible_new_stop_price);
+    const auto new_stop_loss = m_trailing_stop.calc_new_stop_loss(tick_price, m_current_stop_loss);
+    // Logger::logf<LogLevel::Debug>(
+    //         "Tick price: {}, signed volume: {}, current stop price: {}, possible new stop price: {}",
+    //         tick_price,
+    //         m_pos_volume.value(),
+    //         m_current_stop_price,
+    //         possible_new_stop_price);
 
+    if (new_stop_loss) {
+        m_current_stop_loss = new_stop_loss.value();
+        return std::nullopt; // SL cannot be triggered if pulled up
+    }
+
+    // TODO make a one-liner after tests
     bool triggered = false;
-    bool pull_up = false;
     switch (side) {
     case Side::Buy: {
-        triggered = tick_price < m_current_stop_price;
-        pull_up = possible_new_stop_price > m_current_stop_price;
-        Logger::logf<LogLevel::Debug>("Triggered buy: {}", triggered);
+        triggered = tick_price < m_current_stop_loss.stop_price();
         break;
     }
     case Side::Sell: {
-        triggered = tick_price > m_current_stop_price;
-        pull_up = possible_new_stop_price < m_current_stop_price;
-        Logger::logf<LogLevel::Debug>("Triggered sell: {}", triggered);
+        triggered = tick_price > m_current_stop_loss.stop_price();
         break;
     }
     case Side::Close: {
@@ -257,21 +254,16 @@ std::optional<Trade> BacktestTrailingStopLoss::on_price_updated(const OHLC & ohl
     }
     };
 
-    if (pull_up) {
-        Logger::logf<LogLevel::Debug>("Pulling stop price up from {} to {}", m_current_stop_price, possible_new_stop_price);
-        m_current_stop_price = possible_new_stop_price;
-    }
     if (!triggered) {
         return std::nullopt;
     }
-    Logger::logf<LogLevel::Debug>("Triggered");
+    // Logger::logf<LogLevel::Debug>("Triggered");
 
-    const auto opposite_side = (side == Side::Buy) ? Side::Sell : Side::Buy;
-
+    const auto opposite_side = side == Side::Buy ? Side::Sell : Side::Buy;
     Trade trade{
             ohlc.timestamp,
-            m_symbol,
-            m_current_stop_price,
+            m_trailing_stop.symbol().symbol_name,
+            m_current_stop_loss.stop_price(),
             vol,
             opposite_side,
             (m_pos_volume.value() * tick_price) * taker_fee_rate,

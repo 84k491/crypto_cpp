@@ -14,6 +14,7 @@ public:
     virtual ~IExitStrategy() = default;
 
     virtual EventTimeseriesPublisher<Tpsl> & tpsl_publisher() = 0;
+    virtual EventTimeseriesPublisher<StopLoss> & trailing_stop_publisher()  = 0;
 
     [[nodiscard]] virtual std::optional<std::string> on_price_changed(std::pair<std::chrono::milliseconds, double> ts_and_price) = 0;
     [[nodiscard]] virtual std::optional<std::string> on_trade(const std::optional<OpenedPosition> & opened_position, const Trade & trade) = 0;

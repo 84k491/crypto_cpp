@@ -1,4 +1,5 @@
 #include "MultiSeriesChart.h"
+#include "Logger.h"
 
 namespace {
 // colors for series
@@ -22,6 +23,7 @@ std::map<std::string, std::tuple<QCPScatterStyle::ScatterShape, QColor, QColor, 
                 {"sell_trade", {QCPScatterStyle::ssTriangleInverted, Qt::black, Qt::red, 10}},
                 {"take_profit", {QCPScatterStyle::ssCircle, Qt::black, Qt::green, 10}},
                 {"stop_loss", {QCPScatterStyle::ssDiamond, Qt::black, Qt::red, 10}},
+                {"trailing_stop_loss", {QCPScatterStyle::ssDiamond, Qt::black, Qt::darkYellow, 10}},
 };
 
 } // namespace
@@ -94,6 +96,13 @@ void MultiSeriesChart::push_tpsl(std::chrono::milliseconds ts, Tpsl tpsl)
     replot();
 }
 
+void MultiSeriesChart::push_stop_loss(std::chrono::milliseconds ts, double stop_price)
+{
+    push_series_value_dont_replot("stop_loss", ts, stop_price, true);
+    replot();
+}
+
+
 void MultiSeriesChart::set_title(const std::string &)
 {
 }
@@ -138,6 +147,7 @@ void MultiSeriesChart::push_scatter_series_vector(const std::string & series_nam
                                                           std::chrono::milliseconds,
                                                           double>> & data)
 {
+    Logger::logf<LogLevel::Debug>("Pushing scatter series: {}", series_name);
     for (const auto & [ts, value] : data) {
         push_series_value_dont_replot(series_name, ts, value, true);
     }

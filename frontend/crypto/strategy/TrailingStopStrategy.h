@@ -48,6 +48,7 @@ public:
 private:
     TrailingStopLoss calc_trailing_stop(const Trade & trade);
     void send_trailing_stop(TrailingStopLoss trailing_stop);
+    StopLoss calc_current_stop() const;
 
 private:
     Symbol m_symbol;
@@ -58,6 +59,9 @@ private:
 
     std::set<xg::Guid> m_pending_requests;
     std::optional<OpenedPosition> m_opened_position;
-    std::optional<TrailingStopLoss> m_active_stop;
+
+    std::optional<TrailingStopLoss> m_active_stop_loss;
+    std::optional<StopLoss> m_active_stop;
+
     TrailigStopLossStrategyConfig m_config;
 };

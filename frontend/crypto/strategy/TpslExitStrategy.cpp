@@ -56,8 +56,9 @@ std::optional<std::string> TpslExitStrategy::on_price_changed(std::pair<std::chr
 
 std::optional<std::string> TpslExitStrategy::on_trade(const std::optional<OpenedPosition> & opened_position, const Trade & trade)
 {
-    // TODO set active tpsl
+    // TODO set active tpsl, not it's not set anywhere
     if (m_opened_position.has_value() && m_active_tpsl.has_value()) {
+        // position opened and tpsl is set already
         const std::string_view msg = "TpslExitStrategy: active tpsl already exists";
         Logger::log<LogLevel::Warning>(std::string(msg));
         return std::string(msg);

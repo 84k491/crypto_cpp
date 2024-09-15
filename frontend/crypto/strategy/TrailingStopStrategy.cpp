@@ -32,13 +32,31 @@ TrailigStopLossStrategy::TrailigStopLossStrategy(Symbol symbol,
 std::optional<std::string> TrailigStopLossStrategy::on_price_changed(std::pair<std::chrono::milliseconds, double> ts_and_price)
 {
     m_last_ts_and_price = std::move(ts_and_price);
+    if (m_active_stop_loss.has_value()) {
+        const auto possible_new_stop = m_active_stop_loss->calc_new_stop_loss(
+                m_last_ts_and_price.second,
+                m_active_stop);
+        if (possible_new_stop) {
+            m_active_stop = possible_new_stop;
+        }
+        Logger::log<LogLevel::Info>("TrailigStopLossStrategy: on_price_changed: pushing stop");
+        m_trailing_stop_publisher.push(m_last_ts_and_price.first, m_active_stop.value());
+    }
     return std::nullopt;
 }
 
 std::optional<std::string> TrailigStopLossStrategy::on_trade(const std::optional<OpenedPosition> & opened_position, const Trade & trade)
 {
+    if (!opened_position.has_value()) {
+        // position closed now
+        m_active_stop_loss.reset(); // TODO it must reset only on it's response event
+        m_active_stop.reset();
+
+        m_opened_position.reset();
+    }
     if (m_opened_position.has_value() && m_active_stop.has_value()) {
-        const std::string_view msg = "TpslExitStrategy: active tpsl already exists";
+        // position opened and stop loss is set already
+        const std::string_view msg = "TrailigStopLossStrategy: active stop loss already exists";
         Logger::log<LogLevel::Warning>(std::string(msg));
         return std::string(msg);
     }
@@ -47,8 +65,8 @@ std::optional<std::string> TrailigStopLossStrategy::on_trade(const std::optional
 
     // TODO handle a double trade case, add test
     if (opened_position) {
-        const auto tpsl = calc_trailing_stop(trade);
-        send_trailing_stop(tpsl);
+        const auto tsl = calc_trailing_stop(trade);
+        send_trailing_stop(tsl);
     }
     return std::nullopt;
 }
@@ -62,7 +80,8 @@ TrailingStopLoss TrailigStopLossStrategy::calc_trailing_stop(const Trade & trade
     const double risk = entry_price * m_config.risk();
     const double price_delta = risk - fee_price_delta;
 
-    const auto stop_loss = TrailingStopLoss(trade.symbol(), price_delta, trade.side());
+    const auto opposite_side = trade.side() == Side::Buy ? Side::Sell : Side::Buy;
+    const auto stop_loss = TrailingStopLoss(trade.symbol(), price_delta, opposite_side);
     return stop_loss;
 }
 
@@ -99,7 +118,21 @@ std::optional<std::pair<std::string, bool>> TrailigStopLossStrategy::handle_even
         return {{err, false}};
     }
 
-    m_trailing_stop_publisher.push(m_last_ts_and_price.first, response.trailing_stop_loss);
+    Logger::log<LogLevel::Info>("TrailigStopLossStrategy: stop set successfully pushing to publisher");
+    m_active_stop_loss = response.trailing_stop_loss;
+    const auto new_stop_opt = m_active_stop_loss.value().calc_new_stop_loss(
+            m_last_ts_and_price.second,
+            std::nullopt);
+    if (!new_stop_opt) {
+        Logger::log<LogLevel::Error>("TrailigStopLossStrategy: no stop loss on it's init");
+    }
+    const auto & new_stop = new_stop_opt.value();
+    Logger::logf<LogLevel::Debug>("TSL response. Current last price: {}, TSL delta price: {}, stop price: {}, TSL side: {}",
+                                  m_last_ts_and_price.second,
+                                  response.trailing_stop_loss.price_distance(),
+                                  new_stop.stop_price(),
+                                  response.trailing_stop_loss.side() == Side::Buy ? "buy" : "sell");
+    m_trailing_stop_publisher.push(m_last_ts_and_price.first, new_stop);
     return std::nullopt;
 }
 

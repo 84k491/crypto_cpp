@@ -3,6 +3,7 @@
 #include "Ohlc.h"
 #include "Signal.h"
 #include "Tpsl.h"
+#include "TrailingStopLoss.h"
 #include "qcustomplot.h"
 
 class MultiSeriesChart : public QCustomPlot
@@ -27,6 +28,7 @@ public:
                                             double>> & data);
     void push_signal(Signal signal);
     void push_tpsl(std::chrono::milliseconds ts, Tpsl tpsl);
+    void push_stop_loss(std::chrono::milliseconds ts, double stop_price);
 
     void set_title(const std::string & title);
 
