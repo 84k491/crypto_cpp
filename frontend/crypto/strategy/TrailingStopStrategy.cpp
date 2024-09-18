@@ -39,7 +39,7 @@ std::optional<std::string> TrailigStopLossStrategy::on_price_changed(std::pair<s
         if (possible_new_stop) {
             m_active_stop = possible_new_stop;
         }
-        Logger::log<LogLevel::Info>("TrailigStopLossStrategy: on_price_changed: pushing stop");
+        Logger::log<LogLevel::Debug>("TrailigStopLossStrategy: on_price_changed: pushing stop");
         m_trailing_stop_publisher.push(m_last_ts_and_price.first, m_active_stop.value());
     }
     return std::nullopt;
@@ -132,6 +132,7 @@ std::optional<std::pair<std::string, bool>> TrailigStopLossStrategy::handle_even
                                   response.trailing_stop_loss.price_distance(),
                                   new_stop.stop_price(),
                                   response.trailing_stop_loss.side() == Side::Buy ? "buy" : "sell");
+    m_active_stop = new_stop;
     m_trailing_stop_publisher.push(m_last_ts_and_price.first, new_stop);
     return std::nullopt;
 }
