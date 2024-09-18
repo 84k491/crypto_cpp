@@ -25,7 +25,6 @@ MultiSeriesChart & ChartWindow::get_or_create_chart(const std::string & chart_na
     if (auto it = m_charts.find(chart_name); it != m_charts.end()) {
         return *it->second;
     }
-    Logger::logf<LogLevel::Status>("Creating new chart: {}", chart_name);
     auto * new_chart = new MultiSeriesChart();
     new_chart->set_title(chart_name);
     m_charts[chart_name] = new_chart;
@@ -75,11 +74,9 @@ void ChartWindow::subscribe_to_strategy()
                     tsl_vec.emplace_back(ts, tsl.stop_price());
                 }
                 auto & plot = get_or_create_chart(m_price_chart_name);
-                Logger::logf<LogLevel::Status>("Pushing trailing stop snapshot to chart; first stop: {}", tsl_vec.front().second);
                 plot.push_scatter_series_vector("trailing_stop_loss", tsl_vec);
             },
             [&](std::chrono::milliseconds ts, const StopLoss & stop_loss) {
-                Logger::logf<LogLevel::Status>("Pushing trailing stop update to chart: {}", stop_loss.stop_price());
                 get_or_create_chart(m_price_chart_name).push_stop_loss(ts, stop_loss.stop_price());
             }));
     m_subscriptions.push_back(

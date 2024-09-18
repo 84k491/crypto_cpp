@@ -4,26 +4,25 @@
 #include "JsonStrategyConfig.h"
 #include "StrategyFactory.h"
 #include "StrategyInstance.h"
-#include "TpslExitStrategy.h"
 
-#include <iostream>
 #include <vector>
 
-std::vector<std::pair<nlohmann::json, TpslExitStrategyConfig>> OptimizerParser::get_possible_configs()
+std::vector<std::pair<JsonStrategyConfig, JsonStrategyConfig>> OptimizerParser::get_possible_configs()
 {
-    const auto entry_configs = [&]() -> std::vector<nlohmann::json> {
-        if (const auto * meta = std::get_if<JsonStrategyMetaInfo>(&m_inputs.entry_strategy); meta != nullptr) {
+    const auto get_configs = [&](const std::variant<JsonStrategyMetaInfo, JsonStrategyConfig> & var) -> std::vector<JsonStrategyConfig> {
+        if (const auto * meta = std::get_if<JsonStrategyMetaInfo>(&var); meta != nullptr) {
             return get_possible_configs(*meta);
         }
-        if (const auto * config = std::get_if<JsonStrategyConfig>(&m_inputs.entry_strategy); config != nullptr) {
+        if (const auto * config = std::get_if<JsonStrategyConfig>(&var); config != nullptr) {
             const auto & json = config->get();
             return {json};
         }
         return {};
-    }();
-    const auto exit_configs = get_possible_exit_configs();
+    };
+    const auto entry_configs = get_configs(m_inputs.entry_strategy);
+    const auto exit_configs = get_configs(m_inputs.exit_strategy);
 
-    std::vector<std::pair<nlohmann::json, TpslExitStrategyConfig>> outputs;
+    std::vector<std::pair<JsonStrategyConfig, JsonStrategyConfig>> outputs;
     for (const auto & entry_config : entry_configs) {
         for (const auto & exit_config : exit_configs) {
             outputs.emplace_back(entry_config, exit_config);
@@ -32,34 +31,14 @@ std::vector<std::pair<nlohmann::json, TpslExitStrategyConfig>> OptimizerParser::
     return outputs;
 }
 
-std::vector<TpslExitStrategyConfig> OptimizerParser::get_possible_exit_configs()
-{
-    if (const auto * meta = std::get_if<JsonStrategyMetaInfo>(&m_inputs.exit_strategy);
-        meta != nullptr) {
-        const auto exit_jsons = get_possible_configs(*meta);
-        std::vector<TpslExitStrategyConfig> outputs;
-        outputs.reserve(exit_jsons.size());
-        for (const auto & exit_json : exit_jsons) {
-            outputs.emplace_back(exit_json);
-        }
-        return outputs;
-    }
-    if (const auto * config = std::get_if<TpslExitStrategyConfig>(&m_inputs.exit_strategy);
-        config != nullptr) {
-        return {*config};
-    }
-    Logger::log<LogLevel::Error>("Invalid exit strategy");
-    return {};
-}
-
-std::vector<nlohmann::json> OptimizerParser::get_possible_configs(const JsonStrategyMetaInfo & meta_info)
+std::vector<JsonStrategyConfig> OptimizerParser::get_possible_configs(const JsonStrategyMetaInfo & meta_info)
 {
     if (const auto strategy_name = meta_info.get().find("strategy_name");
         strategy_name != meta_info.get().end()) {
         Logger::logf<LogLevel::Info>("Reading JSON file for {}", strategy_name->get<std::string>().c_str());
     }
 
-    std::vector<nlohmann::json> ouput_jsons;
+    std::vector<JsonStrategyConfig> ouput_jsons;
 
     std::map<std::string, std::tuple<double, double, double>> limits_map;
     std::map<std::string, double> current_values_map;
@@ -96,7 +75,7 @@ std::vector<nlohmann::json> OptimizerParser::get_possible_configs(const JsonStra
     return ouput_jsons;
 }
 
-std::optional<std::pair<JsonStrategyConfig, TpslExitStrategyConfig>> Optimizer::optimize()
+std::optional<std::pair<JsonStrategyConfig, JsonStrategyConfig>> Optimizer::optimize()
 {
     OptimizerParser parser(m_optimizer_inputs);
 
@@ -118,7 +97,7 @@ std::optional<std::pair<JsonStrategyConfig, TpslExitStrategyConfig>> Optimizer::
                 md_request_data,
                 strategy_opt.value(),
                 m_exit_strategy_name,
-                exit_config.to_json(),
+                exit_config,
                 m_gateway,
                 tr_gateway);
         tr_gateway.set_price_source(strategy_instance.klines_publisher());

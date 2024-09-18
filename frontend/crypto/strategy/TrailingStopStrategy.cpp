@@ -39,7 +39,6 @@ std::optional<std::string> TrailigStopLossStrategy::on_price_changed(std::pair<s
         if (possible_new_stop) {
             m_active_stop = possible_new_stop;
         }
-        Logger::log<LogLevel::Debug>("TrailigStopLossStrategy: on_price_changed: pushing stop");
         m_trailing_stop_publisher.push(m_last_ts_and_price.first, m_active_stop.value());
     }
     return std::nullopt;
@@ -118,7 +117,6 @@ std::optional<std::pair<std::string, bool>> TrailigStopLossStrategy::handle_even
         return {{err, false}};
     }
 
-    Logger::log<LogLevel::Info>("TrailigStopLossStrategy: stop set successfully pushing to publisher");
     m_active_stop_loss = response.trailing_stop_loss;
     const auto new_stop_opt = m_active_stop_loss.value().calc_new_stop_loss(
             m_last_ts_and_price.second,
@@ -127,11 +125,11 @@ std::optional<std::pair<std::string, bool>> TrailigStopLossStrategy::handle_even
         Logger::log<LogLevel::Error>("TrailigStopLossStrategy: no stop loss on it's init");
     }
     const auto & new_stop = new_stop_opt.value();
-    Logger::logf<LogLevel::Debug>("TSL response. Current last price: {}, TSL delta price: {}, stop price: {}, TSL side: {}",
-                                  m_last_ts_and_price.second,
-                                  response.trailing_stop_loss.price_distance(),
-                                  new_stop.stop_price(),
-                                  response.trailing_stop_loss.side() == Side::Buy ? "buy" : "sell");
+    // Logger::logf<LogLevel::Debug>("TSL response. Current last price: {}, TSL delta price: {}, stop price: {}, TSL side: {}",
+    //                               m_last_ts_and_price.second,
+    //                               response.trailing_stop_loss.price_distance(),
+    //                               new_stop.stop_price(),
+    //                               response.trailing_stop_loss.side() == Side::Buy ? "buy" : "sell");
     m_active_stop = new_stop;
     m_trailing_stop_publisher.push(m_last_ts_and_price.first, new_stop);
     return std::nullopt;

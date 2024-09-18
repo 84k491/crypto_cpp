@@ -1,5 +1,4 @@
 #include "MultiSeriesChart.h"
-#include "Logger.h"
 
 namespace {
 // colors for series
@@ -147,7 +146,6 @@ void MultiSeriesChart::push_scatter_series_vector(const std::string & series_nam
                                                           std::chrono::milliseconds,
                                                           double>> & data)
 {
-    Logger::logf<LogLevel::Debug>("Pushing scatter series: {}", series_name);
     for (const auto & [ts, value] : data) {
         push_series_value_dont_replot(series_name, ts, value, true);
     }

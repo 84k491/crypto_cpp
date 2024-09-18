@@ -254,7 +254,7 @@ void MainWindow::on_pb_optimize_clicked()
 {
     const auto entry_strategy_meta_info = get_entry_strategy_parameters();
     const auto timerange_opt = get_timerange();
-    const auto exit_strategy_meta_info = StrategyFactory::get_meta_info("TpslExit");
+    const auto exit_strategy_meta_info = StrategyFactory::get_meta_info(ui->cb_exit_strategy->currentText().toStdString());
     if (!timerange_opt || !entry_strategy_meta_info || !exit_strategy_meta_info) {
         Logger::log<LogLevel::Error>("No value in required optional");
         return;
@@ -268,8 +268,8 @@ void MainWindow::on_pb_optimize_clicked()
             return ui->wt_entry_params->get_config();
         }
     };
-    std::string exit_strategy_name = ui->cb_strategy->currentText().toStdString();
-    const auto exit_config = [&]() -> std::variant<JsonStrategyMetaInfo, TpslExitStrategyConfig> {
+    std::string exit_strategy_name = ui->cb_exit_strategy->currentText().toStdString();
+    const auto exit_config = [&]() -> std::variant<JsonStrategyMetaInfo, JsonStrategyConfig> {
         if (ui->cb_optimize_exit->isChecked()) {
             return exit_strategy_meta_info.value();
         }
@@ -321,8 +321,8 @@ void MainWindow::on_pb_optimize_clicked()
             Logger::log<LogLevel::Error>("No best config");
             return;
         }
-        emit signal_optimized_config(best_config.value().first, best_config.value().second.to_json());
-        Logger::logf<LogLevel::Info>("Best config: {}; ", best_config.value().first, best_config.value().second.to_json());
+        emit signal_optimized_config(best_config.value().first, best_config.value().second);
+        Logger::logf<LogLevel::Info>("Best config: {}; {}", best_config.value().first, best_config.value().second);
     });
     t.detach();
 }

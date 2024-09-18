@@ -3,7 +3,6 @@
 #include "ByBitGateway.h"
 #include "JsonStrategyConfig.h"
 #include "Logger.h"
-#include "TpslExitStrategy.h"
 
 #include <nlohmann/json.hpp>
 
@@ -14,7 +13,7 @@ struct OptimizerInputs
 {
     // set of configs or one config (optimize or not)
     std::variant<JsonStrategyMetaInfo, JsonStrategyConfig> entry_strategy;
-    std::variant<JsonStrategyMetaInfo, TpslExitStrategyConfig> exit_strategy;
+    std::variant<JsonStrategyMetaInfo, JsonStrategyConfig> exit_strategy;
 };
 
 class OptimizerParser
@@ -25,11 +24,10 @@ public:
     {
     }
 
-    std::vector<std::pair<nlohmann::json, TpslExitStrategyConfig>> get_possible_configs();
+    std::vector<std::pair<JsonStrategyConfig, JsonStrategyConfig>> get_possible_configs();
 
 private:
-    static std::vector<nlohmann::json> get_possible_configs(const JsonStrategyMetaInfo & meta_info);
-    std::vector<TpslExitStrategyConfig> get_possible_exit_configs();
+    static std::vector<JsonStrategyConfig> get_possible_configs(const JsonStrategyMetaInfo & meta_info);
 
     const OptimizerInputs m_inputs;
 };
@@ -53,7 +51,7 @@ public:
     {
     }
 
-    [[nodiscard]] std::optional<std::pair<JsonStrategyConfig, TpslExitStrategyConfig>> optimize();
+    [[nodiscard]] std::optional<std::pair<JsonStrategyConfig, JsonStrategyConfig>> optimize();
 
     void subscribe_for_passed_check(std::function<void(int, int)> && on_passed_checks)
     {
