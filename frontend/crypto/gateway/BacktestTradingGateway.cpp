@@ -73,8 +73,6 @@ std::optional<Trade> BacktestTradingGateway::try_trade_tpsl(OHLC ohlc)
             }
             break;
         }
-        case Side::Close: {
-        }
         }
         return std::nullopt;
     }();
@@ -246,10 +244,6 @@ std::optional<Trade> BacktestTrailingStopLoss::on_price_updated(const OHLC & ohl
     }
     case Side::Sell: {
         triggered = tick_price > m_current_stop_loss.stop_price();
-        break;
-    }
-    case Side::Close: {
-        throw std::runtime_error("Close side");
         break;
     }
     };

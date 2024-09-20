@@ -102,8 +102,6 @@ Tpsl TpslExitStrategy::calc_tpsl(const Trade & trade)
         tpsl.take_profit_price = entry_price - profit - fee_price_delta;
         break;
     }
-    case Side::Close: {
-    }
     }
 
     return tpsl;

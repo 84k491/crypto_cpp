@@ -37,7 +37,7 @@ private:
 
     BollingerBands m_bollinger_bands;
 
-    Side m_last_signal_side = Side::Close;
+    std::optional<Side> m_last_signal_side;
 
     EventTimeseriesPublisher<std::tuple<std::string, std::string, double>> m_strategy_internal_data_publisher;
 };

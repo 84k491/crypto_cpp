@@ -149,8 +149,7 @@ std::future<void> StrategyInstance::wait_for_finish()
 void StrategyInstance::on_signal(const Signal & signal)
 {
     // closing if close or flip
-    if (Side::Close == signal.side ||
-        (m_position_manager.opened() != nullptr && signal.side != m_position_manager.opened()->side())) {
+    if ((m_position_manager.opened() != nullptr && signal.side != m_position_manager.opened()->side())) {
         if (m_position_manager.opened() != nullptr) {
             const bool success = close_position(signal.price, signal.timestamp);
             if (!success) {
@@ -160,21 +159,19 @@ void StrategyInstance::on_signal(const Signal & signal)
     }
 
     // opening for open or second part of flip
-    if (Side::Close != signal.side) {
-        const auto default_pos_size_opt = UnsignedVolume::from(m_pos_currency_amount / signal.price);
-        if (!default_pos_size_opt.has_value()) {
-            Logger::log<LogLevel::Error>("can't get proper default position size");
-            return;
-        }
-        const bool success = open_position(signal.price,
-                                           SignedVolume(
-                                                   default_pos_size_opt.value(),
-                                                   signal.side),
-                                           signal.timestamp);
-        if (!success) {
-            Logger::log<LogLevel::Error>("Failed to open position");
-            return;
-        }
+    const auto default_pos_size_opt = UnsignedVolume::from(m_pos_currency_amount / signal.price);
+    if (!default_pos_size_opt.has_value()) {
+        Logger::log<LogLevel::Error>("can't get proper default position size");
+        return;
+    }
+    const bool success = open_position(signal.price,
+                                       SignedVolume(
+                                               default_pos_size_opt.value(),
+                                               signal.side),
+                                       signal.timestamp);
+    if (!success) {
+        Logger::log<LogLevel::Error>("Failed to open position");
+        return;
     }
 }
 
@@ -261,7 +258,6 @@ EventTimeseriesPublisher<StopLoss> & StrategyInstance::trailing_stop_publisher()
 {
     return m_exit_strategy->trailing_stop_publisher();
 }
-
 
 void StrategyInstance::invoke(const std::variant<STRATEGY_EVENTS> & var)
 {

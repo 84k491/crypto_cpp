@@ -119,7 +119,6 @@ void ChartWindow::subscribe_to_strategy()
                 std::vector<std::pair<std::chrono::milliseconds, double>> buy, sell;
                 for (const auto & [ts, signal] : input_vec) {
                     switch (signal.side) {
-                    case Side::Close: break;
                     case Side::Buy: {
                         buy.emplace_back(ts, signal.price);
                         break;

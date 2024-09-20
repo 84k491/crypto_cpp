@@ -62,34 +62,37 @@ std::optional<Signal> TunedBollingerBandsStrategy::push_price(std::pair<std::chr
     m_strategy_internal_data_publisher.push(ts, {"prices", "lower_band", bb_res.m_lower_band});
     m_strategy_internal_data_publisher.push(ts, {"prices", "filtered_price", filtered_price});
 
-    switch (m_last_signal_side) {
-    case Side::Buy:
-        if (input_price > bb_res.m_trend) {
-            m_last_signal_side = Side::Close;
+    if (m_last_signal_side) {
+        const auto last_signal_side = m_last_signal_side.value();
+        switch (last_signal_side) {
+        case Side::Buy:
+            if (input_price > bb_res.m_trend) {
+                m_last_signal_side = {};
+            }
+            break;
+        case Side::Sell: {
+            if (input_price < bb_res.m_trend) {
+                m_last_signal_side = {};
+            }
+            break;
         }
-        break;
-    case Side::Sell: {
-        if (input_price < bb_res.m_trend) {
-            m_last_signal_side = Side::Close;
         }
-        break;
+        return std::nullopt;
     }
-    case Side::Close:
-        if (filtered_price > bb_res.m_upper_band &&
-            input_price > bb_res.m_upper_band &&
-            m_last_filtered_price >= filtered_price) {
-            const auto signal = Signal{.side = Side::Sell, .timestamp = ts, .price = ts_and_price.second};
-            m_last_signal_side = signal.side;
-            return signal;
-        }
-        if (filtered_price < bb_res.m_lower_band &&
-            input_price < bb_res.m_lower_band &&
-            m_last_filtered_price <= filtered_price) {
-            const auto signal = Signal{.side = Side::Buy, .timestamp = ts, .price = ts_and_price.second};
-            m_last_signal_side = signal.side;
-            return signal;
-        }
-        break;
+
+    if (filtered_price > bb_res.m_upper_band &&
+        input_price > bb_res.m_upper_band &&
+        m_last_filtered_price >= filtered_price) {
+        const auto signal = Signal{.side = Side::Sell, .timestamp = ts, .price = ts_and_price.second};
+        m_last_signal_side = signal.side;
+        return signal;
+    }
+    if (filtered_price < bb_res.m_lower_band &&
+        input_price < bb_res.m_lower_band &&
+        m_last_filtered_price <= filtered_price) {
+        const auto signal = Signal{.side = Side::Buy, .timestamp = ts, .price = ts_and_price.second};
+        m_last_signal_side = signal.side;
+        return signal;
     }
     return std::nullopt;
 }
