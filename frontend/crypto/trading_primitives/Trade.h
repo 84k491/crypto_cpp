@@ -39,7 +39,7 @@ private:
     Symbol m_symbol;
     double m_price{};
     UnsignedVolume m_unsigned_volume;
-    Side m_side = Side::Buy;
+    Side m_side = Side::buy();
     double m_fee = 0.0;
 };
 std::ostream & operator<<(std::ostream & os, const Trade & trade);

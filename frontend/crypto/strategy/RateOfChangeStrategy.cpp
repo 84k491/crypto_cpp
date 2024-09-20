@@ -102,10 +102,10 @@ std::optional<Signal> RateOfChangeStrategy::push_price(std::pair<std::chrono::mi
     }
 
     if (rate_of_change > m_config.m_signal_threshold) {
-        const auto signal = Signal{.side = Side::Buy, .timestamp = ts_and_price.first, .price = ts_and_price.second};
+        const auto signal = Signal{.side = Side::buy(), .timestamp = ts_and_price.first, .price = ts_and_price.second};
         return signal;
     }
 
-    const auto signal = Signal{.side = Side::Sell, .timestamp = ts_and_price.first, .price = ts_and_price.second};
+    const auto signal = Signal{.side = Side::sell(), .timestamp = ts_and_price.first, .price = ts_and_price.second};
     return signal;
 }

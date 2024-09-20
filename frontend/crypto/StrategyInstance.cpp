@@ -480,7 +480,7 @@ bool StrategyInstance::close_position(double price, std::chrono::milliseconds ts
 
     const auto order = [&]() {
         const auto [vol, side] = pos.opened_volume().as_unsigned_and_side();
-        const auto volume = SignedVolume(vol, side == Side::Buy ? Side::Sell : Side::Buy);
+        const auto volume = SignedVolume(vol, side.opposite());
         return MarketOrder{
                 m_symbol.symbol_name,
                 price,

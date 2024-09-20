@@ -1,4 +1,4 @@
-#include "Enums.h"
+#include "Side.h"
 
 #include "nlohmann/json_fwd.hpp"
 
@@ -11,7 +11,7 @@ struct PublicTrade
     std::string symbol;
     double price;
     double volume;
-    Side side;
+    Side side = Side::buy();
 };
 void from_json(const nlohmann::json & j, PublicTrade & trade);
 std::ostream & operator<<(std::ostream & os, const PublicTrade & trade);

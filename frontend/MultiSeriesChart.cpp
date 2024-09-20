@@ -83,7 +83,7 @@ void MultiSeriesChart::clear()
 
 void MultiSeriesChart::push_signal(Signal signal)
 {
-    const std::string & series_name = signal.side == Side::Buy ? "buy_trade" : "sell_trade";
+    const std::string & series_name = signal.side == Side::buy() ? "buy_trade" : "sell_trade";
     push_series_value_dont_replot(series_name, signal.timestamp, signal.price, true);
     replot();
 }

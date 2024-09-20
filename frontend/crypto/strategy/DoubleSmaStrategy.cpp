@@ -72,7 +72,7 @@ std::optional<Signal> DoubleSmaStrategy::push_price(std::pair<std::chrono::milli
         return std::nullopt;
     }
 
-    const auto side = current_slow_above_fast ? Side::Sell : Side::Buy;
+    const auto side = current_slow_above_fast ? Side::sell() : Side::buy();
     return Signal{.side = side, .timestamp = ts_and_price.first, .price = ts_and_price.second};
 }
 

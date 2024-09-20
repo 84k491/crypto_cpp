@@ -30,7 +30,7 @@ TEST_F(PositionManagerTest, OpenLongDontClose)
                      m_symbol.symbol_name,
                      1000.,
                      UnsignedVolume::from(10.).value(),
-                     Side::Buy,
+                     Side::buy(),
                      0.2);
 
     const auto res_opt = pm.on_trade_received(open_trade);
@@ -39,7 +39,7 @@ TEST_F(PositionManagerTest, OpenLongDontClose)
     ASSERT_TRUE(opened_pos_ptr != nullptr);
     const auto & opened_pos = *opened_pos_ptr;
 
-    EXPECT_EQ(opened_pos.side(), Side::Buy);
+    EXPECT_EQ(opened_pos.side(), Side::buy());
     EXPECT_EQ(opened_pos.opened_volume().value(), 10.);
     EXPECT_EQ(opened_pos.open_ts().count(), 1234567);
     EXPECT_EQ(opened_pos.entry_fee(), 0.2);
@@ -53,7 +53,7 @@ TEST_F(PositionManagerTest, OpenShortDontClose)
                      m_symbol.symbol_name,
                      1000.,
                      UnsignedVolume::from(10.).value(),
-                     Side::Sell,
+                     Side::sell(),
                      0.2);
 
     const auto res_opt = pm.on_trade_received(open_trade);
@@ -62,7 +62,7 @@ TEST_F(PositionManagerTest, OpenShortDontClose)
     ASSERT_TRUE(opened_pos_ptr != nullptr);
     const auto & opened_pos = *opened_pos_ptr;
 
-    EXPECT_EQ(opened_pos.side(), Side::Sell);
+    EXPECT_EQ(opened_pos.side(), Side::sell());
     EXPECT_EQ(opened_pos.opened_volume().value(), -10.);
     EXPECT_EQ(opened_pos.open_ts().count(), 1234567);
     EXPECT_EQ(opened_pos.entry_fee(), 0.2);
@@ -76,7 +76,7 @@ TEST_F(PositionManagerTest, LongCloseRawProfitBiggerThanFee)
                      m_symbol.symbol_name,
                      1000.,
                      UnsignedVolume::from(10.).value(),
-                     Side::Buy,
+                     Side::buy(),
                      0.2);
     pm.on_trade_received(open_trade);
 
@@ -84,7 +84,7 @@ TEST_F(PositionManagerTest, LongCloseRawProfitBiggerThanFee)
                       m_symbol.symbol_name,
                       1500.,
                       UnsignedVolume::from(10.).value(),
-                      Side::Sell,
+                      Side::sell(),
                       0.3);
     const auto res_opt = pm.on_trade_received(close_trade);
     ASSERT_TRUE(res_opt.has_value());
@@ -104,7 +104,7 @@ TEST_F(PositionManagerTest, ShortCloseRawProfitBiggerThanFee)
                      m_symbol.symbol_name,
                      1500.,
                      UnsignedVolume::from(10.).value(),
-                     Side::Sell,
+                     Side::sell(),
                      0.2);
     pm.on_trade_received(open_trade);
 
@@ -112,7 +112,7 @@ TEST_F(PositionManagerTest, ShortCloseRawProfitBiggerThanFee)
                       m_symbol.symbol_name,
                       1000.,
                       UnsignedVolume::from(10.).value(),
-                      Side::Buy,
+                      Side::buy(),
                       0.3);
     const auto res_opt = pm.on_trade_received(close_trade);
     ASSERT_TRUE(res_opt.has_value());
@@ -132,7 +132,7 @@ TEST_F(PositionManagerTest, LongCloseRawProfitLessThanFee)
                      m_symbol.symbol_name,
                      10.,
                      UnsignedVolume::from(1.).value(),
-                     Side::Buy,
+                     Side::buy(),
                      0.2);
     pm.on_trade_received(open_trade);
 
@@ -140,7 +140,7 @@ TEST_F(PositionManagerTest, LongCloseRawProfitLessThanFee)
                       m_symbol.symbol_name,
                       10.4,
                       UnsignedVolume::from(1.).value(),
-                      Side::Sell,
+                      Side::sell(),
                       0.3);
     const auto res_opt = pm.on_trade_received(close_trade);
     ASSERT_TRUE(res_opt.has_value());
@@ -160,7 +160,7 @@ TEST_F(PositionManagerTest, ShortCloseRawProfitLessThanFee)
                      m_symbol.symbol_name,
                      10,
                      UnsignedVolume::from(1.).value(),
-                     Side::Sell,
+                     Side::sell(),
                      0.2);
     pm.on_trade_received(open_trade);
 
@@ -168,7 +168,7 @@ TEST_F(PositionManagerTest, ShortCloseRawProfitLessThanFee)
                       m_symbol.symbol_name,
                       9.6,
                       UnsignedVolume::from(1.).value(),
-                      Side::Buy,
+                      Side::buy(),
                       0.3);
     const auto res_opt = pm.on_trade_received(close_trade);
     ASSERT_TRUE(res_opt.has_value());
@@ -188,7 +188,7 @@ TEST_F(PositionManagerTest, LongCloseSamePrice)
                      m_symbol.symbol_name,
                      10.,
                      UnsignedVolume::from(1.).value(),
-                     Side::Buy,
+                     Side::buy(),
                      0.2);
     pm.on_trade_received(open_trade);
 
@@ -196,7 +196,7 @@ TEST_F(PositionManagerTest, LongCloseSamePrice)
                       m_symbol.symbol_name,
                       10.,
                       UnsignedVolume::from(1.).value(),
-                      Side::Sell,
+                      Side::sell(),
                       0.3);
     const auto res_opt = pm.on_trade_received(close_trade);
     ASSERT_TRUE(res_opt.has_value());
@@ -216,7 +216,7 @@ TEST_F(PositionManagerTest, ShortCloseSamePrice)
                      m_symbol.symbol_name,
                      10.,
                      UnsignedVolume::from(1.).value(),
-                     Side::Sell,
+                     Side::sell(),
                      0.2);
     pm.on_trade_received(open_trade);
 
@@ -224,7 +224,7 @@ TEST_F(PositionManagerTest, ShortCloseSamePrice)
                       m_symbol.symbol_name,
                       10.,
                       UnsignedVolume::from(1.).value(),
-                      Side::Buy,
+                      Side::buy(),
                       0.3);
     const auto res_opt = pm.on_trade_received(close_trade);
     ASSERT_TRUE(res_opt.has_value());
@@ -244,13 +244,13 @@ TEST_F(PositionManagerTest, LongOpenedWithTwoTradesProfit)
                       m_symbol.symbol_name,
                       10.,
                       UnsignedVolume::from(1.).value(),
-                      Side::Buy,
+                      Side::buy(),
                       0.2};
     Trade open_trade2{std::chrono::milliseconds(133),
                       m_symbol.symbol_name,
                       12.,
                       UnsignedVolume::from(1.).value(),
-                      Side::Buy,
+                      Side::buy(),
                       0.3};
     pm.on_trade_received(open_trade1);
     pm.on_trade_received(open_trade2);
@@ -259,7 +259,7 @@ TEST_F(PositionManagerTest, LongOpenedWithTwoTradesProfit)
                       m_symbol.symbol_name,
                       20.,
                       UnsignedVolume::from(2.).value(),
-                      Side::Sell,
+                      Side::sell(),
                       0.4);
     const auto res_opt = pm.on_trade_received(close_trade);
     ASSERT_TRUE(res_opt.has_value());
@@ -282,13 +282,13 @@ TEST_F(PositionManagerTest, ShortOpenedWithTwoTradesProfit)
                       m_symbol.symbol_name,
                       10.,
                       UnsignedVolume::from(1.).value(),
-                      Side::Sell,
+                      Side::sell(),
                       0.2};
     Trade open_trade2{std::chrono::milliseconds(133),
                       m_symbol.symbol_name,
                       8.,
                       UnsignedVolume::from(1.).value(),
-                      Side::Sell,
+                      Side::sell(),
                       0.3};
     pm.on_trade_received(open_trade1);
     pm.on_trade_received(open_trade2);
@@ -297,7 +297,7 @@ TEST_F(PositionManagerTest, ShortOpenedWithTwoTradesProfit)
                       m_symbol.symbol_name,
                       6.,
                       UnsignedVolume::from(2.).value(),
-                      Side::Buy,
+                      Side::buy(),
                       0.4);
     const auto res_opt = pm.on_trade_received(close_trade);
     ASSERT_TRUE(res_opt.has_value());
@@ -320,7 +320,7 @@ TEST_F(PositionManagerTest, LongClosedWithTwoTradesProfit)
                      m_symbol.symbol_name,
                      10.,
                      UnsignedVolume::from(2.).value(),
-                     Side::Buy,
+                     Side::buy(),
                      0.2};
     pm.on_trade_received(open_trade);
 
@@ -328,13 +328,13 @@ TEST_F(PositionManagerTest, LongClosedWithTwoTradesProfit)
                        m_symbol.symbol_name,
                        12.,
                        UnsignedVolume::from(1.).value(),
-                       Side::Sell,
+                       Side::sell(),
                        0.3);
     Trade close_trade2(std::chrono::milliseconds(223),
                        m_symbol.symbol_name,
                        14.,
                        UnsignedVolume::from(1.).value(),
-                       Side::Sell,
+                       Side::sell(),
                        0.4);
     EXPECT_FALSE(pm.on_trade_received(close_trade1).has_value());
     const auto res_opt = pm.on_trade_received(close_trade2);
@@ -358,7 +358,7 @@ TEST_F(PositionManagerTest, ShortClosedWithTwoTradesProfit)
                      m_symbol.symbol_name,
                      10.,
                      UnsignedVolume::from(2.).value(),
-                     Side::Sell,
+                     Side::sell(),
                      0.2};
     pm.on_trade_received(open_trade);
 
@@ -366,13 +366,13 @@ TEST_F(PositionManagerTest, ShortClosedWithTwoTradesProfit)
                        m_symbol.symbol_name,
                        8.,
                        UnsignedVolume::from(1.).value(),
-                       Side::Buy,
+                       Side::buy(),
                        0.3);
     Trade close_trade2(std::chrono::milliseconds(223),
                        m_symbol.symbol_name,
                        6.,
                        UnsignedVolume::from(1.).value(),
-                       Side::Buy,
+                       Side::buy(),
                        0.4);
     EXPECT_FALSE(pm.on_trade_received(close_trade1).has_value());
     const auto res_opt = pm.on_trade_received(close_trade2);
@@ -396,7 +396,7 @@ TEST_F(PositionManagerTest, LongFlipClosedWithProfit)
                      m_symbol.symbol_name,
                      10.,
                      UnsignedVolume::from(1.).value(),
-                     Side::Buy,
+                     Side::buy(),
                      0.2};
     pm.on_trade_received(open_trade);
 
@@ -404,7 +404,7 @@ TEST_F(PositionManagerTest, LongFlipClosedWithProfit)
                      m_symbol.symbol_name,
                      12.,
                      UnsignedVolume::from(2.).value(),
-                     Side::Sell,
+                     Side::sell(),
                      0.3);
     EXPECT_FALSE(pm.on_trade_received(flip_trade).has_value());
 
@@ -412,7 +412,7 @@ TEST_F(PositionManagerTest, LongFlipClosedWithProfit)
                       m_symbol.symbol_name,
                       8.,
                       UnsignedVolume::from(1.).value(),
-                      Side::Buy,
+                      Side::buy(),
                       0.4);
     const auto res_opt = pm.on_trade_received(close_trade);
     ASSERT_TRUE(res_opt.has_value());
@@ -434,7 +434,7 @@ TEST_F(PositionManagerTest, ShortFlipClosedWithProfit)
                      m_symbol.symbol_name,
                      12.,
                      UnsignedVolume::from(1.).value(),
-                     Side::Sell,
+                     Side::sell(),
                      0.2};
     pm.on_trade_received(open_trade);
 
@@ -442,7 +442,7 @@ TEST_F(PositionManagerTest, ShortFlipClosedWithProfit)
                      m_symbol.symbol_name,
                      10.,
                      UnsignedVolume::from(2.).value(),
-                     Side::Buy,
+                     Side::buy(),
                      0.3);
     EXPECT_FALSE(pm.on_trade_received(flip_trade).has_value());
 
@@ -450,7 +450,7 @@ TEST_F(PositionManagerTest, ShortFlipClosedWithProfit)
                       m_symbol.symbol_name,
                       14.,
                       UnsignedVolume::from(1.).value(),
-                      Side::Sell,
+                      Side::sell(),
                       0.4);
     const auto res_opt = pm.on_trade_received(close_trade);
     ASSERT_TRUE(res_opt.has_value());
@@ -472,7 +472,7 @@ TEST_F(PositionManagerTest, LongCloseWithLoss)
                      m_symbol.symbol_name,
                      1000.,
                      UnsignedVolume::from(10.).value(),
-                     Side::Buy,
+                     Side::buy(),
                      0.2);
     pm.on_trade_received(open_trade);
 
@@ -480,7 +480,7 @@ TEST_F(PositionManagerTest, LongCloseWithLoss)
                       m_symbol.symbol_name,
                       900.,
                       UnsignedVolume::from(10.).value(),
-                      Side::Sell,
+                      Side::sell(),
                       0.3);
     const auto res_opt = pm.on_trade_received(close_trade);
     ASSERT_TRUE(res_opt.has_value());
@@ -500,7 +500,7 @@ TEST_F(PositionManagerTest, ShortCloseWithLoss)
                      m_symbol.symbol_name,
                      900.,
                      UnsignedVolume::from(10.).value(),
-                     Side::Sell,
+                     Side::sell(),
                      0.2);
     pm.on_trade_received(open_trade);
 
@@ -508,7 +508,7 @@ TEST_F(PositionManagerTest, ShortCloseWithLoss)
                       m_symbol.symbol_name,
                       1000.,
                       UnsignedVolume::from(10.).value(),
-                      Side::Buy,
+                      Side::buy(),
                       0.3);
     const auto res_opt = pm.on_trade_received(close_trade);
     ASSERT_TRUE(res_opt.has_value());
@@ -528,7 +528,7 @@ TEST_F(PositionManagerTest, LongCloseWithLossFractionalPrice)
                      m_symbol.symbol_name,
                      0.05802,
                      UnsignedVolume::from(1723).value(),
-                     Side::Buy,
+                     Side::buy(),
                      0.0549827);
     pm.on_trade_received(open_trade);
 
@@ -536,7 +536,7 @@ TEST_F(PositionManagerTest, LongCloseWithLossFractionalPrice)
                       m_symbol.symbol_name,
                       0.05796,
                       UnsignedVolume::from(1723).value(),
-                      Side::Sell,
+                      Side::sell(),
                       0.0549258);
     const auto res_opt = pm.on_trade_received(close_trade);
     ASSERT_TRUE(res_opt.has_value());
@@ -561,7 +561,7 @@ TEST_F(PositionManagerTest, ShortProfitThenLongLoss)
                          m_symbol.symbol_name,
                          0.0584,
                          UnsignedVolume::from(1712).value(),
-                         Side::Sell,
+                         Side::sell(),
                          0.0549894);
         pm.on_trade_received(open_trade);
 
@@ -569,7 +569,7 @@ TEST_F(PositionManagerTest, ShortProfitThenLongLoss)
                           m_symbol.symbol_name,
                           0.0582,
                           UnsignedVolume::from(1712).value(),
-                          Side::Buy,
+                          Side::buy(),
                           0.0548011);
         const auto res_opt = pm.on_trade_received(close_trade);
         ASSERT_TRUE(res_opt.has_value());
@@ -590,7 +590,7 @@ TEST_F(PositionManagerTest, ShortProfitThenLongLoss)
                          m_symbol.symbol_name,
                          0.05802,
                          UnsignedVolume::from(1723).value(),
-                         Side::Buy,
+                         Side::buy(),
                          0.0549827);
         pm.on_trade_received(open_trade);
 
@@ -598,7 +598,7 @@ TEST_F(PositionManagerTest, ShortProfitThenLongLoss)
                           m_symbol.symbol_name,
                           0.05796,
                           UnsignedVolume::from(1723).value(),
-                          Side::Sell,
+                          Side::sell(),
                           0.0549258);
         const auto res_opt = pm.on_trade_received(close_trade);
         ASSERT_TRUE(res_opt.has_value());

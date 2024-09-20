@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Enums.h"
+#include "Side.h"
 
 #include <optional>
 #include <ostream>
@@ -94,16 +94,16 @@ public:
     }
 
     SignedVolume(const UnsignedVolume & volume, Side side)
-        : m_value(volume.value() * (side == Side::Buy ? 1 : -1))
+        : m_value(volume.value() * side.sign())
     {
     }
 
     std::pair<UnsignedVolume, Side> as_unsigned_and_side() const
     {
         if (m_value < 0) {
-            return {UnsignedVolume(-m_value), Side::Sell};
+            return {UnsignedVolume(-m_value), Side::sell()};
         }
-        return {UnsignedVolume(m_value), Side::Buy};
+        return {UnsignedVolume(m_value), Side::buy()};
     }
 
     int sign() const

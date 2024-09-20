@@ -7,7 +7,7 @@ std::ostream & operator<<(std::ostream & os, const Trade & trade)
        << "\n  symbol = " << trade.m_symbol
        << "\n  price = " << trade.m_price
        << "\n  volume = " << trade.m_unsigned_volume
-       << "\n  side = " << (trade.m_side == Side::Buy ? "Buy" : "Sell")
+       << "\n  side = " << trade.m_side
        << "\n  fee = " << trade.m_fee
        << "\n}";
     return os;

@@ -251,7 +251,7 @@ TEST_F(StrategyInstanceTest, OpenAndClosePos_GetResult_DontCloseTwiceOnStop)
             });
 
     ASSERT_TRUE(tr_gateway.m_consumers);
-    strategy_ptr->signal_on_next_tick(Side::Buy);
+    strategy_ptr->signal_on_next_tick(Side::buy());
     {
         const std::chrono::milliseconds price_ts = std::chrono::milliseconds(1000);
         const double price = 10.1;
@@ -318,7 +318,7 @@ TEST_F(StrategyInstanceTest, OpenAndClosePos_GetResult_DontCloseTwiceOnStop)
                 m_symbol.symbol_name,
                 open_trade_price * 2,
                 open_trade_volume,
-                open_trade_side == Side::Buy ? Side::Sell : Side::Buy,
+                open_trade_side.opposite(),
                 0.1};
         const auto close_trade_event = TradeEvent(close_trade);
         tr_gateway.m_consumers->trade_consumer.push(close_trade_event);
@@ -355,7 +355,7 @@ TEST_F(StrategyInstanceTest, OpenPositionWithTpsl_CloseOnGracefullStop)
             });
 
     ASSERT_TRUE(tr_gateway.m_consumers);
-    strategy_ptr->signal_on_next_tick(Side::Buy);
+    strategy_ptr->signal_on_next_tick(Side::buy());
     {
         const std::chrono::milliseconds price_ts = std::chrono::milliseconds(1000);
         const double price = 10.1;
@@ -474,7 +474,7 @@ TEST_F(StrategyInstanceTest, ManyPricesReceivedWhileOrderIsPending_NoAdditionalO
     ASSERT_TRUE(tr_gateway.m_consumers);
 
     // sending first price
-    strategy_ptr->signal_on_next_tick(Side::Buy);
+    strategy_ptr->signal_on_next_tick(Side::buy());
     {
         const std::chrono::milliseconds price_ts = std::chrono::milliseconds(1000);
         const double price = 10.1;
@@ -491,7 +491,7 @@ TEST_F(StrategyInstanceTest, ManyPricesReceivedWhileOrderIsPending_NoAdditionalO
     const auto order_req = tr_gateway.m_last_order_request.value();
 
     // sending second price
-    strategy_ptr->signal_on_next_tick(Side::Buy);
+    strategy_ptr->signal_on_next_tick(Side::buy());
     {
         const std::chrono::milliseconds price_ts = std::chrono::milliseconds(1001);
         const double price = 12.2;
@@ -521,7 +521,7 @@ TEST_F(StrategyInstanceTest, EnterOrder_GetReject_Panic)
     const auto live_req = md_gateway.m_last_live_request.value();
 
     ASSERT_TRUE(tr_gateway.m_consumers);
-    strategy_ptr->signal_on_next_tick(Side::Buy);
+    strategy_ptr->signal_on_next_tick(Side::buy());
     {
         const std::chrono::milliseconds price_ts = std::chrono::milliseconds(1000);
         const double price = 10.1;
@@ -563,7 +563,7 @@ TEST_F(StrategyInstanceTest, OpenPos_TpslReject_ClosePosAndPanic)
     const auto live_req = md_gateway.m_last_live_request.value();
 
     ASSERT_TRUE(tr_gateway.m_consumers);
-    strategy_ptr->signal_on_next_tick(Side::Buy);
+    strategy_ptr->signal_on_next_tick(Side::buy());
     {
         const std::chrono::milliseconds price_ts = std::chrono::milliseconds(1000);
         const double price = 10.1;

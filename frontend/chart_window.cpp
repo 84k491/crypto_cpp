@@ -1,5 +1,6 @@
 #include "chart_window.h"
 
+#include "Enums.h"
 #include "Logger.h"
 #include "ui_chart_window.h"
 
@@ -118,12 +119,12 @@ void ChartWindow::subscribe_to_strategy()
             [this](const std::vector<std::pair<std::chrono::milliseconds, Signal>> & input_vec) {
                 std::vector<std::pair<std::chrono::milliseconds, double>> buy, sell;
                 for (const auto & [ts, signal] : input_vec) {
-                    switch (signal.side) {
-                    case Side::Buy: {
+                    switch (signal.side.value()) {
+                    case SideEnum::Buy: {
                         buy.emplace_back(ts, signal.price);
                         break;
                     }
-                    case Side::Sell: {
+                    case SideEnum::Sell: {
                         sell.emplace_back(ts, signal.price);
                         break;
                     }

@@ -1,4 +1,5 @@
 #include "BollingerBandsStrategy.h"
+#include "Enums.h"
 
 BollingerBandsStrategyConfig::BollingerBandsStrategyConfig(const JsonStrategyConfig & json)
 {
@@ -48,14 +49,14 @@ std::optional<Signal> BollingerBandsStrategy::push_price(std::pair<std::chrono::
 
     if (m_last_signal_side) {
         const auto last_signal_side = m_last_signal_side.value();
-        switch (last_signal_side) {
-        case Side::Buy: {
+        switch (last_signal_side.value()) {
+        case SideEnum::Buy: {
             if (price > bb_res.m_trend) {
                 m_last_signal_side = {};
             }
             break;
         }
-        case Side::Sell: {
+        case SideEnum::Sell: {
             if (price < bb_res.m_trend) {
                 m_last_signal_side = {};
             }
@@ -66,12 +67,12 @@ std::optional<Signal> BollingerBandsStrategy::push_price(std::pair<std::chrono::
     }
 
     if (price > bb_res.m_upper_band) {
-        const auto signal = Signal{.side = Side::Sell, .timestamp = ts, .price = ts_and_price.second};
+        const auto signal = Signal{.side = Side::sell(), .timestamp = ts, .price = ts_and_price.second};
         m_last_signal_side = signal.side;
         return signal;
     }
     if (price < bb_res.m_lower_band) {
-        const auto signal = Signal{.side = Side::Buy, .timestamp = ts, .price = ts_and_price.second};
+        const auto signal = Signal{.side = Side::buy(), .timestamp = ts, .price = ts_and_price.second};
         m_last_signal_side = signal.side;
         return signal;
     }

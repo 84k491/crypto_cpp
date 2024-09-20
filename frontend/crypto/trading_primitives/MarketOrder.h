@@ -40,12 +40,9 @@ public:
     {
     }
 
-    std::string side_str() const
+    std::string side_str() const // TODO remove this method
     {
-        if (m_side == Side::Buy) {
-            return "Buy";
-        }
-        return "Sell";
+        return m_side.to_string();
     }
 
     auto volume() const { return m_volume; }
@@ -59,7 +56,7 @@ private:
     xg::Guid m_guid;
     std::string m_symbol;
     UnsignedVolume m_volume;
-    Side m_side = Side::Buy;
+    Side m_side = Side::buy();
     double m_price = 0.;
     std::chrono::milliseconds m_signal_ts = {};
 };

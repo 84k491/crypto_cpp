@@ -1,6 +1,7 @@
 #include "TpslExitStrategy.h"
 
 #include "Enums.h"
+#include "Side.h"
 #include "Logger.h"
 #include "Trade.h"
 
@@ -91,13 +92,13 @@ Tpsl TpslExitStrategy::calc_tpsl(const Trade & trade)
     double risk = entry_price * m_config.risk();
     double profit = entry_price * (m_config.risk() / m_config.risk_reward_ratio());
 
-    switch (trade.side()) {
-    case Side::Buy: {
+    switch (trade.side().value()) {
+    case SideEnum::Buy: {
         tpsl.take_profit_price = entry_price + profit + fee_price_delta;
         tpsl.stop_loss_price = entry_price - risk + fee_price_delta;
         break;
     }
-    case Side::Sell: {
+    case SideEnum::Sell: {
         tpsl.stop_loss_price = entry_price + risk - fee_price_delta;
         tpsl.take_profit_price = entry_price - profit - fee_price_delta;
         break;

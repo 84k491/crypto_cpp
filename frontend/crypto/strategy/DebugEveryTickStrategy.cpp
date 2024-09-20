@@ -33,12 +33,7 @@ std::optional<Signal> DebugEveryTickStrategy::push_price(std::pair<std::chrono::
         return std::nullopt;
     }
 
-    const auto side = [&]() -> Side {
-        if (last_side == Side::Sell) {
-            return Side::Buy;
-        }
-        return Side::Sell;
-    }();
+    const auto side = last_side.opposite();
     last_side = side;
 
     return Signal{.side = side, .timestamp = ts_and_price.first, .price = ts_and_price.second};

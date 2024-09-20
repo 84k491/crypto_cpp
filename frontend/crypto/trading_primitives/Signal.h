@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Enums.h"
+#include "Side.h"
 
 #include <chrono>
 #include <ostream>

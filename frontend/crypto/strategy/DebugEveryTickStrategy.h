@@ -36,7 +36,7 @@ public:
 private:
     const DebugEveryTickStrategyConfig m_config;
 
-    Side last_side = Side::Sell;
+    Side last_side = Side::sell();
 
     unsigned iteration = 0;
 

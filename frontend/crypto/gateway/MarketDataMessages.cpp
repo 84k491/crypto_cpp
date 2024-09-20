@@ -10,7 +10,7 @@ void from_json(const nlohmann::json & j, PublicTrade & trade)
     trade.price = std::stod(j.at("p").get<std::string>());
     trade.volume = std::stod(j.at("v").get<std::string>());
     std::string side = j.at("S").get<std::string>();
-    trade.side = side == "Buy" ? Side::Buy : Side::Sell;
+    trade.side = side == "Buy" ? Side::buy() : Side::sell();
     size_t timestamp = j.at("T");
     trade.timestamp = std::chrono::milliseconds(timestamp);
 }
@@ -22,7 +22,7 @@ std::ostream & operator<<(std::ostream & os, const PublicTrade & trade)
        << "symbol: " << trade.symbol << std::endl
        << "price: " << trade.price << std::endl
        << "volume: " << trade.volume << std::endl
-       << "side: " << (trade.side == Side::Buy ? "Buy" : "Sell") << std::endl;
+       << "side: " << (trade.side.value() == SideEnum::Buy ? "Buy" : "Sell") << std::endl;
     return os;
 }
 

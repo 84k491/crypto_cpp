@@ -1,6 +1,6 @@
 #include "BacktestTradingGateway.h"
 
-#include "Enums.h"
+#include "Side.h"
 #include "Events.h"
 #include "Logger.h"
 #include "Macros.h"
@@ -52,10 +52,10 @@ std::optional<Trade> BacktestTradingGateway::try_trade_tpsl(OHLC ohlc)
 
     const auto & tpsl = m_tpsl.value().tpsl;
     const auto [pos_volume, pos_side] = m_pos_volume.as_unsigned_and_side();
-    const Side opposite_side = pos_side == Side::Sell ? Side::Buy : Side::Sell;
+    const Side opposite_side = pos_side.opposite();
     const auto trade_price = [&]() -> std::optional<double> {
-        switch (pos_side) {
-        case Side::Buy: {
+        switch (pos_side.value()) {
+        case SideEnum::Buy: {
             if (last_price >= tpsl.take_profit_price) {
                 return tpsl.take_profit_price;
             }
@@ -64,7 +64,7 @@ std::optional<Trade> BacktestTradingGateway::try_trade_tpsl(OHLC ohlc)
             }
             break;
         }
-        case Side::Sell: {
+        case SideEnum::Sell: {
             if (last_price <= tpsl.take_profit_price) {
                 return tpsl.take_profit_price;
             }
@@ -237,12 +237,12 @@ std::optional<Trade> BacktestTrailingStopLoss::on_price_updated(const OHLC & ohl
 
     // TODO make a one-liner after tests
     bool triggered = false;
-    switch (side) {
-    case Side::Buy: {
+    switch (side.value()) {
+    case SideEnum::Buy: {
         triggered = tick_price < m_current_stop_loss.stop_price();
         break;
     }
-    case Side::Sell: {
+    case SideEnum::Sell: {
         triggered = tick_price > m_current_stop_loss.stop_price();
         break;
     }
@@ -253,7 +253,7 @@ std::optional<Trade> BacktestTrailingStopLoss::on_price_updated(const OHLC & ohl
     }
     // Logger::logf<LogLevel::Debug>("Triggered");
 
-    const auto opposite_side = side == Side::Buy ? Side::Sell : Side::Buy;
+    const auto opposite_side = side.opposite();
     Trade trade{
             ohlc.timestamp,
             m_trailing_stop.symbol().symbol_name,

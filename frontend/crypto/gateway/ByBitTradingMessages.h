@@ -64,7 +64,7 @@ struct Execution
                 symbol,
                 execPrice,
                 volume_opt.value(),
-                side == "Buy" ? Side::Buy : Side::Sell,
+                side == "Buy" ? Side::buy() : Side::sell(),
                 execFee);
     }
 };
