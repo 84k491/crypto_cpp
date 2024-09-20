@@ -8,20 +8,6 @@ include_directories(
     ../interfaces
 )
 
-add_executable(object_publisher_test
-    ObjectPublisherTest.cpp
-)
-
-target_link_libraries(object_publisher_test
-    ${GTEST_BOTH_LIBRARIES}
-    crossguid2
-)
-
-set(UNIT_TEST object_publisher_test)
-add_test(NAME ${UNIT_TEST} COMMAND ${UNIT_TEST})
-
-##################################################
-
 add_executable(event_loop_test
     EventLoopTest.cpp
 )

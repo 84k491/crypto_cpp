@@ -62,7 +62,7 @@ private:
 
 private:
     TpslExitStrategyConfig m_config;
-    std::shared_ptr<EventLoop<STRATEGY_EVENTS>> & m_event_loop; // TODO remove ref?
+    std::shared_ptr<EventLoop<STRATEGY_EVENTS>> m_event_loop;
 
     std::pair<std::chrono::milliseconds, double> m_last_ts_and_price;
 
