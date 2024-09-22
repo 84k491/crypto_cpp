@@ -42,4 +42,16 @@ TEST(BybitTradingMessagesTest, SimpleOrderExecution)
     ASSERT_EQ(trade.side(), Side::sell());
 }
 
+TEST(BybitTradingMessagesTest, SimpleOrderAck)
+{
+    const auto msg_str = R"({"topic":"order","id":"100475188_BTCUSDT_8935822012","creationTime":1708249213759,"data":[{"category":"linear","symbol":"BTCUSDT","orderId":"b49d6860-3062-4295-aa1f-c6471f3c9b20","orderLinkId":"1708249213491","blockTradeId":"","side":"Sell","positionIdx":0,"orderStatus":"Filled","cancelType":"UNKNOWN","rejectReason":"EC_NoError","timeInForce":"IOC","isLeverage":"","price":"49257.6","qty":"0.003","avgPrice":"51850","leavesQty":"0","leavesValue":"0","cumExecQty":"0.003","cumExecValue":"155.55","cumExecFee":"0.0855525","orderType":"Market","stopOrderType":"","orderIv":"","triggerPrice":"","takeProfit":"","stopLoss":"","triggerBy":"","tpTriggerBy":"","slTriggerBy":"","triggerDirection":0,"placeType":"","lastPriceOnCreated":"51850.1","closeOnTrigger":false,"reduceOnly":false,"smpGroup":0,"smpType":"None","smpOrderId":"","slLimitPrice":"0","tpLimitPrice":"0","tpslMode":"UNKNOWN","createType":"CreateByUser","marketUnit":"","createdTime":"1708249213755","updatedTime":"1708249213758","feeCurrency":""}]})";
+
+    // TODO
+}
+
+// TPSL ack with take profit
+// TPSL update with take profit
+// TPSL ack with trailing stop
+// TPSL update with trailing stop
+
 } // namespace test
