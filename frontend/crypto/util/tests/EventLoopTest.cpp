@@ -66,7 +66,8 @@ public:
 protected:
 };
 
-TEST_F(EventLoopTest, EventLoopTest)
+// check that gateway don't crash if strategy is destroyed
+TEST_F(EventLoopTest, StrategyDestruction)
 {
     auto strategy = std::make_unique<MockStrategy>();
     MockGateway gateway;

@@ -193,6 +193,13 @@ protected:
     std::shared_ptr<EventObjectSubscribtion<WorkStatus>> status_sub;
 };
 
+// strategy starts in stopped state
+// strategy sends MD request at start and goes to Live state
+// gateway sends price, strategy gets it
+// strategy still in Live state
+// strategy stops
+// strategy unsubscribes from gateway
+// strategy goes to Stopped state
 TEST_F(StrategyInstanceTest, SubForLiveMarketData_GetPrice_GracefullStop)
 {
     ASSERT_EQ(strategy_status, WorkStatus::Stopped);
@@ -232,6 +239,16 @@ TEST_F(StrategyInstanceTest, SubForLiveMarketData_GetPrice_GracefullStop)
     ASSERT_EQ(strategy_status, WorkStatus::Stopped);
 }
 
+// strategy starts in stopped state
+// MDGW pushes price event
+// strategy sends an order on this price
+// TRGW pushes trade and THEN order response
+// strategy sends TPSL req
+// TRGW pushes TPSL response
+// TODO TRGW must push TPSL update
+// TRGW pushes close trade without order request
+// position closes
+// stop stragegy
 TEST_F(StrategyInstanceTest, OpenAndClosePos_GetResult_DontCloseTwiceOnStop)
 {
     ASSERT_EQ(strategy_status, WorkStatus::Stopped);
@@ -336,6 +353,19 @@ TEST_F(StrategyInstanceTest, OpenAndClosePos_GetResult_DontCloseTwiceOnStop)
     ASSERT_EQ(result.trades_count, 2);
 }
 
+// strategy starts in stopped state
+// MDGW pushes price event
+// strategy sends an order on this price
+// TRGW pushes trade and THEN order response
+// strategy sends TPSL req
+// TRGW pushes TPSL response
+// TODO TRGW must push TPSL update
+// stop stragegy
+// strategy don't stop right now
+// strategy sends close order req
+// TRGW pushes close trade and THEN order ack
+// strategy don't receive TPSL on close
+// stragety stops
 TEST_F(StrategyInstanceTest, OpenPositionWithTpsl_CloseOnGracefullStop)
 {
     ASSERT_EQ(strategy_status, WorkStatus::Stopped);

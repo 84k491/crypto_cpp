@@ -22,6 +22,7 @@ protected:
     Symbol m_symbol;
 };
 
+// open a long position, check parameters
 TEST_F(PositionManagerTest, OpenLongDontClose)
 {
     PositionManager pm(m_symbol);
@@ -45,6 +46,7 @@ TEST_F(PositionManagerTest, OpenLongDontClose)
     EXPECT_EQ(opened_pos.entry_fee(), 0.2);
 }
 
+// open a short position, check parameters
 TEST_F(PositionManagerTest, OpenShortDontClose)
 {
     PositionManager pm(m_symbol);
@@ -68,6 +70,9 @@ TEST_F(PositionManagerTest, OpenShortDontClose)
     EXPECT_EQ(opened_pos.entry_fee(), 0.2);
 }
 
+// open a long position, close it
+// profit is bigger than fee, fees subtracted from profit
+// fees calculated
 TEST_F(PositionManagerTest, LongCloseRawProfitBiggerThanFee)
 {
     PositionManager pm(m_symbol);
@@ -96,6 +101,9 @@ TEST_F(PositionManagerTest, LongCloseRawProfitBiggerThanFee)
     EXPECT_EQ(res.opened_time.count(), 100);
 }
 
+// open a short position, close it
+// profit is bigger than fee, fees subtracted from profit
+// fees calculated
 TEST_F(PositionManagerTest, ShortCloseRawProfitBiggerThanFee)
 {
     PositionManager pm(m_symbol);
@@ -124,6 +132,10 @@ TEST_F(PositionManagerTest, ShortCloseRawProfitBiggerThanFee)
     EXPECT_EQ(res.opened_time.count(), 100);
 }
 
+// open a long position, close it
+// raw profit is less than fee, fees subtracted from profit
+// total profit is negative
+// fees calculated
 TEST_F(PositionManagerTest, LongCloseRawProfitLessThanFee)
 {
     PositionManager pm(m_symbol);
@@ -152,6 +164,10 @@ TEST_F(PositionManagerTest, LongCloseRawProfitLessThanFee)
     EXPECT_EQ(res.opened_time.count(), 100);
 }
 
+// open a short position, close it
+// raw profit is less than fee, fees subtracted from profit
+// total profit is negative
+// fees calculated
 TEST_F(PositionManagerTest, ShortCloseRawProfitLessThanFee)
 {
     PositionManager pm(m_symbol);
@@ -180,6 +196,10 @@ TEST_F(PositionManagerTest, ShortCloseRawProfitLessThanFee)
     EXPECT_EQ(res.opened_time.count(), 100);
 }
 
+// open a long position, close it
+// same price, fees subtracted from profit
+// fees calculated
+// total profit is negative and the same as fees * -1
 TEST_F(PositionManagerTest, LongCloseSamePrice)
 {
     PositionManager pm(m_symbol);
@@ -208,6 +228,10 @@ TEST_F(PositionManagerTest, LongCloseSamePrice)
     EXPECT_EQ(res.opened_time.count(), 100);
 }
 
+// open a short position, close it
+// same price, fees subtracted from profit
+// fees calculated
+// total profit is negative and the same as fees * -1
 TEST_F(PositionManagerTest, ShortCloseSamePrice)
 {
     PositionManager pm(m_symbol);
@@ -236,6 +260,8 @@ TEST_F(PositionManagerTest, ShortCloseSamePrice)
     EXPECT_EQ(res.opened_time.count(), 100);
 }
 
+// open a long position with two trades, close it with one
+// position value calculated from the average price
 TEST_F(PositionManagerTest, LongOpenedWithTwoTradesProfit)
 {
     PositionManager pm(m_symbol);
@@ -274,6 +300,7 @@ TEST_F(PositionManagerTest, LongOpenedWithTwoTradesProfit)
     EXPECT_EQ(res.opened_time.count(), 100);
 }
 
+// same as above, but for short
 TEST_F(PositionManagerTest, ShortOpenedWithTwoTradesProfit)
 {
     PositionManager pm(m_symbol);
@@ -312,6 +339,8 @@ TEST_F(PositionManagerTest, ShortOpenedWithTwoTradesProfit)
     EXPECT_EQ(res.opened_time.count(), 100);
 }
 
+// open long with one trade, close with two
+// position value calculated from the average price
 TEST_F(PositionManagerTest, LongClosedWithTwoTradesProfit)
 {
     PositionManager pm(m_symbol);
@@ -350,6 +379,7 @@ TEST_F(PositionManagerTest, LongClosedWithTwoTradesProfit)
     EXPECT_EQ(res.opened_time.count(), 100);
 }
 
+// same as above, but for short
 TEST_F(PositionManagerTest, ShortClosedWithTwoTradesProfit)
 {
     PositionManager pm(m_symbol);
@@ -388,6 +418,7 @@ TEST_F(PositionManagerTest, ShortClosedWithTwoTradesProfit)
     EXPECT_EQ(res.opened_time.count(), 100);
 }
 
+// open long, flip to short, close
 TEST_F(PositionManagerTest, LongFlipClosedWithProfit)
 {
     PositionManager pm(m_symbol);
@@ -426,6 +457,7 @@ TEST_F(PositionManagerTest, LongFlipClosedWithProfit)
     EXPECT_EQ(res.opened_time.count(), 100);
 }
 
+// same for short
 TEST_F(PositionManagerTest, ShortFlipClosedWithProfit)
 {
     PositionManager pm(m_symbol);
@@ -464,6 +496,7 @@ TEST_F(PositionManagerTest, ShortFlipClosedWithProfit)
     EXPECT_EQ(res.opened_time.count(), 100);
 }
 
+// open long, close with loss, fees subtracted, total loss is increased
 TEST_F(PositionManagerTest, LongCloseWithLoss)
 {
     PositionManager pm(m_symbol);
@@ -492,6 +525,7 @@ TEST_F(PositionManagerTest, LongCloseWithLoss)
     EXPECT_EQ(res.opened_time.count(), 100);
 }
 
+// same for short
 TEST_F(PositionManagerTest, ShortCloseWithLoss)
 {
     PositionManager pm(m_symbol);
@@ -520,6 +554,7 @@ TEST_F(PositionManagerTest, ShortCloseWithLoss)
     EXPECT_EQ(res.opened_time.count(), 100);
 }
 
+// same as above, but with fractional price
 TEST_F(PositionManagerTest, LongCloseWithLossFractionalPrice)
 {
     PositionManager pm(m_symbol);
@@ -551,6 +586,7 @@ TEST_F(PositionManagerTest, LongCloseWithLossFractionalPrice)
     EXPECT_EQ(res.opened_time.count(), 100);
 }
 
+// two positions in a row, first long, then short
 TEST_F(PositionManagerTest, ShortProfitThenLongLoss)
 {
     PositionManager pm(m_symbol);
