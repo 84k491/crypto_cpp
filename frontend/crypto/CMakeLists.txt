@@ -22,8 +22,6 @@ target_include_directories(crypto_local
 target_link_libraries(crypto_local PRIVATE
     nlohmann_json::nlohmann_json
     crossguid2
-    curl # TODO remove?
-    ssl # TODO remove?
     crypto
     ta
     strategy

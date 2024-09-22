@@ -4,6 +4,8 @@ file(GLOB PROJECT_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
 )
 
+add_subdirectory(tests)
+
 add_library(gateway STATIC ${PROJECT_SOURCES})
 
 target_include_directories(gateway
