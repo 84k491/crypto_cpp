@@ -14,7 +14,7 @@
 class ByBitTradingGateway final
     : public ITradingGateway
     , public IConnectionSupervisor
-    , private IEventInvoker<OrderRequestEvent, TpslRequestEvent, PingCheckEvent>
+    , private IEventInvoker<OrderRequestEvent, TpslRequestEvent, TrailingStopLossRequestEvent, PingCheckEvent>
 {
     static constexpr std::string_view s_rest_base_url = "https://api-testnet.bybit.com";
     static constexpr std::chrono::seconds ws_ping_interval = std::chrono::seconds(5);
@@ -32,9 +32,10 @@ public:
 private:
     bool check_consumers(const std::string & symbol);
 
-    void invoke(const std::variant<OrderRequestEvent, TpslRequestEvent, PingCheckEvent> & value) override;
+    void invoke(const std::variant<OrderRequestEvent, TpslRequestEvent, TrailingStopLossRequestEvent, PingCheckEvent> & value) override;
     void process_event(const OrderRequestEvent & order);
     void process_event(const TpslRequestEvent & tpsl);
+    void process_event(const TrailingStopLossRequestEvent & tsl);
     void process_event(const PingCheckEvent & ping_event);
 
     bool reconnect_ws_client();
@@ -49,7 +50,7 @@ private:
     void on_connection_verified() override;
 
 private:
-    EventLoop<OrderRequestEvent, TpslRequestEvent, PingCheckEvent> m_event_loop;
+    EventLoop<OrderRequestEvent, TpslRequestEvent, TrailingStopLossRequestEvent, PingCheckEvent> m_event_loop;
 
     std::string m_url;
     std::string m_api_key;

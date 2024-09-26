@@ -107,22 +107,16 @@ void ByBitTradingGateway::push_tpsl_request(const TpslRequestEvent & tpsl_ev)
 
 void ByBitTradingGateway::push_trailing_stop_request(const TrailingStopLossRequestEvent & trailing_stop_ev) 
 {
-    Logger::logf<LogLevel::Error>("Handing of TrailingStopLossRequestEvent is not implemented");
-    
-    UNWRAP_RET_VOID(consumer, trailing_stop_ev.response_consumer.lock())
-    consumer.push(
-        TrailingStopLossResponseEvent(
-            trailing_stop_ev.guid,
-            trailing_stop_ev.trailing_stop_loss,
-            "Not imlemented"));
+    m_event_loop.as_consumer<TrailingStopLossRequestEvent>().push(trailing_stop_ev);
 }
 
-void ByBitTradingGateway::invoke(const std::variant<OrderRequestEvent, TpslRequestEvent, PingCheckEvent> & variant)
+void ByBitTradingGateway::invoke(const std::variant<OrderRequestEvent, TpslRequestEvent, TrailingStopLossRequestEvent, PingCheckEvent> & variant)
 {
     std::visit(
             VariantMatcher{
                     [&](const OrderRequestEvent & order) { process_event(order); },
                     [&](const TpslRequestEvent & tpsl) { process_event(tpsl); },
+                    [&](const TrailingStopLossRequestEvent & tpsl) { process_event(tpsl); },
                     [&](const PingCheckEvent & ping) { process_event(ping); },
             },
             variant);
@@ -228,6 +222,64 @@ void ByBitTradingGateway::process_event(const TpslRequestEvent & tpsl)
     }
     UNWRAP_RET_VOID(consumer, tpsl.response_consumer.lock());
     consumer.push(TpslResponseEvent(tpsl.guid, tpsl.tpsl));
+}
+
+void ByBitTradingGateway::process_event(const TrailingStopLossRequestEvent & tsl)
+{
+    using namespace std::chrono_literals;
+
+    Logger::logf<LogLevel::Debug>("Got TrailingStopLossRequestEvent");
+
+    if (!check_consumers(tsl.symbol.symbol_name)) {
+        Logger::logf<LogLevel::Warning>("No trade consumer for this symbol: {}", tsl.symbol.symbol_name);
+        UNWRAP_RET_VOID(consumer, tsl.response_consumer.lock());
+        consumer.push(
+            TrailingStopLossResponseEvent(
+                tsl.guid,
+                tsl.trailing_stop_loss,
+                std::format("No consumer for this symbol: {}", tsl.symbol.symbol_name)));
+            return;
+        }
+    // TODO validate stop price
+
+    json json_order = {
+            {"category", "linear"},
+            {"symbol", tsl.symbol.symbol_name},
+            {"trailingStop", std::to_string(tsl.trailing_stop_loss.price_distance())},
+            {"activePrice", "0"},
+            {"tpTriggerBy", "LastPrice"},
+            {"slTriggerBy", "LastPrice"},
+            {"tpslMode", "Full"},
+            {"tpOrderType", "Market"},
+            {"slOrderType", "Market"},
+    };
+    const auto request = json_order.dump();
+
+    const std::string url = std::string(s_rest_base_url) + "/v5/position/trading-stop";
+    std::future<std::string> request_future = rest_client.request_auth_async(
+            url,
+            request,
+            m_api_key,
+            m_secret_key,
+            1000ms);
+    const std::future_status status = request_future.wait_for(5000ms);
+    if (status != std::future_status::ready) {
+        // TODO specify guid
+        UNWRAP_RET_VOID(consumer, tsl.response_consumer.lock());
+        consumer.push(TrailingStopLossResponseEvent(tsl.guid, tsl.trailing_stop_loss, "Request timed out"));
+        return;
+    }
+    const std::string request_result = request_future.get();
+    Logger::logf<LogLevel::Debug>("Bybit::TPSL response: {}", request_result);
+    const auto j = json::parse(request_result);
+    const ByBitMessages::TpslResult result = j.get<ByBitMessages::TpslResult>();
+    if (result.ret_code != 0) {
+        UNWRAP_RET_VOID(consumer, tsl.response_consumer.lock());
+        consumer.push(TrailingStopLossResponseEvent(tsl.guid, tsl.trailing_stop_loss, result.ret_msg));
+        return;
+    }
+    UNWRAP_RET_VOID(consumer, tsl.response_consumer.lock());
+    consumer.push(TrailingStopLossResponseEvent(tsl.guid, tsl.trailing_stop_loss));
 }
 
 void ByBitTradingGateway::process_event(const PingCheckEvent & ping_event)
