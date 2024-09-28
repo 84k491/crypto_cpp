@@ -194,6 +194,12 @@ void ByBitTradingGateway::process_event(const OrderRequestEvent & req)
     }
     const std::string request_result = request_future.get();
     Logger::logf<LogLevel::Debug>("Enter order response: {}", request_result);
+    if (!request_result.empty()) {
+        return;
+    }
+
+    Logger::logf<LogLevel::Warning>("Empty order response: {}. Pushing this request again", req.order.guid());
+    m_event_loop.as_consumer<OrderRequestEvent>().push(req);
 }
 
 void ByBitTradingGateway::process_event(const TpslRequestEvent & tpsl)
