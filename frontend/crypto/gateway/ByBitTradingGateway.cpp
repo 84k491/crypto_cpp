@@ -35,6 +35,11 @@ void ByBitTradingGateway::on_order_response(const json & j)
             continue;
         }
 
+        if ("CreateByTrailingStop" == response.createType) {
+            on_trailing_stop_update(response);
+            continue;
+        }
+
         const auto order_id_str = response.orderLinkId;
         auto lref = m_consumers.lock();
         auto it = lref.get().find(response.symbol);
@@ -57,6 +62,30 @@ void ByBitTradingGateway::on_order_response(const json & j)
     }
 }
 
+void ByBitTradingGateway::on_trailing_stop_update(const ByBitMessages::OrderResponse & response)
+{
+    auto lref = m_consumers.lock();
+    auto it = lref.get().find(response.symbol);
+    if (it == lref.get().end()) {
+        Logger::logf<LogLevel::Warning>(
+                "Failed to find trailing stop consumer for symbol: {}",
+                response.symbol);
+        return;
+    }
+    if (!response.triggerPrice.has_value()) {
+        Logger::logf<LogLevel::Error>(
+                "No trigger price for trailing stop update");
+        return;
+    }
+    auto & consumers = it->second.second;
+    auto side = response.side == "Buy" ? Side::buy() : Side::sell();
+    Symbol symbol;
+    symbol.symbol_name = response.symbol;
+    StopLoss sl{symbol, response.triggerPrice.value(), side};
+    TrailingStopLossUpdatedEvent tsl_ev{sl, std::chrono::milliseconds(std::stoll(response.updatedTime))};
+    consumers.trailing_stop_update_consumer.push(std::move(tsl_ev));
+}
+
 void ByBitTradingGateway::on_tpsl_update(const std::array<ByBitMessages::OrderResponse, 2> & updates)
 {
     const auto & response = updates[0];
@@ -64,7 +93,7 @@ void ByBitTradingGateway::on_tpsl_update(const std::array<ByBitMessages::OrderRe
     auto lref = m_consumers.lock();
     auto it = lref.get().find(response.symbol);
     if (it == lref.get().end()) {
-        Logger::logf<LogLevel::Warning>("Failed to find consumer for symbol: {}", response.symbol);
+        Logger::logf<LogLevel::Warning>("Failed to find tpsl consumer for symbol: {}", response.symbol);
         return;
     }
     auto & consumers = it->second.second;
@@ -105,7 +134,7 @@ void ByBitTradingGateway::push_tpsl_request(const TpslRequestEvent & tpsl_ev)
     m_event_loop.as_consumer<TpslRequestEvent>().push(tpsl_ev);
 }
 
-void ByBitTradingGateway::push_trailing_stop_request(const TrailingStopLossRequestEvent & trailing_stop_ev) 
+void ByBitTradingGateway::push_trailing_stop_request(const TrailingStopLossRequestEvent & trailing_stop_ev)
 {
     m_event_loop.as_consumer<TrailingStopLossRequestEvent>().push(trailing_stop_ev);
 }
@@ -234,18 +263,19 @@ void ByBitTradingGateway::process_event(const TrailingStopLossRequestEvent & tsl
         Logger::logf<LogLevel::Warning>("No trade consumer for this symbol: {}", tsl.symbol.symbol_name);
         UNWRAP_RET_VOID(consumer, tsl.response_consumer.lock());
         consumer.push(
-            TrailingStopLossResponseEvent(
-                tsl.guid,
-                tsl.trailing_stop_loss,
-                std::format("No consumer for this symbol: {}", tsl.symbol.symbol_name)));
-            return;
-        }
+                TrailingStopLossResponseEvent(
+                        tsl.guid,
+                        tsl.trailing_stop_loss,
+                        std::format("No consumer for this symbol: {}", tsl.symbol.symbol_name)));
+        return;
+    }
     // TODO validate stop price
 
     json json_order = {
             {"category", "linear"},
             {"symbol", tsl.symbol.symbol_name},
-            {"trailingStop", std::to_string(tsl.trailing_stop_loss.price_distance())},
+            // abs because it already knows the direction
+            {"trailingStop", std::to_string(std::fabs(tsl.trailing_stop_loss.price_distance()))},
             {"activePrice", "0"},
             {"tpTriggerBy", "LastPrice"},
             {"slTriggerBy", "LastPrice"},

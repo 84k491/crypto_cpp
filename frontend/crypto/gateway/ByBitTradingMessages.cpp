@@ -17,6 +17,12 @@ void from_json(const json & j, OrderResponse & order)
     j.at("rejectReason").get_to(order.rejectReason);
     j.at("timeInForce").get_to(order.timeInForce);
     order.price = std::stod(j.at("price").get<std::string>());
+    if (const std::string triggerPriceStr = j.at("triggerPrice").get<std::string>(); !triggerPriceStr.empty()) {
+        order.triggerPrice = std::stod(triggerPriceStr);
+    }
+    else {
+        order.triggerPrice = std::nullopt;
+    }
     order.qty = std::stod(j.at("qty").get<std::string>());
     order.leavesQty = std::stod(j.at("leavesQty").get<std::string>());
     order.cumExecQty = std::stod(j.at("cumExecQty").get<std::string>());

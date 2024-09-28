@@ -14,6 +14,7 @@ struct TradingGatewayConsumers
     IEventConsumer<OrderResponseEvent> & order_ack_consumer;
     IEventConsumer<TpslResponseEvent> & tpsl_response_consumer;
     IEventConsumer<TpslUpdatedEvent> & tpsl_update_consumer;
+    IEventConsumer<TrailingStopLossUpdatedEvent> & trailing_stop_update_consumer;
 };
 
 class ITradingGateway

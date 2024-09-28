@@ -26,6 +26,7 @@ struct OrderResponse
     double leavesQty;         // ":"0",
     double cumExecQty;        // ":"0.002",
     double cumExecFee;        // ":"0.046684",
+    std::optional<double> triggerPrice;      //"triggerPrice":"62591.7",
     std::string orderType;    // ":"Market",
     std::string updatedTime;  // ":"1705336167611",
 };

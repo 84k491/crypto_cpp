@@ -1,10 +1,12 @@
 #include "BacktestTradingGateway.h"
 
-#include "Side.h"
 #include "Events.h"
 #include "Logger.h"
 #include "Macros.h"
+#include "Side.h"
 #include "Volume.h"
+
+#include <variant>
 
 BacktestTradingGateway::BacktestTradingGateway()
     : m_event_consumer(std::make_shared<BacktestEventConsumer>())
@@ -16,7 +18,7 @@ void BacktestTradingGateway::set_price_source(EventTimeseriesPublisher<OHLC> & p
     m_price_sub = publisher.subscribe(
             m_event_consumer,
             [](auto &) {},
-            [this](auto, const OHLC & ohlc) {
+            [this](std::chrono::milliseconds ts, const OHLC & ohlc) {
                 m_last_trade_price = ohlc.close;
                 if (m_tpsl.has_value()) {
                     const auto tpsl_trade = try_trade_tpsl(ohlc);
@@ -30,14 +32,25 @@ void BacktestTradingGateway::set_price_source(EventTimeseriesPublisher<OHLC> & p
                     }
                 }
                 if (m_trailing_stop.has_value()) {
-                    const auto trail_stop_trade = m_trailing_stop->on_price_updated(ohlc);
-                    if (trail_stop_trade.has_value()) {
+                    const auto trade_or_sl = m_trailing_stop->on_price_updated(ohlc);
+                    if (trade_or_sl.has_value()) {
                         auto lref = m_consumers.lock();
-                        for (auto & it : lref.get()) {
-                            it.second.second.trade_consumer.push(TradeEvent(trail_stop_trade.value()));
-                        }
-                        m_pos_volume = SignedVolume();
-                        m_trailing_stop.reset();
+                        std::visit(
+                                VariantMatcher{
+                                        [&](const Trade & trade) {
+                                            for (auto & it : lref.get()) {
+                                                it.second.second.trade_consumer.push(TradeEvent(trade));
+                                            }
+                                            m_pos_volume = SignedVolume();
+                                            m_trailing_stop.reset();
+                                        },
+                                        [&](const StopLoss & sl) {
+                                            for (auto & it : lref.get()) {
+                                                it.second.second.trailing_stop_update_consumer.push(
+                                                        TrailingStopLossUpdatedEvent(sl, ts));
+                                            }
+                                        }},
+                                *trade_or_sl);
                     }
                 }
             });
@@ -218,21 +231,15 @@ BacktestTrailingStopLoss::BacktestTrailingStopLoss(SignedVolume pos_volume, doub
 {
 }
 
-std::optional<Trade> BacktestTrailingStopLoss::on_price_updated(const OHLC & ohlc)
+std::optional<std::variant<Trade, StopLoss>> BacktestTrailingStopLoss::on_price_updated(const OHLC & ohlc)
 {
     const double tick_price = ohlc.close;
     const auto [vol, side] = m_pos_volume.as_unsigned_and_side();
     const auto new_stop_loss = m_trailing_stop.calc_new_stop_loss(tick_price, m_current_stop_loss);
-    // Logger::logf<LogLevel::Debug>(
-    //         "Tick price: {}, signed volume: {}, current stop price: {}, possible new stop price: {}",
-    //         tick_price,
-    //         m_pos_volume.value(),
-    //         m_current_stop_price,
-    //         possible_new_stop_price);
 
     if (new_stop_loss) {
         m_current_stop_loss = new_stop_loss.value();
-        return std::nullopt; // SL cannot be triggered if pulled up
+        return m_current_stop_loss; // SL cannot be triggered if pulled up
     }
 
     // TODO make a one-liner after tests

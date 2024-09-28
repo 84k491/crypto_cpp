@@ -20,9 +20,10 @@ class BacktestTrailingStopLoss
 {
     static constexpr double taker_fee_rate = 0.00055; // TODO take it from BTGW
 public:
-    BacktestTrailingStopLoss(SignedVolume pos_volume, double current_price, const TrailingStopLoss& trailing_stop);
+    BacktestTrailingStopLoss(SignedVolume pos_volume, double current_price, const TrailingStopLoss & trailing_stop);
 
-    [[nodiscard("PossibleTrade")]] std::optional<Trade> on_price_updated(const OHLC & ohlc);
+    [[nodiscard("PossibleTrade or updated StopLoss")]]
+    std::optional<std::variant<Trade, StopLoss>> on_price_updated(const OHLC & ohlc);
 
 private:
     SignedVolume m_pos_volume; // TODO make it ref

@@ -73,11 +73,12 @@ StrategyInstance::StrategyInstance(
             m_strategy_guid,
             symbol,
             TradingGatewayConsumers{
-                    // TODO remove this class
+                    // TODO remove this class ?
                     .trade_consumer = *m_event_loop,
                     .order_ack_consumer = *m_event_loop,
                     .tpsl_response_consumer = *m_event_loop,
                     .tpsl_update_consumer = *m_event_loop,
+                    .trailing_stop_update_consumer = *m_event_loop,
             });
     m_strategy_result.update([&](StrategyResult & res) {
         res.position_currency_amount = m_pos_currency_amount;
@@ -355,6 +356,7 @@ void StrategyInstance::handle_event(const OrderResponseEvent & response)
         stop_async(true);
     }
 
+    // TODO it can be trailing stop loss update
     const size_t erased_cnt = m_pending_orders.erase(response.request_guid);
     if (erased_cnt == 0) {
         Logger::log<LogLevel::Error>("unsolicited OrderResponseEvent");
