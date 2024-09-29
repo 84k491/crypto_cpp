@@ -30,6 +30,7 @@ void from_json(const json & j, OrderResponse & order)
     order.cumExecQty = std::stod(j.at("cumExecQty").get<std::string>());
     order.cumExecFee = std::stod(j.at("cumExecFee").get<std::string>());
     j.at("orderType").get_to(order.orderType);
+    j.at("stopOrderType").get_to(order.stopOrderType);
     j.at("updatedTime").get_to(order.updatedTime);
 }
 
@@ -123,7 +124,12 @@ std::optional<TrailingStopLossUpdatedEvent> OrderResponseResult::on_trailing_sto
     Symbol symbol;
     symbol.symbol_name = response.symbol;
     std::optional<StopLoss> sl = {};
-    if (response.orderStatus != "Filled" && response.orderStatus != "Deactivated") {
+    const std::set<std::string> reset_statuses = {
+            "Filled",
+            "Deactivated",
+            "Cancelled",
+            "Triggered"};
+    if (!reset_statuses.contains(response.orderStatus)) {
         sl = {symbol, response.triggerPrice.value(), side};
     }
     TrailingStopLossUpdatedEvent tsl_ev{
@@ -162,7 +168,8 @@ std::optional<std::vector<OrderResponseResult::EventVariant>> OrderResponseResul
             continue;
         }
 
-        if ("CreateByTrailingStop" == response.createType) {
+        if ("CreateByTrailingStop" == response.createType ||
+            ("CreateByStopOrder" == response.createType && "TrailingStop" == response.stopOrderType)) {
             const auto tsl_opt = on_trailing_stop_update(response);
             if (!tsl_opt.has_value()) {
                 return {};

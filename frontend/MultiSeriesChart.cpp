@@ -1,5 +1,7 @@
 #include "MultiSeriesChart.h"
 
+#include "Logger.h"
+
 namespace {
 // colors for series
 std::vector<QColor> colors = {
@@ -97,7 +99,7 @@ void MultiSeriesChart::push_tpsl(std::chrono::milliseconds ts, Tpsl tpsl)
 
 void MultiSeriesChart::push_stop_loss(std::chrono::milliseconds ts, double stop_price)
 {
-    push_series_value_dont_replot("stop_loss", ts, stop_price, true);
+    push_series_value_dont_replot("trailing_stop_loss", ts, stop_price, true);
     replot();
 }
 

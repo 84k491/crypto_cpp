@@ -1,7 +1,6 @@
 #include "Events.h"
 #include "Ohlc.h"
 #include "Trade.h"
-#include "Volume.h"
 
 #include <Logger.h>
 #include <cstdint>
@@ -29,6 +28,7 @@ struct OrderResponse
     double cumExecFee;                  // ":"0.046684",
     std::optional<double> triggerPrice; //"triggerPrice":"62591.7",
     std::string orderType;              // ":"Market",
+    std::string stopOrderType;
     std::string updatedTime;            // ":"1705336167611",
 };
 

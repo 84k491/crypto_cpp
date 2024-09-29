@@ -106,7 +106,7 @@ std::optional<std::pair<std::string, bool>> TrailigStopLossStrategy::handle_even
 
 std::optional<std::pair<std::string, bool>> TrailigStopLossStrategy::handle_event(const TrailingStopLossUpdatedEvent & ev)
 {
-    Logger::log<LogLevel::Debug>("TrailingStopLossUpdatedEvent"); // TODO print it out
+    Logger::log<LogLevel::Debug>("Received TrailingStopLossUpdatedEvent"); // TODO print it out
     if (!ev.stop_loss.has_value()) {
         m_active_stop_loss.reset();
         Logger::log<LogLevel::Debug>("Trailing stop loss removed");

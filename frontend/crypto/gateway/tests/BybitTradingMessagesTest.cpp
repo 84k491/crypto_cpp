@@ -1,4 +1,5 @@
 #include "ByBitTradingMessages.h"
+#include "Events.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -255,6 +256,7 @@ TEST(BybitTradingMessagesTest, TrailingStopLossUpdate)
     ASSERT_EQ(tsl_event.stop_loss->side(), Side::sell());
 }
 
+// created by trailing stop
 TEST(BybitTradingMessagesTest, TrailingStopLossFilled)
 {
     const std::string msg_str = R"(
@@ -477,6 +479,151 @@ TEST(BybitTradingMessagesTest, TrailingStopLossDeactivatedWithUserOrder)
     ASSERT_EQ(user_order_event.request_guid, xg::Guid("ded4d47f-6928-4a74-ab49-0c914b555f02"));
     ASSERT_EQ(user_order_event.symbol_name, "BTCUSDT");
     ASSERT_FALSE(user_order_event.reject_reason);
+}
+
+// create by stop order
+TEST(BybitTradingMessagesTest, TrailingStopLossFilledCreateByPlainStop)
+{
+    const std::string msg_str = R"(
+        {
+            "creationTime":1727610146812,
+            "data":[
+                {
+                    "avgPrice":"74542.9",
+                    "blockTradeId":"",
+                    "cancelType":"UNKNOWN",
+                    "category":"linear",
+                    "closeOnTrigger":true,
+                    "closedPnl":"-3.10453389",
+                    "createType":"CreateByStopOrder",
+                    "createdTime":"1727610146106",
+                    "cumExecFee":"0.0409986",
+                    "cumExecQty":"0.001",
+                    "cumExecValue":"74.5429",
+                    "feeCurrency":"",
+                    "isLeverage":"",
+                    "lastPriceOnCreated":"74320",
+                    "leavesQty":"0",
+                    "leavesValue":"0",
+                    "marketUnit":"",
+                    "orderId":"33177cf1-5191-4b01-a0e0-7089473932ad",
+                    "orderIv":"",
+                    "orderLinkId":"",
+                    "orderStatus":"Filled",
+                    "orderType":"Market",
+                    "placeType":"",
+                    "positionIdx":0,
+                    "price":"78036",
+                    "qty":"0.001",
+                    "reduceOnly":true,
+                    "rejectReason":"EC_NoError",
+                    "side":"Buy",
+                    "slLimitPrice":"0",
+                    "slTriggerBy":"",
+                    "smpGroup":0,
+                    "smpOrderId":"",
+                    "smpType":"None",
+                    "stopLoss":"",
+                    "stopOrderType":"TrailingStop",
+                    "symbol":"BTCUSDT",
+                    "takeProfit":"",
+                    "timeInForce":"IOC",
+                    "tpLimitPrice":"0",
+                    "tpTriggerBy":"",
+                    "tpslMode":"UNKNOWN",
+                    "triggerBy":"LastPrice",
+                    "triggerDirection":1,
+                    "triggerPrice":"71522.2",
+                    "updatedTime":"1727610146810"
+                }
+            ],
+            "id":"100475188_BTCUSDT_9364424131",
+            "topic":"order"})";
+
+    ByBitMessages::OrderResponseResult result;
+    from_json(nlohmann::json::parse(msg_str), result);
+
+    const auto events_opt = result.to_events();
+    ASSERT_TRUE(events_opt.has_value());
+    const auto & events = *events_opt;
+    ASSERT_EQ(events.size(), 1);
+    const auto & tsl_event_var = events.front();
+    ASSERT_TRUE(std::holds_alternative<TrailingStopLossUpdatedEvent>(tsl_event_var));
+    const auto & tsl_event = std::get<TrailingStopLossUpdatedEvent>(tsl_event_var);
+    ASSERT_EQ(tsl_event.symbol_name, "BTCUSDT");
+    ASSERT_FALSE(tsl_event.stop_loss.has_value());
+}
+
+TEST(BybitTradingMessagesTest, TrailingStopLossTriggered)
+{
+    const std::string msg_str = R"(
+        {
+            "creationTime":1727610146807,
+            "data":[
+                {
+                    "avgPrice":"",
+                    "blockTradeId":"",
+                    "cancelType":"UNKNOWN",
+                    "category":"linear",
+                    "closeOnTrigger":true,
+                    "closedPnl":"0",
+                    "createType":"CreateByStopOrder",
+                    "createdTime":"1727610146106",
+                    "cumExecFee":"0",
+                    "cumExecQty":"0",
+                    "cumExecValue":"0",
+                    "feeCurrency":"",
+                    "isLeverage":"",
+                    "lastPriceOnCreated":"74320",
+                    "leavesQty":"0.001",
+                    "leavesValue":"0",
+                    "marketUnit":"",
+                    "orderId":"33177cf1-5191-4b01-a0e0-7089473932ad",
+                    "orderIv":"",
+                    "orderLinkId":"",
+                    "orderStatus":"Triggered",
+                    "orderType":"Market",
+                    "placeType":"",
+                    "positionIdx":0,
+                    "price":"0",
+                    "qty":"0.001",
+                    "reduceOnly":true,
+                    "rejectReason":"EC_NoError",
+                    "side":"Buy",
+                    "slLimitPrice":"0",
+                    "slTriggerBy":"",
+                    "smpGroup":0,
+                    "smpOrderId":"",
+                    "smpType":"None",
+                    "stopLoss":"",
+                    "stopOrderType":"TrailingStop",
+                    "symbol":"BTCUSDT",
+                    "takeProfit":"",
+                    "timeInForce":"IOC",
+                    "tpLimitPrice":"0",
+                    "tpTriggerBy":"",
+                    "tpslMode":"UNKNOWN",
+                    "triggerBy":"LastPrice",
+                    "triggerDirection":1,
+                    "triggerPrice":"71522.2",
+                    "updatedTime":"1727610146806"
+                }
+            ],
+            "id":"ts:33177cf1-5191-4b01-a0e0-7089473932ad,1@743200000,ticker,1",
+            "topic":"order"})";
+
+    ByBitMessages::OrderResponseResult result;
+    from_json(nlohmann::json::parse(msg_str), result);
+
+    const auto events_opt = result.to_events();
+    ASSERT_TRUE(events_opt.has_value());
+    const auto & events = *events_opt;
+    ASSERT_EQ(events.size(), 1);
+    const auto & tsl_event_var = events.front();
+    ASSERT_TRUE(std::holds_alternative<TrailingStopLossUpdatedEvent>(tsl_event_var));
+    const auto & tsl_event = std::get<TrailingStopLossUpdatedEvent>(tsl_event_var);
+    ASSERT_EQ(tsl_event.symbol_name, "BTCUSDT");
+    ASSERT_FALSE(tsl_event.stop_loss.has_value()) << "There is a market order entered, so there is must be no stop order anymore";
 }
 
 // TPSL ack with take profit
