@@ -3,6 +3,7 @@
 #include "Events.h"
 #include "ITradingGateway.h"
 #include "Logger.h"
+#include "ScopeExit.h"
 #include "Signal.h"
 #include "TpslExitStrategy.h"
 #include "TrailingStopStrategy.h"
@@ -360,6 +361,7 @@ void StrategyInstance::handle_event(const OrderResponseEvent & response)
         Logger::log<LogLevel::Error>("unsolicited OrderResponseEvent");
         return;
     }
+    ScopeExit se([&]() { m_pending_orders.erase(it); });
 
     if (!response.retry) {
         return;
