@@ -41,7 +41,7 @@ void BacktestTradingGateway::set_price_source(EventTimeseriesPublisher<OHLC> & p
                                             for (auto & it : lref.get()) {
                                                 it.second.second.trade_consumer.push(TradeEvent(trade));
                                                 it.second.second.trailing_stop_update_consumer.push(
-                                                        TrailingStopLossUpdatedEvent({}, ts));
+                                                        TrailingStopLossUpdatedEvent(trade.symbol().symbol_name, {}, ts));
                                             }
                                             m_pos_volume = SignedVolume();
                                             m_trailing_stop.reset();
@@ -49,7 +49,7 @@ void BacktestTradingGateway::set_price_source(EventTimeseriesPublisher<OHLC> & p
                                         [&](const StopLoss & sl) {
                                             for (auto & it : lref.get()) {
                                                 it.second.second.trailing_stop_update_consumer.push(
-                                                        TrailingStopLossUpdatedEvent(sl, ts));
+                                                        TrailingStopLossUpdatedEvent(sl.symbol().symbol_name, sl, ts));
                                             }
                                         }},
                                 *trade_or_sl);

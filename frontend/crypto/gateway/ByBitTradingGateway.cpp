@@ -56,9 +56,9 @@ void ByBitTradingGateway::on_order_response(const json & j)
                             consumers.tpsl_update_consumer.push(event);
                         },
                         [&](const TrailingStopLossUpdatedEvent & event) {
-                            auto it = lref.get().find(event.stop_loss->symbol().symbol_name);
+                            auto it = lref.get().find(event.symbol_name);
                             if (it == lref.get().end()) {
-                                Logger::logf<LogLevel::Warning>("Failed to find tpsl consumer for symbol: {}", event.stop_loss->symbol().symbol_name);
+                                Logger::logf<LogLevel::Warning>("Failed to find tpsl consumer for symbol: {}", event.symbol_name);
                                 return;
                             }
                             auto & consumers = it->second.second;

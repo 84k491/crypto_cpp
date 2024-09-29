@@ -93,7 +93,7 @@ TEST(BybitTradingMessagesTest, MarketOrderAck)
                     "category":"linear",
                     "symbol":"BTCUSDT",
                     "orderId":"b49d6860-3062-4295-aa1f-c6471f3c9b20",
-                    "orderLinkId":"1708249213491",
+                    "orderLinkId":"c49d6860-3062-4295-aa1f-c6471f3c9b20",
                     "blockTradeId":"",
                     "side":"Sell",
                     "positionIdx":0,
@@ -143,16 +143,27 @@ TEST(BybitTradingMessagesTest, MarketOrderAck)
     from_json(nlohmann::json::parse(msg_str), result);
 
     ASSERT_EQ(result.orders.size(), 1);
-    const auto & order = result.orders.front();
-    ASSERT_EQ(order.category, "linear");
-    ASSERT_EQ(order.symbol, "BTCUSDT");
-    ASSERT_EQ(order.orderId, "b49d6860-3062-4295-aa1f-c6471f3c9b20");
-    ASSERT_EQ(order.price, 49257.6);
-    ASSERT_EQ(order.qty, 0.003);
-    ASSERT_EQ(order.leavesQty, 0.0);
-    ASSERT_DOUBLE_EQ(order.cumExecQty, 0.003);
-    ASSERT_DOUBLE_EQ(order.cumExecFee, 0.0855525);
-    ASSERT_EQ(order.updatedTime, "1708249213758");
+    const auto & order_response = result.orders.front();
+    ASSERT_EQ(order_response.category, "linear");
+    ASSERT_EQ(order_response.symbol, "BTCUSDT");
+    ASSERT_EQ(order_response.orderId, "b49d6860-3062-4295-aa1f-c6471f3c9b20");
+    ASSERT_EQ(order_response.price, 49257.6);
+    ASSERT_EQ(order_response.qty, 0.003);
+    ASSERT_EQ(order_response.leavesQty, 0.0);
+    ASSERT_DOUBLE_EQ(order_response.cumExecQty, 0.003);
+    ASSERT_DOUBLE_EQ(order_response.cumExecFee, 0.0855525);
+    ASSERT_EQ(order_response.updatedTime, "1708249213758");
+
+    const auto events_opt = result.to_events();
+    ASSERT_TRUE(events_opt.has_value());
+    const auto & events = events_opt.value();
+    ASSERT_EQ(events.size(), 1);
+    const auto & order_event_var = events.front();
+    ASSERT_TRUE(std::holds_alternative<OrderResponseEvent>(order_event_var));
+    const auto& order_event = std::get<OrderResponseEvent>(events.front());
+    ASSERT_EQ(order_event.symbol_name, "BTCUSDT");
+    ASSERT_EQ(order_event.request_guid, xg::Guid("c49d6860-3062-4295-aa1f-c6471f3c9b20"));
+    ASSERT_EQ(order_event.reject_reason, std::nullopt);
 }
 
 TEST(BybitTradingMessagesTest, TrailingStopLossUpdate)
@@ -229,64 +240,77 @@ TEST(BybitTradingMessagesTest, TrailingStopLossUpdate)
     ASSERT_DOUBLE_EQ(order.cumExecQty, 0.0);
     ASSERT_DOUBLE_EQ(order.cumExecFee, 0.0);
     ASSERT_EQ(order.updatedTime, "1727523073392");
+
+    const auto events_opt = result.to_events();
+    ASSERT_TRUE(events_opt.has_value());
+    const auto & events = events_opt.value();
+    ASSERT_EQ(events.size(), 1);
+    const auto & tsl_event_var = events.front();
+    ASSERT_TRUE(std::holds_alternative<TrailingStopLossUpdatedEvent>(tsl_event_var));
+    const auto& tsl_event = std::get<TrailingStopLossUpdatedEvent>(events.front());
+    ASSERT_TRUE(tsl_event.stop_loss.has_value());
+    ASSERT_EQ(tsl_event.symbol_name, "BTCUSDT");
+    ASSERT_EQ(tsl_event.stop_loss->symbol().symbol_name, "BTCUSDT");
+    ASSERT_EQ(tsl_event.stop_loss->stop_price(), 62591.7);
+    ASSERT_EQ(tsl_event.stop_loss->side(), Side::sell());
 }
 
 TEST(BybitTradingMessagesTest, TrailingStopLossFilled)
 {
     const std::string msg_str = R"(
         {
-            "creationTime":1727527652062,
+            "creationTime":1727528140038,
             "data":[
                 {
-                    "avgPrice":"64809.6",
+                    "avgPrice":"64672.7",
                     "blockTradeId":"",
                     "cancelType":"UNKNOWN",
                     "category":"linear",
-                    "closeOnTrigger":false,
-                    "closedPnl":"0",
-                    "createType":"CreateByUser",
-                    "createdTime":"1727527652057",
-                    "cumExecFee":"0.03564528",
+                    "closeOnTrigger":true,
+                    "closedPnl":"-0.18480246",
+                    "createType":"CreateByTrailingStop",
+                    "createdTime":"1727528044959",
+                    "cumExecFee":"0.03556999",
                     "cumExecQty":"0.001",
-                    "cumExecValue":"64.8096",
+                    "cumExecValue":"64.6727",
                     "feeCurrency":"",
                     "isLeverage":"",
-                    "lastPriceOnCreated":"64617.3",
+                    "lastPriceOnCreated":"64737.5",
                     "leavesQty":"0",
                     "leavesValue":"0",
                     "marketUnit":"",
-                    "orderId":"8df8fa97-734c-47b4-8fc8-da55b7068011",
+                    "orderId":"7c5a170a-d562-4941-84a8-1252ec833bac",
                     "orderIv":"",
-                    "orderLinkId":"f8d63d27-d268-4d8d-b6f4-7d44142266fe",
+                    "orderLinkId":"",
                     "orderStatus":"Filled",
                     "orderType":"Market",
                     "placeType":"",
                     "positionIdx":0,
-                    "price":"67848.1",
+                    "price":"61500.7",
                     "qty":"0.001",
-                    "reduceOnly":false,
+                    "reduceOnly":true,
                     "rejectReason":"EC_NoError",
-                    "side":"Buy",
+                    "side":"Sell",
                     "slLimitPrice":"0",
                     "slTriggerBy":"",
                     "smpGroup":0,
                     "smpOrderId":"",
                     "smpType":"None",
                     "stopLoss":"",
-                    "stopOrderType":"",
+                    "stopOrderType":"TrailingStop",
                     "symbol":"BTCUSDT",
                     "takeProfit":"",
                     "timeInForce":"IOC",
                     "tpLimitPrice":"0",
                     "tpTriggerBy":"",
                     "tpslMode":"UNKNOWN",
-                    "triggerBy":"",
-                    "triggerDirection":0,
-                    "triggerPrice":"",
-                    "updatedTime":"1727527652061"
+                    "triggerBy":"LastPrice",
+                    "triggerDirection":2,
+                    "triggerPrice":"64702.7",
+                    "updatedTime":"1727528140037"
                 }
             ],
-            "id":"100475188_BTCUSDT_9364011907",
+            "id":"100475188_BTCUSDT_9364013701",
             "topic":"order"})";
 
     ByBitMessages::OrderResponseResult result;
@@ -296,17 +320,28 @@ TEST(BybitTradingMessagesTest, TrailingStopLossFilled)
     const auto & order = result.orders.front();
     ASSERT_EQ(order.category, "linear");
     ASSERT_EQ(order.symbol, "BTCUSDT");
-    ASSERT_EQ(order.orderId, "8df8fa97-734c-47b4-8fc8-da55b7068011");
-    ASSERT_EQ(order.price, 67848.1);
+    ASSERT_EQ(order.orderId, "7c5a170a-d562-4941-84a8-1252ec833bac");
+    ASSERT_EQ(order.price, 61500.7);
+    ASSERT_EQ(order.triggerPrice, 64702.7);
     ASSERT_EQ(order.qty, 0.001);
     ASSERT_EQ(order.leavesQty, 0.0);
     ASSERT_EQ(order.orderStatus, "Filled");
     ASSERT_DOUBLE_EQ(order.cumExecQty, 0.001);
-    ASSERT_DOUBLE_EQ(order.cumExecFee, 0.03564528);
-    ASSERT_EQ(order.updatedTime, "1727527652061");
+    ASSERT_DOUBLE_EQ(order.cumExecFee, 0.03556999);
+    ASSERT_EQ(order.updatedTime, "1727528140037");
+
+    const auto events_opt = result.to_events();
+    ASSERT_TRUE(events_opt.has_value());
+    const auto & events = events_opt.value();
+    ASSERT_EQ(events.size(), 1);
+    const auto & tsl_event_var = events.front();
+    ASSERT_TRUE(std::holds_alternative<TrailingStopLossUpdatedEvent>(tsl_event_var));
+    const auto& tsl_event = std::get<TrailingStopLossUpdatedEvent>(events.front());
+    ASSERT_FALSE(tsl_event.stop_loss.has_value());
+    ASSERT_EQ(tsl_event.symbol_name, "BTCUSDT");
 }
 
-TEST(BybitTradingMessagesTest, TrailingStopLossDeactivated)
+TEST(BybitTradingMessagesTest, TrailingStopLossDeactivatedWithUserOrder)
 {
     const std::string msg_str = R"(
         {
@@ -424,6 +459,8 @@ TEST(BybitTradingMessagesTest, TrailingStopLossDeactivated)
     const auto & order2 = result.orders.back();
     ASSERT_EQ(order2.orderId, "c1447821-3ac3-4a77-aebc-3c9181dbdb82");
     ASSERT_EQ(order2.orderStatus, "Filled");
+
+    // TODO check events
 }
 
 // TPSL ack with take profit

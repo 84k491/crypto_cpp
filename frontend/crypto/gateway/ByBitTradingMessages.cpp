@@ -126,7 +126,10 @@ std::optional<TrailingStopLossUpdatedEvent> OrderResponseResult::on_trailing_sto
     if (response.orderStatus != "Filled" && response.orderStatus != "Deactivated") {
         sl = {symbol, response.triggerPrice.value(), side};
     }
-    TrailingStopLossUpdatedEvent tsl_ev{sl, std::chrono::milliseconds(std::stoll(response.updatedTime))};
+    TrailingStopLossUpdatedEvent tsl_ev{
+            response.symbol,
+            sl,
+            std::chrono::milliseconds(std::stoll(response.updatedTime))};
     return tsl_ev;
 }
 
