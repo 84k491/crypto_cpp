@@ -81,7 +81,10 @@ void ByBitTradingGateway::on_trailing_stop_update(const ByBitMessages::OrderResp
     auto side = response.side == "Buy" ? Side::buy() : Side::sell();
     Symbol symbol;
     symbol.symbol_name = response.symbol;
-    StopLoss sl{symbol, response.triggerPrice.value(), side};
+    std::optional<StopLoss> sl = {};
+    if (response.orderStatus != "Filled" && response.orderStatus != "Deactivated") {
+        sl = {symbol, response.triggerPrice.value(), side};
+    }
     TrailingStopLossUpdatedEvent tsl_ev{sl, std::chrono::milliseconds(std::stoll(response.updatedTime))};
     consumers.trailing_stop_update_consumer.push(std::move(tsl_ev));
 }

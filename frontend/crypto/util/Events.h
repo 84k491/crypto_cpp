@@ -166,13 +166,13 @@ struct TrailingStopLossResponseEvent : public OrderResponseEvent
 
 struct TrailingStopLossUpdatedEvent : public OneWayEvent
 {
-    TrailingStopLossUpdatedEvent(StopLoss stop_loss, std::chrono::milliseconds timestamp)
+    TrailingStopLossUpdatedEvent(std::optional<StopLoss> stop_loss, std::chrono::milliseconds timestamp)
         : stop_loss(std::move(stop_loss))
         , timestamp(timestamp)
     {
     }
 
-    StopLoss stop_loss;
+    std::optional<StopLoss> stop_loss;
     std::chrono::milliseconds timestamp;
 };
 

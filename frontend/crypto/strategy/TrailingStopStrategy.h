@@ -55,13 +55,10 @@ private:
 
     std::shared_ptr<EventLoop<STRATEGY_EVENTS>> m_event_loop;
 
-    std::pair<std::chrono::milliseconds, double> m_last_ts_and_price;
-
     std::set<xg::Guid> m_pending_requests;
     std::optional<OpenedPosition> m_opened_position;
 
     std::optional<TrailingStopLoss> m_active_stop_loss;
-    std::optional<StopLoss> m_active_stop;
 
     TrailigStopLossStrategyConfig m_config;
 };
