@@ -124,8 +124,8 @@ void ByBitTradingGateway::process_event(const OrderRequestEvent & req)
     using namespace std::chrono_literals;
     const auto & order = req.order;
 
+    UNWRAP_RET_VOID(consumer, req.response_consumer.lock());
     if (!check_consumers(order.symbol())) {
-        UNWRAP_RET_VOID(consumer, req.response_consumer.lock());
         consumer.push(OrderResponseEvent(req.order.symbol(), req.order.guid(), "No trade consumer for symbol"));
         return;
     }
@@ -154,7 +154,6 @@ void ByBitTradingGateway::process_event(const OrderRequestEvent & req)
     const std::future_status status = request_future.wait_for(5000ms);
     if (status != std::future_status::ready) {
         // TODO specify guid
-        UNWRAP_RET_VOID(consumer, req.response_consumer.lock());
         consumer.push(
                 OrderResponseEvent(req.order.symbol(), req.order.guid(), "Order request timeout"));
         return;
@@ -165,8 +164,13 @@ void ByBitTradingGateway::process_event(const OrderRequestEvent & req)
         return;
     }
 
-    Logger::logf<LogLevel::Warning>("Empty order response: {}. Pushing this request again", req.order.guid());
-    m_event_loop.as_consumer<OrderRequestEvent>().push(req);
+    Logger::logf<LogLevel::Warning>("Empty order response for order: {}. Need to push this request again with another guid", req.order.guid());
+    auto event = OrderResponseEvent(
+            req.order.symbol(),
+            req.order.guid(),
+            "Empty order response. Need to push this request again with other guid");
+    event.retry = true;
+    consumer.push(std::move(event));
 }
 
 void ByBitTradingGateway::process_event(const TpslRequestEvent & tpsl)

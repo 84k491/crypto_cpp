@@ -75,7 +75,7 @@ struct LiveMDRequest : public EventWithResponse<MDPriceEvent>
     xg::Guid guid;
 };
 
-struct OrderResponseEvent : public OneWayEvent // TODO rename to AckEvent?
+struct OrderResponseEvent : public OneWayEvent
 {
     OrderResponseEvent(
             std::string symbol_name,
@@ -90,6 +90,7 @@ struct OrderResponseEvent : public OneWayEvent // TODO rename to AckEvent?
     std::string symbol_name;
     xg::Guid request_guid;
     std::optional<std::string> reject_reason;
+    bool retry = false;
 };
 
 struct TpslResponseEvent : public OrderResponseEvent

@@ -45,6 +45,7 @@ public:
         return m_side.to_string();
     }
 
+    void regenerate_guid() { m_guid = xg::newGuid(); }
     auto volume() const { return m_volume; }
     auto symbol() const { return m_symbol; }
     auto side() const { return m_side; }

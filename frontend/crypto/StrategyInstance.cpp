@@ -337,7 +337,6 @@ void StrategyInstance::handle_event(const MDPriceEvent & response)
     }
 
     const auto signal = m_strategy->push_price({ts, ohlc.close});
-    // TODO set position before sending order. because next check can be before execution arrives
     if (m_position_manager.opened() == nullptr && m_pending_orders.empty()) {
         if (signal.has_value()) {
             on_signal(signal.value());
@@ -351,16 +350,30 @@ void StrategyInstance::handle_event(const MDPriceEvent & response)
 
 void StrategyInstance::handle_event(const OrderResponseEvent & response)
 {
-    if (response.reject_reason.has_value()) {
+    if (response.reject_reason.has_value() && !response.retry) {
         Logger::logf<LogLevel::Warning>("OrderRejected: {}", response.reject_reason.value());
         stop_async(true);
     }
 
-    // TODO it can be trailing stop loss update
-    const size_t erased_cnt = m_pending_orders.erase(response.request_guid);
-    if (erased_cnt == 0) {
+    const auto it = m_pending_orders.find(response.request_guid);
+    if (it == m_pending_orders.end()) {
         Logger::log<LogLevel::Error>("unsolicited OrderResponseEvent");
+        return;
     }
+
+    if (!response.retry) {
+        return;
+    }
+
+    auto [guid, order] = *it; // copy
+    order.regenerate_guid();
+    OrderRequestEvent or_event(
+            order,
+            m_event_loop,
+            m_event_loop);
+    m_pending_orders.emplace(order.guid(), order);
+    Logger::logf<LogLevel::Debug>("Re-sending order with guid: {}", order.guid());
+    m_tr_gateway.push_order_request(or_event);
 }
 
 void StrategyInstance::handle_event(const TradeEvent & response)
@@ -467,7 +480,7 @@ bool StrategyInstance::open_position(double price, SignedVolume target_absolute_
             order,
             m_event_loop,
             m_event_loop);
-    m_pending_orders.emplace(order.guid());
+    m_pending_orders.emplace(order.guid(), order);
     m_tr_gateway.push_order_request(or_event);
     return true;
 }
@@ -494,7 +507,7 @@ bool StrategyInstance::close_position(double price, std::chrono::milliseconds ts
             order,
             m_event_loop,
             m_event_loop);
-    m_pending_orders.emplace(order.guid());
+    m_pending_orders.emplace(order.guid(), order);
     m_tr_gateway.push_order_request(or_event);
     return true;
 }

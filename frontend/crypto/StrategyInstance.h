@@ -101,7 +101,7 @@ private:
 
     std::set<xg::Guid> m_live_md_requests;
     std::set<xg::Guid> m_pending_requests;
-    std::set<xg::Guid> m_pending_orders;
+    std::map<xg::Guid, MarketOrder> m_pending_orders;
 
     bool m_stop_request_handled = false;
     WorkStatus m_status_on_stop = WorkStatus::Stopped;
