@@ -1,3 +1,4 @@
+#include "Events.h"
 #include "Ohlc.h"
 #include "Trade.h"
 #include "Volume.h"
@@ -16,27 +17,36 @@ struct OrderResponse
     std::string orderId;
     std::string orderLinkId;
     std::string side;
-    std::string orderStatus;  // ":"Filled",
-    std::string createType;   // ":"UNKNOWN",
-    std::string cancelType;   // ":"UNKNOWN",
-    std::string rejectReason; // ":"EC_NoError",
-    std::string timeInForce;  // ":"IOC",
-    double price;             // ":"40323.7",
-    double qty;               // ":"0.002",
-    double leavesQty;         // ":"0",
-    double cumExecQty;        // ":"0.002",
-    double cumExecFee;        // ":"0.046684",
-    std::optional<double> triggerPrice;      //"triggerPrice":"62591.7",
-    std::string orderType;    // ":"Market",
-    std::string updatedTime;  // ":"1705336167611",
+    std::string orderStatus;            // ":"Filled",
+    std::string createType;             // ":"UNKNOWN",
+    std::string cancelType;             // ":"UNKNOWN",
+    std::string rejectReason;           // ":"EC_NoError",
+    std::string timeInForce;            // ":"IOC",
+    double price;                       // ":"40323.7",
+    double qty;                         // ":"0.002",
+    double leavesQty;                   // ":"0",
+    double cumExecQty;                  // ":"0.002",
+    double cumExecFee;                  // ":"0.046684",
+    std::optional<double> triggerPrice; //"triggerPrice":"62591.7",
+    std::string orderType;              // ":"Market",
+    std::string updatedTime;            // ":"1705336167611",
 };
 
 struct OrderResponseResult
 {
+    using EventVariant = std::variant<OrderResponseEvent, TpslUpdatedEvent, TrailingStopLossUpdatedEvent>;
+
     std::string id;
     uint64_t creationTime;
 
     std::list<OrderResponse> orders;
+
+    std::optional<std::vector<EventVariant>> to_events() const;
+
+private:
+    static std::optional<TpslUpdatedEvent> on_tpsl_update(const std::array<ByBitMessages::OrderResponse, 2> & updates);
+    static std::optional<TrailingStopLossUpdatedEvent> on_trailing_stop_update(const ByBitMessages::OrderResponse & response);
+    static std::optional<OrderResponseEvent> on_order_response(const ByBitMessages::OrderResponse & response);
 };
 
 struct Execution
@@ -52,22 +62,7 @@ struct Execution
     double execFee;
     std::string execTime;
 
-    std::optional<Trade> to_trade() const
-    {
-        const auto volume_opt = UnsignedVolume::from(qty);
-        if (!volume_opt.has_value()) {
-            Logger::logf<LogLevel::Error>("Failed to create UnsignedVolume from qty: {}", qty);
-            return std::nullopt;
-        }
-
-        return Trade(
-                std::chrono::milliseconds(std::stoll(execTime)),
-                symbol,
-                execPrice,
-                volume_opt.value(),
-                side == "Buy" ? Side::buy() : Side::sell(),
-                execFee);
-    }
+    std::optional<Trade> to_trade() const;
 };
 
 struct ExecutionResult
@@ -77,44 +72,6 @@ struct ExecutionResult
 
     std::list<Execution> executions;
 };
-
-/*
-{"topic":"execution",
-"id":"100475188_BTCUSDT_8884323101",
-"creationTime":1705844609135,
-"data":[{
-    "category":"linear",
-    "symbol":"BTCUSDT",
-    "closedSize":"0.006",
-    "execFee":"0.1380357",
-    "execId":"7613417a-d7fe-54a5-98a4-cd1f4b552c3d",
-    "execPrice":"41829",
-    "execQty":"0.006",
-    "execType":"Trade",
-    "execValue":"250.974",
-    "feeRate":"0.00055",
-    "tradeIv":"",
-    "markIv":"",
-    "blockTradeId":"",
-    "markPrice":"41826.44",
-    "indexPrice":"",
-    "underlyingPrice":"",
-    "leavesQty":"0",
-    "orderId":"f7d72e38-4961-4f1a-a712-872ed5c55676",
-    "orderLinkId":"",
-    "orderPrice":"43915.5",
-    "orderQty":"0.006",
-    "orderType":"Market",
-    "stopOrderType":"UNKNOWN",
-    "side":"Buy",
-    "execTime":"1705844609131",
-    "isLeverage":"0",
-    "isMaker":false,
-    "seq":8884323101,
-    "marketUnit":"",
-    "createType":"CreateByClosing"
-}]}
-*/
 
 struct TpslResult
 {

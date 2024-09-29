@@ -2,6 +2,8 @@
 
 #include "Ohlc.h"
 
+#include <set>
+
 namespace ByBitMessages {
 
 void from_json(const json & j, OrderResponse & order)
@@ -83,6 +85,96 @@ void from_json(const json & j, TpslResult & tpsl_res)
     // j.at("retExtInfo").get_to(tpsl_res.ret_ext_info);
     size_t ts = j.at("time");
     tpsl_res.timestamp = std::chrono::milliseconds(ts);
+}
+
+std::optional<Trade> Execution::to_trade() const
+{
+    const auto volume_opt = UnsignedVolume::from(qty);
+    if (!volume_opt.has_value()) {
+        Logger::logf<LogLevel::Error>("Failed to create UnsignedVolume from qty: {}", qty);
+        return std::nullopt;
+    }
+
+    return Trade(
+            std::chrono::milliseconds(std::stoll(execTime)),
+            symbol,
+            execPrice,
+            volume_opt.value(),
+            side == "Buy" ? Side::buy() : Side::sell(),
+            execFee);
+}
+
+std::optional<TpslUpdatedEvent> OrderResponseResult::on_tpsl_update(const std::array<ByBitMessages::OrderResponse, 2> & updates)
+{
+    const auto & response = updates[0];
+
+    // TODO handle deactivation and validate
+    return TpslUpdatedEvent(response.symbol, true);
+}
+
+std::optional<TrailingStopLossUpdatedEvent> OrderResponseResult::on_trailing_stop_update(const ByBitMessages::OrderResponse & response)
+{
+    if (!response.triggerPrice.has_value()) {
+        Logger::logf<LogLevel::Error>(
+                "No trigger price for trailing stop update");
+        return {};
+    }
+    auto side = response.side == "Buy" ? Side::buy() : Side::sell();
+    Symbol symbol;
+    symbol.symbol_name = response.symbol;
+    std::optional<StopLoss> sl = {};
+    if (response.orderStatus != "Filled" && response.orderStatus != "Deactivated") {
+        sl = {symbol, response.triggerPrice.value(), side};
+    }
+    TrailingStopLossUpdatedEvent tsl_ev{sl, std::chrono::milliseconds(std::stoll(response.updatedTime))};
+    return tsl_ev;
+}
+
+std::optional<OrderResponseEvent> OrderResponseResult::on_order_response(const ByBitMessages::OrderResponse & response)
+{
+    if (response.rejectReason != "EC_NoError") {
+        return OrderResponseEvent(
+                response.symbol,
+                xg::Guid(response.orderLinkId),
+                response.rejectReason);
+    }
+
+    return OrderResponseEvent(response.symbol, xg::Guid(response.orderLinkId));
+}
+
+std::optional<std::vector<OrderResponseResult::EventVariant>> OrderResponseResult::to_events() const
+{
+    std::vector<OrderResponseResult::EventVariant> res;
+    std::vector<ByBitMessages::OrderResponse> tpsl_updates;
+    for (const ByBitMessages::OrderResponse & response : orders) {
+        if (std::set<std::string>{"CreateByStopLoss", "CreateByTakeProfit"}.contains(response.createType)) {
+            tpsl_updates.push_back(response);
+            if (tpsl_updates.size() > 1) {
+                const auto tpsl_opt = on_tpsl_update({tpsl_updates[0], tpsl_updates[1]});
+                if (!tpsl_opt.has_value()) {
+                    return {};
+                }
+                res.emplace_back(tpsl_opt.value());
+            }
+            continue;
+        }
+
+        if ("CreateByTrailingStop" == response.createType) {
+            const auto tsl_opt = on_trailing_stop_update(response);
+            if (!tsl_opt.has_value()) {
+                return {};
+            }
+            res.emplace_back(tsl_opt.value());
+            continue;
+        }
+
+        const auto order_opt = on_order_response(response);
+        if (!order_opt.has_value()) {
+            return {};
+        }
+        res.emplace_back(order_opt.value());
+    }
+    return res;
 }
 
 } // namespace ByBitMessages

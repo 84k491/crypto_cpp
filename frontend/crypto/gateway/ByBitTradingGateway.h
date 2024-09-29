@@ -42,8 +42,6 @@ private:
 
     void on_ws_message(const json & j);
     void on_order_response(const json & j);
-    void on_tpsl_update(const std::array<ByBitMessages::OrderResponse, 2> & updates);
-    void on_trailing_stop_update(const ByBitMessages::OrderResponse & response);
     void on_execution(const json & j);
 
     // IConnectionSupervisor

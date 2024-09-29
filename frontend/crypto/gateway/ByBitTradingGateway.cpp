@@ -7,6 +7,7 @@
 #include "Ohlc.h"
 
 #include <set>
+#include <variant>
 
 ByBitTradingGateway::ByBitTradingGateway()
     : m_event_loop(*this)
@@ -25,82 +26,46 @@ void ByBitTradingGateway::on_order_response(const json & j)
     ByBitMessages::OrderResponseResult result;
     from_json(j, result);
 
-    std::vector<ByBitMessages::OrderResponse> tpsl_updates;
-    for (const ByBitMessages::OrderResponse & response : result.orders) {
-        if (std::set<std::string>{"CreateByStopLoss", "CreateByTakeProfit"}.contains(response.createType)) {
-            tpsl_updates.push_back(response);
-            if (tpsl_updates.size() > 1) {
-                on_tpsl_update({tpsl_updates[0], tpsl_updates[1]});
-            }
-            continue;
-        }
-
-        if ("CreateByTrailingStop" == response.createType) {
-            on_trailing_stop_update(response);
-            continue;
-        }
-
-        const auto order_id_str = response.orderLinkId;
-        auto lref = m_consumers.lock();
-        auto it = lref.get().find(response.symbol);
-        if (it == lref.get().end()) {
-            Logger::logf<LogLevel::Warning>("Failed to find consumer for symbol: {}", response.symbol);
-            continue;
-        }
-        auto & consumers = it->second.second;
-
-        if (response.rejectReason == "EC_NoError") {
-            auto & ack_consumer = consumers.order_ack_consumer;
-            ack_consumer.push(OrderResponseEvent(xg::Guid(order_id_str)));
-        }
-        else {
-            auto & ack_consumer = consumers.order_ack_consumer;
-            ack_consumer.push(OrderResponseEvent(
-                    xg::Guid(order_id_str),
-                    response.rejectReason));
-        }
+    const auto events_opt = result.to_events();
+    if (!events_opt) {
+        Logger::logf<LogLevel::Error>("Failed to parse order response: {}", j);
+        return; // TODO panic
     }
-}
-
-void ByBitTradingGateway::on_trailing_stop_update(const ByBitMessages::OrderResponse & response)
-{
-    auto lref = m_consumers.lock();
-    auto it = lref.get().find(response.symbol);
-    if (it == lref.get().end()) {
-        Logger::logf<LogLevel::Warning>(
-                "Failed to find trailing stop consumer for symbol: {}",
-                response.symbol);
-        return;
-    }
-    if (!response.triggerPrice.has_value()) {
-        Logger::logf<LogLevel::Error>(
-                "No trigger price for trailing stop update");
-        return;
-    }
-    auto & consumers = it->second.second;
-    auto side = response.side == "Buy" ? Side::buy() : Side::sell();
-    Symbol symbol;
-    symbol.symbol_name = response.symbol;
-    std::optional<StopLoss> sl = {};
-    if (response.orderStatus != "Filled" && response.orderStatus != "Deactivated") {
-        sl = {symbol, response.triggerPrice.value(), side};
-    }
-    TrailingStopLossUpdatedEvent tsl_ev{sl, std::chrono::milliseconds(std::stoll(response.updatedTime))};
-    consumers.trailing_stop_update_consumer.push(std::move(tsl_ev));
-}
-
-void ByBitTradingGateway::on_tpsl_update(const std::array<ByBitMessages::OrderResponse, 2> & updates)
-{
-    const auto & response = updates[0];
+    const auto & events = events_opt.value();
 
     auto lref = m_consumers.lock();
-    auto it = lref.get().find(response.symbol);
-    if (it == lref.get().end()) {
-        Logger::logf<LogLevel::Warning>("Failed to find tpsl consumer for symbol: {}", response.symbol);
-        return;
+    for (const auto & var : events) {
+        std::visit(
+                VariantMatcher{
+                        [&](const OrderResponseEvent & event) {
+                            auto it = lref.get().find(event.symbol_name);
+                            if (it == lref.get().end()) {
+                                Logger::logf<LogLevel::Warning>("Failed to find tpsl consumer for symbol: {}", event.symbol_name);
+                                return;
+                            }
+                            auto & consumers = it->second.second;
+                            consumers.order_ack_consumer.push(event);
+                        },
+                        [&](const TpslUpdatedEvent & event) {
+                            auto it = lref.get().find(event.symbol_name);
+                            if (it == lref.get().end()) {
+                                Logger::logf<LogLevel::Warning>("Failed to find tpsl consumer for symbol: {}", event.symbol_name);
+                                return;
+                            }
+                            auto & consumers = it->second.second;
+                            consumers.tpsl_update_consumer.push(event);
+                        },
+                        [&](const TrailingStopLossUpdatedEvent & event) {
+                            auto it = lref.get().find(event.stop_loss->symbol().symbol_name);
+                            if (it == lref.get().end()) {
+                                Logger::logf<LogLevel::Warning>("Failed to find tpsl consumer for symbol: {}", event.stop_loss->symbol().symbol_name);
+                                return;
+                            }
+                            auto & consumers = it->second.second;
+                            consumers.trailing_stop_update_consumer.push(event);
+                        }},
+                var);
     }
-    auto & consumers = it->second.second;
-    consumers.tpsl_update_consumer.push(TpslUpdatedEvent(response.symbol, true));
 }
 
 void ByBitTradingGateway::on_execution(const json & j)
@@ -161,7 +126,7 @@ void ByBitTradingGateway::process_event(const OrderRequestEvent & req)
 
     if (!check_consumers(order.symbol())) {
         UNWRAP_RET_VOID(consumer, req.response_consumer.lock());
-        consumer.push(OrderResponseEvent(req.order.guid(), "No trade consumer for symbol"));
+        consumer.push(OrderResponseEvent(req.order.symbol(), req.order.guid(), "No trade consumer for symbol"));
         return;
     }
 
@@ -191,8 +156,7 @@ void ByBitTradingGateway::process_event(const OrderRequestEvent & req)
         // TODO specify guid
         UNWRAP_RET_VOID(consumer, req.response_consumer.lock());
         consumer.push(
-                OrderResponseEvent(req.order.guid(),
-                                   "Order request timeout"));
+                OrderResponseEvent(req.order.symbol(), req.order.guid(), "Order request timeout"));
         return;
     }
     const std::string request_result = request_future.get();
@@ -215,6 +179,7 @@ void ByBitTradingGateway::process_event(const TpslRequestEvent & tpsl)
         UNWRAP_RET_VOID(consumer, tpsl.response_consumer.lock());
         consumer.push(
                 TpslResponseEvent(
+                        tpsl.symbol.symbol_name,
                         tpsl.guid,
                         tpsl.tpsl,
                         std::format("No consumer for this symbol: {}", tpsl.symbol.symbol_name)));
@@ -246,7 +211,7 @@ void ByBitTradingGateway::process_event(const TpslRequestEvent & tpsl)
     if (status != std::future_status::ready) {
         // TODO specify guid
         UNWRAP_RET_VOID(consumer, tpsl.response_consumer.lock());
-        consumer.push(TpslResponseEvent(tpsl.guid, tpsl.tpsl, "Request timed out"));
+        consumer.push(TpslResponseEvent(tpsl.symbol.symbol_name, tpsl.guid, tpsl.tpsl, "Request timed out"));
         return;
     }
     const std::string request_result = request_future.get();
@@ -255,11 +220,11 @@ void ByBitTradingGateway::process_event(const TpslRequestEvent & tpsl)
     const ByBitMessages::TpslResult result = j.get<ByBitMessages::TpslResult>();
     if (result.ret_code != 0) {
         UNWRAP_RET_VOID(consumer, tpsl.response_consumer.lock());
-        consumer.push(TpslResponseEvent(tpsl.guid, tpsl.tpsl, result.ret_msg));
+        consumer.push(TpslResponseEvent(tpsl.symbol.symbol_name, tpsl.guid, tpsl.tpsl, result.ret_msg));
         return;
     }
     UNWRAP_RET_VOID(consumer, tpsl.response_consumer.lock());
-    consumer.push(TpslResponseEvent(tpsl.guid, tpsl.tpsl));
+    consumer.push(TpslResponseEvent(tpsl.symbol.symbol_name, tpsl.guid, tpsl.tpsl));
 }
 
 void ByBitTradingGateway::process_event(const TrailingStopLossRequestEvent & tsl)

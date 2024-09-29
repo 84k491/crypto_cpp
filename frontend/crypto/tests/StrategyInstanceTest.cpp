@@ -307,6 +307,7 @@ TEST_F(StrategyInstanceTest, OpenAndClosePos_GetResult_DontCloseTwiceOnStop)
     const auto open_trade_event = TradeEvent(open_trade);
 
     const auto order_response = OrderResponseEvent{
+            order_req.order.symbol(),
             order_req.order.guid(),
     };
 
@@ -322,7 +323,7 @@ TEST_F(StrategyInstanceTest, OpenAndClosePos_GetResult_DontCloseTwiceOnStop)
         ASSERT_TRUE(tr_gateway.m_last_tpsl_request.has_value());
         const auto tpsl_req = tr_gateway.m_last_tpsl_request.value();
         UNWRAP_RET_VOID(consumer, tpsl_req.response_consumer.lock());
-        consumer.push(TpslResponseEvent{tpsl_req.guid, tpsl_req.tpsl});
+        consumer.push(TpslResponseEvent{tpsl_req.symbol.symbol_name, tpsl_req.guid, tpsl_req.tpsl});
         // TODO here should be TpslUpdateEvent
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
@@ -421,6 +422,7 @@ TEST_F(StrategyInstanceTest, OpenPositionWithTpsl_CloseOnGracefullStop)
         const auto open_trade_event = TradeEvent(open_trade);
 
         const auto order_response = OrderResponseEvent{
+                order_req.order.symbol(),
                 order_req.order.guid(),
         };
 
@@ -436,7 +438,7 @@ TEST_F(StrategyInstanceTest, OpenPositionWithTpsl_CloseOnGracefullStop)
         ASSERT_TRUE(tr_gateway.m_last_tpsl_request.has_value());
         const auto tpsl_req = tr_gateway.m_last_tpsl_request.value();
         UNWRAP_RET_VOID(consumer, tpsl_req.response_consumer.lock());
-        consumer.push(TpslResponseEvent{tpsl_req.guid, tpsl_req.tpsl});
+        consumer.push(TpslResponseEvent{tpsl_req.symbol.symbol_name, tpsl_req.guid, tpsl_req.tpsl});
         // TODO here should be TpslUpdateEvent
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
@@ -461,6 +463,7 @@ TEST_F(StrategyInstanceTest, OpenPositionWithTpsl_CloseOnGracefullStop)
         const auto close_trade_event = TradeEvent(close_trade);
 
         const auto order_response = OrderResponseEvent{
+                order_req.order.symbol(),
                 order_req.order.guid(),
         };
 
@@ -574,7 +577,9 @@ TEST_F(StrategyInstanceTest, EnterOrder_GetReject_Panic)
     ASSERT_TRUE(tr_gateway.m_last_order_request.has_value());
     const auto order_req = tr_gateway.m_last_order_request.value();
     const auto order_response = OrderResponseEvent{
-            order_req.order.guid(), "test_reject"};
+            order_req.order.symbol(),
+            order_req.order.guid(),
+            "test_reject"};
     UNWRAP_RET_VOID(consumer, order_req.response_consumer.lock());
     consumer.push(order_response);
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -630,6 +635,7 @@ TEST_F(StrategyInstanceTest, OpenPos_TpslReject_ClosePosAndPanic)
         const auto open_trade_event = TradeEvent(open_trade);
 
         const auto order_response = OrderResponseEvent{
+                order_req.order.symbol(),
                 order_req.order.guid(),
         };
 
@@ -645,7 +651,11 @@ TEST_F(StrategyInstanceTest, OpenPos_TpslReject_ClosePosAndPanic)
         ASSERT_TRUE(tr_gateway.m_last_tpsl_request.has_value());
         const auto tpsl_req = tr_gateway.m_last_tpsl_request.value();
         UNWRAP_RET_VOID(consumer, tpsl_req.response_consumer.lock());
-        consumer.push(TpslResponseEvent{tpsl_req.guid, tpsl_req.tpsl, "test_reject"});
+        consumer.push(TpslResponseEvent{
+                tpsl_req.symbol.symbol_name,
+                tpsl_req.guid,
+                tpsl_req.tpsl,
+                "test_reject"});
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
@@ -667,6 +677,7 @@ TEST_F(StrategyInstanceTest, OpenPos_TpslReject_ClosePosAndPanic)
         const auto close_trade_event = TradeEvent(close_trade);
 
         const auto order_response = OrderResponseEvent{
+                order_req.order.symbol(),
                 order_req.order.guid(),
         };
 

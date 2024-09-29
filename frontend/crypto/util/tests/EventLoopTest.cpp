@@ -49,7 +49,7 @@ public:
                             trade_consumer = order.trade_ev_consumer;
                             const auto p = order.response_consumer.lock();
                             ASSERT_TRUE(p);
-                            p->push(OrderResponseEvent(order.order.guid()));
+                            p->push(OrderResponseEvent(order.order.symbol(), order.order.guid()));
                         },
                 },
                 var);

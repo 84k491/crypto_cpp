@@ -78,21 +78,24 @@ struct LiveMDRequest : public EventWithResponse<MDPriceEvent>
 struct OrderResponseEvent : public OneWayEvent // TODO rename to AckEvent?
 {
     OrderResponseEvent(
+            std::string symbol_name,
             xg::Guid request_guid,
             std::optional<std::string> reject_reason = std::nullopt)
-        : request_guid(request_guid)
+        : symbol_name(std::move(symbol_name))
+        , request_guid(request_guid)
         , reject_reason(std::move(reject_reason))
     {
     }
 
+    std::string symbol_name;
     xg::Guid request_guid;
     std::optional<std::string> reject_reason;
 };
 
 struct TpslResponseEvent : public OrderResponseEvent
 {
-    TpslResponseEvent(xg::Guid request_guid, Tpsl tpsl, std::optional<std::string> reject_reason = std::nullopt)
-        : OrderResponseEvent(request_guid, std::move(reject_reason))
+    TpslResponseEvent(std::string symbol_name, xg::Guid request_guid, Tpsl tpsl, std::optional<std::string> reject_reason = std::nullopt)
+        : OrderResponseEvent(std::move(symbol_name), request_guid, std::move(reject_reason))
         , tpsl(tpsl)
     {
     }
@@ -156,7 +159,7 @@ struct TpslRequestEvent : public EventWithResponse<TpslResponseEvent>
 struct TrailingStopLossResponseEvent : public OrderResponseEvent
 {
     TrailingStopLossResponseEvent(xg::Guid request_guid, TrailingStopLoss trailing_stop_loss, std::optional<std::string> reject_reason = std::nullopt)
-        : OrderResponseEvent(request_guid, std::move(reject_reason))
+        : OrderResponseEvent(trailing_stop_loss.symbol().symbol_name, request_guid, std::move(reject_reason))
         , trailing_stop_loss(std::move(trailing_stop_loss))
     {
     }

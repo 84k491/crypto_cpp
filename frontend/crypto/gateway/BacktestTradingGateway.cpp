@@ -114,13 +114,13 @@ void BacktestTradingGateway::push_order_request(const OrderRequestEvent & req)
     }
     if (!check_consumers(req.order.symbol())) {
         UNWRAP_RET_VOID(consumer, req.response_consumer.lock());
-        consumer.push(OrderResponseEvent(req.order.guid(), "No trade consumer for this symbol"));
+        consumer.push(OrderResponseEvent(req.order.symbol(), req.order.guid(), "No trade consumer for this symbol"));
         return;
     }
 
     const auto & order = req.order;
     UNWRAP_RET_VOID(consumer, req.response_consumer.lock());
-    consumer.push(OrderResponseEvent(req.order.guid()));
+    consumer.push(OrderResponseEvent(req.order.symbol(), req.order.guid()));
     m_symbol = order.symbol();
 
     const auto & price = m_last_trade_price;
@@ -150,6 +150,7 @@ void BacktestTradingGateway::push_tpsl_request(const TpslRequestEvent & tpsl_ev)
         UNWRAP_RET_VOID(consumer, tpsl_ev.response_consumer.lock());
         consumer.push(
                 TpslResponseEvent(
+                        tpsl_ev.symbol.symbol_name,
                         tpsl_ev.guid,
                         tpsl_ev.tpsl,
                         "No consumer for this symbol"));
@@ -157,7 +158,7 @@ void BacktestTradingGateway::push_tpsl_request(const TpslRequestEvent & tpsl_ev)
     }
 
     m_tpsl = tpsl_ev;
-    TpslResponseEvent resp_ev(m_tpsl.value().guid, tpsl_ev.tpsl);
+    TpslResponseEvent resp_ev(m_tpsl.value().symbol.symbol_name, m_tpsl.value().guid, tpsl_ev.tpsl);
     UNWRAP_RET_VOID(consumer, m_tpsl.value().response_consumer.lock());
     consumer.push(resp_ev);
 }
