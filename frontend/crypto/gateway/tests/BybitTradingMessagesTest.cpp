@@ -160,7 +160,7 @@ TEST(BybitTradingMessagesTest, MarketOrderAck)
     ASSERT_EQ(events.size(), 1);
     const auto & order_event_var = events.front();
     ASSERT_TRUE(std::holds_alternative<OrderResponseEvent>(order_event_var));
-    const auto& order_event = std::get<OrderResponseEvent>(events.front());
+    const auto & order_event = std::get<OrderResponseEvent>(events.front());
     ASSERT_EQ(order_event.symbol_name, "BTCUSDT");
     ASSERT_EQ(order_event.request_guid, xg::Guid("c49d6860-3062-4295-aa1f-c6471f3c9b20"));
     ASSERT_EQ(order_event.reject_reason, std::nullopt);
@@ -247,7 +247,7 @@ TEST(BybitTradingMessagesTest, TrailingStopLossUpdate)
     ASSERT_EQ(events.size(), 1);
     const auto & tsl_event_var = events.front();
     ASSERT_TRUE(std::holds_alternative<TrailingStopLossUpdatedEvent>(tsl_event_var));
-    const auto& tsl_event = std::get<TrailingStopLossUpdatedEvent>(events.front());
+    const auto & tsl_event = std::get<TrailingStopLossUpdatedEvent>(events.front());
     ASSERT_TRUE(tsl_event.stop_loss.has_value());
     ASSERT_EQ(tsl_event.symbol_name, "BTCUSDT");
     ASSERT_EQ(tsl_event.stop_loss->symbol().symbol_name, "BTCUSDT");
@@ -336,7 +336,7 @@ TEST(BybitTradingMessagesTest, TrailingStopLossFilled)
     ASSERT_EQ(events.size(), 1);
     const auto & tsl_event_var = events.front();
     ASSERT_TRUE(std::holds_alternative<TrailingStopLossUpdatedEvent>(tsl_event_var));
-    const auto& tsl_event = std::get<TrailingStopLossUpdatedEvent>(events.front());
+    const auto & tsl_event = std::get<TrailingStopLossUpdatedEvent>(events.front());
     ASSERT_FALSE(tsl_event.stop_loss.has_value());
     ASSERT_EQ(tsl_event.symbol_name, "BTCUSDT");
 }
@@ -460,7 +460,23 @@ TEST(BybitTradingMessagesTest, TrailingStopLossDeactivatedWithUserOrder)
     ASSERT_EQ(order2.orderId, "c1447821-3ac3-4a77-aebc-3c9181dbdb82");
     ASSERT_EQ(order2.orderStatus, "Filled");
 
-    // TODO check events
+    const auto events_opt = result.to_events();
+    ASSERT_TRUE(events_opt.has_value());
+    const auto & events = *events_opt;
+    ASSERT_EQ(events.size(), 2);
+    const auto & deactivated_tsl_event_var = events.front();
+    ASSERT_TRUE(std::holds_alternative<TrailingStopLossUpdatedEvent>(deactivated_tsl_event_var));
+    const auto & deactivated_tsl_event = std::get<TrailingStopLossUpdatedEvent>(deactivated_tsl_event_var);
+    ASSERT_FALSE(deactivated_tsl_event.stop_loss.has_value());
+    ASSERT_EQ(deactivated_tsl_event.symbol_name, "BTCUSDT");
+    ASSERT_EQ(deactivated_tsl_event.timestamp, std::chrono::milliseconds{1727527660279});
+
+    const auto & user_order_event_var = events.back();
+    ASSERT_TRUE(std::holds_alternative<OrderResponseEvent>(user_order_event_var));
+    const auto & user_order_event = std::get<OrderResponseEvent>(user_order_event_var);
+    ASSERT_EQ(user_order_event.request_guid, xg::Guid("ded4d47f-6928-4a74-ab49-0c914b555f02"));
+    ASSERT_EQ(user_order_event.symbol_name, "BTCUSDT");
+    ASSERT_FALSE(user_order_event.reject_reason);
 }
 
 // TPSL ack with take profit

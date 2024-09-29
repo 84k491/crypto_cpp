@@ -110,6 +110,7 @@ std::optional<std::pair<std::string, bool>> TrailigStopLossStrategy::handle_even
     if (!ev.stop_loss.has_value()) {
         m_active_stop_loss.reset();
         Logger::log<LogLevel::Debug>("Trailing stop loss removed");
+        return {};
     }
     const auto & trailing_stop_loss = ev.stop_loss.value();
 
