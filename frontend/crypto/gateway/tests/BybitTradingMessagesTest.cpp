@@ -623,7 +623,9 @@ TEST(BybitTradingMessagesTest, TrailingStopLossTriggered)
     ASSERT_TRUE(std::holds_alternative<TrailingStopLossUpdatedEvent>(tsl_event_var));
     const auto & tsl_event = std::get<TrailingStopLossUpdatedEvent>(tsl_event_var);
     ASSERT_EQ(tsl_event.symbol_name, "BTCUSDT");
-    ASSERT_FALSE(tsl_event.stop_loss.has_value()) << "There is a market order entered, so there is must be no stop order anymore";
+
+    // Trailing stop just triggered, so it's active now. But it will be filled or cancelled in a moment
+    ASSERT_TRUE(tsl_event.stop_loss.has_value());
 }
 
 // TPSL ack with take profit

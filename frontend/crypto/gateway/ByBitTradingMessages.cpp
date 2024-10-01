@@ -128,7 +128,8 @@ std::optional<TrailingStopLossUpdatedEvent> OrderResponseResult::on_trailing_sto
             "Filled",
             "Deactivated",
             "Cancelled",
-            "Triggered"};
+            // "Triggered", resurrect tsl on triggered status
+    };
     if (!reset_statuses.contains(response.orderStatus)) {
         sl = {symbol, response.triggerPrice.value(), side};
     }
