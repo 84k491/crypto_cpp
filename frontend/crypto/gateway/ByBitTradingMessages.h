@@ -56,6 +56,7 @@ struct Execution
     std::string orderId;
     std::string orderLinkId;
     std::string side;
+    std::string execType;
     double execPrice;
     double qty;
     double leavesQty;

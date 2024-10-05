@@ -76,6 +76,12 @@ void ByBitTradingGateway::on_execution(const json & j)
     from_json(j, result);
 
     for (const auto & response : result.executions) {
+        if (response.execType == "Funding") {
+            // TODO handle funding fees
+            Logger::logf<LogLevel::Info>("Execution is funding, skipping. Funding fee: {}", response.execFee);
+            continue;
+        }
+
         auto trade_opt = response.to_trade();
         if (!trade_opt.has_value()) {
             Logger::logf<LogLevel::Error>("ERROR can't get proper trade on execution: {}", j);

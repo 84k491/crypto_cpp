@@ -628,6 +628,15 @@ TEST(BybitTradingMessagesTest, TrailingStopLossTriggered)
     ASSERT_TRUE(tsl_event.stop_loss.has_value());
 }
 
+// Funding execution just for fee
+/*
+[2024-10-05 16:00:00.195451137][Info]: Execution received {"creationTime":1728144000089,"data":[{"blockTradeId":"","category":"linear","closedSize":"0","createType":""
+,"execFee":"0.00620674","execId":"5354ff11-eb0b-4d58-bdcf-9af4eb213eb1","execPnl":"0","execPrice":"62067.37","execQty":"0.001","execTime":"1728144000000","execType":"F
+unding","execValue":"62.06737","feeRate":"0.0001","indexPrice":"","isLeverage":"0","isMaker":false,"leavesQty":"0","markIv":"","markPrice":"62067.95","marketUnit":"","
+orderId":"0ef1e996-4d64-4113-a3cc-9c9c64325e48","orderLinkId":"","orderPrice":"0","orderQty":"0","orderType":"UNKNOWN","seq":9367240658,"side":"Buy","stopOrderType":"U
+NKNOWN","symbol":"BTCUSDT","tradeIv":"","underlyingPrice":""}],"id":"100475188_BTCUSDT_9367240658","topic":"execution"}
+*/
+
 // TPSL ack with take profit
 // TPSL update with take profit
 // TPSL ack with trailing stop

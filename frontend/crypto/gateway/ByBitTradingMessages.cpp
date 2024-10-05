@@ -53,6 +53,7 @@ void from_json(const json & j, Execution & exec)
     j.at("orderId").get_to(exec.orderId);
     j.at("orderLinkId").get_to(exec.orderLinkId);
     j.at("side").get_to(exec.side);
+    j.at("execType").get_to(exec.execType);
     exec.execPrice = std::stod(j.at("execPrice").get<std::string>());
     exec.qty = std::stod(j.at("execQty").get<std::string>());
     exec.leavesQty = std::stod(j.at("leavesQty").get<std::string>());
