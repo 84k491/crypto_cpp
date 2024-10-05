@@ -363,6 +363,7 @@ void StrategyInstance::handle_event(const OrderResponseEvent & response)
     }
     ScopeExit se([&]() { m_pending_orders.erase(it); });
 
+    // TODO trades are counted on every order send retry. Fix it
     if (!response.retry) {
         return;
     }

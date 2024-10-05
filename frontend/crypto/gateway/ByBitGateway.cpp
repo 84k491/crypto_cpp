@@ -40,6 +40,15 @@ bool ByBitGateway::reconnect_ws_client()
 
     auto weak_ptr = std::weak_ptr<IPingSender>(m_ws_client);
     m_connection_watcher.set_ping_sender(weak_ptr);
+
+    {
+        auto lref = m_live_requests.lock();
+        for (auto & it : lref.get()) {
+            Logger::logf<LogLevel::Debug>("MD Subscribing to: {}", it.symbol.symbol_name);
+            m_ws_client->subscribe("publicTrade." + it.symbol.symbol_name);
+        }
+    }
+
     m_event_loop.as_consumer<PingCheckEvent>().push_delayed(ws_ping_interval, PingCheckEvent{});
     return true;
 }
@@ -429,7 +438,7 @@ void ByBitGateway::on_connection_lost()
 {
     Logger::log<LogLevel::Warning>("Connection lost on market data, reconnecting...");
     if (!reconnect_ws_client()) {
-        Logger::log<LogLevel::Warning>("Failed to connect to ByBit trading");
+        Logger::log<LogLevel::Warning>("Failed to connect to ByBit market data");
     }
 }
 

@@ -17,7 +17,6 @@ WebSocketClient::WebSocketClient(
     m_client_thread = std::make_unique<std::thread>([this]() {
         Logger::logf<LogLevel::Debug>("websocket thread start");
 
-        // Set logging to be pretty verbose (everything except message payloads)
         m_client.set_access_channels(websocketpp::log::alevel::fail);
         m_client.clear_access_channels(websocketpp::log::alevel::all);
 
@@ -77,7 +76,7 @@ WebSocketClient::WebSocketClient(
         // will exit when this connection is closed.
         Logger::log<LogLevel::Debug>("Running WS client");
         m_client.run();
-
+        m_ready = false;
         Logger::log<LogLevel::Debug>("websocket client stopped");
         return 0;
     });
