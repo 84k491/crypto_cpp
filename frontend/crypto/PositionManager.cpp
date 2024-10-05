@@ -7,12 +7,12 @@
 #include <iostream>
 #include <optional>
 #include <print>
-#include <utility>
 
 std::optional<PositionResult> PositionManager::on_trade_received(const Trade & trade)
 {
     if (!m_opened_position.has_value()) {
         m_opened_position = OpenedPosition(trade);
+        Logger::logf<LogLevel::Status>("Opened position: {}", m_opened_position.value());
         return std::nullopt;
     }
 
@@ -20,6 +20,7 @@ std::optional<PositionResult> PositionManager::on_trade_received(const Trade & t
     const auto trade_vol = SignedVolume(trade.unsigned_volume(), trade.side());
     const auto closed_pos_opt = pos.on_trade(trade.price(), trade_vol, trade.fee());
     if (closed_pos_opt.has_value()) {
+        Logger::logf<LogLevel::Status>("Closed position: {}", closed_pos_opt.value());
         if (m_closed_position.has_value()) {
             m_closed_position.value() += *closed_pos_opt;
         }
@@ -28,8 +29,10 @@ std::optional<PositionResult> PositionManager::on_trade_received(const Trade & t
         }
     }
     if (!pos.opened_volume().is_zero()) {
+        Logger::logf<LogLevel::Status>("New opened position state: {}", pos);
         return std::nullopt;
     }
+    Logger::logf<LogLevel::Status>("Position has been closed completely");
 
     if (!m_closed_position.has_value()) {
         Logger::log<LogLevel::Error>("ERROR: No closed position when opened vol == 0");
@@ -43,6 +46,8 @@ std::optional<PositionResult> PositionManager::on_trade_received(const Trade & t
 
     m_opened_position = {};
     m_closed_position = {};
+
+    Logger::logf<LogLevel::Status>("Position result: {}", res);
     return res;
 }
 
