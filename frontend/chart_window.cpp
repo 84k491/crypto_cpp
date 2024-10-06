@@ -1,7 +1,6 @@
 #include "chart_window.h"
 
 #include "Enums.h"
-#include "Logger.h"
 #include "ui_chart_window.h"
 
 ChartWindow::ChartWindow(const std::shared_ptr<StrategyInstance> & strategy, QWidget * parent)

@@ -124,7 +124,6 @@ void MainWindow::on_pb_stop_clicked()
 void MainWindow::on_pb_run_clicked()
 {
     m_subscriptions.clear();
-    m_chart_window.reset();
 
     const auto timerange_opt = get_timerange();
     if (!timerange_opt) {
@@ -374,6 +373,17 @@ bool MainWindowEventConsumer::push_to_queue_delayed(std::chrono::milliseconds, c
 
 void MainWindow::on_pb_charts_clicked()
 {
-    m_chart_window = std::make_unique<ChartWindow>(m_strategy_instance);
+    m_chart_window = new ChartWindow(m_strategy_instance);
+    m_chart_window->setAttribute(Qt::WA_DeleteOnClose);
+    connect(m_chart_window, &ChartWindow::destroyed, [this](auto){
+        m_chart_window = nullptr;
+    });
     m_chart_window->show();
+}
+
+void MainWindow::closeEvent(QCloseEvent *)
+{
+    if (m_chart_window) {
+        m_chart_window->close();
+    }
 }

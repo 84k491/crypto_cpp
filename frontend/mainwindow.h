@@ -102,6 +102,8 @@ public:
     MainWindow(QWidget * parent = nullptr);
     ~MainWindow() override;
 
+    void closeEvent(QCloseEvent *event) override;
+
 private slots:
     void on_pb_run_clicked();
     void on_pb_optimize_clicked();
@@ -148,6 +150,6 @@ private:
 
     SavedStateUi saved_state;
 
-    std::unique_ptr<ChartWindow> m_chart_window;
+    ChartWindow* m_chart_window = nullptr;
 };
 #endif // MAINWINDOW_H
