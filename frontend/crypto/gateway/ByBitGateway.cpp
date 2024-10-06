@@ -439,6 +439,7 @@ void ByBitGateway::on_connection_lost()
     Logger::log<LogLevel::Warning>("Connection lost on market data, reconnecting...");
     if (!reconnect_ws_client()) {
         Logger::log<LogLevel::Warning>("Failed to connect to ByBit market data");
+        m_event_loop.as_consumer<PingCheckEvent>().push_delayed(std::chrono::seconds{30}, PingCheckEvent{});
     }
 }
 

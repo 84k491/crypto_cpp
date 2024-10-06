@@ -6,6 +6,7 @@
 #include "Macros.h"
 #include "Ohlc.h"
 
+#include <chrono>
 #include <set>
 #include <variant>
 
@@ -371,6 +372,7 @@ void ByBitTradingGateway::on_connection_lost()
     Logger::log<LogLevel::Warning>("Connection lost on trading, reconnecting...");
     if (!reconnect_ws_client()) {
         Logger::log<LogLevel::Warning>("Failed to connect to ByBit trading");
+        m_event_loop.as_consumer<PingCheckEvent>().push_delayed(std::chrono::seconds{30}, PingCheckEvent{});
     }
 }
 

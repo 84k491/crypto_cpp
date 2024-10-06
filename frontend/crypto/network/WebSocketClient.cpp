@@ -108,6 +108,7 @@ void WebSocketClient::on_connected()
 {
     Logger::logf<LogLevel::Status>("WS client connected to {}", m_url);
     m_ready = true;
+    m_connection_watcher.on_pong_received();
 }
 
 bool WebSocketClient::send_ping()
