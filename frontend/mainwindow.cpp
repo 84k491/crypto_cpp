@@ -63,23 +63,13 @@ MainWindow::MainWindow(QWidget * parent)
     ui->cb_exit_strategy->addItem("TrailingStop");
     ui->cb_exit_strategy->setCurrentText("TrailingStop");
 
-    ui->cb_exchange->addItem("bybit");
-
-    Logger::log<LogLevel::Status>("End of mainwindow constructor");
-}
-
-void MainWindow::on_cb_exchange_currentTextChanged(const QString &)
-{
-    const bool is_production = ui->cb_production->isChecked();
-    ui->cb_production->setEnabled(false);
-
-    m_gateway = std::make_unique<ByBitGateway>(is_production);
-
-    const auto symbols = m_gateway->get_symbols("USDT");
+    const auto symbols = m_gateway.get_symbols("USDT");
     for (const auto & symbol : symbols) {
         ui->cb_symbol->addItem(symbol.symbol_name.c_str());
     }
     ui->cb_symbol->setCurrentText(saved_state.m_symbol.c_str());
+
+    Logger::log<LogLevel::Status>("End of mainwindow constructor");
 }
 
 void MainWindow::handle_status_changed(WorkStatus status)
@@ -159,7 +149,7 @@ void MainWindow::on_pb_run_clicked()
     }();
 
     const auto symbol = [&]() -> std::optional<Symbol> {
-        const auto symbols = m_gateway->get_symbols("USDT");
+        const auto symbols = m_gateway.get_symbols("USDT");
         for (const auto & s : symbols) {
             if (s.symbol_name == ui->cb_symbol->currentText().toStdString()) {
                 return s;
@@ -177,12 +167,7 @@ void MainWindow::on_pb_run_clicked()
     m_strategy_instance.reset();
     auto & tr_gateway = [&]() -> ITradingGateway & {
         if (ui->cb_live->isChecked()) {
-            if (!m_trading_gateway) {
-                const bool is_production = ui->cb_production->isChecked();
-
-                m_trading_gateway = std::make_unique<ByBitTradingGateway>(is_production);
-            }
-            return *m_trading_gateway;
+            return m_trading_gateway;
         }
         else {
             m_backtest_tr_gateway = std::make_unique<BacktestTradingGateway>();
@@ -196,7 +181,7 @@ void MainWindow::on_pb_run_clicked()
             strategy_ptr_opt.value(),
             ui->cb_exit_strategy->currentText().toStdString(),
             ui->wt_exit_params->get_config(),
-            *m_gateway,
+            m_gateway,
             tr_gateway);
     ui->pb_charts->setEnabled(true);
 
@@ -296,7 +281,7 @@ void MainWindow::on_pb_optimize_clicked()
     const auto & timerange = *timerange_opt;
 
     const auto symbol = [&]() -> std::optional<Symbol> {
-        const auto symbols = m_gateway->get_symbols("USDT");
+        const auto symbols = m_gateway.get_symbols("USDT");
         for (const auto & s : symbols) {
             if (s.symbol_name == ui->cb_symbol->currentText().toStdString()) {
                 return s;
@@ -319,7 +304,7 @@ void MainWindow::on_pb_optimize_clicked()
                    strategy_name,
                    exit_strategy_name]() {
         Optimizer optimizer(
-                *m_gateway,
+                m_gateway,
                 symbol.value(),
                 timerange,
                 strategy_name,
@@ -390,7 +375,7 @@ void MainWindow::on_pb_charts_clicked()
 {
     m_chart_window = new ChartWindow(m_strategy_instance);
     m_chart_window->setAttribute(Qt::WA_DeleteOnClose);
-    connect(m_chart_window, &ChartWindow::destroyed, [this](auto) {
+    connect(m_chart_window, &ChartWindow::destroyed, [this](auto){
         m_chart_window = nullptr;
     });
     m_chart_window->show();

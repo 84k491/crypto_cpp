@@ -36,27 +36,6 @@
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_3">
             <item>
-             <layout class="QHBoxLayout" name="horizontalLayout_8">
-              <item>
-               <widget class="QLabel" name="label_17">
-                <property name="text">
-                 <string>Exchange</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QComboBox" name="cb_exchange"/>
-              </item>
-             </layout>
-            </item>
-            <item>
-             <widget class="QCheckBox" name="cb_production">
-              <property name="text">
-               <string>Production</string>
-              </property>
-             </widget>
-            </item>
-            <item>
              <layout class="QHBoxLayout" name="horizontalLayout_2">
               <item>
                <widget class="QLabel" name="label">

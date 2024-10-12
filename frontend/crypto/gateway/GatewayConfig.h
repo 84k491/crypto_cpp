@@ -1,25 +1,38 @@
 #pragma once
 
+#include "nlohmann/json_fwd.hpp"
+
+#include <optional>
 #include <string>
 #include <string_view>
-#include <optional>
 
 struct GatewayConfig
 {
-    std::string name; // testnet/production
+    struct Trading
+    {
+        std::string ws_url;
+        std::string rest_url;
+        std::string api_key;
+        std::string secret_key;
+    };
+
+    struct MarketData
+    {
+        std::string ws_url;
+        std::string rest_url;
+    };
 
     std::string exchange;
-    std::string type; // md/tr
+    Trading trading;
+    MarketData market_data;
 
-    std::string ws_url;
-    std::string rest_url;
-    std::string api_key;
-    std::string secret_key;
+    nlohmann::json to_json() const;
 };
 
 class GatewayConfigLoader
 {
     static constexpr std::string_view s_config_env_var = "GATEWAY_CONFIG_DIR";
+
 public:
-    static std::optional<GatewayConfig> load(const std::string & exchange, const std::string & type, const std::string & name);
+    static std::optional<GatewayConfig> load();
 };

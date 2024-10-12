@@ -13,20 +13,16 @@
 #include <string>
 #include <vector>
 
-ByBitGateway::ByBitGateway(bool production)
+ByBitGateway::ByBitGateway()
     : m_event_loop(*this)
     , m_connection_watcher(*this)
 {
-    if (production) {
-        Logger::log<LogLevel::Info>("ByBit MD is running in production");
-    }
-    const std::string config_name = production ? "production" : "testnet";
-    const auto config_opt = GatewayConfigLoader::load("bybit", "market_data", config_name);
+    const auto config_opt = GatewayConfigLoader::load();
     if (!config_opt) {
         Logger::log<LogLevel::Error>("Failed to load bybit trading gateway config");
         return;
     }
-    m_config = config_opt.value();
+    m_config = config_opt.value().market_data;
 
     m_last_server_time = get_server_time();
 
@@ -38,7 +34,7 @@ ByBitGateway::ByBitGateway(bool production)
 bool ByBitGateway::reconnect_ws_client()
 {
     m_ws_client = std::make_shared<WebSocketClient>(
-            std::string(m_config.rest_url),
+            std::string(m_config.ws_url),
             std::nullopt,
             [this](const json & j) {
                 on_price_received(j);

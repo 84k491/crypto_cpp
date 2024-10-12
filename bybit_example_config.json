@@ -1,0 +1,13 @@
+{
+    "exchange": "bybit",
+    "trading": {
+        "ws_url": "wss://stream-testnet.bybit.com/v5/private",
+        "rest_url": "https://api-testnet.bybit.com",
+        "api_key": "KEY",
+        "secret_key": "KEY"
+    },
+    "market_data": {
+        "ws_url": "wss://stream-testnet.bybit.com/v5/public/linear",
+        "rest_url": "https://api.bybit.com"
+    }
+}

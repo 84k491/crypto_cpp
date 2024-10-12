@@ -43,7 +43,7 @@ WebSocketClient::WebSocketClient(
             on_ws_message_received(payload_string);
         });
         m_client.set_open_handler([this](auto con_ptr) {
-            Logger::log<LogLevel::Status>("Ws connection created");
+            Logger::logf<LogLevel::Status>("Ws connection created. URL: {}", m_url);
             if (m_keys.has_value()) {
                 std::string auth_msg = build_auth_message();
                 try {
@@ -61,6 +61,7 @@ WebSocketClient::WebSocketClient(
         });
 
         websocketpp::lib::error_code ec;
+        Logger::logf<LogLevel::Status>("WS client connnecting to URL: {}", m_url);
         m_connection = m_client.get_connection(m_url, ec);
         if (ec) {
             Logger::logf<LogLevel::Error>("could not create connection because: {}", ec.message());

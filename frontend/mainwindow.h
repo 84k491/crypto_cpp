@@ -102,7 +102,7 @@ public:
     MainWindow(QWidget * parent = nullptr);
     ~MainWindow() override;
 
-    void closeEvent(QCloseEvent * event) override;
+    void closeEvent(QCloseEvent *event) override;
 
 private slots:
     void on_pb_run_clicked();
@@ -116,8 +116,6 @@ private slots:
     void optimized_config_slot(const JsonStrategyConfig & entry_config, const JsonStrategyConfig & exit_config);
 
     void on_lambda(const std::function<void()> & lambda);
-
-    void on_cb_exchange_currentTextChanged(const QString & exchange);
 
 signals:
     void signal_optimized_config(JsonStrategyConfig entry_config, JsonStrategyConfig exit_config);
@@ -139,9 +137,9 @@ private:
 
     StrategyFactory m_strategy_factory;
 
-    std::unique_ptr<ByBitGateway> m_gateway;
+    ByBitGateway m_gateway;
     std::unique_ptr<BacktestTradingGateway> m_backtest_tr_gateway;
-    std::unique_ptr<ByBitTradingGateway> m_trading_gateway;
+    ByBitTradingGateway m_trading_gateway;
 
     std::shared_ptr<StrategyInstance> m_strategy_instance;
     std::list<std::shared_ptr<ISubsription>> m_subscriptions;
@@ -152,6 +150,6 @@ private:
 
     SavedStateUi saved_state;
 
-    ChartWindow * m_chart_window = nullptr;
+    ChartWindow* m_chart_window = nullptr;
 };
 #endif // MAINWINDOW_H

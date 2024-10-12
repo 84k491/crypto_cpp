@@ -35,7 +35,7 @@ public:
     static constexpr std::chrono::minutes min_historical_interval = std::chrono::minutes{1};
     static auto get_taker_fee() { return taker_fee; }
 
-    ByBitGateway(bool production);
+    ByBitGateway();
 
     void push_async_request(HistoricalMDRequest && request) override;
     void push_async_request(LiveMDRequest && request) override;
@@ -66,7 +66,7 @@ private:
     void on_connection_verified() override;
 
 private:
-    GatewayConfig m_config;
+    GatewayConfig::MarketData m_config;
 
     EventLoop<HistoricalMDRequest, LiveMDRequest, PingCheckEvent> m_event_loop;
     Guarded<std::vector<LiveMDRequest>> m_live_requests;

@@ -20,7 +20,7 @@ class ByBitTradingGateway final
     static constexpr std::chrono::seconds ws_ping_interval = std::chrono::seconds(5);
 
 public:
-    ByBitTradingGateway(bool production);
+    ByBitTradingGateway();
 
     void push_order_request(const OrderRequestEvent & order) override;
     void push_tpsl_request(const TpslRequestEvent & tpsl_ev) override;
@@ -51,7 +51,7 @@ private:
 private:
     EventLoop<OrderRequestEvent, TpslRequestEvent, TrailingStopLossRequestEvent, PingCheckEvent> m_event_loop;
 
-    GatewayConfig m_config;
+    GatewayConfig::Trading m_config;
 
     RestClient rest_client;
     std::shared_ptr<WebSocketClient> m_ws_client;

@@ -9,21 +9,16 @@
 #include <chrono>
 #include <variant>
 
-ByBitTradingGateway::ByBitTradingGateway(bool production)
+ByBitTradingGateway::ByBitTradingGateway()
     : m_event_loop(*this)
     , m_connection_watcher(*this)
 {
-    if (production) {
-        Logger::log<LogLevel::Info>("ByBit TR is running in production");
-    }
-    Logger::log<LogLevel::Info>("");
-    const std::string config_name = production ? "production" : "testnet";
-    const auto config_opt = GatewayConfigLoader::load("bybit", "trading", config_name);
+    const auto config_opt = GatewayConfigLoader::load();
     if (!config_opt) {
         Logger::log<LogLevel::Error>("Failed to load bybit trading gateway config");
         return;
     }
-    m_config = config_opt.value();
+    m_config = config_opt.value().trading;
 
     if (!reconnect_ws_client()) {
         Logger::log<LogLevel::Warning>("Failed to connect to ByBit trading");
