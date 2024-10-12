@@ -1,5 +1,6 @@
 #include "TrailingStopStrategy.h"
 
+#include "EventLoop.h"
 #include "Logger.h"
 
 #include <utility>
@@ -19,7 +20,7 @@ TrailigStopLossStrategyConfig::TrailigStopLossStrategyConfig(double risk)
 
 TrailigStopLossStrategy::TrailigStopLossStrategy(Symbol symbol,
                                                  JsonStrategyConfig config,
-                                                 std::shared_ptr<EventLoop<STRATEGY_EVENTS>> & event_loop,
+                                                 EventLoopHolder<STRATEGY_EVENTS> & event_loop,
                                                  ITradingGateway & gateway)
 
     : ExitStrategyBase(gateway)
@@ -71,7 +72,7 @@ void TrailigStopLossStrategy::send_trailing_stop(TrailingStopLoss trailing_stop)
     TrailingStopLossRequestEvent request(
             m_symbol,
             std::move(trailing_stop),
-            m_event_loop);
+            m_event_loop.sptr());
     m_pending_requests.emplace(request.guid);
     m_tr_gateway.push_trailing_stop_request(request);
 }

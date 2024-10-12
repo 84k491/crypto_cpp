@@ -92,5 +92,5 @@ private:
     std::shared_ptr<WebSocketClient> m_ws_client;
     ConnectionWatcher m_connection_watcher;
 
-    std::shared_ptr<EventLoop<HistoricalMDRequest, LiveMDRequest, PingCheckEvent>> m_event_loop;
+    EventLoopHolder<HistoricalMDRequest, LiveMDRequest, PingCheckEvent> m_event_loop;
 };

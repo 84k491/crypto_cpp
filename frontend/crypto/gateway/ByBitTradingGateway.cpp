@@ -11,7 +11,7 @@
 
 ByBitTradingGateway::ByBitTradingGateway()
     : m_connection_watcher(*this)
-    , m_event_loop(EventLoop<OrderRequestEvent, TpslRequestEvent, TrailingStopLossRequestEvent, PingCheckEvent>::create(*this))
+    , m_event_loop(*this)
 {
     const auto config_opt = GatewayConfigLoader::load();
     if (!config_opt) {

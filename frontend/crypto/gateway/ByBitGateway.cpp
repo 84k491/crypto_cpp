@@ -15,7 +15,7 @@
 
 ByBitGateway::ByBitGateway()
     : m_connection_watcher(*this)
-    , m_event_loop(EventLoop<HistoricalMDRequest, LiveMDRequest, PingCheckEvent>::create(*this))
+    , m_event_loop(*this)
 {
     const auto config_opt = GatewayConfigLoader::load();
     if (!config_opt) {

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "EventLoop.h"
 #include "ExitStrategyBase.h"
 #include "JsonStrategyConfig.h"
 
@@ -22,7 +23,7 @@ class TrailigStopLossStrategy : public ExitStrategyBase
 public:
     TrailigStopLossStrategy(Symbol symbol,
                             JsonStrategyConfig config,
-                            std::shared_ptr<EventLoop<STRATEGY_EVENTS>> & event_loop,
+                            EventLoopHolder<STRATEGY_EVENTS> & event_loop,
                             ITradingGateway & gateway);
 
     ~TrailigStopLossStrategy() override = default;
@@ -53,7 +54,7 @@ private:
 private:
     Symbol m_symbol;
 
-    std::shared_ptr<EventLoop<STRATEGY_EVENTS>> m_event_loop;
+    EventLoopHolder<STRATEGY_EVENTS> & m_event_loop;
 
     std::set<xg::Guid> m_pending_requests;
     std::optional<OpenedPosition> m_opened_position;

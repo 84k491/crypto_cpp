@@ -1,5 +1,6 @@
 #pragma once
 
+#include "EventLoop.h"
 #include "ExitStrategyBase.h"
 #include "JsonStrategyConfig.h"
 #include "Position.h"
@@ -34,8 +35,8 @@ class TpslExitStrategy : public ExitStrategyBase
 public:
     TpslExitStrategy(
             Symbol symbol,
-            const JsonStrategyConfig& config,
-            std::shared_ptr<EventLoop<STRATEGY_EVENTS>> & event_loop,
+            const JsonStrategyConfig & config,
+            EventLoopHolder<STRATEGY_EVENTS> & event_loop,
             ITradingGateway & gateway);
 
     [[nodiscard]] std::optional<std::string> on_price_changed(
@@ -62,7 +63,7 @@ private:
 
 private:
     TpslExitStrategyConfig m_config;
-    std::shared_ptr<EventLoop<STRATEGY_EVENTS>> m_event_loop;
+    EventLoopHolder<STRATEGY_EVENTS> & m_event_loop;
 
     std::pair<std::chrono::milliseconds, double> m_last_ts_and_price;
 

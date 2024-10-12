@@ -132,20 +132,24 @@ private:
 };
 
 template <class... Args>
+class EventLoopHolder;
+
+template <class... Args>
 class EventLoop : public std::enable_shared_from_this<EventLoop<Args...>>
     , public IEventConsumer<Args>...
 {
-    EventLoop(IEventInvoker<Args...> & invoker)
+    EventLoop(IEventInvoker<Args...> * invoker)
         : m_invoker(invoker)
     {
         m_thread = std::thread([this] { run(); });
     }
 
-public:
-    static auto create(IEventInvoker<Args...> & invoker) {
+    static auto create(IEventInvoker<Args...> * invoker)
+    {
         return std::shared_ptr<EventLoop<Args...>>(new EventLoop<Args...>(invoker));
     }
 
+public:
     ~EventLoop() override
     {
         stop();
@@ -183,6 +187,12 @@ protected:
     }
 
 private:
+    friend class EventLoopHolder<Args...>;
+    void reset_invoker()
+    {
+        m_invoker.store(nullptr);
+    }
+
     void run()
     {
         while (true) {
@@ -190,14 +200,49 @@ private:
             if (!opt) {
                 return;
             }
-            m_invoker.invoke(opt.value());
+
+            if (auto * p = m_invoker.load()) {
+                p->invoke(opt.value());
+            }
+            else {
+                return;
+            }
         }
     }
 
 private:
-    IEventInvoker<Args...> & m_invoker;
+    std::atomic<IEventInvoker<Args...> *> m_invoker;
 
     Scheduler m_scheduler;
     ThreadSafePriorityQueue<std::variant<Args...>> m_queue{};
     std::thread m_thread;
+};
+
+template <class... Args>
+class EventLoopHolder
+{
+public:
+    EventLoopHolder(IEventInvoker<Args...> & invoker)
+        : m_event_loop(EventLoop<Args...>::create(&invoker))
+    {
+    }
+
+    ~EventLoopHolder() { m_event_loop->reset_invoker(); }
+
+    auto sptr() const {
+        return m_event_loop;
+    }
+
+    EventLoop<Args...> & operator*()
+    {
+        return *m_event_loop;
+    }
+
+    EventLoop<Args...> * operator->()
+    {
+        return m_event_loop.get();
+    }
+
+private:
+    std::shared_ptr<EventLoop<Args...>> m_event_loop;
 };

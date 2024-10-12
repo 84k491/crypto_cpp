@@ -40,5 +40,5 @@ private:
     static void handle_event(const LogEvent & ev);
 
 private:
-    std::shared_ptr<EventLoop<LogEvent>> m_event_loop;
+    EventLoopHolder<LogEvent> m_event_loop;
 };

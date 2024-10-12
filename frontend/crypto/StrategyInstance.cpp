@@ -1,5 +1,6 @@
 #include "StrategyInstance.h"
 
+#include "EventLoop.h"
 #include "Events.h"
 #include "ITradingGateway.h"
 #include "Logger.h"
@@ -22,7 +23,7 @@ public:
             const std::string & strategy_name,
             const JsonStrategyConfig & config,
             const Symbol & symbol,
-            std::shared_ptr<EventLoop<STRATEGY_EVENTS>> & event_loop,
+            EventLoopHolder<STRATEGY_EVENTS> & event_loop,
             ITradingGateway & gateway)
     {
         if (strategy_name == "TpslExit") {
@@ -47,7 +48,6 @@ StrategyInstance::StrategyInstance(
         IMarketDataGateway & md_gateway,
         ITradingGateway & tr_gateway)
     : m_strategy_guid(xg::newGuid())
-    , m_event_loop(EventLoop<STRATEGY_EVENTS>::create(*this))
     , m_md_gateway(md_gateway)
     , m_tr_gateway(tr_gateway)
     , m_strategy(strategy_ptr)
@@ -55,6 +55,7 @@ StrategyInstance::StrategyInstance(
     , m_position_manager(symbol)
     , m_exit_strategy(nullptr)
     , m_historical_md_request(historical_md_request)
+    , m_event_loop(*this)
 {
     const auto exit_strategy_opt = ExitStrategyFactory::build_exit_strategy(
             exit_strategy_name,
@@ -86,7 +87,7 @@ StrategyInstance::StrategyInstance(
     });
 
     m_gw_status_sub = m_md_gateway.status_publisher().subscribe(
-            m_event_loop,
+            m_event_loop.sptr(),
             [this](const WorkStatus & status) {
                 if (status == WorkStatus::Stopped || status == WorkStatus::Panic) {
                     if (m_position_manager.opened() != nullptr) {
@@ -111,7 +112,7 @@ void StrategyInstance::run_async()
         m_status.push(WorkStatus::Backtesting);
 
         HistoricalMDRequest historical_request(
-                m_event_loop,
+                m_event_loop.sptr(),
                 m_symbol,
                 m_historical_md_request.value());
         m_md_gateway.push_async_request(std::move(historical_request));
@@ -120,7 +121,7 @@ void StrategyInstance::run_async()
     else {
         m_status.push(WorkStatus::Live);
         LiveMDRequest live_request(
-                m_event_loop,
+                m_event_loop.sptr(),
                 m_symbol);
         m_md_gateway.push_async_request(std::move(live_request));
         m_live_md_requests.emplace(live_request.guid);
@@ -372,8 +373,8 @@ void StrategyInstance::handle_event(const OrderResponseEvent & response)
     order.regenerate_guid();
     OrderRequestEvent or_event(
             order,
-            m_event_loop,
-            m_event_loop);
+            m_event_loop.sptr(),
+            m_event_loop.sptr());
     m_pending_orders.emplace(order.guid(), order);
     Logger::logf<LogLevel::Debug>("Re-sending order with guid: {}", order.guid());
     m_tr_gateway.push_order_request(or_event);
@@ -481,8 +482,8 @@ bool StrategyInstance::open_position(double price, SignedVolume target_absolute_
 
     OrderRequestEvent or_event(
             order,
-            m_event_loop,
-            m_event_loop);
+            m_event_loop.sptr(),
+            m_event_loop.sptr());
     m_pending_orders.emplace(order.guid(), order);
     m_tr_gateway.push_order_request(or_event);
     return true;
@@ -508,8 +509,8 @@ bool StrategyInstance::close_position(double price, std::chrono::milliseconds ts
 
     OrderRequestEvent or_event(
             order,
-            m_event_loop,
-            m_event_loop);
+            m_event_loop.sptr(),
+            m_event_loop.sptr());
     m_pending_orders.emplace(order.guid(), order);
     m_tr_gateway.push_order_request(or_event);
     return true;

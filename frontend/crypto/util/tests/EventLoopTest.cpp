@@ -14,7 +14,7 @@ class MockStrategy : public IEventInvoker<OrderResponseEvent, TradeEvent>
 {
 public:
     MockStrategy()
-        : m_loop(EventLoop<OrderResponseEvent, TradeEvent>::create(*this))
+        : m_loop(*this)
     {
     }
     ~MockStrategy() override = default;
@@ -31,14 +31,14 @@ public:
 
     bool order_acked = false;
 
-    std::shared_ptr<EventLoop<OrderResponseEvent, TradeEvent>> m_loop;
+    EventLoopHolder<OrderResponseEvent, TradeEvent> m_loop;
 };
 
 class MockGateway : public IEventInvoker<OrderRequestEvent>
 {
 public:
     MockGateway()
-        : m_loop(EventLoop<OrderRequestEvent>::create(*this))
+        : m_loop(*this)
     {
     }
     ~MockGateway() override = default;
@@ -59,14 +59,14 @@ public:
 
     std::weak_ptr<IEventConsumer<TradeEvent>> trade_consumer;
 
-    std::shared_ptr<EventLoop<OrderRequestEvent>> m_loop;
+    EventLoopHolder<OrderRequestEvent> m_loop;
 };
 
 class MockSlowGateway : public IEventInvoker<OrderRequestEvent>
 {
 public:
     MockSlowGateway()
-        : m_loop(EventLoop<OrderRequestEvent>::create(*this))
+        : m_loop(*this)
     {
     }
     ~MockSlowGateway() override = default;
@@ -89,14 +89,14 @@ public:
 
     std::weak_ptr<IEventConsumer<TradeEvent>> trade_consumer;
 
-    std::shared_ptr<EventLoop<OrderRequestEvent>> m_loop;
+    EventLoopHolder<OrderRequestEvent> m_loop;
 };
 
 class MockSlowStrategy : public IEventInvoker<OrderResponseEvent, TradeEvent>
 {
 public:
     MockSlowStrategy()
-        : m_loop(EventLoop<OrderResponseEvent, TradeEvent>::create(*this))
+        : m_loop(*this)
     {
     }
     ~MockSlowStrategy() override = default;
@@ -108,6 +108,7 @@ public:
                         [&](const OrderResponseEvent &) {
                             // trying to trigger a segfault
                             some_str = "order_ack_received";
+                            FAIL();
                         },
                         [&](const TradeEvent &) {},
                 },
@@ -116,7 +117,7 @@ public:
 
     std::string some_str = "inited_string";
 
-    std::shared_ptr<EventLoop<OrderResponseEvent, TradeEvent>> m_loop;
+    EventLoopHolder<OrderResponseEvent, TradeEvent> m_loop;
 };
 
 class EventLoopTest : public Test
@@ -139,8 +140,8 @@ TEST_F(EventLoopTest, StrategyDestruction)
                             1.1,
                             SignedVolume{1.},
                             std::chrono::milliseconds{1}},
-                    strategy->m_loop,
-                    strategy->m_loop,
+                    strategy->m_loop.sptr(),
+                    strategy->m_loop.sptr(),
             });
 
     // gw pushes response to strategy
@@ -167,8 +168,8 @@ TEST_F(EventLoopTest, DanglingInvokerRefCheck)
                             1.1,
                             SignedVolume{1.},
                             std::chrono::milliseconds{1}},
-                    strategy->m_loop,
-                    strategy->m_loop,
+                    strategy->m_loop.sptr(),
+                    strategy->m_loop.sptr(),
             });
     // obj2 locks wptr immediately
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -180,7 +181,8 @@ TEST_F(EventLoopTest, DanglingInvokerRefCheck)
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     // event loop gets response, invokes it with dangling ref
-    // SEGAFULT!!
+    // possible SEGAFULT!!
+    SUCCEED();
 }
 
 } // namespace test

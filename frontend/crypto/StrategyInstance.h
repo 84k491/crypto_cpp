@@ -73,8 +73,6 @@ private:
 private:
     xg::Guid m_strategy_guid;
 
-    std::shared_ptr<EventLoop<STRATEGY_EVENTS>> m_event_loop;
-
     IMarketDataGateway & m_md_gateway;
     ITradingGateway & m_tr_gateway;
     std::shared_ptr<IStrategy> m_strategy;
@@ -108,4 +106,6 @@ private:
     std::optional<std::promise<void>> m_finish_promise;
 
     bool m_backtest_in_progress = false;
+
+    EventLoopHolder<STRATEGY_EVENTS> m_event_loop;
 };

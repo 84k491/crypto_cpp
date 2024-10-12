@@ -3,7 +3,7 @@
 #include <print>
 
 Logger::Logger()
-    : m_event_loop(EventLoop<LogEvent>::create(*this))
+    : m_event_loop(*this)
 {
 }
 
