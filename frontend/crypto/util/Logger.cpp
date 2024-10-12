@@ -25,9 +25,8 @@ void Logger::invoke(const std::variant<LogEvent> & var)
 
 void Logger::handle_event(const LogEvent & ev)
 {
-    const auto ts = std::chrono::system_clock::now();
     const std::string str = std::format("[{}][{}]: {}",
-                                 ts,
+                                 ev.ts,
                                  to_string(ev.level),
                                  ev.log_str);
     std::cout << str << std::endl;

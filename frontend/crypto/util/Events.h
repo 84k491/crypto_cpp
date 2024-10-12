@@ -216,13 +216,17 @@ struct LambdaEvent : public OneWayEvent
 
 struct LogEvent : public OneWayEvent
 {
+    using TimePoint = std::chrono::time_point<std::chrono::system_clock, std::chrono::duration<long, std::ratio<1, 1000000000>>>;
+
     LogEvent(LogLevel level, std::string && log)
         : log_str(std::move(log))
+        , ts(std::chrono::system_clock::now())
         , level(level)
     {
     }
 
     std::string log_str;
+    TimePoint ts;
     LogLevel level;
 };
 
