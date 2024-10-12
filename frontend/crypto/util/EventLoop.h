@@ -68,10 +68,16 @@ class Scheduler
 {
     using CallbackT = std::function<void()>;
 
-public:
     Scheduler()
     {
         m_thread = std::thread([this] { run(); });
+    }
+
+public:
+    static Scheduler & i()
+    {
+        static Scheduler s{};
+        return s;
     }
 
     ~Scheduler()
@@ -176,7 +182,7 @@ protected:
 
     bool push_to_queue_delayed(std::chrono::milliseconds delay, const std::any value) override
     {
-        m_scheduler.delay(
+        Scheduler::i().delay(
                 delay,
                 [wptr = std::weak_ptr(this->shared_from_this()),
                  value] {
@@ -213,7 +219,6 @@ private:
 private:
     std::atomic<IEventInvoker<Args...> *> m_invoker;
 
-    Scheduler m_scheduler;
     ThreadSafePriorityQueue<std::variant<Args...>> m_queue{};
     std::thread m_thread;
 };
@@ -227,9 +232,13 @@ public:
     {
     }
 
+    EventLoopHolder(const EventLoopHolder<Args...> &) = delete;
+    EventLoopHolder(EventLoopHolder<Args...> &&) = delete;
+
     ~EventLoopHolder() { m_event_loop->reset_invoker(); }
 
-    auto sptr() const {
+    auto sptr() const
+    {
         return m_event_loop;
     }
 
