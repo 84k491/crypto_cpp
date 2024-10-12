@@ -49,8 +49,6 @@ private:
     void on_connection_verified() override;
 
 private:
-    std::shared_ptr<EventLoop<OrderRequestEvent, TpslRequestEvent, TrailingStopLossRequestEvent, PingCheckEvent>> m_event_loop;
-
     GatewayConfig::Trading m_config;
 
     RestClient rest_client;
@@ -58,4 +56,6 @@ private:
     ConnectionWatcher m_connection_watcher;
 
     Guarded<std::map<std::string, std::pair<xg::Guid, TradingGatewayConsumers>>> m_consumers;
+
+    std::shared_ptr<EventLoop<OrderRequestEvent, TpslRequestEvent, TrailingStopLossRequestEvent, PingCheckEvent>> m_event_loop;
 };

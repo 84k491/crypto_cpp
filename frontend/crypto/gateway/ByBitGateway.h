@@ -68,7 +68,6 @@ private:
 private:
     GatewayConfig::MarketData m_config;
 
-    std::shared_ptr<EventLoop<HistoricalMDRequest, LiveMDRequest, PingCheckEvent>> m_event_loop;
     Guarded<std::vector<LiveMDRequest>> m_live_requests;
 
     std::chrono::milliseconds m_last_server_time = std::chrono::milliseconds{0};
@@ -92,4 +91,6 @@ private:
     RestClient rest_client;
     std::shared_ptr<WebSocketClient> m_ws_client;
     ConnectionWatcher m_connection_watcher;
+
+    std::shared_ptr<EventLoop<HistoricalMDRequest, LiveMDRequest, PingCheckEvent>> m_event_loop;
 };
