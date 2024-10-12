@@ -49,7 +49,7 @@ private:
     void on_connection_verified() override;
 
 private:
-    EventLoop<OrderRequestEvent, TpslRequestEvent, TrailingStopLossRequestEvent, PingCheckEvent> m_event_loop;
+    std::shared_ptr<EventLoop<OrderRequestEvent, TpslRequestEvent, TrailingStopLossRequestEvent, PingCheckEvent>> m_event_loop;
 
     GatewayConfig::Trading m_config;
 

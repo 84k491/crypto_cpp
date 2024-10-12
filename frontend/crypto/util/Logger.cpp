@@ -3,7 +3,7 @@
 #include <print>
 
 Logger::Logger()
-    : m_event_loop(*this)
+    : m_event_loop(EventLoop<LogEvent>::create(*this))
 {
 }
 
@@ -36,7 +36,7 @@ template <LogLevel level>
 void Logger::log(std::string && str)
 {
     LogEvent ev(level, std::move(str));
-    i().m_event_loop.push(ev);
+    i().m_event_loop->push(ev);
 }
 
 template void Logger::log<LogLevel::Debug>(std::string && str);

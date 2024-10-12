@@ -132,13 +132,18 @@ private:
 };
 
 template <class... Args>
-class EventLoop : public IEventConsumer<Args>...
+class EventLoop : public std::enable_shared_from_this<EventLoop<Args...>>
+    , public IEventConsumer<Args>...
 {
-public:
     EventLoop(IEventInvoker<Args...> & invoker)
         : m_invoker(invoker)
     {
         m_thread = std::thread([this] { run(); });
+    }
+
+public:
+    static auto create(IEventInvoker<Args...> & invoker) {
+        return std::shared_ptr<EventLoop<Args...>>(new EventLoop<Args...>(invoker));
     }
 
     ~EventLoop() override
@@ -167,7 +172,13 @@ protected:
 
     bool push_to_queue_delayed(std::chrono::milliseconds delay, const std::any value) override
     {
-        m_scheduler.delay(delay, [this, value] { push_to_queue(value); });
+        m_scheduler.delay(
+                delay,
+                [wptr = std::weak_ptr(this->shared_from_this()),
+                 value] {
+                    auto sptr = wptr.lock();
+                    sptr->push_to_queue(value);
+                });
         return true;
     }
 

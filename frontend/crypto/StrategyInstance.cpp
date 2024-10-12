@@ -47,7 +47,7 @@ StrategyInstance::StrategyInstance(
         IMarketDataGateway & md_gateway,
         ITradingGateway & tr_gateway)
     : m_strategy_guid(xg::newGuid())
-    , m_event_loop(std::make_shared<EventLoop<STRATEGY_EVENTS>>(*this))
+    , m_event_loop(EventLoop<STRATEGY_EVENTS>::create(*this))
     , m_md_gateway(md_gateway)
     , m_tr_gateway(tr_gateway)
     , m_strategy(strategy_ptr)

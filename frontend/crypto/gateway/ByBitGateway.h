@@ -68,7 +68,7 @@ private:
 private:
     GatewayConfig::MarketData m_config;
 
-    EventLoop<HistoricalMDRequest, LiveMDRequest, PingCheckEvent> m_event_loop;
+    std::shared_ptr<EventLoop<HistoricalMDRequest, LiveMDRequest, PingCheckEvent>> m_event_loop;
     Guarded<std::vector<LiveMDRequest>> m_live_requests;
 
     std::chrono::milliseconds m_last_server_time = std::chrono::milliseconds{0};

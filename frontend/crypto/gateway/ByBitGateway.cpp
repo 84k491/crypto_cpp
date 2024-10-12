@@ -14,7 +14,7 @@
 #include <vector>
 
 ByBitGateway::ByBitGateway()
-    : m_event_loop(*this)
+    : m_event_loop(EventLoop<HistoricalMDRequest, LiveMDRequest, PingCheckEvent>::create(*this))
     , m_connection_watcher(*this)
 {
     const auto config_opt = GatewayConfigLoader::load();
@@ -56,7 +56,7 @@ bool ByBitGateway::reconnect_ws_client()
         }
     }
 
-    m_event_loop.as_consumer<PingCheckEvent>().push_delayed(ws_ping_interval, PingCheckEvent{});
+    m_event_loop->as_consumer<PingCheckEvent>().push_delayed(ws_ping_interval, PingCheckEvent{});
     return true;
 }
 
@@ -325,12 +325,12 @@ EventObjectPublisher<WorkStatus> & ByBitGateway::status_publisher()
 
 void ByBitGateway::push_async_request(HistoricalMDRequest && request)
 {
-    m_event_loop.as_consumer<HistoricalMDRequest>().push(request);
+    m_event_loop->as_consumer<HistoricalMDRequest>().push(request);
 }
 
 void ByBitGateway::push_async_request(LiveMDRequest && request)
 {
-    m_event_loop.as_consumer<LiveMDRequest>().push(request);
+    m_event_loop->as_consumer<LiveMDRequest>().push(request);
 }
 
 void ByBitGateway::handle_request(const HistoricalMDRequest & request)
@@ -446,11 +446,11 @@ void ByBitGateway::on_connection_lost()
     Logger::log<LogLevel::Warning>("Connection lost on market data, reconnecting...");
     if (!reconnect_ws_client()) {
         Logger::log<LogLevel::Warning>("Failed to connect to ByBit market data");
-        m_event_loop.as_consumer<PingCheckEvent>().push_delayed(std::chrono::seconds{30}, PingCheckEvent{});
+        m_event_loop->as_consumer<PingCheckEvent>().push_delayed(std::chrono::seconds{30}, PingCheckEvent{});
     }
 }
 
 void ByBitGateway::on_connection_verified()
 {
-    m_event_loop.as_consumer<PingCheckEvent>().push_delayed(ws_ping_interval, PingCheckEvent{});
+    m_event_loop->as_consumer<PingCheckEvent>().push_delayed(ws_ping_interval, PingCheckEvent{});
 }

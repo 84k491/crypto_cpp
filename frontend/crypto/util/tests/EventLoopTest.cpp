@@ -12,7 +12,7 @@ class MockStrategy : public IEventInvoker<OrderResponseEvent, TradeEvent>
 {
 public:
     MockStrategy()
-        : m_loop(std::make_shared<EventLoop<OrderResponseEvent, TradeEvent>>(*this))
+        : m_loop(EventLoop<OrderResponseEvent, TradeEvent>::create(*this))
     {
     }
     ~MockStrategy() override = default;
@@ -36,7 +36,7 @@ class MockGateway : public IEventInvoker<OrderRequestEvent>
 {
 public:
     MockGateway()
-        : m_loop(std::make_shared<EventLoop<OrderRequestEvent>>(*this))
+        : m_loop(EventLoop<OrderRequestEvent>::create(*this))
     {
     }
     ~MockGateway() override = default;
