@@ -13,10 +13,21 @@
 #include <string>
 #include <vector>
 
-ByBitGateway::ByBitGateway()
+ByBitGateway::ByBitGateway(bool production)
     : m_event_loop(*this)
     , m_connection_watcher(*this)
 {
+    if (production) {
+        Logger::log<LogLevel::Info>("ByBit MD is running in production");
+    }
+    const std::string config_name = production ? "production" : "testnet";
+    const auto config_opt = GatewayConfigLoader::load("bybit", "market_data", config_name);
+    if (!config_opt) {
+        Logger::log<LogLevel::Error>("Failed to load bybit trading gateway config");
+        return;
+    }
+    m_config = config_opt.value();
+
     m_last_server_time = get_server_time();
 
     if (!reconnect_ws_client()) {
@@ -27,7 +38,7 @@ ByBitGateway::ByBitGateway()
 bool ByBitGateway::reconnect_ws_client()
 {
     m_ws_client = std::make_shared<WebSocketClient>(
-            std::string(s_test_ws_linear_endpoint_address),
+            std::string(m_config.rest_url),
             std::nullopt,
             [this](const json & j) {
                 on_price_received(j);
@@ -213,7 +224,7 @@ bool ByBitGateway::request_historical_klines(const std::string & symbol, const T
 
         const std::string request = [&]() {
             std::stringstream ss;
-            ss << s_endpoint_address
+            ss << m_config.rest_url
                << "/v5/market/kline"
                << "?symbol=" << symbol
                << "&category=" << category
@@ -267,7 +278,7 @@ std::vector<Symbol> ByBitGateway::get_symbols(const std::string & currency)
 
     const std::string url = [&]() {
         std::stringstream ss;
-        ss << s_endpoint_address
+        ss << m_config.rest_url
            << "/v5/market/instruments-info"
            << "?category=" << category
            << "&limit=" << limit;
@@ -297,7 +308,7 @@ std::vector<Symbol> ByBitGateway::get_symbols(const std::string & currency)
 
 std::chrono::milliseconds ByBitGateway::get_server_time()
 {
-    const std::string url = std::string(s_endpoint_address) + "/v5/market/time";
+    const std::string url = std::string(m_config.rest_url) + "/v5/market/time";
 
     auto str_future = rest_client.request_async(url);
     str_future.wait();

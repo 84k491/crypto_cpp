@@ -4,6 +4,7 @@
 #include "EventLoop.h"
 #include "EventObjectPublisher.h"
 #include "Events.h"
+#include "GatewayConfig.h"
 #include "Guarded.h"
 #include "IMarketDataGateway.h"
 #include "Ohlc.h"
@@ -28,16 +29,13 @@ class ByBitGateway final
 {
 private:
     static constexpr double taker_fee = 0.00055; // 0.055%
-    static constexpr std::string_view s_test_ws_linear_endpoint_address = "wss://stream-testnet.bybit.com/v5/public/linear";
-    static constexpr std::string_view s_test_rest_endpoint_address = "https://api-testnet.bybit.com";
-    static constexpr std::string_view s_endpoint_address = "https://api.bybit.com";
     static constexpr std::chrono::seconds ws_ping_interval = std::chrono::seconds(5);
 
 public:
     static constexpr std::chrono::minutes min_historical_interval = std::chrono::minutes{1};
     static auto get_taker_fee() { return taker_fee; }
 
-    ByBitGateway();
+    ByBitGateway(bool production);
 
     void push_async_request(HistoricalMDRequest && request) override;
     void push_async_request(LiveMDRequest && request) override;
@@ -68,6 +66,8 @@ private:
     void on_connection_verified() override;
 
 private:
+    GatewayConfig m_config;
+
     EventLoop<HistoricalMDRequest, LiveMDRequest, PingCheckEvent> m_event_loop;
     Guarded<std::vector<LiveMDRequest>> m_live_requests;
 

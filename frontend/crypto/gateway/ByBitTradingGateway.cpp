@@ -7,16 +7,24 @@
 #include "Ohlc.h"
 
 #include <chrono>
-#include <set>
 #include <variant>
 
-ByBitTradingGateway::ByBitTradingGateway()
+ByBitTradingGateway::ByBitTradingGateway(bool production)
     : m_event_loop(*this)
-    , m_url("wss://stream-testnet.bybit.com/v5/private")
-    , m_api_key("EzxMilnOJadmXdhy7r") // will expire at Oct 20, 2024
-    , m_secret_key("8J0teoEQbIuGf86F3zgKAStEyoIETkhidUTQ")
     , m_connection_watcher(*this)
 {
+    if (production) {
+        Logger::log<LogLevel::Info>("ByBit TR is running in production");
+    }
+    Logger::log<LogLevel::Info>("");
+    const std::string config_name = production ? "production" : "testnet";
+    const auto config_opt = GatewayConfigLoader::load("bybit", "trading", config_name);
+    if (!config_opt) {
+        Logger::log<LogLevel::Error>("Failed to load bybit trading gateway config");
+        return;
+    }
+    m_config = config_opt.value();
+
     if (!reconnect_ws_client()) {
         Logger::log<LogLevel::Warning>("Failed to connect to ByBit trading");
     }
@@ -151,12 +159,12 @@ void ByBitTradingGateway::process_event(const OrderRequestEvent & req)
 
     const auto request = json_order.dump();
 
-    const std::string url = std::string(s_rest_base_url) + "/v5/order/create";
+    const std::string url = std::string(m_config.rest_url) + "/v5/order/create";
     std::future<std::string> request_future = rest_client.request_auth_async(
             url,
             request,
-            m_api_key,
-            m_secret_key,
+            m_config.api_key,
+            m_config.secret_key,
             1000ms);
     const std::future_status status = request_future.wait_for(5000ms);
     if (status != std::future_status::ready) {
@@ -211,12 +219,12 @@ void ByBitTradingGateway::process_event(const TpslRequestEvent & tpsl)
     };
     const auto request = json_order.dump();
 
-    const std::string url = std::string(s_rest_base_url) + "/v5/position/trading-stop";
+    const std::string url = std::string(m_config.rest_url) + "/v5/position/trading-stop";
     std::future<std::string> request_future = rest_client.request_auth_async(
             url,
             request,
-            m_api_key,
-            m_secret_key,
+            m_config.api_key,
+            m_config.secret_key,
             1000ms);
     const std::future_status status = request_future.wait_for(5000ms);
     if (status != std::future_status::ready) {
@@ -270,12 +278,12 @@ void ByBitTradingGateway::process_event(const TrailingStopLossRequestEvent & tsl
     };
     const auto request = json_order.dump();
 
-    const std::string url = std::string(s_rest_base_url) + "/v5/position/trading-stop";
+    const std::string url = std::string(m_config.rest_url) + "/v5/position/trading-stop";
     std::future<std::string> request_future = rest_client.request_auth_async(
             url,
             request,
-            m_api_key,
-            m_secret_key,
+            m_config.api_key,
+            m_config.secret_key,
             1000ms);
     const std::future_status status = request_future.wait_for(5000ms);
     if (status != std::future_status::ready) {
@@ -349,8 +357,8 @@ bool ByBitTradingGateway::check_consumers(const std::string & symbol)
 bool ByBitTradingGateway::reconnect_ws_client()
 {
     m_ws_client = std::make_shared<WebSocketClient>(
-            m_url,
-            std::make_optional(WsKeys{m_api_key, m_secret_key}),
+            m_config.ws_url,
+            std::make_optional(WsKeys{m_config.api_key, m_config.secret_key}),
             [this](const json & j) { on_ws_message(j); },
             m_connection_watcher);
 

@@ -4,6 +4,7 @@
 #include "ConnectionWatcher.h"
 #include "EventLoop.h"
 #include "Events.h"
+#include "GatewayConfig.h"
 #include "Guarded.h"
 #include "ITradingGateway.h"
 #include "RestClient.h"
@@ -16,11 +17,10 @@ class ByBitTradingGateway final
     , public IConnectionSupervisor
     , private IEventInvoker<OrderRequestEvent, TpslRequestEvent, TrailingStopLossRequestEvent, PingCheckEvent>
 {
-    static constexpr std::string_view s_rest_base_url = "https://api-testnet.bybit.com";
     static constexpr std::chrono::seconds ws_ping_interval = std::chrono::seconds(5);
 
 public:
-    ByBitTradingGateway();
+    ByBitTradingGateway(bool production);
 
     void push_order_request(const OrderRequestEvent & order) override;
     void push_tpsl_request(const TpslRequestEvent & tpsl_ev) override;
@@ -51,9 +51,7 @@ private:
 private:
     EventLoop<OrderRequestEvent, TpslRequestEvent, TrailingStopLossRequestEvent, PingCheckEvent> m_event_loop;
 
-    std::string m_url;
-    std::string m_api_key;
-    std::string m_secret_key;
+    GatewayConfig m_config;
 
     RestClient rest_client;
     std::shared_ptr<WebSocketClient> m_ws_client;
