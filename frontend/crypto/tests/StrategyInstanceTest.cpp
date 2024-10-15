@@ -190,7 +190,7 @@ protected:
     std::unique_ptr<StrategyInstance> strategy_instance;
 
     WorkStatus strategy_status = WorkStatus::Panic;
-    std::shared_ptr<EventObjectSubscribtion<WorkStatus>> status_sub;
+    std::shared_ptr<EventObjectSubscription<WorkStatus>> status_sub;
 };
 
 // strategy starts in stopped state

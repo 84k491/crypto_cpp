@@ -90,7 +90,7 @@ private:
 
     const std::optional<HistoricalMDRequestData> m_historical_md_request;
 
-    std::shared_ptr<EventObjectSubscribtion<WorkStatus>> m_gw_status_sub;
+    std::shared_ptr<EventObjectSubscription<WorkStatus>> m_gw_status_sub;
     bool first_price_received = false;
 
     std::pair<std::chrono::milliseconds, double> m_last_ts_and_price;

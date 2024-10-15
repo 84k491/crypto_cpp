@@ -13,12 +13,12 @@ template <typename ObjectT>
 class EventObjectPublisher;
 
 template <typename ObjectT>
-class EventObjectSubscribtion final : public ISubsription // TODO rename to SubsriPtion
+class EventObjectSubscription final : public ISubsription
 {
     friend class EventObjectPublisher<ObjectT>;
 
 public:
-    EventObjectSubscribtion(
+    EventObjectSubscription(
             const std::shared_ptr<IEventConsumer<LambdaEvent>> & consumer,
             EventObjectPublisher<ObjectT> & publisher,
             xg::Guid guid)
@@ -28,7 +28,7 @@ public:
     {
     }
 
-    ~EventObjectSubscribtion() override
+    ~EventObjectSubscription() override
     {
         if (m_publisher) {
             m_publisher->unsubscribe(m_guid);
@@ -56,7 +56,7 @@ public:
         return m_data;
     }
 
-    [[nodiscard]] std::shared_ptr<EventObjectSubscribtion<ObjectT>>
+    [[nodiscard]] std::shared_ptr<EventObjectSubscription<ObjectT>>
     subscribe(
             const std::shared_ptr<IEventConsumer<LambdaEvent>> & consumer,
             std::function<void(const ObjectT &)> && update_callback);
@@ -67,7 +67,7 @@ private:
     std::vector<std::tuple<
             xg::Guid,
             std::function<void(const ObjectT &)>,
-            std::weak_ptr<EventObjectSubscribtion<ObjectT>>>>
+            std::weak_ptr<EventObjectSubscription<ObjectT>>>>
             m_update_callbacks;
 };
 
@@ -96,13 +96,13 @@ void EventObjectPublisher<ObjectT>::update(std::function<void(ObjectT &)> && upd
 }
 
 template <typename ObjectT>
-std::shared_ptr<EventObjectSubscribtion<ObjectT>>
+std::shared_ptr<EventObjectSubscription<ObjectT>>
 EventObjectPublisher<ObjectT>::subscribe(
         const std::shared_ptr<IEventConsumer<LambdaEvent>> & consumer,
         std::function<void(const ObjectT &)> && update_callback)
 {
     const auto guid = xg::newGuid();
-    auto sptr = std::make_shared<EventObjectSubscribtion<ObjectT>>(consumer, *this, guid);
+    auto sptr = std::make_shared<EventObjectSubscription<ObjectT>>(consumer, *this, guid);
 
     m_update_callbacks.push_back({guid, std::move(update_callback), std::weak_ptr{sptr}});
     return sptr;
