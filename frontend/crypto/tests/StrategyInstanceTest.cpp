@@ -27,6 +27,11 @@ public:
     {
     }
 
+    EventPublisher<HistoricalMDPackEvent> & historical_prices_publisher() override
+    {
+        return m_historical_prices_publisher;
+    }
+
     void push_async_request(LiveMDRequest && request) override
     {
         ++m_live_requests_count;
@@ -54,6 +59,8 @@ private:
 
     size_t m_live_requests_count = 0;
     size_t m_unsubscribed_count = 0;
+
+    EventPublisher<HistoricalMDPackEvent> m_historical_prices_publisher;
 };
 
 class MockTradingGateway : public ITradingGateway

@@ -37,12 +37,12 @@ public:
 
 private:
     std::weak_ptr<IEventConsumer<LambdaEvent>> m_consumer;
-    EventObjectPublisher<ObjectT> * m_publisher;
+    EventObjectPublisher<ObjectT> * m_publisher; // TODO make it atomic
     xg::Guid m_guid;
 };
 
 template <typename ObjectT>
-class EventObjectPublisher
+class EventObjectPublisher // TODO rename it to object pub
 {
 public:
     EventObjectPublisher() = default;
@@ -64,7 +64,7 @@ public:
 
 private:
     ObjectT m_data;
-    std::vector<std::tuple<
+    std::vector<std::tuple< // TODO make it thread-safe
             xg::Guid,
             std::function<void(const ObjectT &)>,
             std::weak_ptr<EventObjectSubscription<ObjectT>>>>

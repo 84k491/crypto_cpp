@@ -108,4 +108,5 @@ private:
     bool m_backtest_in_progress = false;
 
     EventLoopHolder<STRATEGY_EVENTS> m_event_loop;
+    std::list<std::shared_ptr<ISubsription>> m_subscriptions; // those must be destroyed before EvLoop
 };

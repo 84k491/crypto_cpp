@@ -343,8 +343,7 @@ void ByBitGateway::handle_request(const HistoricalMDRequest & request)
             const auto & prices = it->second;
             HistoricalMDPackEvent ev(request.guid);
             ev.ts_and_price_pack = prices;
-            UNWRAP_RET_VOID(consumer, request.response_consumer.lock());
-            consumer.push(ev);
+            m_historical_prices_publisher.push(ev);
             return;
         }
     }
@@ -369,8 +368,7 @@ void ByBitGateway::handle_request(const HistoricalMDRequest & request)
     range = std::make_shared<std::map<std::chrono::milliseconds, OHLC>>(prices);
     HistoricalMDPackEvent ev(request.guid);
     ev.ts_and_price_pack = range;
-    UNWRAP_RET_VOID(consumer, request.response_consumer.lock());
-    consumer.push(ev);
+    m_historical_prices_publisher.push(ev);
 }
 
 void ByBitGateway::handle_request(const LiveMDRequest & request)
@@ -453,4 +451,9 @@ void ByBitGateway::on_connection_lost()
 void ByBitGateway::on_connection_verified()
 {
     m_event_loop->as_consumer<PingCheckEvent>().push_delayed(ws_ping_interval, PingCheckEvent{});
+}
+
+EventPublisher<HistoricalMDPackEvent> & ByBitGateway::historical_prices_publisher()
+{
+    return m_historical_prices_publisher;
 }

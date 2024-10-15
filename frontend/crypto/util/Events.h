@@ -53,10 +53,9 @@ struct HistoricalMDRequestData
 };
 std::ostream & operator<<(std::ostream & os, const HistoricalMDRequestData & data);
 
-struct HistoricalMDRequest : public EventWithResponse<HistoricalMDPackEvent>
+struct HistoricalMDRequest : public OneWayEvent
 {
     HistoricalMDRequest(
-            const std::shared_ptr<IEventConsumer<HistoricalMDPackEvent>> & consumer,
             const Symbol & symbol,
             HistoricalMDRequestData data);
     HistoricalMDRequestData data;

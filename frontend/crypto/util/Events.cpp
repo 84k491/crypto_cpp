@@ -1,10 +1,8 @@
 #include "Events.h"
 
-HistoricalMDRequest::HistoricalMDRequest(const std::shared_ptr<IEventConsumer<HistoricalMDPackEvent>> & consumer,
-                                         const Symbol & symbol,
+HistoricalMDRequest::HistoricalMDRequest(const Symbol & symbol,
                                          HistoricalMDRequestData data)
-    : EventWithResponse<HistoricalMDPackEvent>(consumer)
-    , data(data)
+    : data(data)
     , symbol(symbol)
     , guid(xg::newGuid())
 {

@@ -71,6 +71,7 @@ StrategyInstance::StrategyInstance(
     m_exit_strategy = *exit_strategy_opt;
 
     m_status.push(WorkStatus::Stopped);
+    m_subscriptions.push_back(m_md_gateway.historical_prices_publisher().subscribe(m_event_loop.sptr()));
     m_tr_gateway.register_consumers(
             m_strategy_guid,
             symbol,
@@ -112,7 +113,6 @@ void StrategyInstance::run_async()
         m_status.push(WorkStatus::Backtesting);
 
         HistoricalMDRequest historical_request(
-                m_event_loop.sptr(),
                 m_symbol,
                 m_historical_md_request.value());
         m_md_gateway.push_async_request(std::move(historical_request));

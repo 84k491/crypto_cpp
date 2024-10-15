@@ -3,6 +3,7 @@
 #include "ConnectionWatcher.h"
 #include "EventLoop.h"
 #include "EventObjectPublisher.h"
+#include "EventPublisher.h"
 #include "Events.h"
 #include "GatewayConfig.h"
 #include "Guarded.h"
@@ -39,6 +40,8 @@ public:
 
     void push_async_request(HistoricalMDRequest && request) override;
     void push_async_request(LiveMDRequest && request) override;
+
+    EventPublisher<HistoricalMDPackEvent> & historical_prices_publisher() override;
 
     void unsubscribe_from_live(xg::Guid guid) override;
 
@@ -93,4 +96,5 @@ private:
     ConnectionWatcher m_connection_watcher;
 
     EventLoopHolder<HistoricalMDRequest, LiveMDRequest, PingCheckEvent> m_event_loop;
+    EventPublisher<HistoricalMDPackEvent> m_historical_prices_publisher;
 };
