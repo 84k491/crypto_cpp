@@ -42,13 +42,7 @@ void ByBitTradingGateway::on_order_response(const json & j)
         std::visit(
                 VariantMatcher{
                         [&](const OrderResponseEvent & event) {
-                            auto it = lref.get().find(event.symbol_name);
-                            if (it == lref.get().end()) {
-                                Logger::logf<LogLevel::Warning>("Failed to find tpsl consumer for symbol: {}", event.symbol_name);
-                                return;
-                            }
-                            auto & consumers = it->second.second;
-                            consumers.order_ack_consumer.push(event);
+                            m_order_response_publisher.push(event);
                         },
                         [&](const TpslUpdatedEvent & event) {
                             auto it = lref.get().find(event.symbol_name);
@@ -134,12 +128,6 @@ void ByBitTradingGateway::process_event(const OrderRequestEvent & req)
     using namespace std::chrono_literals;
     const auto & order = req.order;
 
-    UNWRAP_RET_VOID(consumer, req.response_consumer.lock());
-    if (!check_consumers(order.symbol())) {
-        consumer.push(OrderResponseEvent(req.order.symbol(), req.order.guid(), "No trade consumer for symbol"));
-        return;
-    }
-
     const std::string order_id = order.guid().str();
     json json_order = {
             {"category", "linear"},
@@ -163,14 +151,21 @@ void ByBitTradingGateway::process_event(const OrderRequestEvent & req)
             1000ms);
     const std::future_status status = request_future.wait_for(5000ms);
     if (status != std::future_status::ready) {
-        // TODO specify guid
-        consumer.push(
-                OrderResponseEvent(req.order.symbol(), req.order.guid(), "Order request timeout"));
+        const auto nack_ev = OrderResponseEvent(
+                req.order.symbol(),
+                req.order.guid(),
+                "Order request timeout" + std::string{req.order.guid()});
+        m_order_response_publisher.push(nack_ev);
         return;
     }
     const std::string request_result = request_future.get();
     Logger::logf<LogLevel::Debug>("Enter order response: {}", request_result);
+
     if (!request_result.empty()) {
+        auto event = OrderResponseEvent(
+                req.order.symbol(),
+                req.order.guid());
+        m_order_response_publisher.push(event);
         return;
     }
 
@@ -180,7 +175,7 @@ void ByBitTradingGateway::process_event(const OrderRequestEvent & req)
             req.order.guid(),
             "Empty order response. Need to push this request again with other guid");
     event.retry = true;
-    consumer.push(std::move(event));
+    m_order_response_publisher.push(event);
 }
 
 void ByBitTradingGateway::process_event(const TpslRequestEvent & tpsl)
@@ -383,3 +378,4 @@ void ByBitTradingGateway::on_connection_verified()
 {
     m_event_loop->as_consumer<PingCheckEvent>().push_delayed(ws_ping_interval, PingCheckEvent{});
 }
+EventPublisher<OrderResponseEvent> & ByBitTradingGateway::order_response_publisher() { return m_order_response_publisher; }

@@ -64,11 +64,9 @@ struct HistoricalMDRequest : public OneWayEvent
     xg::Guid guid;
 };
 
-struct LiveMDRequest : public EventWithResponse<MDPriceEvent>
+struct LiveMDRequest : public OneWayEvent
 {
-    LiveMDRequest(
-            const std::shared_ptr<IEventConsumer<MDPriceEvent>> & consumer,
-            const Symbol & symbol);
+    LiveMDRequest(const Symbol & symbol);
 
     Symbol symbol;
     xg::Guid guid;

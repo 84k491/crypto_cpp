@@ -88,6 +88,11 @@ public:
         // not implemented
     }
 
+    EventPublisher<OrderResponseEvent> & order_response_publisher() override
+    {
+        return m_order_response_publisher;
+    }
+
     void register_consumers(xg::Guid, const Symbol &, TradingGatewayConsumers consumers) override
     {
         m_consumers = std::make_unique<TradingGatewayConsumers>(consumers);
@@ -103,6 +108,7 @@ public:
     std::optional<TpslRequestEvent> m_last_tpsl_request;
 
     std::unique_ptr<TradingGatewayConsumers> m_consumers;
+    EventPublisher<OrderResponseEvent> m_order_response_publisher;
 };
 
 class MockStrategy : public IStrategy
@@ -236,8 +242,7 @@ TEST_F(StrategyInstanceTest, SubForLiveMarketData_GetPrice_GracefullStop)
     OHLC ohlc = {ts, price, price, price, price};
     MDPriceEvent ev;
     ev.ts_and_price = {ts, ohlc};
-    UNWRAP_RET_VOID(consumer, live_req.response_consumer.lock());
-    consumer.push(ev);
+    md_gateway.live_prices_publisher().push(ev);
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
     ASSERT_EQ(prices_received, 1);
 
@@ -287,8 +292,7 @@ TEST_F(StrategyInstanceTest, OpenAndClosePos_GetResult_DontCloseTwiceOnStop)
         OHLC ohlc = {price_ts, price, price, price, price};
         MDPriceEvent price_event;
         price_event.ts_and_price = {price_ts, ohlc};
-        UNWRAP_RET_VOID(consumer, live_req.response_consumer.lock());
-        consumer.push(price_event);
+        md_gateway.live_prices_publisher().push(price_event);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         ASSERT_EQ(prices_received, 1);
     }
@@ -326,7 +330,7 @@ TEST_F(StrategyInstanceTest, OpenAndClosePos_GetResult_DontCloseTwiceOnStop)
     ASSERT_FALSE(tr_gateway.m_last_tpsl_request.has_value()) << "Tpsl request must be after position opened";
     ASSERT_EQ(result.trades_count, 0);
     tr_gateway.m_consumers->trade_consumer.push(open_trade_event);
-    tr_gateway.m_consumers->order_ack_consumer.push(order_response);
+    tr_gateway.order_response_publisher().push(order_response);
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
     ASSERT_EQ(result.trades_count, 1);
     ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -405,8 +409,8 @@ TEST_F(StrategyInstanceTest, OpenPositionWithTpsl_CloseOnGracefullStop)
         OHLC ohlc = {price_ts, price, price, price, price};
         MDPriceEvent price_event;
         price_event.ts_and_price = {price_ts, ohlc};
-        UNWRAP_RET_VOID(consumer, live_req.response_consumer.lock());
-        consumer.push(price_event);
+        md_gateway.live_prices_publisher().push(price_event);
+
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         ASSERT_EQ(prices_received, 1);
     }
@@ -441,7 +445,7 @@ TEST_F(StrategyInstanceTest, OpenPositionWithTpsl_CloseOnGracefullStop)
         ASSERT_FALSE(tr_gateway.m_last_tpsl_request.has_value()) << "Tpsl request must be after position opened";
         ASSERT_EQ(result.trades_count, 0);
         tr_gateway.m_consumers->trade_consumer.push(open_trade_event);
-        tr_gateway.m_consumers->order_ack_consumer.push(order_response);
+        tr_gateway.order_response_publisher().push(order_response);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         ASSERT_EQ(result.trades_count, 1);
     }
@@ -482,7 +486,7 @@ TEST_F(StrategyInstanceTest, OpenPositionWithTpsl_CloseOnGracefullStop)
         tr_gateway.m_last_tpsl_request.reset();
         ASSERT_EQ(result.trades_count, 1);
         tr_gateway.m_consumers->trade_consumer.push(close_trade_event);
-        tr_gateway.m_consumers->order_ack_consumer.push(order_response);
+        tr_gateway.order_response_publisher().push(order_response);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         ASSERT_FALSE(tr_gateway.m_last_tpsl_request.has_value()) << "No tpsl on position close";
         ASSERT_EQ(result.trades_count, 2);
@@ -526,8 +530,7 @@ TEST_F(StrategyInstanceTest, ManyPricesReceivedWhileOrderIsPending_NoAdditionalO
         OHLC ohlc = {price_ts, price, price, price, price};
         MDPriceEvent price_event;
         price_event.ts_and_price = {price_ts, ohlc};
-        UNWRAP_RET_VOID(consumer, live_req.response_consumer.lock());
-        consumer.push(price_event);
+        md_gateway.live_prices_publisher().push(price_event);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         ASSERT_EQ(prices_received, 1);
     }
@@ -543,8 +546,7 @@ TEST_F(StrategyInstanceTest, ManyPricesReceivedWhileOrderIsPending_NoAdditionalO
         OHLC ohlc = {price_ts, price, price, price, price};
         MDPriceEvent price_event;
         price_event.ts_and_price = {price_ts, ohlc};
-        UNWRAP_RET_VOID(consumer, live_req.response_consumer.lock());
-        consumer.push(price_event);
+        md_gateway.live_prices_publisher().push(price_event);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         ASSERT_EQ(prices_received, 2);
     }
@@ -573,8 +575,7 @@ TEST_F(StrategyInstanceTest, EnterOrder_GetReject_Panic)
         OHLC ohlc = {price_ts, price, price, price, price};
         MDPriceEvent price_event;
         price_event.ts_and_price = {price_ts, ohlc};
-        UNWRAP_RET_VOID(consumer, live_req.response_consumer.lock());
-        consumer.push(price_event);
+        md_gateway.live_prices_publisher().push(price_event);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
@@ -617,8 +618,7 @@ TEST_F(StrategyInstanceTest, OpenPos_TpslReject_ClosePosAndPanic)
         OHLC ohlc = {price_ts, price, price, price, price};
         MDPriceEvent price_event;
         price_event.ts_and_price = {price_ts, ohlc};
-        UNWRAP_RET_VOID(consumer, live_req.response_consumer.lock());
-        consumer.push(price_event);
+        md_gateway.live_prices_publisher().push(price_event);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
@@ -654,7 +654,7 @@ TEST_F(StrategyInstanceTest, OpenPos_TpslReject_ClosePosAndPanic)
         ASSERT_FALSE(tr_gateway.m_last_tpsl_request.has_value()) << "Tpsl request must be after position opened";
         ASSERT_EQ(result.trades_count, 0);
         tr_gateway.m_consumers->trade_consumer.push(open_trade_event);
-        tr_gateway.m_consumers->order_ack_consumer.push(order_response);
+        tr_gateway.order_response_publisher().push(order_response);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         ASSERT_EQ(result.trades_count, 1);
     }
@@ -695,7 +695,7 @@ TEST_F(StrategyInstanceTest, OpenPos_TpslReject_ClosePosAndPanic)
 
         ASSERT_EQ(result.trades_count, 1);
         tr_gateway.m_consumers->trade_consumer.push(close_trade_event);
-        tr_gateway.m_consumers->order_ack_consumer.push(order_response);
+        tr_gateway.order_response_publisher().push(order_response);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         ASSERT_EQ(result.trades_count, 2);
     }

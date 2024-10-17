@@ -3,6 +3,7 @@
 #include "ByBitTradingMessages.h"
 #include "ConnectionWatcher.h"
 #include "EventLoop.h"
+#include "EventPublisher.h"
 #include "Events.h"
 #include "GatewayConfig.h"
 #include "Guarded.h"
@@ -25,6 +26,8 @@ public:
     void push_order_request(const OrderRequestEvent & order) override;
     void push_tpsl_request(const TpslRequestEvent & tpsl_ev) override;
     void push_trailing_stop_request(const TrailingStopLossRequestEvent & trailing_stop_ev) override;
+
+    EventPublisher<OrderResponseEvent> & order_response_publisher() override;
 
     void register_consumers(xg::Guid guid, const Symbol & symbol, TradingGatewayConsumers consumers) override;
     void unregister_consumers(xg::Guid guid) override;
@@ -58,4 +61,5 @@ private:
     Guarded<std::map<std::string, std::pair<xg::Guid, TradingGatewayConsumers>>> m_consumers;
 
     EventLoopHolder<OrderRequestEvent, TpslRequestEvent, TrailingStopLossRequestEvent, PingCheckEvent> m_event_loop;
+    EventPublisher<OrderResponseEvent> m_order_response_publisher;
 };

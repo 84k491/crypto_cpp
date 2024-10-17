@@ -74,6 +74,7 @@ StrategyInstance::StrategyInstance(
 
     m_subscriptions.push_back(m_md_gateway.historical_prices_publisher().subscribe(m_event_loop.sptr()));
     m_subscriptions.push_back(m_md_gateway.live_prices_publisher().subscribe(m_event_loop.sptr()));
+    m_subscriptions.push_back(m_tr_gateway.order_response_publisher().subscribe(m_event_loop.sptr()));
 
     m_tr_gateway.register_consumers(
             m_strategy_guid,
@@ -81,7 +82,6 @@ StrategyInstance::StrategyInstance(
             TradingGatewayConsumers{
                     // TODO remove this class ?
                     .trade_consumer = *m_event_loop,
-                    .order_ack_consumer = *m_event_loop,
                     .tpsl_response_consumer = *m_event_loop,
                     .tpsl_update_consumer = *m_event_loop,
                     .trailing_stop_update_consumer = *m_event_loop,
@@ -123,9 +123,7 @@ void StrategyInstance::run_async()
     }
     else {
         m_status.push(WorkStatus::Live);
-        LiveMDRequest live_request(
-                m_event_loop.sptr(),
-                m_symbol);
+        LiveMDRequest live_request(m_symbol);
         m_md_gateway.push_async_request(std::move(live_request));
         m_live_md_requests.emplace(live_request.guid);
     }

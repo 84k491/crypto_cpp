@@ -43,6 +43,8 @@ public:
     void push_tpsl_request(const TpslRequestEvent & tpsl_ev) override;
     void push_trailing_stop_request(const TrailingStopLossRequestEvent & trailing_stop_ev) override;
 
+    EventPublisher<OrderResponseEvent> & order_response_publisher() override;
+
     void register_consumers(xg::Guid guid, const Symbol & symbol, TradingGatewayConsumers consumers) override;
     void unregister_consumers(xg::Guid guid) override;
 
@@ -62,4 +64,6 @@ private:
     SignedVolume m_pos_volume;
 
     Guarded<std::map<std::string, std::pair<xg::Guid, TradingGatewayConsumers>>> m_consumers;
+
+    EventPublisher<OrderResponseEvent> m_order_response_publisher;
 };

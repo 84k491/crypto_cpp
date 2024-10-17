@@ -9,10 +9,8 @@ HistoricalMDRequest::HistoricalMDRequest(const Symbol & symbol,
 }
 
 LiveMDRequest::LiveMDRequest(
-        const std::shared_ptr<IEventConsumer<MDPriceEvent>> & consumer,
         const Symbol & symbol)
-    : EventWithResponse<MDPriceEvent>(consumer)
-    , symbol(symbol)
+    : symbol(symbol)
     , guid(xg::newGuid())
 {
 }

@@ -112,15 +112,10 @@ void BacktestTradingGateway::push_order_request(const OrderRequestEvent & req)
     if (!m_price_sub) {
         Logger::log<LogLevel::Error>("No price sub. Did you forgot to subscribe backtest TRGW for prices?");
     }
-    if (!check_consumers(req.order.symbol())) {
-        UNWRAP_RET_VOID(consumer, req.response_consumer.lock());
-        consumer.push(OrderResponseEvent(req.order.symbol(), req.order.guid(), "No trade consumer for this symbol"));
-        return;
-    }
 
     const auto & order = req.order;
-    UNWRAP_RET_VOID(consumer, req.response_consumer.lock());
-    consumer.push(OrderResponseEvent(req.order.symbol(), req.order.guid()));
+    const auto ack_ev = OrderResponseEvent(req.order.symbol(), req.order.guid());
+    m_order_response_publisher.push(ack_ev);
     m_symbol = order.symbol();
 
     const auto & price = m_last_trade_price;
@@ -273,4 +268,8 @@ std::optional<std::variant<Trade, StopLoss>> BacktestTrailingStopLoss::on_price_
             (m_pos_volume.value() * tick_price) * taker_fee_rate,
     };
     return trade;
+}
+EventPublisher<OrderResponseEvent> & BacktestTradingGateway::order_response_publisher()
+{
+    return m_order_response_publisher;
 }
