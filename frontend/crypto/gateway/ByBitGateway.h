@@ -42,6 +42,7 @@ public:
     void push_async_request(LiveMDRequest && request) override;
 
     EventPublisher<HistoricalMDPackEvent> & historical_prices_publisher() override;
+    EventPublisher<MDPriceEvent> & live_prices_publisher() override;
 
     void unsubscribe_from_live(xg::Guid guid) override;
 
@@ -71,7 +72,7 @@ private:
 private:
     GatewayConfig::MarketData m_config;
 
-    Guarded<std::vector<LiveMDRequest>> m_live_requests;
+    Guarded<std::vector<LiveMDRequest>> m_live_requests; // TODO remove?
 
     std::chrono::milliseconds m_last_server_time = std::chrono::milliseconds{0};
 
@@ -97,4 +98,5 @@ private:
 
     EventLoopHolder<HistoricalMDRequest, LiveMDRequest, PingCheckEvent> m_event_loop;
     EventPublisher<HistoricalMDPackEvent> m_historical_prices_publisher;
+    EventPublisher<MDPriceEvent> m_live_prices_publisher;
 };

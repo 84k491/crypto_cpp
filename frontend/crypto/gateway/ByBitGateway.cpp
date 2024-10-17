@@ -399,17 +399,14 @@ void ByBitGateway::on_price_received(const nlohmann::json & json)
     auto locked_ref = m_live_requests.lock();
     if (locked_ref.get().empty()) {
         Logger::log<LogLevel::Error>("no request on MD received");
-        return;
     }
 
-    const LiveMDRequest & live_request = locked_ref.get().front();
     const auto trades_list = json.get<PublicTradeList>();
     for (const auto & trade : trades_list.trades) {
         OHLC ohlc = {trade.timestamp, trade.price, trade.price, trade.price, trade.price};
         MDPriceEvent ev;
+        m_live_prices_publisher.push(ev);
         ev.ts_and_price = {trade.timestamp, ohlc};
-        UNWRAP_RET_VOID(consumer, live_request.response_consumer.lock());
-        consumer.push(ev);
     }
 }
 
@@ -457,3 +454,4 @@ EventPublisher<HistoricalMDPackEvent> & ByBitGateway::historical_prices_publishe
 {
     return m_historical_prices_publisher;
 }
+EventPublisher<MDPriceEvent> & ByBitGateway::live_prices_publisher() { return m_live_prices_publisher; }

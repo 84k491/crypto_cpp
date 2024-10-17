@@ -71,7 +71,10 @@ StrategyInstance::StrategyInstance(
     m_exit_strategy = *exit_strategy_opt;
 
     m_status.push(WorkStatus::Stopped);
+
     m_subscriptions.push_back(m_md_gateway.historical_prices_publisher().subscribe(m_event_loop.sptr()));
+    m_subscriptions.push_back(m_md_gateway.live_prices_publisher().subscribe(m_event_loop.sptr()));
+
     m_tr_gateway.register_consumers(
             m_strategy_guid,
             symbol,

@@ -14,6 +14,7 @@ public:
     virtual void push_async_request(LiveMDRequest && request) = 0;
 
     virtual EventPublisher<HistoricalMDPackEvent> & historical_prices_publisher() = 0;
+    virtual EventPublisher<MDPriceEvent> & live_prices_publisher() = 0;
 
     virtual void unsubscribe_from_live(xg::Guid guid) = 0;
 
