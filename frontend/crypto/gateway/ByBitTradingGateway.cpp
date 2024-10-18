@@ -85,14 +85,7 @@ void ByBitTradingGateway::on_execution(const json & j)
             Logger::logf<LogLevel::Error>("ERROR can't get proper trade on execution: {}", j);
             return;
         }
-        auto lref = m_consumers.lock();
-        auto it = lref.get().find(response.symbol);
-        if (it == lref.get().end()) {
-            Logger::logf<LogLevel::Warning>("Failed to find consumer for symbol: {}", response.symbol);
-            continue;
-        }
-        auto & consumers = it->second.second;
-        consumers.trade_consumer.push(TradeEvent(std::move(trade_opt.value())));
+        m_trade_publisher.push(TradeEvent(std::move(trade_opt.value())));
     }
 }
 
@@ -378,4 +371,13 @@ void ByBitTradingGateway::on_connection_verified()
 {
     m_event_loop->as_consumer<PingCheckEvent>().push_delayed(ws_ping_interval, PingCheckEvent{});
 }
-EventPublisher<OrderResponseEvent> & ByBitTradingGateway::order_response_publisher() { return m_order_response_publisher; }
+
+EventPublisher<OrderResponseEvent> & ByBitTradingGateway::order_response_publisher()
+{
+    return m_order_response_publisher;
+}
+
+EventPublisher<TradeEvent> & ByBitTradingGateway::trade_publisher()
+{
+    return m_trade_publisher;
+}

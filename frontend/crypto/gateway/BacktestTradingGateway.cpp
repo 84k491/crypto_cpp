@@ -23,10 +23,7 @@ void BacktestTradingGateway::set_price_source(EventTimeseriesPublisher<OHLC> & p
                 if (m_tpsl.has_value()) {
                     const auto tpsl_trade = try_trade_tpsl(ohlc);
                     if (tpsl_trade.has_value()) {
-                        auto lref = m_consumers.lock();
-                        for (auto & it : lref.get()) {
-                            it.second.second.trade_consumer.push(TradeEvent(tpsl_trade.value()));
-                        }
+                        m_trade_publisher.push(TradeEvent(tpsl_trade.value()));
                         m_pos_volume = SignedVolume();
                         m_tpsl.reset();
                     }
@@ -38,8 +35,8 @@ void BacktestTradingGateway::set_price_source(EventTimeseriesPublisher<OHLC> & p
                         std::visit(
                                 VariantMatcher{
                                         [&](const Trade & trade) {
+                                            m_trade_publisher.push(TradeEvent(trade));
                                             for (auto & it : lref.get()) {
-                                                it.second.second.trade_consumer.push(TradeEvent(trade));
                                                 it.second.second.trailing_stop_update_consumer.push(
                                                         TrailingStopLossUpdatedEvent(trade.symbol().symbol_name, {}, ts));
                                             }
@@ -272,4 +269,9 @@ std::optional<std::variant<Trade, StopLoss>> BacktestTrailingStopLoss::on_price_
 EventPublisher<OrderResponseEvent> & BacktestTradingGateway::order_response_publisher()
 {
     return m_order_response_publisher;
+}
+
+EventPublisher<TradeEvent> & BacktestTradingGateway::trade_publisher()
+{
+    return m_trade_publisher;
 }
