@@ -11,7 +11,6 @@ struct TpslRequestEvent;
 
 struct TradingGatewayConsumers
 {
-    IEventConsumer<TpslResponseEvent> & tpsl_response_consumer;
     IEventConsumer<TpslUpdatedEvent> & tpsl_update_consumer;
     IEventConsumer<TrailingStopLossUpdatedEvent> & trailing_stop_update_consumer;
 };
@@ -27,6 +26,7 @@ public:
 
     virtual EventPublisher<OrderResponseEvent> & order_response_publisher() = 0;
     virtual EventPublisher<TradeEvent> & trade_publisher() = 0;
+    virtual EventPublisher<TpslResponseEvent> & tpsl_response_publisher() = 0;
 
     virtual void register_consumers(xg::Guid guid, const Symbol & symbol, TradingGatewayConsumers consumers) = 0;
     virtual void unregister_consumers(xg::Guid guid) = 0;

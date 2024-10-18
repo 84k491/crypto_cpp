@@ -176,17 +176,6 @@ void ByBitTradingGateway::process_event(const TpslRequestEvent & tpsl)
     using namespace std::chrono_literals;
     Logger::logf<LogLevel::Debug>("Got TpslRequestEvent");
 
-    if (!check_consumers(tpsl.symbol.symbol_name)) {
-        Logger::logf<LogLevel::Warning>("No trade consumer for this symbol: {}", tpsl.symbol.symbol_name);
-        UNWRAP_RET_VOID(consumer, tpsl.response_consumer.lock());
-        consumer.push(
-                TpslResponseEvent(
-                        tpsl.symbol.symbol_name,
-                        tpsl.guid,
-                        tpsl.tpsl,
-                        std::format("No consumer for this symbol: {}", tpsl.symbol.symbol_name)));
-        return;
-    }
     // TODO validate stop and take prices
 
     json json_order = {
@@ -212,8 +201,11 @@ void ByBitTradingGateway::process_event(const TpslRequestEvent & tpsl)
     const std::future_status status = request_future.wait_for(5000ms);
     if (status != std::future_status::ready) {
         // TODO specify guid
-        UNWRAP_RET_VOID(consumer, tpsl.response_consumer.lock());
-        consumer.push(TpslResponseEvent(tpsl.symbol.symbol_name, tpsl.guid, tpsl.tpsl, "Request timed out"));
+        m_tpsl_response_publisher.push(TpslResponseEvent(
+                tpsl.symbol.symbol_name,
+                tpsl.guid,
+                tpsl.tpsl,
+                "Request timed out"));
         return;
     }
     const std::string request_result = request_future.get();
@@ -221,12 +213,14 @@ void ByBitTradingGateway::process_event(const TpslRequestEvent & tpsl)
     const auto j = json::parse(request_result);
     const ByBitMessages::TpslResult result = j.get<ByBitMessages::TpslResult>();
     if (result.ret_code != 0) {
-        UNWRAP_RET_VOID(consumer, tpsl.response_consumer.lock());
-        consumer.push(TpslResponseEvent(tpsl.symbol.symbol_name, tpsl.guid, tpsl.tpsl, result.ret_msg));
+        m_tpsl_response_publisher.push(TpslResponseEvent(
+                tpsl.symbol.symbol_name,
+                tpsl.guid,
+                tpsl.tpsl,
+                result.ret_msg));
         return;
     }
-    UNWRAP_RET_VOID(consumer, tpsl.response_consumer.lock());
-    consumer.push(TpslResponseEvent(tpsl.symbol.symbol_name, tpsl.guid, tpsl.tpsl));
+    m_tpsl_response_publisher.push(TpslResponseEvent(tpsl.symbol.symbol_name, tpsl.guid, tpsl.tpsl));
 }
 
 void ByBitTradingGateway::process_event(const TrailingStopLossRequestEvent & tsl)
@@ -380,4 +374,9 @@ EventPublisher<OrderResponseEvent> & ByBitTradingGateway::order_response_publish
 EventPublisher<TradeEvent> & ByBitTradingGateway::trade_publisher()
 {
     return m_trade_publisher;
+}
+
+EventPublisher<TpslResponseEvent> & ByBitTradingGateway::tpsl_response_publisher()
+{
+    return m_tpsl_response_publisher;
 }

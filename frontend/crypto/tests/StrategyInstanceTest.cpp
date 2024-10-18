@@ -1,6 +1,5 @@
 #include "StrategyInstance.h"
 
-#include "Macros.h"
 #include "ScopeExit.h"
 #include "TpslExitStrategy.h"
 #include "Trade.h"
@@ -98,6 +97,11 @@ public:
         return m_trade_publisher;
     }
 
+    EventPublisher<TpslResponseEvent> & tpsl_response_publisher() override
+    {
+        return m_tpsl_response_publisher;
+    }
+
     void register_consumers(xg::Guid, const Symbol &, TradingGatewayConsumers consumers) override
     {
         m_consumers = std::make_unique<TradingGatewayConsumers>(consumers);
@@ -115,6 +119,7 @@ public:
     std::unique_ptr<TradingGatewayConsumers> m_consumers;
     EventPublisher<OrderResponseEvent> m_order_response_publisher;
     EventPublisher<TradeEvent> m_trade_publisher;
+    EventPublisher<TpslResponseEvent> m_tpsl_response_publisher;
 };
 
 class MockStrategy : public IStrategy
@@ -344,8 +349,10 @@ TEST_F(StrategyInstanceTest, OpenAndClosePos_GetResult_DontCloseTwiceOnStop)
     {
         ASSERT_TRUE(tr_gateway.m_last_tpsl_request.has_value());
         const auto tpsl_req = tr_gateway.m_last_tpsl_request.value();
-        UNWRAP_RET_VOID(consumer, tpsl_req.response_consumer.lock());
-        consumer.push(TpslResponseEvent{tpsl_req.symbol.symbol_name, tpsl_req.guid, tpsl_req.tpsl});
+        tr_gateway.tpsl_response_publisher().push(TpslResponseEvent{
+                tpsl_req.symbol.symbol_name,
+                tpsl_req.guid,
+                tpsl_req.tpsl});
         // TODO here should be TpslUpdateEvent
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
@@ -459,8 +466,10 @@ TEST_F(StrategyInstanceTest, OpenPositionWithTpsl_CloseOnGracefullStop)
     {
         ASSERT_TRUE(tr_gateway.m_last_tpsl_request.has_value());
         const auto tpsl_req = tr_gateway.m_last_tpsl_request.value();
-        UNWRAP_RET_VOID(consumer, tpsl_req.response_consumer.lock());
-        consumer.push(TpslResponseEvent{tpsl_req.symbol.symbol_name, tpsl_req.guid, tpsl_req.tpsl});
+        tr_gateway.tpsl_response_publisher().push(TpslResponseEvent{
+                tpsl_req.symbol.symbol_name,
+                tpsl_req.guid,
+                tpsl_req.tpsl});
         // TODO here should be TpslUpdateEvent
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
@@ -599,8 +608,7 @@ TEST_F(StrategyInstanceTest, EnterOrder_GetReject_Panic)
             order_req.order.symbol(),
             order_req.order.guid(),
             "test_reject"};
-    UNWRAP_RET_VOID(consumer, order_req.response_consumer.lock());
-    consumer.push(order_response);
+    tr_gateway.order_response_publisher().push(order_response);
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     ASSERT_EQ(strategy_status, WorkStatus::Panic);
@@ -668,8 +676,7 @@ TEST_F(StrategyInstanceTest, OpenPos_TpslReject_ClosePosAndPanic)
     {
         ASSERT_TRUE(tr_gateway.m_last_tpsl_request.has_value());
         const auto tpsl_req = tr_gateway.m_last_tpsl_request.value();
-        UNWRAP_RET_VOID(consumer, tpsl_req.response_consumer.lock());
-        consumer.push(TpslResponseEvent{
+        tr_gateway.tpsl_response_publisher().push(TpslResponseEvent{
                 tpsl_req.symbol.symbol_name,
                 tpsl_req.guid,
                 tpsl_req.tpsl,

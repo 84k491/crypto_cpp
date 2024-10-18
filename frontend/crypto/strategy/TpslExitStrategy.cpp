@@ -2,8 +2,8 @@
 
 #include "Enums.h"
 #include "EventLoop.h"
-#include "Side.h"
 #include "Logger.h"
+#include "Side.h"
 #include "Trade.h"
 
 #include <iostream>
@@ -41,11 +41,9 @@ TpslExitStrategyConfig::TpslExitStrategyConfig(double risk, double risk_reward_r
 
 TpslExitStrategy::TpslExitStrategy(Symbol symbol,
                                    const JsonStrategyConfig & config,
-                                   EventLoopHolder<STRATEGY_EVENTS> & event_loop,
                                    ITradingGateway & gateway)
     : ExitStrategyBase(gateway)
     , m_config(config)
-    , m_event_loop(event_loop)
     , m_symbol(std::move(symbol))
 {
 }
@@ -78,7 +76,7 @@ std::optional<std::string> TpslExitStrategy::on_trade(const std::optional<Opened
 
 void TpslExitStrategy::send_tpsl(Tpsl tpsl)
 {
-    TpslRequestEvent req(m_symbol, tpsl, m_event_loop.sptr());
+    TpslRequestEvent req(m_symbol, tpsl);
     m_pending_requests.emplace(req.guid);
     m_tr_gateway.push_tpsl_request(req);
 }

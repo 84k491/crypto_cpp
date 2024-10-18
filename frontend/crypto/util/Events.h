@@ -110,18 +110,13 @@ struct TradeEvent : public OneWayEvent
     Trade trade;
 };
 
-struct OrderRequestEvent : public EventWithResponse<OrderResponseEvent>
+struct OrderRequestEvent : public OneWayEvent
 {
-    OrderRequestEvent(MarketOrder order,
-                      const std::shared_ptr<IEventConsumer<OrderResponseEvent>> & response_consumer,
-                      const std::shared_ptr<IEventConsumer<TradeEvent>> & trade_consumer)
-        : EventWithResponse<OrderResponseEvent>(response_consumer)
-        , order(std::move(order))
-        , trade_ev_consumer(trade_consumer)
+    OrderRequestEvent(MarketOrder order)
+        : order(std::move(order))
     {
     }
     MarketOrder order;
-    std::weak_ptr<IEventConsumer<TradeEvent>> trade_ev_consumer;
 };
 
 struct TpslUpdatedEvent : public OneWayEvent
@@ -136,14 +131,12 @@ struct TpslUpdatedEvent : public OneWayEvent
     bool set_up = false;
 };
 
-struct TpslRequestEvent : public EventWithResponse<TpslResponseEvent>
+struct TpslRequestEvent : public OneWayEvent
 {
     TpslRequestEvent(
             Symbol symbol,
-            Tpsl tpsl,
-            const std::shared_ptr<IEventConsumer<TpslResponseEvent>> & ack_consumer)
-        : EventWithResponse<TpslResponseEvent>(ack_consumer)
-        , symbol(std::move(symbol))
+            Tpsl tpsl)
+        : symbol(std::move(symbol))
         , tpsl(tpsl)
         , guid(xg::newGuid())
     {

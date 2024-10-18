@@ -36,7 +36,6 @@ public:
     TpslExitStrategy(
             Symbol symbol,
             const JsonStrategyConfig & config,
-            EventLoopHolder<STRATEGY_EVENTS> & event_loop,
             ITradingGateway & gateway);
 
     [[nodiscard]] std::optional<std::string> on_price_changed(
@@ -63,7 +62,6 @@ private:
 
 private:
     TpslExitStrategyConfig m_config;
-    EventLoopHolder<STRATEGY_EVENTS> & m_event_loop;
 
     std::pair<std::chrono::milliseconds, double> m_last_ts_and_price;
 

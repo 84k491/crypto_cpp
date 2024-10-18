@@ -27,7 +27,7 @@ public:
             ITradingGateway & gateway)
     {
         if (strategy_name == "TpslExit") {
-            std::shared_ptr<IExitStrategy> res = std::make_shared<TpslExitStrategy>(symbol, config, event_loop, gateway);
+            std::shared_ptr<IExitStrategy> res = std::make_shared<TpslExitStrategy>(symbol, config, gateway);
             return res;
         }
         if (strategy_name == "TrailingStop") {
@@ -76,13 +76,13 @@ StrategyInstance::StrategyInstance(
     m_subscriptions.push_back(m_md_gateway.live_prices_publisher().subscribe(m_event_loop.sptr()));
     m_subscriptions.push_back(m_tr_gateway.order_response_publisher().subscribe(m_event_loop.sptr()));
     m_subscriptions.push_back(m_tr_gateway.trade_publisher().subscribe(m_event_loop.sptr()));
+    m_subscriptions.push_back(m_tr_gateway.tpsl_response_publisher().subscribe(m_event_loop.sptr()));
 
     m_tr_gateway.register_consumers(
             m_strategy_guid,
             symbol,
             TradingGatewayConsumers{
                     // TODO remove this class ?
-                    .tpsl_response_consumer = *m_event_loop,
                     .tpsl_update_consumer = *m_event_loop,
                     .trailing_stop_update_consumer = *m_event_loop,
             });
@@ -372,10 +372,7 @@ void StrategyInstance::handle_event(const OrderResponseEvent & response)
 
     auto [guid, order] = *it; // copy
     order.regenerate_guid();
-    OrderRequestEvent or_event(
-            order,
-            m_event_loop.sptr(),
-            m_event_loop.sptr());
+    OrderRequestEvent or_event{order};
     m_pending_orders.emplace(order.guid(), order);
     Logger::logf<LogLevel::Debug>("Re-sending order with guid: {}", order.guid());
     m_tr_gateway.push_order_request(or_event);
@@ -481,10 +478,7 @@ bool StrategyInstance::open_position(double price, SignedVolume target_absolute_
             adjusted_target_volume,
             ts};
 
-    OrderRequestEvent or_event(
-            order,
-            m_event_loop.sptr(),
-            m_event_loop.sptr());
+    OrderRequestEvent or_event{order};
     m_pending_orders.emplace(order.guid(), order);
     m_tr_gateway.push_order_request(or_event);
     return true;
@@ -508,10 +502,7 @@ bool StrategyInstance::close_position(double price, std::chrono::milliseconds ts
                 ts};
     }();
 
-    OrderRequestEvent or_event(
-            order,
-            m_event_loop.sptr(),
-            m_event_loop.sptr());
+    OrderRequestEvent or_event{order};
     m_pending_orders.emplace(order.guid(), order);
     m_tr_gateway.push_order_request(or_event);
     return true;

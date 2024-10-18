@@ -131,28 +131,14 @@ void BacktestTradingGateway::push_order_request(const OrderRequestEvent & req)
 
     m_pos_volume += SignedVolume(volume, order.side());
 
-    UNWRAP_RET_VOID(trade_consumer, req.trade_ev_consumer.lock());
-    trade_consumer.push(TradeEvent(std::move(trade)));
+    m_trade_publisher.push(TradeEvent(std::move(trade)));
 }
 
 void BacktestTradingGateway::push_tpsl_request(const TpslRequestEvent & tpsl_ev)
 {
-    if (!check_consumers(tpsl_ev.symbol.symbol_name)) {
-        Logger::logf<LogLevel::Error>("No consumer for this symbol: {}", tpsl_ev.symbol.symbol_name);
-        UNWRAP_RET_VOID(consumer, tpsl_ev.response_consumer.lock());
-        consumer.push(
-                TpslResponseEvent(
-                        tpsl_ev.symbol.symbol_name,
-                        tpsl_ev.guid,
-                        tpsl_ev.tpsl,
-                        "No consumer for this symbol"));
-        return;
-    }
-
     m_tpsl = tpsl_ev;
     TpslResponseEvent resp_ev(m_tpsl.value().symbol.symbol_name, m_tpsl.value().guid, tpsl_ev.tpsl);
-    UNWRAP_RET_VOID(consumer, m_tpsl.value().response_consumer.lock());
-    consumer.push(resp_ev);
+    m_tpsl_response_publisher.push(resp_ev);
 }
 
 void BacktestTradingGateway::push_trailing_stop_request(const TrailingStopLossRequestEvent & trailing_stop_ev)
@@ -274,4 +260,9 @@ EventPublisher<OrderResponseEvent> & BacktestTradingGateway::order_response_publ
 EventPublisher<TradeEvent> & BacktestTradingGateway::trade_publisher()
 {
     return m_trade_publisher;
+}
+
+EventPublisher<TpslResponseEvent> & BacktestTradingGateway::tpsl_response_publisher()
+{
+    return m_tpsl_response_publisher;
 }

@@ -1,5 +1,6 @@
 #include "EventLoop.h"
 
+#include "EventPublisher.h"
 #include "Events.h"
 
 #include <gmock/gmock.h>
@@ -48,10 +49,7 @@ public:
         std::visit(
                 VariantMatcher{
                         [&](const OrderRequestEvent & order) {
-                            trade_consumer = order.trade_ev_consumer;
-                            const auto p = order.response_consumer.lock();
-                            ASSERT_TRUE(p);
-                            p->push(OrderResponseEvent(order.order.symbol(), order.order.guid()));
+                            m_order_response_publisher.push(OrderResponseEvent(order.order.symbol(), order.order.guid()));
                         },
                 },
                 var);
@@ -60,64 +58,7 @@ public:
     std::weak_ptr<IEventConsumer<TradeEvent>> trade_consumer;
 
     EventLoopHolder<OrderRequestEvent> m_loop;
-};
-
-class MockSlowGateway : public IEventInvoker<OrderRequestEvent>
-{
-public:
-    MockSlowGateway()
-        : m_loop(*this)
-    {
-    }
-    ~MockSlowGateway() override = default;
-
-    void invoke(const std::variant<OrderRequestEvent> & var) override
-    {
-        std::visit(
-                VariantMatcher{
-                        [&](const OrderRequestEvent & order) {
-                            trade_consumer = order.trade_ev_consumer;
-                            const auto p = order.response_consumer.lock();
-                            ASSERT_TRUE(p) << "We need to gain ownership here";
-                            std::this_thread::sleep_for(std::chrono::milliseconds{10});
-                            p->push(OrderResponseEvent(order.order.symbol(), order.order.guid()));
-                            std::this_thread::sleep_for(std::chrono::milliseconds{10});
-                        },
-                },
-                var);
-    }
-
-    std::weak_ptr<IEventConsumer<TradeEvent>> trade_consumer;
-
-    EventLoopHolder<OrderRequestEvent> m_loop;
-};
-
-class MockSlowStrategy : public IEventInvoker<OrderResponseEvent, TradeEvent>
-{
-public:
-    MockSlowStrategy()
-        : m_loop(*this)
-    {
-    }
-    ~MockSlowStrategy() override = default;
-
-    void invoke(const std::variant<OrderResponseEvent, TradeEvent> & var) override
-    {
-        std::visit(
-                VariantMatcher{
-                        [&](const OrderResponseEvent &) {
-                            // trying to trigger a segfault
-                            some_str = "order_ack_received";
-                            FAIL();
-                        },
-                        [&](const TradeEvent &) {},
-                },
-                var);
-    }
-
-    std::string some_str = "inited_string";
-
-    EventLoopHolder<OrderResponseEvent, TradeEvent> m_loop;
+    EventPublisher<OrderResponseEvent> m_order_response_publisher;
 };
 
 class EventLoopTest : public Test
@@ -131,6 +72,7 @@ TEST_F(EventLoopTest, StrategyDestruction)
 {
     auto strategy = std::make_unique<MockStrategy>();
     MockGateway gateway;
+    auto sub = gateway.m_order_response_publisher.subscribe(strategy->m_loop.sptr());
 
     // strategy pushes order to gw
     gateway.m_loop->as_consumer<OrderRequestEvent>().push(
@@ -140,8 +82,6 @@ TEST_F(EventLoopTest, StrategyDestruction)
                             1.1,
                             SignedVolume{1.},
                             std::chrono::milliseconds{1}},
-                    strategy->m_loop.sptr(),
-                    strategy->m_loop.sptr(),
             });
 
     // gw pushes response to strategy
@@ -151,38 +91,6 @@ TEST_F(EventLoopTest, StrategyDestruction)
     strategy.reset();
 
     ASSERT_TRUE(gateway.trade_consumer.expired());
-}
-
-TEST_F(EventLoopTest, DanglingInvokerRefCheck)
-{
-    // create obj with sp<event loop>
-    auto strategy = std::make_unique<MockSlowStrategy>();
-
-    MockSlowGateway gateway;
-
-    // push ev to obj2
-    gateway.m_loop->as_consumer<OrderRequestEvent>().push(
-            OrderRequestEvent{
-                    MarketOrder{
-                            "BTCUSDT",
-                            1.1,
-                            SignedVolume{1.},
-                            std::chrono::milliseconds{1}},
-                    strategy->m_loop.sptr(),
-                    strategy->m_loop.sptr(),
-            });
-    // obj2 locks wptr immediately
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    // obj2 takes some time to start handling ev
-
-    // destroy obj1, release event loop sp, obj2 now owns obj1's event loop. ref to invoker dangles
-    strategy.reset();
-    // obj2 pushes reponse to event loop, waits to prevent event loop destroying
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-    // event loop gets response, invokes it with dangling ref
-    // possible SEGAFULT!!
-    SUCCEED();
 }
 
 // TODO add test for delayed events
