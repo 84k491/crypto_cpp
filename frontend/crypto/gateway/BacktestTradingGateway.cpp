@@ -266,3 +266,8 @@ EventPublisher<TpslResponseEvent> & BacktestTradingGateway::tpsl_response_publis
 {
     return m_tpsl_response_publisher;
 }
+
+EventPublisher<TpslUpdatedEvent> & BacktestTradingGateway::tpsl_updated_publisher()
+{
+    return m_tpsl_updated_publisher;
+}

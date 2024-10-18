@@ -77,13 +77,13 @@ StrategyInstance::StrategyInstance(
     m_subscriptions.push_back(m_tr_gateway.order_response_publisher().subscribe(m_event_loop.sptr()));
     m_subscriptions.push_back(m_tr_gateway.trade_publisher().subscribe(m_event_loop.sptr()));
     m_subscriptions.push_back(m_tr_gateway.tpsl_response_publisher().subscribe(m_event_loop.sptr()));
+    m_subscriptions.push_back(m_tr_gateway.tpsl_updated_publisher().subscribe(m_event_loop.sptr()));
 
     m_tr_gateway.register_consumers(
             m_strategy_guid,
             symbol,
             TradingGatewayConsumers{
                     // TODO remove this class ?
-                    .tpsl_update_consumer = *m_event_loop,
                     .trailing_stop_update_consumer = *m_event_loop,
             });
     m_strategy_result.update([&](StrategyResult & res) {

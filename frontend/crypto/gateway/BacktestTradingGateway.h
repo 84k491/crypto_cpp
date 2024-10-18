@@ -46,6 +46,7 @@ public:
     EventPublisher<OrderResponseEvent> & order_response_publisher() override;
     EventPublisher<TradeEvent> & trade_publisher() override;
     EventPublisher<TpslResponseEvent> & tpsl_response_publisher() override;
+    EventPublisher<TpslUpdatedEvent> & tpsl_updated_publisher() override;
 
     void register_consumers(xg::Guid guid, const Symbol & symbol, TradingGatewayConsumers consumers) override;
     void unregister_consumers(xg::Guid guid) override;
@@ -70,4 +71,5 @@ private:
     EventPublisher<OrderResponseEvent> m_order_response_publisher;
     EventPublisher<TradeEvent> m_trade_publisher;
     EventPublisher<TpslResponseEvent> m_tpsl_response_publisher;
+    EventPublisher<TpslUpdatedEvent> m_tpsl_updated_publisher;
 };

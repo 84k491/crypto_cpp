@@ -45,13 +45,7 @@ void ByBitTradingGateway::on_order_response(const json & j)
                             m_order_response_publisher.push(event);
                         },
                         [&](const TpslUpdatedEvent & event) {
-                            auto it = lref.get().find(event.symbol_name);
-                            if (it == lref.get().end()) {
-                                Logger::logf<LogLevel::Warning>("Failed to find tpsl consumer for symbol: {}", event.symbol_name);
-                                return;
-                            }
-                            auto & consumers = it->second.second;
-                            consumers.tpsl_update_consumer.push(event);
+                            m_tpsl_updated_publisher.push(event);
                         },
                         [&](const TrailingStopLossUpdatedEvent & event) {
                             auto it = lref.get().find(event.symbol_name);
@@ -379,4 +373,9 @@ EventPublisher<TradeEvent> & ByBitTradingGateway::trade_publisher()
 EventPublisher<TpslResponseEvent> & ByBitTradingGateway::tpsl_response_publisher()
 {
     return m_tpsl_response_publisher;
+}
+
+EventPublisher<TpslUpdatedEvent> & ByBitTradingGateway::tpsl_updated_publisher()
+{
+    return m_tpsl_updated_publisher;
 }

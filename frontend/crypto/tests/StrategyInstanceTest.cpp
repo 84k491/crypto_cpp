@@ -101,6 +101,10 @@ public:
     {
         return m_tpsl_response_publisher;
     }
+    EventPublisher<TpslUpdatedEvent> & tpsl_updated_publisher() override
+    {
+        return m_tpsl_updated_publisher;
+    }
 
     void register_consumers(xg::Guid, const Symbol &, TradingGatewayConsumers consumers) override
     {
@@ -120,6 +124,7 @@ public:
     EventPublisher<OrderResponseEvent> m_order_response_publisher;
     EventPublisher<TradeEvent> m_trade_publisher;
     EventPublisher<TpslResponseEvent> m_tpsl_response_publisher;
+    EventPublisher<TpslUpdatedEvent> m_tpsl_updated_publisher;
 };
 
 class MockStrategy : public IStrategy
