@@ -20,12 +20,10 @@ TrailigStopLossStrategyConfig::TrailigStopLossStrategyConfig(double risk)
 
 TrailigStopLossStrategy::TrailigStopLossStrategy(Symbol symbol,
                                                  JsonStrategyConfig config,
-                                                 EventLoopHolder<STRATEGY_EVENTS> & event_loop,
                                                  ITradingGateway & gateway)
 
     : ExitStrategyBase(gateway)
     , m_symbol(std::move(symbol))
-    , m_event_loop(event_loop)
     , m_config(config)
 {
 }
@@ -71,8 +69,7 @@ void TrailigStopLossStrategy::send_trailing_stop(TrailingStopLoss trailing_stop)
 {
     TrailingStopLossRequestEvent request(
             m_symbol,
-            std::move(trailing_stop),
-            m_event_loop.sptr());
+            std::move(trailing_stop));
     m_pending_requests.emplace(request.guid);
     m_tr_gateway.push_trailing_stop_request(request);
 }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "EventLoop.h"
 #include "Events.h"
 #include "ISubsription.h"
 #include "Macros.h"

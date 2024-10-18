@@ -2,17 +2,11 @@
 
 #include "EventPublisher.h"
 #include "Events.h"
-#include "Symbol.h"
 
 #include <crossguid2/crossguid/guid.hpp>
 
 struct OrderRequestEvent;
 struct TpslRequestEvent;
-
-struct TradingGatewayConsumers
-{
-    IEventConsumer<TrailingStopLossUpdatedEvent> & trailing_stop_update_consumer;
-};
 
 class ITradingGateway
 {
@@ -27,7 +21,6 @@ public:
     virtual EventPublisher<TradeEvent> & trade_publisher() = 0;
     virtual EventPublisher<TpslResponseEvent> & tpsl_response_publisher() = 0;
     virtual EventPublisher<TpslUpdatedEvent> & tpsl_updated_publisher() = 0;
-
-    virtual void register_consumers(xg::Guid guid, const Symbol & symbol, TradingGatewayConsumers consumers) = 0;
-    virtual void unregister_consumers(xg::Guid guid) = 0;
+    virtual EventPublisher<TrailingStopLossResponseEvent> & trailing_stop_response_publisher() = 0;
+    virtual EventPublisher<TrailingStopLossUpdatedEvent> & trailing_stop_update_publisher() = 0;
 };

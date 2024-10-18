@@ -106,25 +106,25 @@ public:
         return m_tpsl_updated_publisher;
     }
 
-    void register_consumers(xg::Guid, const Symbol &, TradingGatewayConsumers consumers) override
+    EventPublisher<TrailingStopLossResponseEvent> & trailing_stop_response_publisher() override
     {
-        m_consumers = std::make_unique<TradingGatewayConsumers>(consumers);
+        return m_tsl_response_publisher;
     }
-
-    void unregister_consumers(xg::Guid) override
+    EventPublisher<TrailingStopLossUpdatedEvent> & trailing_stop_update_publisher() override
     {
-        m_consumers.reset();
+        return m_tsl_updated_publisher;
     }
 
 public:
     std::optional<OrderRequestEvent> m_last_order_request;
     std::optional<TpslRequestEvent> m_last_tpsl_request;
 
-    std::unique_ptr<TradingGatewayConsumers> m_consumers;
     EventPublisher<OrderResponseEvent> m_order_response_publisher;
     EventPublisher<TradeEvent> m_trade_publisher;
     EventPublisher<TpslResponseEvent> m_tpsl_response_publisher;
     EventPublisher<TpslUpdatedEvent> m_tpsl_updated_publisher;
+    EventPublisher<TrailingStopLossResponseEvent> m_tsl_response_publisher;
+    EventPublisher<TrailingStopLossUpdatedEvent> m_tsl_updated_publisher;
 };
 
 class MockStrategy : public IStrategy
@@ -300,7 +300,6 @@ TEST_F(StrategyInstanceTest, OpenAndClosePos_GetResult_DontCloseTwiceOnStop)
                 ++prices_received;
             });
 
-    ASSERT_TRUE(tr_gateway.m_consumers);
     strategy_ptr->signal_on_next_tick(Side::buy());
     {
         const std::chrono::milliseconds price_ts = std::chrono::milliseconds(1000);
@@ -419,7 +418,6 @@ TEST_F(StrategyInstanceTest, OpenPositionWithTpsl_CloseOnGracefullStop)
                 ++prices_received;
             });
 
-    ASSERT_TRUE(tr_gateway.m_consumers);
     strategy_ptr->signal_on_next_tick(Side::buy());
     {
         const std::chrono::milliseconds price_ts = std::chrono::milliseconds(1000);
@@ -540,8 +538,6 @@ TEST_F(StrategyInstanceTest, ManyPricesReceivedWhileOrderIsPending_NoAdditionalO
                 ++prices_received;
             });
 
-    ASSERT_TRUE(tr_gateway.m_consumers);
-
     // sending first price
     strategy_ptr->signal_on_next_tick(Side::buy());
     {
@@ -587,7 +583,6 @@ TEST_F(StrategyInstanceTest, EnterOrder_GetReject_Panic)
     ASSERT_EQ(strategy_status, WorkStatus::Live);
     const auto live_req = md_gateway.m_last_live_request.value();
 
-    ASSERT_TRUE(tr_gateway.m_consumers);
     strategy_ptr->signal_on_next_tick(Side::buy());
     {
         const std::chrono::milliseconds price_ts = std::chrono::milliseconds(1000);
@@ -617,7 +612,6 @@ TEST_F(StrategyInstanceTest, EnterOrder_GetReject_Panic)
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     ASSERT_EQ(strategy_status, WorkStatus::Panic);
-    ASSERT_FALSE(tr_gateway.m_consumers) << "Must unsubscribe on panic";
     ASSERT_EQ(md_gateway.unsubscribed_count(), 1) << "Must unsubscribe on panic";
 }
 
@@ -629,7 +623,6 @@ TEST_F(StrategyInstanceTest, OpenPos_TpslReject_ClosePosAndPanic)
     ASSERT_EQ(strategy_status, WorkStatus::Live);
     const auto live_req = md_gateway.m_last_live_request.value();
 
-    ASSERT_TRUE(tr_gateway.m_consumers);
     strategy_ptr->signal_on_next_tick(Side::buy());
     {
         const std::chrono::milliseconds price_ts = std::chrono::milliseconds(1000);
@@ -719,7 +712,6 @@ TEST_F(StrategyInstanceTest, OpenPos_TpslReject_ClosePosAndPanic)
     }
 
     ASSERT_EQ(strategy_status, WorkStatus::Panic);
-    ASSERT_FALSE(tr_gateway.m_consumers) << "Must unsubscribe on panic";
     ASSERT_EQ(md_gateway.unsubscribed_count(), 1) << "Must unsubscribe on panic";
     ASSERT_EQ(result.trades_count, 2);
 }

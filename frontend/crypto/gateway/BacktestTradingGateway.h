@@ -47,12 +47,10 @@ public:
     EventPublisher<TradeEvent> & trade_publisher() override;
     EventPublisher<TpslResponseEvent> & tpsl_response_publisher() override;
     EventPublisher<TpslUpdatedEvent> & tpsl_updated_publisher() override;
-
-    void register_consumers(xg::Guid guid, const Symbol & symbol, TradingGatewayConsumers consumers) override;
-    void unregister_consumers(xg::Guid guid) override;
+    EventPublisher<TrailingStopLossResponseEvent> & trailing_stop_response_publisher() override;
+    EventPublisher<TrailingStopLossUpdatedEvent> & trailing_stop_update_publisher() override;
 
 private:
-    bool check_consumers(const std::string & symbol);
     std::optional<Trade> try_trade_tpsl(OHLC ohlc);
 
 private:
@@ -66,10 +64,10 @@ private:
 
     SignedVolume m_pos_volume;
 
-    Guarded<std::map<std::string, std::pair<xg::Guid, TradingGatewayConsumers>>> m_consumers;
-
     EventPublisher<OrderResponseEvent> m_order_response_publisher;
     EventPublisher<TradeEvent> m_trade_publisher;
     EventPublisher<TpslResponseEvent> m_tpsl_response_publisher;
     EventPublisher<TpslUpdatedEvent> m_tpsl_updated_publisher;
+    EventPublisher<TrailingStopLossResponseEvent> m_trailing_stop_response_publisher;
+    EventPublisher<TrailingStopLossUpdatedEvent> m_trailing_stop_update_publisher;
 };

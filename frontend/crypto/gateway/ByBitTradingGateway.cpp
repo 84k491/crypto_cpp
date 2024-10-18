@@ -3,7 +3,6 @@
 #include "Events.h"
 #include "LogLevel.h"
 #include "Logger.h"
-#include "Macros.h"
 #include "Ohlc.h"
 
 #include <chrono>
@@ -37,7 +36,6 @@ void ByBitTradingGateway::on_order_response(const json & j)
     }
     const auto & events = events_opt.value();
 
-    auto lref = m_consumers.lock();
     for (const auto & var : events) {
         std::visit(
                 VariantMatcher{
@@ -48,13 +46,7 @@ void ByBitTradingGateway::on_order_response(const json & j)
                             m_tpsl_updated_publisher.push(event);
                         },
                         [&](const TrailingStopLossUpdatedEvent & event) {
-                            auto it = lref.get().find(event.symbol_name);
-                            if (it == lref.get().end()) {
-                                Logger::logf<LogLevel::Warning>("Failed to find tpsl consumer for symbol: {}", event.symbol_name);
-                                return;
-                            }
-                            auto & consumers = it->second.second;
-                            consumers.trailing_stop_update_consumer.push(event);
+                            m_trailing_stop_update_publisher.push(event);
                         }},
                 var);
     }
@@ -223,16 +215,6 @@ void ByBitTradingGateway::process_event(const TrailingStopLossRequestEvent & tsl
 
     Logger::logf<LogLevel::Debug>("Got TrailingStopLossRequestEvent");
 
-    if (!check_consumers(tsl.symbol.symbol_name)) {
-        Logger::logf<LogLevel::Warning>("No trade consumer for this symbol: {}", tsl.symbol.symbol_name);
-        UNWRAP_RET_VOID(consumer, tsl.response_consumer.lock());
-        consumer.push(
-                TrailingStopLossResponseEvent(
-                        tsl.guid,
-                        tsl.trailing_stop_loss,
-                        std::format("No consumer for this symbol: {}", tsl.symbol.symbol_name)));
-        return;
-    }
     // TODO validate stop price
 
     json json_order = {
@@ -259,8 +241,10 @@ void ByBitTradingGateway::process_event(const TrailingStopLossRequestEvent & tsl
     const std::future_status status = request_future.wait_for(5000ms);
     if (status != std::future_status::ready) {
         // TODO specify guid
-        UNWRAP_RET_VOID(consumer, tsl.response_consumer.lock());
-        consumer.push(TrailingStopLossResponseEvent(tsl.guid, tsl.trailing_stop_loss, "Request timed out"));
+        m_trailing_stop_response_publisher.push(TrailingStopLossResponseEvent(
+                tsl.guid,
+                tsl.trailing_stop_loss,
+                "Request timed out"));
         return;
     }
     const std::string request_result = request_future.get();
@@ -268,12 +252,13 @@ void ByBitTradingGateway::process_event(const TrailingStopLossRequestEvent & tsl
     const auto j = json::parse(request_result);
     const ByBitMessages::TpslResult result = j.get<ByBitMessages::TpslResult>();
     if (result.ret_code != 0) {
-        UNWRAP_RET_VOID(consumer, tsl.response_consumer.lock());
-        consumer.push(TrailingStopLossResponseEvent(tsl.guid, tsl.trailing_stop_loss, result.ret_msg));
+        m_trailing_stop_response_publisher.push(TrailingStopLossResponseEvent(
+                tsl.guid,
+                tsl.trailing_stop_loss,
+                result.ret_msg));
         return;
     }
-    UNWRAP_RET_VOID(consumer, tsl.response_consumer.lock());
-    consumer.push(TrailingStopLossResponseEvent(tsl.guid, tsl.trailing_stop_loss));
+    m_trailing_stop_response_publisher.push(TrailingStopLossResponseEvent(tsl.guid, tsl.trailing_stop_loss));
 }
 
 void ByBitTradingGateway::process_event(const PingCheckEvent & ping_event)
@@ -300,29 +285,6 @@ void ByBitTradingGateway::on_ws_message(const json & j)
         return;
     }
     Logger::logf<LogLevel::Warning>("Unrecognized message: {}", j.dump());
-}
-
-void ByBitTradingGateway::register_consumers(xg::Guid guid, const Symbol & symbol, TradingGatewayConsumers consumers)
-{
-    auto lref = m_consumers.lock();
-    lref.get().emplace(symbol.symbol_name, std::make_pair(guid, consumers));
-}
-
-void ByBitTradingGateway::unregister_consumers(xg::Guid guid)
-{
-    auto lref = m_consumers.lock();
-    for (auto it = lref.get().begin(), end = lref.get().end(); it != end; ++it) {
-        if (it->second.first == guid) {
-            lref.get().erase(it);
-            return;
-        }
-    }
-}
-
-bool ByBitTradingGateway::check_consumers(const std::string & symbol)
-{
-    auto lref = m_consumers.lock();
-    return lref.get().contains(symbol);
 }
 
 bool ByBitTradingGateway::reconnect_ws_client()
@@ -378,4 +340,14 @@ EventPublisher<TpslResponseEvent> & ByBitTradingGateway::tpsl_response_publisher
 EventPublisher<TpslUpdatedEvent> & ByBitTradingGateway::tpsl_updated_publisher()
 {
     return m_tpsl_updated_publisher;
+}
+
+EventPublisher<TrailingStopLossResponseEvent> & ByBitTradingGateway::trailing_stop_response_publisher()
+{
+    return m_trailing_stop_response_publisher;
+}
+
+EventPublisher<TrailingStopLossUpdatedEvent> & ByBitTradingGateway::trailing_stop_update_publisher()
+{
+    return m_trailing_stop_update_publisher;
 }

@@ -23,7 +23,6 @@ public:
             const std::string & strategy_name,
             const JsonStrategyConfig & config,
             const Symbol & symbol,
-            EventLoopHolder<STRATEGY_EVENTS> & event_loop,
             ITradingGateway & gateway)
     {
         if (strategy_name == "TpslExit") {
@@ -31,7 +30,7 @@ public:
             return res;
         }
         if (strategy_name == "TrailingStop") {
-            std::shared_ptr<IExitStrategy> res = std::make_shared<TrailigStopLossStrategy>(symbol, config, event_loop, gateway);
+            std::shared_ptr<IExitStrategy> res = std::make_shared<TrailigStopLossStrategy>(symbol, config, gateway);
             return res;
         }
         Logger::logf<LogLevel::Error>("Unknown exit strategy name: {}", strategy_name);
@@ -61,7 +60,6 @@ StrategyInstance::StrategyInstance(
             exit_strategy_name,
             exit_strategy_config,
             symbol,
-            m_event_loop,
             tr_gateway);
     if (!exit_strategy_opt) {
         Logger::log<LogLevel::Error>("Can't build exit strategy");
@@ -78,14 +76,9 @@ StrategyInstance::StrategyInstance(
     m_subscriptions.push_back(m_tr_gateway.trade_publisher().subscribe(m_event_loop.sptr()));
     m_subscriptions.push_back(m_tr_gateway.tpsl_response_publisher().subscribe(m_event_loop.sptr()));
     m_subscriptions.push_back(m_tr_gateway.tpsl_updated_publisher().subscribe(m_event_loop.sptr()));
+    m_subscriptions.push_back(m_tr_gateway.trailing_stop_response_publisher().subscribe(m_event_loop.sptr()));
+    m_subscriptions.push_back(m_tr_gateway.trailing_stop_update_publisher().subscribe(m_event_loop.sptr()));
 
-    m_tr_gateway.register_consumers(
-            m_strategy_guid,
-            symbol,
-            TradingGatewayConsumers{
-                    // TODO remove this class ?
-                    .trailing_stop_update_consumer = *m_event_loop,
-            });
     m_strategy_result.update([&](StrategyResult & res) {
         res.position_currency_amount = m_pos_currency_amount;
     });
@@ -107,7 +100,6 @@ StrategyInstance::StrategyInstance(
 StrategyInstance::~StrategyInstance()
 {
     Logger::log<LogLevel::Status>("StrategyInstance destructor");
-    m_tr_gateway.unregister_consumers(m_strategy_guid);
 }
 
 void StrategyInstance::run_async()
@@ -302,7 +294,7 @@ void StrategyInstance::invoke(const std::variant<STRATEGY_EVENTS> & var)
     if (ready_to_finish()) {
         m_status.push(m_status_on_stop);
         m_depo_publisher.push(m_last_ts_and_price.first, m_strategy_result.get().final_profit);
-        m_tr_gateway.unregister_consumers(m_strategy_guid);
+        // TODO unsub from TRGW?
     }
     finish_if_needed_and_ready();
 }

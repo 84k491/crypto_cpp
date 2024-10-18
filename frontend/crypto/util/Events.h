@@ -1,6 +1,6 @@
 #pragma once
 
-#include "EventLoop.h" // TODO there must be no dep from loop
+#include "ThreadSafePriorityQueue.h"
 #include "LogLevel.h"
 #include "MarketOrder.h"
 #include "Ohlc.h"
@@ -12,18 +12,6 @@
 #include <crossguid2/crossguid/guid.hpp>
 #include <map>
 #include <utility>
-
-template <class T>
-struct EventWithResponse
-{
-    EventWithResponse(const std::shared_ptr<IEventConsumer<T>> & consumer)
-        : response_consumer(consumer)
-    {
-    }
-    virtual ~EventWithResponse() = default;
-    virtual Priority priority() const { return Priority::Normal; }
-    std::weak_ptr<IEventConsumer<T>> response_consumer = nullptr;
-};
 
 struct OneWayEvent
 {
@@ -172,14 +160,12 @@ struct TrailingStopLossUpdatedEvent : public OneWayEvent
     std::chrono::milliseconds timestamp;
 };
 
-struct TrailingStopLossRequestEvent : public EventWithResponse<TrailingStopLossResponseEvent>
+struct TrailingStopLossRequestEvent : public OneWayEvent
 {
     TrailingStopLossRequestEvent(
             Symbol symbol,
-            TrailingStopLoss trailing_stop_loss,
-            const std::shared_ptr<IEventConsumer<TrailingStopLossResponseEvent>> & ack_consumer)
-        : EventWithResponse<TrailingStopLossResponseEvent>(ack_consumer)
-        , symbol(std::move(symbol))
+            TrailingStopLoss trailing_stop_loss)
+        : symbol(std::move(symbol))
         , trailing_stop_loss(std::move(trailing_stop_loss))
         , guid(xg::newGuid())
     {

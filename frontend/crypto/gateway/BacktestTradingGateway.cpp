@@ -2,7 +2,6 @@
 
 #include "Events.h"
 #include "Logger.h"
-#include "Macros.h"
 #include "Side.h"
 #include "Volume.h"
 
@@ -31,23 +30,17 @@ void BacktestTradingGateway::set_price_source(EventTimeseriesPublisher<OHLC> & p
                 if (m_trailing_stop.has_value()) {
                     const auto trade_or_sl = m_trailing_stop->on_price_updated(ohlc);
                     if (trade_or_sl.has_value()) {
-                        auto lref = m_consumers.lock();
                         std::visit(
                                 VariantMatcher{
                                         [&](const Trade & trade) {
                                             m_trade_publisher.push(TradeEvent(trade));
-                                            for (auto & it : lref.get()) {
-                                                it.second.second.trailing_stop_update_consumer.push(
-                                                        TrailingStopLossUpdatedEvent(trade.symbol().symbol_name, {}, ts));
-                                            }
-                                            m_pos_volume = SignedVolume();
+                                            m_trailing_stop_update_publisher.push(
+                                                    TrailingStopLossUpdatedEvent(trade.symbol().symbol_name, {}, ts));
                                             m_trailing_stop.reset();
                                         },
                                         [&](const StopLoss & sl) {
-                                            for (auto & it : lref.get()) {
-                                                it.second.second.trailing_stop_update_consumer.push(
-                                                        TrailingStopLossUpdatedEvent(sl.symbol().symbol_name, sl, ts));
-                                            }
+                                            m_trailing_stop_update_publisher.push(
+                                                    TrailingStopLossUpdatedEvent(sl.symbol().symbol_name, sl, ts));
                                         }},
                                 *trade_or_sl);
                     }
@@ -143,53 +136,16 @@ void BacktestTradingGateway::push_tpsl_request(const TpslRequestEvent & tpsl_ev)
 
 void BacktestTradingGateway::push_trailing_stop_request(const TrailingStopLossRequestEvent & trailing_stop_ev)
 {
-    UNWRAP_RET_VOID(consumer, trailing_stop_ev.response_consumer.lock());
-
-    if (!check_consumers(trailing_stop_ev.symbol.symbol_name)) {
-        Logger::logf<LogLevel::Error>("No trade consumer for this symbol: {}", trailing_stop_ev.symbol.symbol_name);
-        consumer.push(
-                TrailingStopLossResponseEvent(
-                        trailing_stop_ev.guid,
-                        trailing_stop_ev.trailing_stop_loss,
-                        "No consumer for this symbol"));
-        return;
-    }
-
     m_trailing_stop = BacktestTrailingStopLoss(
             m_pos_volume,
             m_last_trade_price,
             trailing_stop_ev.trailing_stop_loss);
 
-    consumer.push(
+    m_trailing_stop_response_publisher.push(
             TrailingStopLossResponseEvent(
                     trailing_stop_ev.guid,
                     trailing_stop_ev.trailing_stop_loss));
     // TODO push TrailingStopUpdated?
-}
-
-void BacktestTradingGateway::register_consumers(xg::Guid guid, const Symbol & symbol, TradingGatewayConsumers consumers)
-{
-    Logger::logf<LogLevel::Debug>("Registering consumers for symbol: {}", symbol.symbol_name);
-    auto lref = m_consumers.lock();
-    lref.get().emplace(symbol.symbol_name, std::make_pair(guid, consumers));
-}
-
-void BacktestTradingGateway::unregister_consumers(xg::Guid guid)
-{
-    auto lref = m_consumers.lock();
-    for (auto it = lref.get().begin(), end = lref.get().end(); it != end; ++it) {
-        if (it->second.first == guid) {
-            lref.get().erase(it);
-            return;
-        }
-    }
-}
-
-bool BacktestTradingGateway::check_consumers(const std::string & symbol)
-{
-    auto lref = m_consumers.lock();
-    auto it = lref.get().find(symbol);
-    return it != lref.get().end();
 }
 
 bool BacktestEventConsumer::push_to_queue(const std::any value)
@@ -270,4 +226,14 @@ EventPublisher<TpslResponseEvent> & BacktestTradingGateway::tpsl_response_publis
 EventPublisher<TpslUpdatedEvent> & BacktestTradingGateway::tpsl_updated_publisher()
 {
     return m_tpsl_updated_publisher;
+}
+
+EventPublisher<TrailingStopLossResponseEvent> & BacktestTradingGateway::trailing_stop_response_publisher()
+{
+    return m_trailing_stop_response_publisher;
+}
+
+EventPublisher<TrailingStopLossUpdatedEvent> & BacktestTradingGateway::trailing_stop_update_publisher()
+{
+    return m_trailing_stop_update_publisher;
 }
