@@ -383,7 +383,7 @@ void MainWindow::on_pb_charts_clicked()
 
 void MainWindow::closeEvent(QCloseEvent *)
 {
-    if (m_chart_window) {
+    if (m_chart_window != nullptr) {
         m_chart_window->close();
     }
 }

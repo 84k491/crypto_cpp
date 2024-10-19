@@ -83,10 +83,10 @@ void MultiSeriesChart::clear()
     replot();
 }
 
-void MultiSeriesChart::push_signal(Signal signal)
+void MultiSeriesChart::push_trade(const Trade & trade)
 {
-    const std::string & series_name = signal.side == Side::buy() ? "buy_trade" : "sell_trade";
-    push_series_value_dont_replot(series_name, signal.timestamp, signal.price, true);
+    const std::string & series_name = trade.side() == Side::buy() ? "buy_trade" : "sell_trade";
+    push_series_value_dont_replot(series_name, trade.ts(), trade.price(), true);
     replot();
 }
 
@@ -102,7 +102,6 @@ void MultiSeriesChart::push_stop_loss(std::chrono::milliseconds ts, double stop_
     push_series_value_dont_replot("trailing_stop_loss", ts, stop_price, true);
     replot();
 }
-
 
 void MultiSeriesChart::set_title(const std::string &)
 {

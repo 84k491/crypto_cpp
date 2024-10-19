@@ -33,7 +33,7 @@ public:
 
     ~StrategyInstance() override;
 
-    EventTimeseriesPublisher<Signal> & signals_publisher();
+    EventTimeseriesPublisher<Trade> & trade_publisher();
     EventTimeseriesPublisher<std::tuple<std::string, std::string, double>> &
     strategy_internal_data_publisher();
     EventTimeseriesPublisher<OHLC> & klines_publisher();
@@ -79,7 +79,7 @@ private:
 
     EventObjectPublisher<StrategyResult> m_strategy_result;
 
-    EventTimeseriesPublisher<Signal> m_signal_publisher; // TODO publish trades instead of signals
+    EventTimeseriesPublisher<Trade> m_trade_publisher;
     EventTimeseriesPublisher<OHLC> m_klines_publisher;
     EventTimeseriesPublisher<double> m_depo_publisher;
 

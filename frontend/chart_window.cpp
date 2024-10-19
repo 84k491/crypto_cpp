@@ -113,18 +113,18 @@ void ChartWindow::subscribe_to_strategy()
                                 const auto & [chart_name, name, data] = data_pair;
                                 get_or_create_chart(chart_name).push_series_value(name, ts, data);
                             }));
-    m_subscriptions.push_back(str_instance.signals_publisher().subscribe(
+    m_subscriptions.push_back(str_instance.trade_publisher().subscribe(
             m_event_consumer,
-            [this](const std::vector<std::pair<std::chrono::milliseconds, Signal>> & input_vec) {
+            [this](const std::vector<std::pair<std::chrono::milliseconds, Trade>> & input_vec) {
                 std::vector<std::pair<std::chrono::milliseconds, double>> buy, sell;
-                for (const auto & [ts, signal] : input_vec) {
-                    switch (signal.side.value()) {
+                for (const auto & [ts, trade] : input_vec) {
+                    switch (trade.side().value()) {
                     case SideEnum::Buy: {
-                        buy.emplace_back(ts, signal.price);
+                        buy.emplace_back(ts, trade.price());
                         break;
                     }
                     case SideEnum::Sell: {
-                        sell.emplace_back(ts, signal.price);
+                        sell.emplace_back(ts, trade.price());
                         break;
                     }
                     }
@@ -133,8 +133,8 @@ void ChartWindow::subscribe_to_strategy()
                 plot.push_scatter_series_vector("buy_trade", buy);
                 plot.push_scatter_series_vector("sell_trade", sell);
             },
-            [&](std::chrono::milliseconds, const Signal & signal) {
-                get_or_create_chart(m_price_chart_name).push_signal(signal);
+            [&](std::chrono::milliseconds, const Trade & trade) {
+                get_or_create_chart(m_price_chart_name).push_trade(trade);
             }));
     m_subscriptions.push_back(str_instance.depo_publisher().subscribe(
             m_event_consumer,

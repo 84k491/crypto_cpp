@@ -1,8 +1,8 @@
 #pragma once
 
 #include "Ohlc.h"
-#include "Signal.h"
 #include "Tpsl.h"
+#include "Trade.h"
 #include "TrailingStopLoss.h"
 #include "qcustomplot.h"
 
@@ -26,7 +26,7 @@ public:
                                     const std::vector<std::pair<
                                             std::chrono::milliseconds,
                                             double>> & data);
-    void push_signal(Signal signal);
+    void push_trade(const Trade & trade);
     void push_tpsl(std::chrono::milliseconds ts, Tpsl tpsl);
     void push_stop_loss(std::chrono::milliseconds ts, double stop_price);
 

@@ -1,6 +1,6 @@
 #include "ConnectionWatcher.h"
 
-#include <print>
+#include "Logger.h"
 
 ConnectionWatcher::ConnectionWatcher(IConnectionSupervisor & supervisor)
     : m_supervisor(supervisor)
@@ -13,7 +13,7 @@ void ConnectionWatcher::set_ping_sender(std::weak_ptr<IPingSender> & ping_sender
         sptr->send_ping();
     }
     else {
-        std::println("ERROR Empty ping sender");
+        Logger::log<LogLevel::Error>("Empty ping sender");
     }
     m_ping_sender = ping_sender;
 }

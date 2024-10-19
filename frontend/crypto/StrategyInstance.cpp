@@ -215,9 +215,9 @@ void StrategyInstance::process_position_result(const PositionResult & new_result
     }
 }
 
-EventTimeseriesPublisher<Signal> & StrategyInstance::signals_publisher()
+EventTimeseriesPublisher<Trade> & StrategyInstance::trade_publisher()
 {
-    return m_signal_publisher;
+    return m_trade_publisher;
 }
 
 EventTimeseriesPublisher<std::tuple<std::string, std::string, double>> & StrategyInstance::strategy_internal_data_publisher()
@@ -375,7 +375,7 @@ void StrategyInstance::handle_event(const TradeEvent & response)
     const auto res = m_position_manager.on_trade_received(response.trade);
 
     const auto & trade = response.trade;
-    m_signal_publisher.push(trade.ts(), Signal{trade.side(), trade.ts(), trade.price()});
+    m_trade_publisher.push(trade.ts(), trade);
 
     if (res.has_value()) {
         process_position_result(res.value(), trade.ts());
