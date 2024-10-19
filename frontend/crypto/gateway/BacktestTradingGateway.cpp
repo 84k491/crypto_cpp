@@ -20,6 +20,7 @@ void BacktestTradingGateway::set_price_source(EventTimeseriesPublisher<OHLC> & p
             [](auto &) {},
             [this](std::chrono::milliseconds ts, const OHLC & ohlc) {
                 m_last_price = ohlc.close;
+                m_last_ts = ts;
                 if (m_tpsl.has_value()) {
                     const auto tpsl_trade = try_trade_tpsl(ohlc);
                     if (tpsl_trade.has_value()) {
@@ -36,13 +37,13 @@ void BacktestTradingGateway::set_price_source(EventTimeseriesPublisher<OHLC> & p
                                         [&](const Trade & trade) {
                                             m_trade_publisher.push(TradeEvent(trade));
                                             m_trailing_stop_update_publisher.push(
-                                                    TrailingStopLossUpdatedEvent(trade.symbol().symbol_name, {}, ts));
+                                                    TrailingStopLossUpdatedEvent(trade.symbol_name(), {}, ts));
                                             m_trailing_stop.reset();
                                             *m_pos_volume = SignedVolume();
                                         },
                                         [&](const StopLoss & sl) {
                                             m_trailing_stop_update_publisher.push(
-                                                    TrailingStopLossUpdatedEvent(sl.symbol().symbol_name, sl, ts));
+                                                    TrailingStopLossUpdatedEvent(sl.symbol_name(), sl, ts));
                                         }},
                                 *trade_or_sl);
                     }
@@ -147,7 +148,10 @@ void BacktestTradingGateway::push_trailing_stop_request(const TrailingStopLossRe
             TrailingStopLossResponseEvent(
                     trailing_stop_ev.guid,
                     trailing_stop_ev.trailing_stop_loss));
-    // TODO push TrailingStopUpdated?
+
+    m_trailing_stop_update_publisher.push({m_symbol,
+                                           m_trailing_stop->stop_loss(),
+                                           m_last_ts});
 }
 
 bool BacktestEventConsumer::push_to_queue(const std::any value)
@@ -205,7 +209,7 @@ std::optional<std::variant<Trade, StopLoss>> BacktestTrailingStopLoss::on_price_
     const auto opposite_side = side.opposite();
     Trade trade{
             ohlc.timestamp,
-            m_trailing_stop.symbol().symbol_name,
+            m_trailing_stop.symbol_name(),
             m_current_stop_loss.stop_price(),
             vol,
             opposite_side,

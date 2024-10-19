@@ -2,7 +2,6 @@
 
 #include "EventTimeseriesPublisher.h"
 #include "Events.h"
-#include "Guarded.h"
 #include "ITradingGateway.h"
 #include "Ohlc.h"
 #include "Volume.h"
@@ -24,6 +23,8 @@ public:
 
     [[nodiscard("PossibleTrade or updated StopLoss")]]
     std::optional<std::variant<Trade, StopLoss>> on_price_updated(const OHLC & ohlc);
+
+    auto stop_loss() const { return m_current_stop_loss; }
 
 private:
     std::shared_ptr<SignedVolume> m_pos_volume;
@@ -59,6 +60,7 @@ private:
     std::string m_symbol; // backtest GW can only trade a single symbol now
     std::optional<TpslRequestEvent> m_tpsl;
     double m_last_price = 0.;
+    std::chrono::milliseconds m_last_ts = {};
     std::shared_ptr<ISubsription> m_price_sub;
     std::optional<BacktestTrailingStopLoss> m_trailing_stop;
 

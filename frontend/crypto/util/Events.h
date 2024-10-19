@@ -138,7 +138,7 @@ struct TpslRequestEvent : public OneWayEvent
 struct TrailingStopLossResponseEvent : public OrderResponseEvent
 {
     TrailingStopLossResponseEvent(xg::Guid request_guid, TrailingStopLoss trailing_stop_loss, std::optional<std::string> reject_reason = std::nullopt)
-        : OrderResponseEvent(trailing_stop_loss.symbol().symbol_name, request_guid, std::move(reject_reason))
+        : OrderResponseEvent(trailing_stop_loss.symbol_name(), request_guid, std::move(reject_reason))
         , trailing_stop_loss(std::move(trailing_stop_loss))
     {
     }

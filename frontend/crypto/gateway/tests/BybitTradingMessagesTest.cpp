@@ -78,7 +78,7 @@ TEST(BybitTradingMessagesTest, SimpleOrderExecution)
     ASSERT_DOUBLE_EQ(trade.unsigned_volume().value(), 0.003);
     ASSERT_DOUBLE_EQ(trade.fee(), 0.0855525);
     ASSERT_EQ(trade.ts().count(), 1708249213755);
-    ASSERT_EQ(trade.symbol().symbol_name, "BTCUSDT");
+    ASSERT_EQ(trade.symbol_name(), "BTCUSDT");
     ASSERT_EQ(trade.side(), Side::sell());
 }
 
@@ -251,7 +251,7 @@ TEST(BybitTradingMessagesTest, TrailingStopLossUpdate)
     const auto & tsl_event = std::get<TrailingStopLossUpdatedEvent>(events.front());
     ASSERT_TRUE(tsl_event.stop_loss.has_value());
     ASSERT_EQ(tsl_event.symbol_name, "BTCUSDT");
-    ASSERT_EQ(tsl_event.stop_loss->symbol().symbol_name, "BTCUSDT");
+    ASSERT_EQ(tsl_event.stop_loss->symbol_name(), "BTCUSDT");
     ASSERT_EQ(tsl_event.stop_loss->stop_price(), 62591.7);
     ASSERT_EQ(tsl_event.stop_loss->side(), Side::sell());
 }

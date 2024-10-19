@@ -61,7 +61,7 @@ TrailingStopLoss TrailigStopLossStrategy::calc_trailing_stop(const Trade & trade
     const double price_delta = risk - fee_price_delta;
 
     const auto opposite_side = trade.side().opposite();
-    const auto stop_loss = TrailingStopLoss(trade.symbol(), price_delta, opposite_side);
+    const auto stop_loss = TrailingStopLoss(trade.symbol_name(), price_delta, opposite_side);
     return stop_loss;
 }
 

@@ -4,7 +4,7 @@ std::optional<StopLoss> TrailingStopLoss::calc_new_stop_loss(const double curren
 {
     const auto new_stop_price = current_price + m_price_distance * m_side.sign();
     if (!previous_stop_loss) {
-        return {{m_symbol, new_stop_price, m_side}};
+        return {{m_symbol_name, new_stop_price, m_side}};
     }
 
     // For long, stop loss will be sell. In this case new price must be lower
@@ -12,5 +12,5 @@ std::optional<StopLoss> TrailingStopLoss::calc_new_stop_loss(const double curren
         return std::nullopt;
     }
 
-    return {{m_symbol, new_stop_price, m_side}};
+    return {{m_symbol_name, new_stop_price, m_side}};
 }

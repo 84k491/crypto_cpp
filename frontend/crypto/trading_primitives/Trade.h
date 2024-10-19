@@ -12,13 +12,13 @@ class Trade
 public:
     Trade(
             std::chrono::milliseconds ts,
-            std::string symbol,
+            std::string symbol_name,
             double price,
             UnsignedVolume volume,
             Side side,
             double fee)
         : m_ts(ts)
-        , m_symbol(std::move(symbol))
+        , m_symbol_name(std::move(symbol_name))
         , m_price(price)
         , m_unsigned_volume(std::move(volume))
         , m_side(side)
@@ -27,7 +27,7 @@ public:
     }
 
     std::chrono::milliseconds ts() const { return m_ts; }
-    const auto& symbol() const { return m_symbol; }
+    const auto& symbol_name() const { return m_symbol_name; }
     double price() const { return m_price; }
     UnsignedVolume unsigned_volume() const { return m_unsigned_volume; }
     SignedVolume signed_volume() const { return {m_unsigned_volume, m_side}; }
@@ -36,7 +36,7 @@ public:
 
 private:
     std::chrono::milliseconds m_ts;
-    Symbol m_symbol;
+    std::string m_symbol_name;
     double m_price{};
     UnsignedVolume m_unsigned_volume;
     Side m_side = Side::buy();

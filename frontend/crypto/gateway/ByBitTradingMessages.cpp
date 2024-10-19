@@ -122,8 +122,7 @@ std::optional<TrailingStopLossUpdatedEvent> OrderResponseResult::on_trailing_sto
         return {};
     }
     auto side = response.side == "Buy" ? Side::buy() : Side::sell();
-    Symbol symbol;
-    symbol.symbol_name = response.symbol;
+    std::string symbol_name = response.symbol;
     std::optional<StopLoss> sl = {};
     const std::set<std::string> reset_statuses = {
             "Filled",
@@ -132,7 +131,7 @@ std::optional<TrailingStopLossUpdatedEvent> OrderResponseResult::on_trailing_sto
             // "Triggered", resurrect tsl on triggered status
     };
     if (!reset_statuses.contains(response.orderStatus)) {
-        sl = {symbol, response.triggerPrice.value(), side};
+        sl = {symbol_name, response.triggerPrice.value(), side};
     }
     TrailingStopLossUpdatedEvent tsl_ev{
             response.symbol,
