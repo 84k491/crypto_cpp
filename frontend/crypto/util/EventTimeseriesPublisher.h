@@ -2,6 +2,7 @@
 
 #include "EventLoop.h"
 #include "Events.h"
+#include "Guarded.h"
 #include "ISubsription.h"
 #include "Macros.h"
 
@@ -61,19 +62,20 @@ public:
     void unsubscribe(xg::Guid guid);
 
 private:
-    std::vector<std::pair<TimeT, ObjectT>> m_data;
-    std::list<std::tuple<
+    Guarded<std::vector<std::pair<TimeT, ObjectT>>> m_data;
+    Guarded<std::list<std::tuple<
             xg::Guid,
             std::function<void(TimeT, const ObjectT &)>,
-            std::weak_ptr<EventTimeseriesSubsription<ObjectT>>>>
+            std::weak_ptr<EventTimeseriesSubsription<ObjectT>>>>>
             m_increment_callbacks;
 };
 
 template <typename ObjectT>
 void EventTimeseriesPublisher<ObjectT>::push(EventTimeseriesPublisher::TimeT timestamp, const ObjectT & object)
 {
-    m_data.emplace_back(timestamp, object);
-    for (const auto & [uuid, cb, wptr] : m_increment_callbacks) {
+    m_data.lock().get().emplace_back(timestamp, object);
+    auto callbacks_lref = m_increment_callbacks.lock();
+    for (const auto & [uuid, cb, wptr] : callbacks_lref.get()) {
         UNWRAP_CONTINUE(subscribtion, wptr.lock());
         UNWRAP_CONTINUE(consumer, subscribtion.m_consumer.lock());
         consumer.push(LambdaEvent(
@@ -92,10 +94,11 @@ std::shared_ptr<EventTimeseriesSubsription<ObjectT>> EventTimeseriesPublisher<Ob
     const auto guid = xg::newGuid();
     auto sptr = std::make_shared<EventTimeseriesSubsription<ObjectT>>(consumer, *this, guid);
 
-    m_increment_callbacks.emplace_back(guid, std::move(increment_callback), std::weak_ptr{sptr});
+    m_increment_callbacks.lock().get().emplace_back(guid, std::move(increment_callback), std::weak_ptr{sptr});
+    auto data_lref = m_data.lock();
     consumer->push(LambdaEvent(
             [cb = std::move(snapshot_callback),
-             d = m_data] { cb(d); }));
+             d = data_lref.get()] { cb(d); }));
 
     return sptr;
 }
@@ -103,9 +106,11 @@ std::shared_ptr<EventTimeseriesSubsription<ObjectT>> EventTimeseriesPublisher<Ob
 template <typename ObjectT>
 void EventTimeseriesPublisher<ObjectT>::unsubscribe(xg::Guid guid)
 {
-    for (auto it = m_increment_callbacks.begin(); it != m_increment_callbacks.end(); ++it) {
+    auto consumers_lref = m_increment_callbacks.lock();
+    auto & consumers = consumers_lref.get();
+    for (auto it = consumers.begin(); it != consumers.end(); ++it) {
         if (std::get<xg::Guid>(*it) == guid) {
-            m_increment_callbacks.erase(it);
+            consumers.erase(it);
             break;
         }
     }
@@ -114,10 +119,10 @@ void EventTimeseriesPublisher<ObjectT>::unsubscribe(xg::Guid guid)
 template <typename ObjectT>
 EventTimeseriesPublisher<ObjectT>::~EventTimeseriesPublisher()
 {
-    // TODO erase if nullptr
-    for (auto & [uuid, _, wptr] : m_increment_callbacks) {
+    auto consumers_lref = m_increment_callbacks.lock();
+    for (auto & [uuid, _, wptr] : consumers_lref.get()) {
         UNWRAP_CONTINUE(subscribtion, wptr.lock());
         subscribtion.m_publisher = nullptr;
     }
-    m_increment_callbacks.clear();
+    consumers_lref.get().clear();
 }
