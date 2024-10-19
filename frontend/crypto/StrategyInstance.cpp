@@ -372,9 +372,10 @@ void StrategyInstance::handle_event(const OrderResponseEvent & response)
 
 void StrategyInstance::handle_event(const TradeEvent & response)
 {
+    const auto & trade = response.trade;
+    Logger::logf<LogLevel::Debug>("Trade received: {}", trade);
     const auto res = m_position_manager.on_trade_received(response.trade);
 
-    const auto & trade = response.trade;
     m_trade_publisher.push(trade.ts(), trade);
 
     if (res.has_value()) {

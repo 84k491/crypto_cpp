@@ -20,13 +20,13 @@ class BacktestTrailingStopLoss
 {
     static constexpr double taker_fee_rate = 0.00055; // TODO take it from BTGW
 public:
-    BacktestTrailingStopLoss(SignedVolume pos_volume, double current_price, const TrailingStopLoss & trailing_stop);
+    BacktestTrailingStopLoss(std::shared_ptr<SignedVolume> & pos_volume, double current_price, const TrailingStopLoss & trailing_stop);
 
     [[nodiscard("PossibleTrade or updated StopLoss")]]
     std::optional<std::variant<Trade, StopLoss>> on_price_updated(const OHLC & ohlc);
 
 private:
-    SignedVolume m_pos_volume; // TODO make it ref
+    std::shared_ptr<SignedVolume> m_pos_volume;
     StopLoss m_current_stop_loss;
     TrailingStopLoss m_trailing_stop;
 };
@@ -58,11 +58,11 @@ private:
 
     std::string m_symbol; // backtest GW can only trade a single symbol now
     std::optional<TpslRequestEvent> m_tpsl;
-    double m_last_trade_price = 0.;
+    double m_last_price = 0.;
     std::shared_ptr<ISubsription> m_price_sub;
     std::optional<BacktestTrailingStopLoss> m_trailing_stop;
 
-    SignedVolume m_pos_volume;
+    std::shared_ptr<SignedVolume> m_pos_volume;
 
     EventPublisher<OrderResponseEvent> m_order_response_publisher;
     EventPublisher<TradeEvent> m_trade_publisher;
