@@ -2,7 +2,7 @@
 #define MAINWINDOW_H
 
 #include "BacktestTradingGateway.h"
-#include "ByBitGateway.h"
+#include "ByBitMarketDataGateway.h"
 #include "ByBitTradingGateway.h"
 #include "JsonStrategyConfig.h"
 #include "Logger.h"
@@ -137,7 +137,7 @@ private:
 
     StrategyFactory m_strategy_factory;
 
-    ByBitGateway m_gateway;
+    ByBitMarketDataGateway m_gateway;
     std::unique_ptr<BacktestTradingGateway> m_backtest_tr_gateway;
     ByBitTradingGateway m_trading_gateway;
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ByBitGateway.h"
+#include "ByBitMarketDataGateway.h"
 #include "JsonStrategyConfig.h"
 #include "Logger.h"
 
@@ -36,7 +36,7 @@ class Optimizer
 {
 public:
     Optimizer(
-            ByBitGateway & gateway,
+            ByBitMarketDataGateway & gateway,
             Symbol symbol,
             Timerange timerange,
             std::string strategy_name,
@@ -62,7 +62,7 @@ public:
     }
 
 private:
-    ByBitGateway & m_gateway;
+    ByBitMarketDataGateway & m_gateway;
     Symbol m_symbol;
     Timerange m_timerange;
     OptimizerInputs m_optimizer_inputs;

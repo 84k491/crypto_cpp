@@ -23,7 +23,7 @@
 #include <vector>
 
 class WorkerThreadLoop;
-class ByBitGateway final
+class ByBitMarketDataGateway final
     : public IMarketDataGateway
     , public IConnectionSupervisor
     , private IEventInvoker<HistoricalMDRequest, LiveMDRequest, PingCheckEvent>
@@ -36,7 +36,7 @@ public:
     static constexpr std::chrono::minutes min_historical_interval = std::chrono::minutes{1};
     static auto get_taker_fee() { return taker_fee; }
 
-    ByBitGateway();
+    ByBitMarketDataGateway();
 
     void push_async_request(HistoricalMDRequest && request) override;
     void push_async_request(LiveMDRequest && request) override;

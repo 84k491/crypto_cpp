@@ -1,7 +1,6 @@
-#include "ByBitGateway.h"
+#include "ByBitMarketDataGateway.h"
 
 #include "Logger.h"
-#include "Macros.h"
 #include "MarketDataMessages.h"
 #include "Ohlc.h"
 #include "ScopeExit.h"
@@ -13,7 +12,7 @@
 #include <string>
 #include <vector>
 
-ByBitGateway::ByBitGateway()
+ByBitMarketDataGateway::ByBitMarketDataGateway()
     : m_connection_watcher(*this)
     , m_event_loop(*this)
 {
@@ -31,7 +30,7 @@ ByBitGateway::ByBitGateway()
     }
 }
 
-bool ByBitGateway::reconnect_ws_client()
+bool ByBitMarketDataGateway::reconnect_ws_client()
 {
     m_ws_client = std::make_shared<WebSocketClient>(
             std::string(m_config.ws_url),
@@ -190,7 +189,7 @@ void from_json(const json & j, SymbolResponse & response)
     j2.get_to(response.result);
 }
 
-bool ByBitGateway::request_historical_klines(const std::string & symbol, const Timerange & timerange, KlinePackCallback && pack_callback)
+bool ByBitMarketDataGateway::request_historical_klines(const std::string & symbol, const Timerange & timerange, KlinePackCallback && pack_callback)
 {
     Logger::logf<LogLevel::Debug>(
             "Whole requested interval seconds: {}",
@@ -267,7 +266,7 @@ bool ByBitGateway::request_historical_klines(const std::string & symbol, const T
     return true;
 }
 
-std::vector<Symbol> ByBitGateway::get_symbols(const std::string & currency)
+std::vector<Symbol> ByBitMarketDataGateway::get_symbols(const std::string & currency)
 {
     const std::string category = "linear";
     const unsigned limit = 1000;
@@ -302,7 +301,7 @@ std::vector<Symbol> ByBitGateway::get_symbols(const std::string & currency)
     return response.result.symbol_vec;
 }
 
-std::chrono::milliseconds ByBitGateway::get_server_time()
+std::chrono::milliseconds ByBitMarketDataGateway::get_server_time()
 {
     const std::string url = std::string(m_config.rest_url) + "/v5/market/time";
 
@@ -318,22 +317,22 @@ std::chrono::milliseconds ByBitGateway::get_server_time()
     return server_time;
 }
 
-EventObjectPublisher<WorkStatus> & ByBitGateway::status_publisher()
+EventObjectPublisher<WorkStatus> & ByBitMarketDataGateway::status_publisher()
 {
     return m_status;
 }
 
-void ByBitGateway::push_async_request(HistoricalMDRequest && request)
+void ByBitMarketDataGateway::push_async_request(HistoricalMDRequest && request)
 {
     m_event_loop->as_consumer<HistoricalMDRequest>().push(request);
 }
 
-void ByBitGateway::push_async_request(LiveMDRequest && request)
+void ByBitMarketDataGateway::push_async_request(LiveMDRequest && request)
 {
     m_event_loop->as_consumer<LiveMDRequest>().push(request);
 }
 
-void ByBitGateway::handle_request(const HistoricalMDRequest & request)
+void ByBitMarketDataGateway::handle_request(const HistoricalMDRequest & request)
 {
     const auto symbol = request.symbol;
     const auto histroical_timerange = Timerange{request.data.start, request.data.end};
@@ -371,7 +370,7 @@ void ByBitGateway::handle_request(const HistoricalMDRequest & request)
     m_historical_prices_publisher.push(ev);
 }
 
-void ByBitGateway::handle_request(const LiveMDRequest & request)
+void ByBitMarketDataGateway::handle_request(const LiveMDRequest & request)
 {
     const LiveMDRequest & live_request = request;
     auto locked_ref = m_live_requests.lock();
@@ -389,12 +388,12 @@ void ByBitGateway::handle_request(const LiveMDRequest & request)
     locked_ref.get().push_back(live_request);
 }
 
-void ByBitGateway::handle_request(const PingCheckEvent & event)
+void ByBitMarketDataGateway::handle_request(const PingCheckEvent & event)
 {
     m_connection_watcher.handle_request(event);
 }
 
-void ByBitGateway::on_price_received(const nlohmann::json & json)
+void ByBitMarketDataGateway::on_price_received(const nlohmann::json & json)
 {
     auto locked_ref = m_live_requests.lock();
     if (locked_ref.get().empty()) {
@@ -410,7 +409,7 @@ void ByBitGateway::on_price_received(const nlohmann::json & json)
     }
 }
 
-void ByBitGateway::invoke(const std::variant<HistoricalMDRequest, LiveMDRequest, PingCheckEvent> & request)
+void ByBitMarketDataGateway::invoke(const std::variant<HistoricalMDRequest, LiveMDRequest, PingCheckEvent> & request)
 {
     std::visit(
             VariantMatcher{
@@ -421,7 +420,7 @@ void ByBitGateway::invoke(const std::variant<HistoricalMDRequest, LiveMDRequest,
             request);
 }
 
-void ByBitGateway::unsubscribe_from_live(xg::Guid guid)
+void ByBitMarketDataGateway::unsubscribe_from_live(xg::Guid guid)
 {
     auto live_req_locked = m_live_requests.lock();
     for (auto it = live_req_locked.get().begin(), end = live_req_locked.get().end(); it != end; ++it) {
@@ -436,7 +435,7 @@ void ByBitGateway::unsubscribe_from_live(xg::Guid guid)
     }
 }
 
-void ByBitGateway::on_connection_lost()
+void ByBitMarketDataGateway::on_connection_lost()
 {
     Logger::log<LogLevel::Warning>("Connection lost on market data, reconnecting...");
     if (!reconnect_ws_client()) {
@@ -445,13 +444,13 @@ void ByBitGateway::on_connection_lost()
     }
 }
 
-void ByBitGateway::on_connection_verified()
+void ByBitMarketDataGateway::on_connection_verified()
 {
     m_event_loop->as_consumer<PingCheckEvent>().push_delayed(ws_ping_interval, PingCheckEvent{});
 }
 
-EventPublisher<HistoricalMDPackEvent> & ByBitGateway::historical_prices_publisher()
+EventPublisher<HistoricalMDPackEvent> & ByBitMarketDataGateway::historical_prices_publisher()
 {
     return m_historical_prices_publisher;
 }
-EventPublisher<MDPriceEvent> & ByBitGateway::live_prices_publisher() { return m_live_prices_publisher; }
+EventPublisher<MDPriceEvent> & ByBitMarketDataGateway::live_prices_publisher() { return m_live_prices_publisher; }
