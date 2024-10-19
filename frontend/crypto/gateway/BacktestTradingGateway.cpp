@@ -204,7 +204,7 @@ std::optional<std::variant<Trade, StopLoss>> BacktestTrailingStopLoss::on_price_
             m_current_stop_loss.stop_price(),
             vol,
             opposite_side,
-            (m_pos_volume.value() * tick_price) * taker_fee_rate,
+            (m_pos_volume.value() * tick_price * m_pos_volume.sign()) * taker_fee_rate,
     };
     return trade;
 }
