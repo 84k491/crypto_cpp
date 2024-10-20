@@ -4,11 +4,11 @@
 
 enum class LogLevel
 {
-    Debug,
-    Status,
-    Info,
-    Warning,
-    Error,
+    Debug = 0,
+    Status = 1,
+    Info = 2,
+    Warning = 3,
+    Error = 4,
 };
 
 std::ostream & operator<<(std::ostream & os, LogLevel level);

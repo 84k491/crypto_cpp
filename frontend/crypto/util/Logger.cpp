@@ -1,5 +1,7 @@
 #include "Logger.h"
 
+#include "LogLevel.h"
+
 #include <print>
 
 Logger::Logger()
@@ -25,10 +27,13 @@ void Logger::invoke(const std::variant<LogEvent> & var)
 
 void Logger::handle_event(const LogEvent & ev)
 {
+    if (ev.level < m_min_log_level) {
+        return;
+    }
     const std::string str = std::format("[{}][{}]: {}",
-                                 ev.ts,
-                                 to_string(ev.level),
-                                 ev.log_str);
+                                        ev.ts,
+                                        to_string(ev.level),
+                                        ev.log_str);
     std::cout << str << std::endl;
 }
 
@@ -37,6 +42,11 @@ void Logger::log(std::string && str)
 {
     LogEvent ev(level, std::move(str));
     i().m_event_loop->push(ev);
+}
+
+void Logger::set_min_log_level(LogLevel ll)
+{
+    i().m_min_log_level = ll;
 }
 
 template void Logger::log<LogLevel::Debug>(std::string && str);

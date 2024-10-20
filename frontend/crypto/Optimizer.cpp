@@ -2,6 +2,8 @@
 
 #include "BacktestTradingGateway.h"
 #include "JsonStrategyConfig.h"
+#include "LogLevel.h"
+#include "ScopeExit.h"
 #include "StrategyFactory.h"
 #include "StrategyInstance.h"
 
@@ -82,6 +84,11 @@ std::optional<std::pair<JsonStrategyConfig, JsonStrategyConfig>> Optimizer::opti
     double max_profit = -std::numeric_limits<double>::max();
     const auto configs = parser.get_possible_configs();
     std::optional<decltype(configs)::value_type> best_config;
+    // Logger::log<LogLevel::Debug>("Logs will be suppressed during optimization"); // TODO push as event
+    Logger::set_min_log_level(LogLevel::Warning);
+    ScopeExit se{[]() {
+        Logger::set_min_log_level(LogLevel::Debug);
+    }};
     for (unsigned i = 0; i < configs.size(); ++i) {
         const auto & [entry_config, exit_config] = configs[i];
         const auto strategy_opt = StrategyFactory::build_strategy(m_strategy_name, entry_config);

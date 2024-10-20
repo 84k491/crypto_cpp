@@ -516,6 +516,7 @@ void StrategyInstance::finish_if_needed_and_ready()
 {
     if (m_finish_promise.has_value() && m_stop_request_handled) {
         if (ready_to_finish()) {
+            m_subscriptions.clear();
             auto & promise = m_finish_promise.value();
             promise.set_value(); // TODO double set on stop
         }

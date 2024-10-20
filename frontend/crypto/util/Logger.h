@@ -15,6 +15,8 @@ public:
         str_logf<level>(fmt, to_string(args)...);
     }
 
+    static void set_min_log_level(LogLevel ll);
+
 private:
     Logger();
     static Logger & i();
@@ -37,8 +39,9 @@ private:
     }
 
     void invoke(const std::variant<LogEvent> & value) override;
-    static void handle_event(const LogEvent & ev);
+    void handle_event(const LogEvent & ev);
 
 private:
     EventLoopHolder<LogEvent> m_event_loop;
+    LogLevel m_min_log_level = LogLevel::Debug;
 };
