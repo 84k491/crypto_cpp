@@ -110,14 +110,14 @@ void StrategyInstance::run_async()
         HistoricalMDRequest historical_request(
                 m_symbol,
                 m_historical_md_request.value());
-        m_md_gateway.push_async_request(std::move(historical_request));
         m_pending_requests.emplace(historical_request.guid);
+        m_md_gateway.push_async_request(std::move(historical_request));
     }
     else {
         m_status.push(WorkStatus::Live);
         LiveMDRequest live_request(m_symbol);
-        m_md_gateway.push_async_request(std::move(live_request));
         m_live_md_requests.emplace(live_request.guid);
+        m_md_gateway.push_async_request(std::move(live_request));
     }
 }
 
@@ -317,7 +317,7 @@ void StrategyInstance::handle_event(const HistoricalMDPackEvent & response)
     static_cast<IEventConsumer<StrategyStopRequest> &>(*m_event_loop).push(StrategyStopRequest{});
     const size_t erased_cnt = m_pending_requests.erase(response.request_guid);
     if (erased_cnt == 0) {
-        Logger::log<LogLevel::Error>("unsolicited HistoricalMDPackEvent");
+        Logger::logf<LogLevel::Error>("unsolicited HistoricalMDPackEvent: {}, this->guid: {}", response.request_guid, m_strategy_guid);
     }
 }
 

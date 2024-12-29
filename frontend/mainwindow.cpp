@@ -251,6 +251,14 @@ std::optional<Timerange> MainWindow::get_timerange() const
 
 void MainWindow::on_pb_optimize_clicked()
 {
+    if (m_strategy_instance) {
+        if (m_strategy_instance->status_publisher().get() != WorkStatus::Stopped) {
+            Logger::log<LogLevel::Error>("Strategy is not stopped");
+            return;
+        }
+        m_strategy_instance.reset();
+    }
+
     const auto entry_strategy_meta_info = get_entry_strategy_parameters();
     const auto timerange_opt = get_timerange();
     const auto exit_strategy_meta_info = StrategyFactory::get_meta_info(ui->cb_exit_strategy->currentText().toStdString());
@@ -276,7 +284,7 @@ void MainWindow::on_pb_optimize_clicked()
             return ui->wt_exit_params->get_config();
         }
     };
-    OptimizerInputs optimizer_inputs = {entry_config(), exit_config()};
+    OptimizerInputs optimizer_inputs = {.entry_strategy = entry_config(), .exit_strategy = exit_config()};
 
     const auto & timerange = *timerange_opt;
 
@@ -375,7 +383,7 @@ void MainWindow::on_pb_charts_clicked()
 {
     m_chart_window = new ChartWindow(m_strategy_instance);
     m_chart_window->setAttribute(Qt::WA_DeleteOnClose);
-    connect(m_chart_window, &ChartWindow::destroyed, [this](auto){
+    connect(m_chart_window, &ChartWindow::destroyed, [this](auto) {
         m_chart_window = nullptr;
     });
     m_chart_window->show();

@@ -36,6 +36,7 @@ std::optional<PositionResult> PositionManager::on_trade_received(const Trade & t
 
     if (!m_closed_position.has_value()) {
         Logger::log<LogLevel::Error>("ERROR: No closed position when opened vol == 0");
+        return std::nullopt;
     }
     const auto & closed_pos = m_closed_position.value();
 

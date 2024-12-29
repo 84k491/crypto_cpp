@@ -55,9 +55,6 @@ public:
 
     void subscribe_for_passed_check(std::function<void(int, int)> && on_passed_checks)
     {
-        if (m_on_passed_check) {
-            Logger::log<LogLevel::Error>("on_passed_check already set");
-        }
         m_on_passed_check = std::move(on_passed_checks);
     }
 

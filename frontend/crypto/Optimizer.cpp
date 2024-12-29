@@ -79,12 +79,13 @@ std::vector<JsonStrategyConfig> OptimizerParser::get_possible_configs(const Json
 
 std::optional<std::pair<JsonStrategyConfig, JsonStrategyConfig>> Optimizer::optimize()
 {
+    Logger::log<LogLevel::Status>("Starting optimizer");
     OptimizerParser parser(m_optimizer_inputs);
 
     double max_profit = -std::numeric_limits<double>::max();
     const auto configs = parser.get_possible_configs();
     std::optional<decltype(configs)::value_type> best_config;
-    // Logger::log<LogLevel::Debug>("Logs will be suppressed during optimization"); // TODO push as event
+    Logger::log<LogLevel::Debug>("Logs will be suppressed during optimization"); // TODO push as event
     Logger::set_min_log_level(LogLevel::Warning);
     ScopeExit se{[]() {
         Logger::set_min_log_level(LogLevel::Debug);

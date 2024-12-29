@@ -71,7 +71,7 @@ private:
     void finish_if_needed_and_ready();
 
 private:
-    xg::Guid m_strategy_guid;
+    const xg::Guid m_strategy_guid;
 
     IMarketDataGateway & m_md_gateway;
     ITradingGateway & m_tr_gateway;
