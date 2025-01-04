@@ -126,7 +126,7 @@ std::optional<std::pair<std::string, bool>> TpslExitStrategy::handle_event(const
         return {{err, false}};
     }
 
-    m_tpsl_publisher.push(m_last_ts_and_price.first, response.tpsl);
+    m_tpsl_channel.push(m_last_ts_and_price.first, response.tpsl);
     return std::nullopt;
 }
 

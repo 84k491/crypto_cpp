@@ -13,9 +13,9 @@ BacktestTradingGateway::BacktestTradingGateway()
 {
 }
 
-void BacktestTradingGateway::set_price_source(EventTimeseriesPublisher<OHLC> & publisher)
+void BacktestTradingGateway::set_price_source(EventTimeseriesChannel<OHLC> & channel)
 {
-    m_price_sub = publisher.subscribe(
+    m_price_sub = channel.subscribe(
             m_event_consumer,
             [](auto &) {},
             [this](std::chrono::milliseconds ts, const OHLC & ohlc) {
@@ -24,7 +24,7 @@ void BacktestTradingGateway::set_price_source(EventTimeseriesPublisher<OHLC> & p
                 if (m_tpsl.has_value()) {
                     const auto tpsl_trade = try_trade_tpsl(ohlc);
                     if (tpsl_trade.has_value()) {
-                        m_trade_publisher.push(TradeEvent(tpsl_trade.value()));
+                        m_trade_channel.push(TradeEvent(tpsl_trade.value()));
                         *m_pos_volume = SignedVolume();
                         m_tpsl.reset();
                     }
@@ -35,14 +35,14 @@ void BacktestTradingGateway::set_price_source(EventTimeseriesPublisher<OHLC> & p
                         std::visit(
                                 VariantMatcher{
                                         [&](const Trade & trade) {
-                                            m_trade_publisher.push(TradeEvent(trade));
-                                            m_trailing_stop_update_publisher.push(
+                                            m_trade_channel.push(TradeEvent(trade));
+                                            m_trailing_stop_update_channel.push(
                                                     TrailingStopLossUpdatedEvent(trade.symbol_name(), {}, ts));
                                             m_trailing_stop.reset();
                                             *m_pos_volume = SignedVolume();
                                         },
                                         [&](const StopLoss & sl) {
-                                            m_trailing_stop_update_publisher.push(
+                                            m_trailing_stop_update_channel.push(
                                                     TrailingStopLossUpdatedEvent(sl.symbol_name(), sl, ts));
                                         }},
                                 *trade_or_sl);
@@ -108,7 +108,7 @@ void BacktestTradingGateway::push_order_request(const OrderRequestEvent & req)
 
     const auto & order = req.order;
     const auto ack_ev = OrderResponseEvent(req.order.symbol(), req.order.guid());
-    m_order_response_publisher.push(ack_ev);
+    m_order_response_channel.push(ack_ev);
     m_symbol = order.symbol();
 
     const auto & price = m_last_price;
@@ -127,14 +127,14 @@ void BacktestTradingGateway::push_order_request(const OrderRequestEvent & req)
 
     *m_pos_volume += SignedVolume(volume, order.side());
 
-    m_trade_publisher.push(TradeEvent(std::move(trade)));
+    m_trade_channel.push(TradeEvent(std::move(trade)));
 }
 
 void BacktestTradingGateway::push_tpsl_request(const TpslRequestEvent & tpsl_ev)
 {
     m_tpsl = tpsl_ev;
     TpslResponseEvent resp_ev(m_tpsl.value().symbol.symbol_name, m_tpsl.value().guid, tpsl_ev.tpsl);
-    m_tpsl_response_publisher.push(resp_ev);
+    m_tpsl_response_channel.push(resp_ev);
 }
 
 void BacktestTradingGateway::push_trailing_stop_request(const TrailingStopLossRequestEvent & trailing_stop_ev)
@@ -144,12 +144,12 @@ void BacktestTradingGateway::push_trailing_stop_request(const TrailingStopLossRe
             m_last_price,
             trailing_stop_ev.trailing_stop_loss);
 
-    m_trailing_stop_response_publisher.push(
+    m_trailing_stop_response_channel.push(
             TrailingStopLossResponseEvent(
                     trailing_stop_ev.guid,
                     trailing_stop_ev.trailing_stop_loss));
 
-    m_trailing_stop_update_publisher.push({m_symbol,
+    m_trailing_stop_update_channel.push({m_symbol,
                                            m_trailing_stop->stop_loss(),
                                            m_last_ts});
 }
@@ -218,32 +218,32 @@ std::optional<std::variant<Trade, StopLoss>> BacktestTrailingStopLoss::on_price_
     return trade;
 }
 
-EventPublisher<OrderResponseEvent> & BacktestTradingGateway::order_response_publisher()
+EventChannel<OrderResponseEvent> & BacktestTradingGateway::order_response_channel()
 {
-    return m_order_response_publisher;
+    return m_order_response_channel;
 }
 
-EventPublisher<TradeEvent> & BacktestTradingGateway::trade_publisher()
+EventChannel<TradeEvent> & BacktestTradingGateway::trade_channel()
 {
-    return m_trade_publisher;
+    return m_trade_channel;
 }
 
-EventPublisher<TpslResponseEvent> & BacktestTradingGateway::tpsl_response_publisher()
+EventChannel<TpslResponseEvent> & BacktestTradingGateway::tpsl_response_channel()
 {
-    return m_tpsl_response_publisher;
+    return m_tpsl_response_channel;
 }
 
-EventPublisher<TpslUpdatedEvent> & BacktestTradingGateway::tpsl_updated_publisher()
+EventChannel<TpslUpdatedEvent> & BacktestTradingGateway::tpsl_updated_channel()
 {
-    return m_tpsl_updated_publisher;
+    return m_tpsl_updated_channel;
 }
 
-EventPublisher<TrailingStopLossResponseEvent> & BacktestTradingGateway::trailing_stop_response_publisher()
+EventChannel<TrailingStopLossResponseEvent> & BacktestTradingGateway::trailing_stop_response_channel()
 {
-    return m_trailing_stop_response_publisher;
+    return m_trailing_stop_response_channel;
 }
 
-EventPublisher<TrailingStopLossUpdatedEvent> & BacktestTradingGateway::trailing_stop_update_publisher()
+EventChannel<TrailingStopLossUpdatedEvent> & BacktestTradingGateway::trailing_stop_update_channel()
 {
-    return m_trailing_stop_update_publisher;
+    return m_trailing_stop_update_channel;
 }

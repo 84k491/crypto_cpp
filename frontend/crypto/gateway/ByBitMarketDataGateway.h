@@ -2,8 +2,8 @@
 
 #include "ConnectionWatcher.h"
 #include "EventLoopSubscriber.h"
-#include "EventObjectPublisher.h"
-#include "EventPublisher.h"
+#include "EventObjectChannel.h"
+#include "EventChannel.h"
 #include "Events.h"
 #include "GatewayConfig.h"
 #include "Guarded.h"
@@ -12,7 +12,7 @@
 #include "RestClient.h"
 #include "Symbol.h"
 #include "Timerange.h"
-#include "TimeseriesPublisher.h"
+#include "TimeseriesChannel.h"
 #include "WebSocketClient.h"
 #include "WorkStatus.h"
 #include "WorkerThread.h"
@@ -41,12 +41,12 @@ public:
     void push_async_request(HistoricalMDRequest && request) override;
     void push_async_request(LiveMDRequest && request) override;
 
-    EventPublisher<HistoricalMDPackEvent> & historical_prices_publisher() override;
-    EventPublisher<MDPriceEvent> & live_prices_publisher() override;
+    EventChannel<HistoricalMDPackEvent> & historical_prices_channel() override;
+    EventChannel<MDPriceEvent> & live_prices_channel() override;
 
     void unsubscribe_from_live(xg::Guid guid) override;
 
-    EventObjectPublisher<WorkStatus> & status_publisher() override;
+    EventObjectChannel<WorkStatus> & status_channel() override;
 
     std::vector<Symbol> get_symbols(const std::string & currency);
 
@@ -76,8 +76,8 @@ private:
 
     std::chrono::milliseconds m_last_server_time = std::chrono::milliseconds{0};
 
-    EventObjectPublisher<WorkStatus> m_status;
-    TimeseriesPublisher<OHLC> m_klines_publisher;
+    EventObjectChannel<WorkStatus> m_status;
+    TimeseriesChannel<OHLC> m_klines_channel;
 
     std::unique_ptr<WorkerThreadOnce> m_backtest_thread;
     std::unique_ptr<WorkerThreadLoop> m_live_thread;
@@ -97,6 +97,6 @@ private:
     ConnectionWatcher m_connection_watcher;
 
     EventLoopSubscriber<HistoricalMDRequest, LiveMDRequest, PingCheckEvent> m_event_loop;
-    EventPublisher<HistoricalMDPackEvent> m_historical_prices_publisher;
-    EventPublisher<MDPriceEvent> m_live_prices_publisher;
+    EventChannel<HistoricalMDPackEvent> m_historical_prices_channel;
+    EventChannel<MDPriceEvent> m_live_prices_channel;
 };

@@ -57,10 +57,10 @@ std::optional<Signal> TunedBollingerBandsStrategy::push_price(std::pair<std::chr
     UNWRAP_RET(m_last_filtered_price, std::nullopt);
 
     const auto & [ts, input_price] = ts_and_price;
-    m_strategy_internal_data_publisher.push(ts, {"prices", "upper_band", bb_res.m_upper_band});
-    m_strategy_internal_data_publisher.push(ts, {"prices", "trend", bb_res.m_trend});
-    m_strategy_internal_data_publisher.push(ts, {"prices", "lower_band", bb_res.m_lower_band});
-    m_strategy_internal_data_publisher.push(ts, {"prices", "filtered_price", filtered_price});
+    m_strategy_internal_data_channel.push(ts, {"prices", "upper_band", bb_res.m_upper_band});
+    m_strategy_internal_data_channel.push(ts, {"prices", "trend", bb_res.m_trend});
+    m_strategy_internal_data_channel.push(ts, {"prices", "lower_band", bb_res.m_lower_band});
+    m_strategy_internal_data_channel.push(ts, {"prices", "filtered_price", filtered_price});
 
     if (m_last_signal_side) {
         const auto last_signal_side = m_last_signal_side.value();
@@ -97,7 +97,7 @@ std::optional<Signal> TunedBollingerBandsStrategy::push_price(std::pair<std::chr
     return std::nullopt;
 }
 
-EventTimeseriesPublisher<std::tuple<std::string, std::string, double>> & TunedBollingerBandsStrategy::strategy_internal_data_publisher()
+EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & TunedBollingerBandsStrategy::strategy_internal_data_channel()
 {
-    return m_strategy_internal_data_publisher;
+    return m_strategy_internal_data_channel;
 }

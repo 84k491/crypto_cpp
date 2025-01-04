@@ -61,9 +61,9 @@ bool RateOfChangeStrategy::is_valid() const
     return m_config.is_valid();
 }
 
-EventTimeseriesPublisher<std::tuple<std::string, std::string, double>> & RateOfChangeStrategy::strategy_internal_data_publisher()
+EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & RateOfChangeStrategy::strategy_internal_data_channel()
 {
-    return m_strategy_internal_data_publisher;
+    return m_strategy_internal_data_channel;
 }
 
 std::optional<Signal> RateOfChangeStrategy::push_price(std::pair<std::chrono::milliseconds, double> ts_and_price)
@@ -72,22 +72,22 @@ std::optional<Signal> RateOfChangeStrategy::push_price(std::pair<std::chrono::mi
     const auto ts = ts_and_price.first;
     UNWRAP_RET_EMPTY(rate_of_change, m_rate_of_change.push_value({ts, trend_price}))
 
-    m_strategy_internal_data_publisher.push(
+    m_strategy_internal_data_channel.push(
             ts,
             {"prices",
              "trend",
              trend_price});
-    m_strategy_internal_data_publisher.push(
+    m_strategy_internal_data_channel.push(
             ts,
             {"rate_of_change",
              "upper_threshold",
              m_config.m_signal_threshold});
-    m_strategy_internal_data_publisher.push(
+    m_strategy_internal_data_channel.push(
             ts,
             {"rate_of_change",
              "lower_threshold",
              -m_config.m_signal_threshold});
-    m_strategy_internal_data_publisher.push(
+    m_strategy_internal_data_channel.push(
             ts,
             {"rate_of_change",
              "rate_of_change",

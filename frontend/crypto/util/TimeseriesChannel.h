@@ -10,40 +10,40 @@
 #include <vector>
 
 template <typename ObjectT>
-class TimeseriesPublisher;
+class TimeseriesChannel;
 
 template <typename ObjectT>
 class TimeseriesSubsription final : public ISubsription
 {
-    friend class TimeseriesPublisher<ObjectT>;
+    friend class TimeseriesChannel<ObjectT>;
 
 public:
-    TimeseriesSubsription(TimeseriesPublisher<ObjectT> & publisher, xg::Guid guid)
-        : m_publisher(&publisher)
+    TimeseriesSubsription(TimeseriesChannel<ObjectT> & channel, xg::Guid guid)
+        : m_channel(&channel)
         , m_guid(guid)
     {
     }
 
     ~TimeseriesSubsription() override
     {
-        if (m_publisher) {
-            m_publisher->unsubscribe(m_guid);
+        if (m_channel) {
+            m_channel->unsubscribe(m_guid);
         }
     }
 
 private:
-    TimeseriesPublisher<ObjectT> * m_publisher;
+    TimeseriesChannel<ObjectT> * m_channel;
     xg::Guid m_guid;
 };
 
 template <typename ObjectT>
-class TimeseriesPublisher
+class TimeseriesChannel
 {
 public:
     using TimeT = std::chrono::milliseconds;
 
-    TimeseriesPublisher() = default;
-    ~TimeseriesPublisher();
+    TimeseriesChannel() = default;
+    ~TimeseriesChannel();
 
     void push(TimeT timestamp, const ObjectT & object);
     [[nodiscard]] std::shared_ptr<TimeseriesSubsription<ObjectT>> subscribe(
@@ -62,7 +62,7 @@ private:
 };
 
 template <typename ObjectT>
-void TimeseriesPublisher<ObjectT>::push(TimeseriesPublisher::TimeT timestamp, const ObjectT & object)
+void TimeseriesChannel<ObjectT>::push(TimeseriesChannel::TimeT timestamp, const ObjectT & object)
 {
     m_data.emplace_back(timestamp, object);
     for (const auto & [uuid, cb, wptr] : m_increment_callbacks) {
@@ -71,7 +71,7 @@ void TimeseriesPublisher<ObjectT>::push(TimeseriesPublisher::TimeT timestamp, co
 }
 
 template <typename ObjectT>
-std::shared_ptr<TimeseriesSubsription<ObjectT>> TimeseriesPublisher<ObjectT>::subscribe(
+std::shared_ptr<TimeseriesSubsription<ObjectT>> TimeseriesChannel<ObjectT>::subscribe(
         std::function<void(const std::vector<std::pair<TimeT, ObjectT>> &)> && snapshot_callback,
         std::function<void(TimeT, const ObjectT &)> && increment_callback)
 {
@@ -85,7 +85,7 @@ std::shared_ptr<TimeseriesSubsription<ObjectT>> TimeseriesPublisher<ObjectT>::su
 }
 
 template <typename ObjectT>
-void TimeseriesPublisher<ObjectT>::unsubscribe(xg::Guid guid)
+void TimeseriesChannel<ObjectT>::unsubscribe(xg::Guid guid)
 {
     for (auto it = m_increment_callbacks.begin(); it != m_increment_callbacks.end(); ++it) {
         if (std::get<xg::Guid>(*it) == guid) {
@@ -96,11 +96,11 @@ void TimeseriesPublisher<ObjectT>::unsubscribe(xg::Guid guid)
 }
 
 template <typename ObjectT>
-TimeseriesPublisher<ObjectT>::~TimeseriesPublisher()
+TimeseriesChannel<ObjectT>::~TimeseriesChannel()
 {
     for (auto & [uuid, _, wptr] : m_increment_callbacks) {
         if (auto sptr = wptr.lock()) {
-            sptr->m_publisher = nullptr;
+            sptr->m_channel = nullptr;
         }
     }
     m_increment_callbacks.clear();

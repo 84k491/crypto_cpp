@@ -112,6 +112,6 @@ std::optional<std::pair<std::string, bool>> TrailigStopLossStrategy::handle_even
     }
     const auto & trailing_stop_loss = ev.stop_loss.value();
 
-    m_trailing_stop_publisher.push(ev.timestamp, trailing_stop_loss);
+    m_trailing_stop_channel.push(ev.timestamp, trailing_stop_loss);
     return std::nullopt;
 }

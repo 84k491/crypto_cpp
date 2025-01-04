@@ -26,13 +26,13 @@ public:
     {
     }
 
-    EventPublisher<HistoricalMDPackEvent> & historical_prices_publisher() override
+    EventChannel<HistoricalMDPackEvent> & historical_prices_channel() override
     {
-        return m_historical_prices_publisher;
+        return m_historical_prices_channel;
     }
-    EventPublisher<MDPriceEvent> & live_prices_publisher() override
+    EventChannel<MDPriceEvent> & live_prices_channel() override
     {
-        return m_live_prices_publisher;
+        return m_live_prices_channel;
     }
 
     void push_async_request(LiveMDRequest && request) override
@@ -46,7 +46,7 @@ public:
         ++m_unsubscribed_count;
     }
 
-    EventObjectPublisher<WorkStatus> & status_publisher() override
+    EventObjectChannel<WorkStatus> & status_channel() override
     {
         return m_status;
     }
@@ -58,13 +58,13 @@ public:
     std::optional<LiveMDRequest> m_last_live_request;
 
 private:
-    EventObjectPublisher<WorkStatus> m_status;
+    EventObjectChannel<WorkStatus> m_status;
 
     size_t m_live_requests_count = 0;
     size_t m_unsubscribed_count = 0;
 
-    EventPublisher<HistoricalMDPackEvent> m_historical_prices_publisher;
-    EventPublisher<MDPriceEvent> m_live_prices_publisher;
+    EventChannel<HistoricalMDPackEvent> m_historical_prices_channel;
+    EventChannel<MDPriceEvent> m_live_prices_channel;
 };
 
 class MockTradingGateway : public ITradingGateway
@@ -87,44 +87,44 @@ public:
         // not implemented
     }
 
-    EventPublisher<OrderResponseEvent> & order_response_publisher() override
+    EventChannel<OrderResponseEvent> & order_response_channel() override
     {
-        return m_order_response_publisher;
+        return m_order_response_channel;
     }
 
-    EventPublisher<TradeEvent> & trade_publisher() override
+    EventChannel<TradeEvent> & trade_channel() override
     {
-        return m_trade_publisher;
+        return m_trade_channel;
     }
 
-    EventPublisher<TpslResponseEvent> & tpsl_response_publisher() override
+    EventChannel<TpslResponseEvent> & tpsl_response_channel() override
     {
-        return m_tpsl_response_publisher;
+        return m_tpsl_response_channel;
     }
-    EventPublisher<TpslUpdatedEvent> & tpsl_updated_publisher() override
+    EventChannel<TpslUpdatedEvent> & tpsl_updated_channel() override
     {
-        return m_tpsl_updated_publisher;
+        return m_tpsl_updated_channel;
     }
 
-    EventPublisher<TrailingStopLossResponseEvent> & trailing_stop_response_publisher() override
+    EventChannel<TrailingStopLossResponseEvent> & trailing_stop_response_channel() override
     {
-        return m_tsl_response_publisher;
+        return m_tsl_response_channel;
     }
-    EventPublisher<TrailingStopLossUpdatedEvent> & trailing_stop_update_publisher() override
+    EventChannel<TrailingStopLossUpdatedEvent> & trailing_stop_update_channel() override
     {
-        return m_tsl_updated_publisher;
+        return m_tsl_updated_channel;
     }
 
 public:
     std::optional<OrderRequestEvent> m_last_order_request;
     std::optional<TpslRequestEvent> m_last_tpsl_request;
 
-    EventPublisher<OrderResponseEvent> m_order_response_publisher;
-    EventPublisher<TradeEvent> m_trade_publisher;
-    EventPublisher<TpslResponseEvent> m_tpsl_response_publisher;
-    EventPublisher<TpslUpdatedEvent> m_tpsl_updated_publisher;
-    EventPublisher<TrailingStopLossResponseEvent> m_tsl_response_publisher;
-    EventPublisher<TrailingStopLossUpdatedEvent> m_tsl_updated_publisher;
+    EventChannel<OrderResponseEvent> m_order_response_channel;
+    EventChannel<TradeEvent> m_trade_channel;
+    EventChannel<TpslResponseEvent> m_tpsl_response_channel;
+    EventChannel<TpslUpdatedEvent> m_tpsl_updated_channel;
+    EventChannel<TrailingStopLossResponseEvent> m_tsl_response_channel;
+    EventChannel<TrailingStopLossUpdatedEvent> m_tsl_updated_channel;
 };
 
 class MockStrategy : public IStrategy
@@ -142,9 +142,9 @@ public:
         return std::nullopt;
     }
 
-    EventTimeseriesPublisher<std::tuple<std::string, std::string, double>> & strategy_internal_data_publisher() override
+    EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & strategy_internal_data_channel() override
     {
-        return m_strategy_internal_data_publisher;
+        return m_strategy_internal_data_channel;
     }
 
     bool is_valid() const override { return true; }
@@ -156,7 +156,7 @@ public:
     }
 
 private:
-    EventTimeseriesPublisher<std::tuple<std::string, std::string, double>> m_strategy_internal_data_publisher;
+    EventTimeseriesChannel<std::tuple<std::string, std::string, double>> m_strategy_internal_data_channel;
 
     std::optional<Side> m_next_signal_side;
 };
@@ -202,10 +202,10 @@ public:
                 tr_gateway);
 
         {
-            strategy_status = strategy_instance->status_publisher().get();
+            strategy_status = strategy_instance->status_channel().get();
         }
 
-        status_sub = strategy_instance->status_publisher().subscribe(
+        status_sub = strategy_instance->status_channel().subscribe(
                 event_consumer,
                 [&](const auto & status) {
                     strategy_status = status;
@@ -244,7 +244,7 @@ TEST_F(StrategyInstanceTest, SubForLiveMarketData_GetPrice_GracefullStop)
     const auto live_req = md_gateway.m_last_live_request.value();
 
     size_t prices_received = 0;
-    const auto price_sub = strategy_instance->klines_publisher().subscribe(
+    const auto price_sub = strategy_instance->klines_channel().subscribe(
             event_consumer,
             [](const auto & vec) {
                 EXPECT_EQ(vec.size(), 0);
@@ -258,7 +258,7 @@ TEST_F(StrategyInstanceTest, SubForLiveMarketData_GetPrice_GracefullStop)
     OHLC ohlc = {ts, price, price, price, price};
     MDPriceEvent ev;
     ev.ts_and_price = {ts, ohlc};
-    md_gateway.live_prices_publisher().push(ev);
+    md_gateway.live_prices_channel().push(ev);
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
     ASSERT_EQ(prices_received, 1);
 
@@ -291,7 +291,7 @@ TEST_F(StrategyInstanceTest, OpenAndClosePos_GetResult_DontCloseTwiceOnStop)
     const auto live_req = md_gateway.m_last_live_request.value();
 
     size_t prices_received = 0;
-    const auto price_sub = strategy_instance->klines_publisher().subscribe(
+    const auto price_sub = strategy_instance->klines_channel().subscribe(
             event_consumer,
             [](const auto & vec) {
                 EXPECT_EQ(vec.size(), 0);
@@ -307,14 +307,14 @@ TEST_F(StrategyInstanceTest, OpenAndClosePos_GetResult_DontCloseTwiceOnStop)
         OHLC ohlc = {price_ts, price, price, price, price};
         MDPriceEvent price_event;
         price_event.ts_and_price = {price_ts, ohlc};
-        md_gateway.live_prices_publisher().push(price_event);
+        md_gateway.live_prices_channel().push(price_event);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         ASSERT_EQ(prices_received, 1);
     }
 
-    StrategyResult result = strategy_instance->strategy_result_publisher().get();
+    StrategyResult result = strategy_instance->strategy_result_channel().get();
     ASSERT_EQ(result.trades_count, 0);
-    const auto strategy_res_sub = strategy_instance->strategy_result_publisher().subscribe(
+    const auto strategy_res_sub = strategy_instance->strategy_result_channel().subscribe(
             event_consumer,
             [&](const auto & res) {
                 result = res;
@@ -344,8 +344,8 @@ TEST_F(StrategyInstanceTest, OpenAndClosePos_GetResult_DontCloseTwiceOnStop)
 
     ASSERT_FALSE(tr_gateway.m_last_tpsl_request.has_value()) << "Tpsl request must be after position opened";
     ASSERT_EQ(result.trades_count, 0);
-    tr_gateway.m_trade_publisher.push(open_trade_event);
-    tr_gateway.order_response_publisher().push(order_response);
+    tr_gateway.m_trade_channel.push(open_trade_event);
+    tr_gateway.order_response_channel().push(order_response);
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
     ASSERT_EQ(result.trades_count, 1);
     ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -353,7 +353,7 @@ TEST_F(StrategyInstanceTest, OpenAndClosePos_GetResult_DontCloseTwiceOnStop)
     {
         ASSERT_TRUE(tr_gateway.m_last_tpsl_request.has_value());
         const auto tpsl_req = tr_gateway.m_last_tpsl_request.value();
-        tr_gateway.tpsl_response_publisher().push(TpslResponseEvent{
+        tr_gateway.tpsl_response_channel().push(TpslResponseEvent{
                 tpsl_req.symbol.symbol_name,
                 tpsl_req.guid,
                 tpsl_req.tpsl});
@@ -372,7 +372,7 @@ TEST_F(StrategyInstanceTest, OpenAndClosePos_GetResult_DontCloseTwiceOnStop)
                 open_trade_side.opposite(),
                 0.1};
         const auto close_trade_event = TradeEvent(close_trade);
-        tr_gateway.m_trade_publisher.push(close_trade_event);
+        tr_gateway.m_trade_channel.push(close_trade_event);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         ASSERT_EQ(result.trades_count, 2);
     }
@@ -409,7 +409,7 @@ TEST_F(StrategyInstanceTest, OpenPositionWithTpsl_CloseOnGracefullStop)
     const auto live_req = md_gateway.m_last_live_request.value();
 
     size_t prices_received = 0;
-    const auto price_sub = strategy_instance->klines_publisher().subscribe(
+    const auto price_sub = strategy_instance->klines_channel().subscribe(
             event_consumer,
             [](const auto & vec) {
                 EXPECT_EQ(vec.size(), 0);
@@ -425,15 +425,15 @@ TEST_F(StrategyInstanceTest, OpenPositionWithTpsl_CloseOnGracefullStop)
         OHLC ohlc = {price_ts, price, price, price, price};
         MDPriceEvent price_event;
         price_event.ts_and_price = {price_ts, ohlc};
-        md_gateway.live_prices_publisher().push(price_event);
+        md_gateway.live_prices_channel().push(price_event);
 
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         ASSERT_EQ(prices_received, 1);
     }
 
-    StrategyResult result = strategy_instance->strategy_result_publisher().get();
+    StrategyResult result = strategy_instance->strategy_result_channel().get();
     ASSERT_EQ(result.trades_count, 0);
-    const auto strategy_res_sub = strategy_instance->strategy_result_publisher().subscribe(
+    const auto strategy_res_sub = strategy_instance->strategy_result_channel().subscribe(
             event_consumer,
             [&](const auto & res) {
                 result = res;
@@ -460,8 +460,8 @@ TEST_F(StrategyInstanceTest, OpenPositionWithTpsl_CloseOnGracefullStop)
 
         ASSERT_FALSE(tr_gateway.m_last_tpsl_request.has_value()) << "Tpsl request must be after position opened";
         ASSERT_EQ(result.trades_count, 0);
-        tr_gateway.m_trade_publisher.push(open_trade_event);
-        tr_gateway.order_response_publisher().push(order_response);
+        tr_gateway.m_trade_channel.push(open_trade_event);
+        tr_gateway.order_response_channel().push(order_response);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         ASSERT_EQ(result.trades_count, 1);
     }
@@ -469,7 +469,7 @@ TEST_F(StrategyInstanceTest, OpenPositionWithTpsl_CloseOnGracefullStop)
     {
         ASSERT_TRUE(tr_gateway.m_last_tpsl_request.has_value());
         const auto tpsl_req = tr_gateway.m_last_tpsl_request.value();
-        tr_gateway.tpsl_response_publisher().push(TpslResponseEvent{
+        tr_gateway.tpsl_response_channel().push(TpslResponseEvent{
                 tpsl_req.symbol.symbol_name,
                 tpsl_req.guid,
                 tpsl_req.tpsl});
@@ -503,8 +503,8 @@ TEST_F(StrategyInstanceTest, OpenPositionWithTpsl_CloseOnGracefullStop)
 
         tr_gateway.m_last_tpsl_request.reset();
         ASSERT_EQ(result.trades_count, 1);
-        tr_gateway.m_trade_publisher.push(close_trade_event);
-        tr_gateway.order_response_publisher().push(order_response);
+        tr_gateway.m_trade_channel.push(close_trade_event);
+        tr_gateway.order_response_channel().push(order_response);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         ASSERT_FALSE(tr_gateway.m_last_tpsl_request.has_value()) << "No tpsl on position close";
         ASSERT_EQ(result.trades_count, 2);
@@ -529,7 +529,7 @@ TEST_F(StrategyInstanceTest, ManyPricesReceivedWhileOrderIsPending_NoAdditionalO
     const auto live_req = md_gateway.m_last_live_request.value();
 
     size_t prices_received = 0;
-    const auto price_sub = strategy_instance->klines_publisher().subscribe(
+    const auto price_sub = strategy_instance->klines_channel().subscribe(
             event_consumer,
             [](const auto & vec) {
                 EXPECT_EQ(vec.size(), 0);
@@ -546,7 +546,7 @@ TEST_F(StrategyInstanceTest, ManyPricesReceivedWhileOrderIsPending_NoAdditionalO
         OHLC ohlc = {price_ts, price, price, price, price};
         MDPriceEvent price_event;
         price_event.ts_and_price = {price_ts, ohlc};
-        md_gateway.live_prices_publisher().push(price_event);
+        md_gateway.live_prices_channel().push(price_event);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         ASSERT_EQ(prices_received, 1);
     }
@@ -562,7 +562,7 @@ TEST_F(StrategyInstanceTest, ManyPricesReceivedWhileOrderIsPending_NoAdditionalO
         OHLC ohlc = {price_ts, price, price, price, price};
         MDPriceEvent price_event;
         price_event.ts_and_price = {price_ts, ohlc};
-        md_gateway.live_prices_publisher().push(price_event);
+        md_gateway.live_prices_channel().push(price_event);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         ASSERT_EQ(prices_received, 2);
     }
@@ -590,13 +590,13 @@ TEST_F(StrategyInstanceTest, EnterOrder_GetReject_Panic)
         OHLC ohlc = {price_ts, price, price, price, price};
         MDPriceEvent price_event;
         price_event.ts_and_price = {price_ts, ohlc};
-        md_gateway.live_prices_publisher().push(price_event);
+        md_gateway.live_prices_channel().push(price_event);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
-    StrategyResult result = strategy_instance->strategy_result_publisher().get();
+    StrategyResult result = strategy_instance->strategy_result_channel().get();
     ASSERT_EQ(result.trades_count, 0);
-    const auto strategy_res_sub = strategy_instance->strategy_result_publisher().subscribe(
+    const auto strategy_res_sub = strategy_instance->strategy_result_channel().subscribe(
             event_consumer,
             [&](const auto & res) {
                 result = res;
@@ -608,7 +608,7 @@ TEST_F(StrategyInstanceTest, EnterOrder_GetReject_Panic)
             order_req.order.symbol(),
             order_req.order.guid(),
             "test_reject"};
-    tr_gateway.order_response_publisher().push(order_response);
+    tr_gateway.order_response_channel().push(order_response);
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     ASSERT_EQ(strategy_status, WorkStatus::Panic);
@@ -630,13 +630,13 @@ TEST_F(StrategyInstanceTest, OpenPos_TpslReject_ClosePosAndPanic)
         OHLC ohlc = {price_ts, price, price, price, price};
         MDPriceEvent price_event;
         price_event.ts_and_price = {price_ts, ohlc};
-        md_gateway.live_prices_publisher().push(price_event);
+        md_gateway.live_prices_channel().push(price_event);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
-    StrategyResult result = strategy_instance->strategy_result_publisher().get();
+    StrategyResult result = strategy_instance->strategy_result_channel().get();
     ASSERT_EQ(result.trades_count, 0);
-    const auto strategy_res_sub = strategy_instance->strategy_result_publisher().subscribe(
+    const auto strategy_res_sub = strategy_instance->strategy_result_channel().subscribe(
             event_consumer,
             [&](const auto & res) {
                 result = res;
@@ -665,8 +665,8 @@ TEST_F(StrategyInstanceTest, OpenPos_TpslReject_ClosePosAndPanic)
 
         ASSERT_FALSE(tr_gateway.m_last_tpsl_request.has_value()) << "Tpsl request must be after position opened";
         ASSERT_EQ(result.trades_count, 0);
-        tr_gateway.m_trade_publisher.push(open_trade_event);
-        tr_gateway.order_response_publisher().push(order_response);
+        tr_gateway.m_trade_channel.push(open_trade_event);
+        tr_gateway.order_response_channel().push(order_response);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         ASSERT_EQ(result.trades_count, 1);
     }
@@ -674,7 +674,7 @@ TEST_F(StrategyInstanceTest, OpenPos_TpslReject_ClosePosAndPanic)
     {
         ASSERT_TRUE(tr_gateway.m_last_tpsl_request.has_value());
         const auto tpsl_req = tr_gateway.m_last_tpsl_request.value();
-        tr_gateway.tpsl_response_publisher().push(TpslResponseEvent{
+        tr_gateway.tpsl_response_channel().push(TpslResponseEvent{
                 tpsl_req.symbol.symbol_name,
                 tpsl_req.guid,
                 tpsl_req.tpsl,
@@ -705,8 +705,8 @@ TEST_F(StrategyInstanceTest, OpenPos_TpslReject_ClosePosAndPanic)
         };
 
         ASSERT_EQ(result.trades_count, 1);
-        tr_gateway.m_trade_publisher.push(close_trade_event);
-        tr_gateway.order_response_publisher().push(order_response);
+        tr_gateway.m_trade_channel.push(close_trade_event);
+        tr_gateway.order_response_channel().push(order_response);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         ASSERT_EQ(result.trades_count, 2);
     }

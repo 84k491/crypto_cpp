@@ -3,7 +3,7 @@
 #include "ByBitTradingMessages.h"
 #include "ConnectionWatcher.h"
 #include "EventLoop.h"
-#include "EventPublisher.h"
+#include "EventChannel.h"
 #include "Events.h"
 #include "GatewayConfig.h"
 #include "ITradingGateway.h"
@@ -26,12 +26,12 @@ public:
     void push_tpsl_request(const TpslRequestEvent & tpsl_ev) override;
     void push_trailing_stop_request(const TrailingStopLossRequestEvent & trailing_stop_ev) override;
 
-    EventPublisher<OrderResponseEvent> & order_response_publisher() override;
-    EventPublisher<TradeEvent> & trade_publisher() override;
-    EventPublisher<TpslResponseEvent> & tpsl_response_publisher() override;
-    EventPublisher<TpslUpdatedEvent> & tpsl_updated_publisher() override;
-    EventPublisher<TrailingStopLossResponseEvent> & trailing_stop_response_publisher() override;
-    EventPublisher<TrailingStopLossUpdatedEvent> & trailing_stop_update_publisher() override;
+    EventChannel<OrderResponseEvent> & order_response_channel() override;
+    EventChannel<TradeEvent> & trade_channel() override;
+    EventChannel<TpslResponseEvent> & tpsl_response_channel() override;
+    EventChannel<TpslUpdatedEvent> & tpsl_updated_channel() override;
+    EventChannel<TrailingStopLossResponseEvent> & trailing_stop_response_channel() override;
+    EventChannel<TrailingStopLossUpdatedEvent> & trailing_stop_update_channel() override;
 
 private:
     bool check_consumers(const std::string & symbol);
@@ -60,10 +60,10 @@ private:
     ConnectionWatcher m_connection_watcher;
 
     EventLoopSubscriber<OrderRequestEvent, TpslRequestEvent, TrailingStopLossRequestEvent, PingCheckEvent> m_event_loop;
-    EventPublisher<OrderResponseEvent> m_order_response_publisher;
-    EventPublisher<TradeEvent> m_trade_publisher;
-    EventPublisher<TpslResponseEvent> m_tpsl_response_publisher;
-    EventPublisher<TpslUpdatedEvent> m_tpsl_updated_publisher;
-    EventPublisher<TrailingStopLossResponseEvent> m_trailing_stop_response_publisher;
-    EventPublisher<TrailingStopLossUpdatedEvent> m_trailing_stop_update_publisher;
+    EventChannel<OrderResponseEvent> m_order_response_channel;
+    EventChannel<TradeEvent> m_trade_channel;
+    EventChannel<TpslResponseEvent> m_tpsl_response_channel;
+    EventChannel<TpslUpdatedEvent> m_tpsl_updated_channel;
+    EventChannel<TrailingStopLossResponseEvent> m_trailing_stop_response_channel;
+    EventChannel<TrailingStopLossUpdatedEvent> m_trailing_stop_update_channel;
 };

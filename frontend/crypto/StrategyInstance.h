@@ -2,7 +2,7 @@
 
 #include "EventLoop.h"
 #include "EventLoopSubscriber.h"
-#include "EventTimeseriesPublisher.h"
+#include "EventTimeseriesChannel.h"
 #include "ExitStrategyInterface.h"
 #include "IMarketDataGateway.h"
 #include "ITradingGateway.h"
@@ -34,15 +34,15 @@ public:
 
     ~StrategyInstance() override;
 
-    EventTimeseriesPublisher<Trade> & trade_publisher();
-    EventTimeseriesPublisher<std::tuple<std::string, std::string, double>> &
-    strategy_internal_data_publisher();
-    EventTimeseriesPublisher<OHLC> & klines_publisher();
-    EventTimeseriesPublisher<double> & depo_publisher();
-    EventObjectPublisher<StrategyResult> & strategy_result_publisher();
-    EventObjectPublisher<WorkStatus> & status_publisher();
-    EventTimeseriesPublisher<Tpsl> & tpsl_publisher();
-    EventTimeseriesPublisher<StopLoss> & trailing_stop_publisher();
+    EventTimeseriesChannel<Trade> & trade_channel();
+    EventTimeseriesChannel<std::tuple<std::string, std::string, double>> &
+    strategy_internal_data_channel();
+    EventTimeseriesChannel<OHLC> & klines_channel();
+    EventTimeseriesChannel<double> & depo_channel();
+    EventObjectChannel<StrategyResult> & strategy_result_channel();
+    EventObjectChannel<WorkStatus> & status_channel();
+    EventTimeseriesChannel<Tpsl> & tpsl_channel();
+    EventTimeseriesChannel<StopLoss> & trailing_stop_channel();
 
     void run_async();
     void stop_async(bool panic = false);
@@ -78,11 +78,11 @@ private:
     ITradingGateway & m_tr_gateway;
     std::shared_ptr<IStrategy> m_strategy;
 
-    EventObjectPublisher<StrategyResult> m_strategy_result;
+    EventObjectChannel<StrategyResult> m_strategy_result;
 
-    EventTimeseriesPublisher<Trade> m_trade_publisher;
-    EventTimeseriesPublisher<OHLC> m_klines_publisher;
-    EventTimeseriesPublisher<double> m_depo_publisher;
+    EventTimeseriesChannel<Trade> m_trade_channel;
+    EventTimeseriesChannel<OHLC> m_klines_channel;
+    EventTimeseriesChannel<double> m_depo_channel;
 
     const Symbol m_symbol;
     static constexpr double m_pos_currency_amount = 100.;
@@ -96,7 +96,7 @@ private:
 
     std::pair<std::chrono::milliseconds, double> m_last_ts_and_price;
 
-    EventObjectPublisher<WorkStatus> m_status;
+    EventObjectChannel<WorkStatus> m_status;
 
     std::set<xg::Guid> m_live_md_requests;
     std::set<xg::Guid> m_pending_requests;

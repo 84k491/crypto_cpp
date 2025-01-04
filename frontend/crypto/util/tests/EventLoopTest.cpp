@@ -1,7 +1,7 @@
 #include "EventLoop.h"
 
 #include "EventLoopSubscriber.h"
-#include "EventPublisher.h"
+#include "EventChannel.h"
 #include "Events.h"
 
 #include <gmock/gmock.h>
@@ -50,7 +50,7 @@ public:
         std::visit(
                 VariantMatcher{
                         [&](const OrderRequestEvent & order) {
-                            m_order_response_publisher.push(OrderResponseEvent(order.order.symbol(), order.order.guid()));
+                            m_order_response_channel.push(OrderResponseEvent(order.order.symbol(), order.order.guid()));
                         },
                 },
                 var);
@@ -59,7 +59,7 @@ public:
     std::weak_ptr<IEventConsumer<TradeEvent>> trade_consumer;
 
     EventLoopSubscriber<OrderRequestEvent> m_loop;
-    EventPublisher<OrderResponseEvent> m_order_response_publisher;
+    EventChannel<OrderResponseEvent> m_order_response_channel;
 };
 
 class EventLoopTest : public Test
@@ -73,7 +73,7 @@ TEST_F(EventLoopTest, StrategyDestruction)
 {
     auto strategy = std::make_unique<MockStrategy>();
     MockGateway gateway;
-    strategy->m_loop.subscribe(gateway.m_order_response_publisher);
+    strategy->m_loop.subscribe(gateway.m_order_response_channel);
 
     // strategy pushes order to gw
     gateway.m_loop.push_event(            OrderRequestEvent{

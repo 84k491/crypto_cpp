@@ -1,6 +1,6 @@
 #pragma once
 
-#include "EventTimeseriesPublisher.h"
+#include "EventTimeseriesChannel.h"
 #include "Events.h"
 #include "ITradingGateway.h"
 #include "Ohlc.h"
@@ -38,18 +38,18 @@ public:
     static constexpr double taker_fee_rate = 0.00055;
     BacktestTradingGateway();
 
-    void set_price_source(EventTimeseriesPublisher<OHLC> & publisher);
+    void set_price_source(EventTimeseriesChannel<OHLC> & channel);
 
     void push_order_request(const OrderRequestEvent & order) override;
     void push_tpsl_request(const TpslRequestEvent & tpsl_ev) override;
     void push_trailing_stop_request(const TrailingStopLossRequestEvent & trailing_stop_ev) override;
 
-    EventPublisher<OrderResponseEvent> & order_response_publisher() override;
-    EventPublisher<TradeEvent> & trade_publisher() override;
-    EventPublisher<TpslResponseEvent> & tpsl_response_publisher() override;
-    EventPublisher<TpslUpdatedEvent> & tpsl_updated_publisher() override;
-    EventPublisher<TrailingStopLossResponseEvent> & trailing_stop_response_publisher() override;
-    EventPublisher<TrailingStopLossUpdatedEvent> & trailing_stop_update_publisher() override;
+    EventChannel<OrderResponseEvent> & order_response_channel() override;
+    EventChannel<TradeEvent> & trade_channel() override;
+    EventChannel<TpslResponseEvent> & tpsl_response_channel() override;
+    EventChannel<TpslUpdatedEvent> & tpsl_updated_channel() override;
+    EventChannel<TrailingStopLossResponseEvent> & trailing_stop_response_channel() override;
+    EventChannel<TrailingStopLossUpdatedEvent> & trailing_stop_update_channel() override;
 
 private:
     std::optional<Trade> try_trade_tpsl(OHLC ohlc);
@@ -66,10 +66,10 @@ private:
 
     std::shared_ptr<SignedVolume> m_pos_volume;
 
-    EventPublisher<OrderResponseEvent> m_order_response_publisher;
-    EventPublisher<TradeEvent> m_trade_publisher;
-    EventPublisher<TpslResponseEvent> m_tpsl_response_publisher;
-    EventPublisher<TpslUpdatedEvent> m_tpsl_updated_publisher;
-    EventPublisher<TrailingStopLossResponseEvent> m_trailing_stop_response_publisher;
-    EventPublisher<TrailingStopLossUpdatedEvent> m_trailing_stop_update_publisher;
+    EventChannel<OrderResponseEvent> m_order_response_channel;
+    EventChannel<TradeEvent> m_trade_channel;
+    EventChannel<TpslResponseEvent> m_tpsl_response_channel;
+    EventChannel<TpslUpdatedEvent> m_tpsl_updated_channel;
+    EventChannel<TrailingStopLossResponseEvent> m_trailing_stop_response_channel;
+    EventChannel<TrailingStopLossUpdatedEvent> m_trailing_stop_update_channel;
 };

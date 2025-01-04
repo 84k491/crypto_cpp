@@ -44,7 +44,7 @@ bool DebugEveryTickStrategy::is_valid() const
     return DebugEveryTickStrategyConfig::is_valid();
 }
 
-EventTimeseriesPublisher<std::tuple<std::string, std::string, double>> & DebugEveryTickStrategy::strategy_internal_data_publisher()
+EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & DebugEveryTickStrategy::strategy_internal_data_channel()
 {
-    return m_strategy_internal_data_publisher;
+    return m_strategy_internal_data_channel;
 }

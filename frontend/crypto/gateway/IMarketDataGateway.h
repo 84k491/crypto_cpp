@@ -1,7 +1,7 @@
 #pragma once
 
-#include "EventObjectPublisher.h"
-#include "EventPublisher.h"
+#include "EventObjectChannel.h"
+#include "EventChannel.h"
 #include "Events.h"
 #include "WorkStatus.h"
 
@@ -13,10 +13,10 @@ public:
     virtual void push_async_request(HistoricalMDRequest && request) = 0;
     virtual void push_async_request(LiveMDRequest && request) = 0;
 
-    virtual EventPublisher<HistoricalMDPackEvent> & historical_prices_publisher() = 0;
-    virtual EventPublisher<MDPriceEvent> & live_prices_publisher() = 0;
+    virtual EventChannel<HistoricalMDPackEvent> & historical_prices_channel() = 0;
+    virtual EventChannel<MDPriceEvent> & live_prices_channel() = 0;
 
     virtual void unsubscribe_from_live(xg::Guid guid) = 0;
 
-    virtual EventObjectPublisher<WorkStatus> & status_publisher() = 0;
+    virtual EventObjectChannel<WorkStatus> & status_channel() = 0;
 };

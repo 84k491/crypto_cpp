@@ -1,8 +1,8 @@
 #pragma once
 
 #include "EventLoop.h"
-#include "EventPublisher.h"
-#include "EventTimeseriesPublisher.h"
+#include "EventChannel.h"
+#include "EventTimeseriesChannel.h"
 #include "ISubsription.h"
 
 #include <map>

@@ -70,21 +70,21 @@ StrategyInstance::StrategyInstance(
 
     m_status.push(WorkStatus::Stopped);
 
-    m_event_loop.subscribe(m_md_gateway.historical_prices_publisher());
+    m_event_loop.subscribe(m_md_gateway.historical_prices_channel());
 
-    m_event_loop.subscribe(m_md_gateway.live_prices_publisher());
-    m_event_loop.subscribe(m_tr_gateway.order_response_publisher());
-    m_event_loop.subscribe(m_tr_gateway.trade_publisher());
-    m_event_loop.subscribe(m_tr_gateway.tpsl_response_publisher());
-    m_event_loop.subscribe(m_tr_gateway.tpsl_updated_publisher());
-    m_event_loop.subscribe(m_tr_gateway.trailing_stop_response_publisher());
-    m_event_loop.subscribe(m_tr_gateway.trailing_stop_update_publisher());
+    m_event_loop.subscribe(m_md_gateway.live_prices_channel());
+    m_event_loop.subscribe(m_tr_gateway.order_response_channel());
+    m_event_loop.subscribe(m_tr_gateway.trade_channel());
+    m_event_loop.subscribe(m_tr_gateway.tpsl_response_channel());
+    m_event_loop.subscribe(m_tr_gateway.tpsl_updated_channel());
+    m_event_loop.subscribe(m_tr_gateway.trailing_stop_response_channel());
+    m_event_loop.subscribe(m_tr_gateway.trailing_stop_update_channel());
 
     m_strategy_result.update([&](StrategyResult & res) {
         res.position_currency_amount = m_pos_currency_amount;
     });
 
-    m_event_loop.subscribe(m_md_gateway.status_publisher(),
+    m_event_loop.subscribe(m_md_gateway.status_channel(),
                            [this](const WorkStatus & status) {
                                if (status == WorkStatus::Stopped || status == WorkStatus::Panic) {
                                    if (m_position_manager.opened() != nullptr) {
@@ -177,7 +177,7 @@ void StrategyInstance::process_position_result(const PositionResult & new_result
         res.final_profit += new_result.pnl_with_fee;
         res.fees_paid += new_result.fees_paid;
     });
-    m_depo_publisher.push(ts, m_strategy_result.get().final_profit);
+    m_depo_channel.push(ts, m_strategy_result.get().final_profit);
     m_strategy_result.update([&](StrategyResult & res) {
         if (new_result.pnl_with_fee > 0.) {
             res.profit_positions_cnt++;
@@ -215,44 +215,44 @@ void StrategyInstance::process_position_result(const PositionResult & new_result
     }
 }
 
-EventTimeseriesPublisher<Trade> & StrategyInstance::trade_publisher()
+EventTimeseriesChannel<Trade> & StrategyInstance::trade_channel()
 {
-    return m_trade_publisher;
+    return m_trade_channel;
 }
 
-EventTimeseriesPublisher<std::tuple<std::string, std::string, double>> & StrategyInstance::strategy_internal_data_publisher()
+EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & StrategyInstance::strategy_internal_data_channel()
 {
-    return m_strategy->strategy_internal_data_publisher();
+    return m_strategy->strategy_internal_data_channel();
 }
 
-EventTimeseriesPublisher<OHLC> & StrategyInstance::klines_publisher()
+EventTimeseriesChannel<OHLC> & StrategyInstance::klines_channel()
 {
-    return m_klines_publisher;
+    return m_klines_channel;
 }
 
-EventTimeseriesPublisher<double> & StrategyInstance::depo_publisher()
+EventTimeseriesChannel<double> & StrategyInstance::depo_channel()
 {
-    return m_depo_publisher;
+    return m_depo_channel;
 }
 
-EventObjectPublisher<StrategyResult> & StrategyInstance::strategy_result_publisher()
+EventObjectChannel<StrategyResult> & StrategyInstance::strategy_result_channel()
 {
     return m_strategy_result;
 }
 
-EventObjectPublisher<WorkStatus> & StrategyInstance::status_publisher()
+EventObjectChannel<WorkStatus> & StrategyInstance::status_channel()
 {
     return m_status;
 }
 
-EventTimeseriesPublisher<Tpsl> & StrategyInstance::tpsl_publisher()
+EventTimeseriesChannel<Tpsl> & StrategyInstance::tpsl_channel()
 {
-    return m_exit_strategy->tpsl_publisher();
+    return m_exit_strategy->tpsl_channel();
 }
 
-EventTimeseriesPublisher<StopLoss> & StrategyInstance::trailing_stop_publisher()
+EventTimeseriesChannel<StopLoss> & StrategyInstance::trailing_stop_channel()
 {
-    return m_exit_strategy->trailing_stop_publisher();
+    return m_exit_strategy->trailing_stop_channel();
 }
 
 void StrategyInstance::invoke(const std::variant<STRATEGY_EVENTS> & var)
@@ -293,7 +293,7 @@ void StrategyInstance::invoke(const std::variant<STRATEGY_EVENTS> & var)
 
     if (ready_to_finish()) {
         m_status.push(m_status_on_stop);
-        m_depo_publisher.push(m_last_ts_and_price.first, m_strategy_result.get().final_profit);
+        m_depo_channel.push(m_last_ts_and_price.first, m_strategy_result.get().final_profit);
         // TODO unsub from TRGW?
     }
     finish_if_needed_and_ready();
@@ -325,9 +325,9 @@ void StrategyInstance::handle_event(const MDPriceEvent & response)
 {
     const auto & [ts, ohlc] = response.ts_and_price;
     m_last_ts_and_price = {ts, ohlc.close};
-    m_klines_publisher.push(ts, ohlc);
+    m_klines_channel.push(ts, ohlc);
     if (!first_price_received) {
-        m_depo_publisher.push(ts, 0.);
+        m_depo_channel.push(ts, 0.);
         first_price_received = true;
     }
 
@@ -376,7 +376,7 @@ void StrategyInstance::handle_event(const TradeEvent & response)
     Logger::logf<LogLevel::Debug>("Trade received: {}", trade);
     const auto res = m_position_manager.on_trade_received(response.trade);
 
-    m_trade_publisher.push(trade.ts(), trade);
+    m_trade_channel.push(trade.ts(), trade);
 
     if (res.has_value()) {
         process_position_result(res.value(), trade.ts());

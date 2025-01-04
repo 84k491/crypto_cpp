@@ -40,13 +40,13 @@ void ByBitTradingGateway::on_order_response(const json & j)
         std::visit(
                 VariantMatcher{
                         [&](const OrderResponseEvent & event) {
-                            m_order_response_publisher.push(event);
+                            m_order_response_channel.push(event);
                         },
                         [&](const TpslUpdatedEvent & event) {
-                            m_tpsl_updated_publisher.push(event);
+                            m_tpsl_updated_channel.push(event);
                         },
                         [&](const TrailingStopLossUpdatedEvent & event) {
-                            m_trailing_stop_update_publisher.push(event);
+                            m_trailing_stop_update_channel.push(event);
                         }},
                 var);
     }
@@ -71,7 +71,7 @@ void ByBitTradingGateway::on_execution(const json & j)
             Logger::logf<LogLevel::Error>("ERROR can't get proper trade on execution: {}", j);
             return;
         }
-        m_trade_publisher.push(TradeEvent(std::move(trade_opt.value())));
+        m_trade_channel.push(TradeEvent(std::move(trade_opt.value())));
     }
 }
 
@@ -134,7 +134,7 @@ void ByBitTradingGateway::process_event(const OrderRequestEvent & req)
                 req.order.symbol(),
                 req.order.guid(),
                 "Order request timeout" + std::string{req.order.guid()});
-        m_order_response_publisher.push(nack_ev);
+        m_order_response_channel.push(nack_ev);
         return;
     }
     const std::string request_result = request_future.get();
@@ -144,7 +144,7 @@ void ByBitTradingGateway::process_event(const OrderRequestEvent & req)
         auto event = OrderResponseEvent(
                 req.order.symbol(),
                 req.order.guid());
-        m_order_response_publisher.push(event);
+        m_order_response_channel.push(event);
         return;
     }
 
@@ -154,7 +154,7 @@ void ByBitTradingGateway::process_event(const OrderRequestEvent & req)
             req.order.guid(),
             "Empty order response. Need to push this request again with other guid");
     event.retry = true;
-    m_order_response_publisher.push(event);
+    m_order_response_channel.push(event);
 }
 
 void ByBitTradingGateway::process_event(const TpslRequestEvent & tpsl)
@@ -187,7 +187,7 @@ void ByBitTradingGateway::process_event(const TpslRequestEvent & tpsl)
     const std::future_status status = request_future.wait_for(5000ms);
     if (status != std::future_status::ready) {
         // TODO specify guid
-        m_tpsl_response_publisher.push(TpslResponseEvent(
+        m_tpsl_response_channel.push(TpslResponseEvent(
                 tpsl.symbol.symbol_name,
                 tpsl.guid,
                 tpsl.tpsl,
@@ -199,14 +199,14 @@ void ByBitTradingGateway::process_event(const TpslRequestEvent & tpsl)
     const auto j = json::parse(request_result);
     const ByBitMessages::TpslResult result = j.get<ByBitMessages::TpslResult>();
     if (result.ret_code != 0) {
-        m_tpsl_response_publisher.push(TpslResponseEvent(
+        m_tpsl_response_channel.push(TpslResponseEvent(
                 tpsl.symbol.symbol_name,
                 tpsl.guid,
                 tpsl.tpsl,
                 result.ret_msg));
         return;
     }
-    m_tpsl_response_publisher.push(TpslResponseEvent(tpsl.symbol.symbol_name, tpsl.guid, tpsl.tpsl));
+    m_tpsl_response_channel.push(TpslResponseEvent(tpsl.symbol.symbol_name, tpsl.guid, tpsl.tpsl));
 }
 
 void ByBitTradingGateway::process_event(const TrailingStopLossRequestEvent & tsl)
@@ -241,7 +241,7 @@ void ByBitTradingGateway::process_event(const TrailingStopLossRequestEvent & tsl
     const std::future_status status = request_future.wait_for(5000ms);
     if (status != std::future_status::ready) {
         // TODO specify guid
-        m_trailing_stop_response_publisher.push(TrailingStopLossResponseEvent(
+        m_trailing_stop_response_channel.push(TrailingStopLossResponseEvent(
                 tsl.guid,
                 tsl.trailing_stop_loss,
                 "Request timed out"));
@@ -252,13 +252,13 @@ void ByBitTradingGateway::process_event(const TrailingStopLossRequestEvent & tsl
     const auto j = json::parse(request_result);
     const ByBitMessages::TpslResult result = j.get<ByBitMessages::TpslResult>();
     if (result.ret_code != 0) {
-        m_trailing_stop_response_publisher.push(TrailingStopLossResponseEvent(
+        m_trailing_stop_response_channel.push(TrailingStopLossResponseEvent(
                 tsl.guid,
                 tsl.trailing_stop_loss,
                 result.ret_msg));
         return;
     }
-    m_trailing_stop_response_publisher.push(TrailingStopLossResponseEvent(tsl.guid, tsl.trailing_stop_loss));
+    m_trailing_stop_response_channel.push(TrailingStopLossResponseEvent(tsl.guid, tsl.trailing_stop_loss));
 }
 
 void ByBitTradingGateway::process_event(const PingCheckEvent & ping_event)
@@ -322,32 +322,32 @@ void ByBitTradingGateway::on_connection_verified()
     m_event_loop.push_delayed(ws_ping_interval, PingCheckEvent{});
 }
 
-EventPublisher<OrderResponseEvent> & ByBitTradingGateway::order_response_publisher()
+EventChannel<OrderResponseEvent> & ByBitTradingGateway::order_response_channel()
 {
-    return m_order_response_publisher;
+    return m_order_response_channel;
 }
 
-EventPublisher<TradeEvent> & ByBitTradingGateway::trade_publisher()
+EventChannel<TradeEvent> & ByBitTradingGateway::trade_channel()
 {
-    return m_trade_publisher;
+    return m_trade_channel;
 }
 
-EventPublisher<TpslResponseEvent> & ByBitTradingGateway::tpsl_response_publisher()
+EventChannel<TpslResponseEvent> & ByBitTradingGateway::tpsl_response_channel()
 {
-    return m_tpsl_response_publisher;
+    return m_tpsl_response_channel;
 }
 
-EventPublisher<TpslUpdatedEvent> & ByBitTradingGateway::tpsl_updated_publisher()
+EventChannel<TpslUpdatedEvent> & ByBitTradingGateway::tpsl_updated_channel()
 {
-    return m_tpsl_updated_publisher;
+    return m_tpsl_updated_channel;
 }
 
-EventPublisher<TrailingStopLossResponseEvent> & ByBitTradingGateway::trailing_stop_response_publisher()
+EventChannel<TrailingStopLossResponseEvent> & ByBitTradingGateway::trailing_stop_response_channel()
 {
-    return m_trailing_stop_response_publisher;
+    return m_trailing_stop_response_channel;
 }
 
-EventPublisher<TrailingStopLossUpdatedEvent> & ByBitTradingGateway::trailing_stop_update_publisher()
+EventChannel<TrailingStopLossUpdatedEvent> & ByBitTradingGateway::trailing_stop_update_channel()
 {
-    return m_trailing_stop_update_publisher;
+    return m_trailing_stop_update_channel;
 }

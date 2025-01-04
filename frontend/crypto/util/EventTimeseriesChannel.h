@@ -14,44 +14,44 @@
 #include <vector>
 
 template <typename ObjectT>
-class EventTimeseriesPublisher;
+class EventTimeseriesChannel;
 
 template <typename ObjectT>
 class EventTimeseriesSubsription final : public ISubsription
 {
-    friend class EventTimeseriesPublisher<ObjectT>;
+    friend class EventTimeseriesChannel<ObjectT>;
 
 public:
     EventTimeseriesSubsription(const std::shared_ptr<IEventConsumer<LambdaEvent>> & consumer,
-                               EventTimeseriesPublisher<ObjectT> & publisher,
+                               EventTimeseriesChannel<ObjectT> & channel,
                                xg::Guid guid)
         : m_consumer(consumer)
-        , m_publisher(&publisher)
+        , m_channel(&channel)
         , m_guid(guid)
     {
     }
 
     ~EventTimeseriesSubsription() override
     {
-        if (m_publisher) {
-            m_publisher->unsubscribe(m_guid);
+        if (m_channel) {
+            m_channel->unsubscribe(m_guid);
         }
     }
 
 private:
     std::weak_ptr<IEventConsumer<LambdaEvent>> m_consumer;
-    EventTimeseriesPublisher<ObjectT> * m_publisher;
+    EventTimeseriesChannel<ObjectT> * m_channel;
     xg::Guid m_guid;
 };
 
 template <typename ObjectT>
-class EventTimeseriesPublisher
+class EventTimeseriesChannel
 {
 public:
     using TimeT = std::chrono::milliseconds;
 
-    EventTimeseriesPublisher() = default;
-    ~EventTimeseriesPublisher();
+    EventTimeseriesChannel() = default;
+    ~EventTimeseriesChannel();
 
     void push(TimeT timestamp, const ObjectT & object);
     [[nodiscard]] std::shared_ptr<EventTimeseriesSubsription<ObjectT>> subscribe(
@@ -71,7 +71,7 @@ private:
 };
 
 template <typename ObjectT>
-void EventTimeseriesPublisher<ObjectT>::push(EventTimeseriesPublisher::TimeT timestamp, const ObjectT & object)
+void EventTimeseriesChannel<ObjectT>::push(EventTimeseriesChannel::TimeT timestamp, const ObjectT & object)
 {
     m_data.lock().get().emplace_back(timestamp, object);
     auto callbacks_lref = m_increment_callbacks.lock();
@@ -86,7 +86,7 @@ void EventTimeseriesPublisher<ObjectT>::push(EventTimeseriesPublisher::TimeT tim
 }
 
 template <typename ObjectT>
-std::shared_ptr<EventTimeseriesSubsription<ObjectT>> EventTimeseriesPublisher<ObjectT>::subscribe(
+std::shared_ptr<EventTimeseriesSubsription<ObjectT>> EventTimeseriesChannel<ObjectT>::subscribe(
         const std::shared_ptr<IEventConsumer<LambdaEvent>> & consumer,
         std::function<void(const std::vector<std::pair<TimeT, ObjectT>> &)> && snapshot_callback,
         std::function<void(TimeT, const ObjectT &)> && increment_callback)
@@ -104,7 +104,7 @@ std::shared_ptr<EventTimeseriesSubsription<ObjectT>> EventTimeseriesPublisher<Ob
 }
 
 template <typename ObjectT>
-void EventTimeseriesPublisher<ObjectT>::unsubscribe(xg::Guid guid)
+void EventTimeseriesChannel<ObjectT>::unsubscribe(xg::Guid guid)
 {
     auto consumers_lref = m_increment_callbacks.lock();
     auto & consumers = consumers_lref.get();
@@ -117,12 +117,12 @@ void EventTimeseriesPublisher<ObjectT>::unsubscribe(xg::Guid guid)
 }
 
 template <typename ObjectT>
-EventTimeseriesPublisher<ObjectT>::~EventTimeseriesPublisher()
+EventTimeseriesChannel<ObjectT>::~EventTimeseriesChannel()
 {
     auto consumers_lref = m_increment_callbacks.lock();
     for (auto & [uuid, _, wptr] : consumers_lref.get()) {
         UNWRAP_CONTINUE(subscribtion, wptr.lock());
-        subscribtion.m_publisher = nullptr;
+        subscribtion.m_channel = nullptr;
     }
     consumers_lref.get().clear();
 }

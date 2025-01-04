@@ -1,6 +1,6 @@
 #pragma once
 
-#include "EventTimeseriesPublisher.h"
+#include "EventTimeseriesChannel.h"
 #include "ExitStrategyInterface.h"
 #include "ITradingGateway.h"
 
@@ -16,11 +16,11 @@ public:
     {
     }
 
-    EventTimeseriesPublisher<Tpsl> & tpsl_publisher() override { return m_tpsl_publisher; }
-    EventTimeseriesPublisher<StopLoss> & trailing_stop_publisher() override { return m_trailing_stop_publisher; }
+    EventTimeseriesChannel<Tpsl> & tpsl_channel() override { return m_tpsl_channel; }
+    EventTimeseriesChannel<StopLoss> & trailing_stop_channel() override { return m_trailing_stop_channel; }
 
 protected:
     ITradingGateway & m_tr_gateway;
-    EventTimeseriesPublisher<Tpsl> m_tpsl_publisher;
-    EventTimeseriesPublisher<StopLoss> m_trailing_stop_publisher;
+    EventTimeseriesChannel<Tpsl> m_tpsl_channel;
+    EventTimeseriesChannel<StopLoss> m_trailing_stop_channel;
 };

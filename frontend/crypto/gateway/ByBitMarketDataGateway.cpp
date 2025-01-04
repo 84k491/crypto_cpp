@@ -317,7 +317,7 @@ std::chrono::milliseconds ByBitMarketDataGateway::get_server_time()
     return server_time;
 }
 
-EventObjectPublisher<WorkStatus> & ByBitMarketDataGateway::status_publisher()
+EventObjectChannel<WorkStatus> & ByBitMarketDataGateway::status_channel()
 {
     return m_status;
 }
@@ -342,7 +342,7 @@ void ByBitMarketDataGateway::handle_request(const HistoricalMDRequest & request)
             const auto & prices = it->second;
             HistoricalMDPackEvent ev(request.guid);
             ev.ts_and_price_pack = prices;
-            m_historical_prices_publisher.push(ev);
+            m_historical_prices_channel.push(ev);
             return;
         }
     }
@@ -367,7 +367,7 @@ void ByBitMarketDataGateway::handle_request(const HistoricalMDRequest & request)
     range = std::make_shared<std::map<std::chrono::milliseconds, OHLC>>(prices);
     HistoricalMDPackEvent ev(request.guid);
     ev.ts_and_price_pack = range;
-    m_historical_prices_publisher.push(ev);
+    m_historical_prices_channel.push(ev);
 }
 
 void ByBitMarketDataGateway::handle_request(const LiveMDRequest & request)
@@ -404,7 +404,7 @@ void ByBitMarketDataGateway::on_price_received(const nlohmann::json & json)
     for (const auto & trade : trades_list.trades) {
         OHLC ohlc = {.timestamp=trade.timestamp, .open=trade.price, .high=trade.price, .low=trade.price, .close=trade.price};
         MDPriceEvent ev;
-        m_live_prices_publisher.push(ev);
+        m_live_prices_channel.push(ev);
         ev.ts_and_price = {trade.timestamp, ohlc};
     }
 }
@@ -449,8 +449,8 @@ void ByBitMarketDataGateway::on_connection_verified()
     m_event_loop.push_delayed(ws_ping_interval, PingCheckEvent{});
 }
 
-EventPublisher<HistoricalMDPackEvent> & ByBitMarketDataGateway::historical_prices_publisher()
+EventChannel<HistoricalMDPackEvent> & ByBitMarketDataGateway::historical_prices_channel()
 {
-    return m_historical_prices_publisher;
+    return m_historical_prices_channel;
 }
-EventPublisher<MDPriceEvent> & ByBitMarketDataGateway::live_prices_publisher() { return m_live_prices_publisher; }
+EventChannel<MDPriceEvent> & ByBitMarketDataGateway::live_prices_channel() { return m_live_prices_channel; }

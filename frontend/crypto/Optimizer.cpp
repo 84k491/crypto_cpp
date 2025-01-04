@@ -108,10 +108,10 @@ std::optional<std::pair<JsonStrategyConfig, JsonStrategyConfig>> Optimizer::opti
                 exit_config,
                 m_gateway,
                 tr_gateway);
-        tr_gateway.set_price_source(strategy_instance.klines_publisher());
+        tr_gateway.set_price_source(strategy_instance.klines_channel());
         strategy_instance.run_async();
         strategy_instance.wait_for_finish().wait();
-        const auto profit = strategy_instance.strategy_result_publisher().get().final_profit;
+        const auto profit = strategy_instance.strategy_result_channel().get().final_profit;
         if (max_profit < profit) {
             max_profit = profit;
             best_config = configs[i];

@@ -91,7 +91,7 @@ void MainWindow::handle_status_changed(WorkStatus status)
     switch (status) {
     case WorkStatus::Backtesting: break;
     default: {
-        render_result(m_strategy_instance->strategy_result_publisher().get());
+        render_result(m_strategy_instance->strategy_result_channel().get());
         break;
     }
     }
@@ -100,10 +100,10 @@ void MainWindow::handle_status_changed(WorkStatus status)
 void MainWindow::subscribe_to_strategy()
 {
     Logger::log<LogLevel::Status>("mainwindow subscribe_to_strategy");
-    m_subscriptions.push_back(m_strategy_instance->strategy_result_publisher().subscribe(
+    m_subscriptions.push_back(m_strategy_instance->strategy_result_channel().subscribe(
             m_event_consumer,
             [&](const StrategyResult & result) {
-                const auto status = m_strategy_instance->status_publisher().get();
+                const auto status = m_strategy_instance->status_channel().get();
                 switch (status) {
                 case WorkStatus::Backtesting: break;
                 default: {
@@ -186,10 +186,10 @@ void MainWindow::on_pb_run_clicked()
     ui->pb_charts->setEnabled(true);
 
     if (auto * ptr = dynamic_cast<BacktestTradingGateway *>(&tr_gateway); ptr != nullptr) {
-        ptr->set_price_source(m_strategy_instance->klines_publisher());
+        ptr->set_price_source(m_strategy_instance->klines_channel());
     }
 
-    m_subscriptions.push_back(m_strategy_instance->status_publisher().subscribe(
+    m_subscriptions.push_back(m_strategy_instance->status_channel().subscribe(
             m_event_consumer,
             [&](const WorkStatus & status) { handle_status_changed(status); }));
 
@@ -252,7 +252,7 @@ std::optional<Timerange> MainWindow::get_timerange() const
 void MainWindow::on_pb_optimize_clicked()
 {
     if (m_strategy_instance) {
-        if (m_strategy_instance->status_publisher().get() != WorkStatus::Stopped) {
+        if (m_strategy_instance->status_channel().get() != WorkStatus::Stopped) {
             Logger::log<LogLevel::Error>("Strategy is not stopped");
             return;
         }

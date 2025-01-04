@@ -11,43 +11,43 @@
 #include <vector>
 
 template <typename ObjectT>
-class EventObjectPublisher;
+class EventObjectChannel;
 
 template <typename ObjectT>
 class EventObjectSubscription final : public ISubsription
 {
-    friend class EventObjectPublisher<ObjectT>;
+    friend class EventObjectChannel<ObjectT>;
 
 public:
     EventObjectSubscription(
             const std::shared_ptr<IEventConsumer<LambdaEvent>> & consumer,
-            EventObjectPublisher<ObjectT> & publisher,
+            EventObjectChannel<ObjectT> & channel,
             xg::Guid guid)
         : m_consumer(consumer)
-        , m_publisher(&publisher)
+        , m_channel(&channel)
         , m_guid(guid)
     {
     }
 
     ~EventObjectSubscription() override
     {
-        if (m_publisher) {
-            m_publisher->unsubscribe(m_guid);
+        if (m_channel) {
+            m_channel->unsubscribe(m_guid);
         }
     }
 
 private:
     std::weak_ptr<IEventConsumer<LambdaEvent>> m_consumer;
-    EventObjectPublisher<ObjectT> * m_publisher; // TODO make it atomic
+    EventObjectChannel<ObjectT> * m_channel; // TODO make it atomic
     xg::Guid m_guid;
 };
 
 template <typename ObjectT>
-class EventObjectPublisher // TODO rename it to channel
+class EventObjectChannel // TODO rename it to channel
 {
 public:
-    EventObjectPublisher() = default;
-    ~EventObjectPublisher();
+    EventObjectChannel() = default;
+    ~EventObjectChannel();
 
     void push(const ObjectT & object);
     void update(std::function<void(ObjectT &)> && update_callback);
@@ -73,7 +73,7 @@ private:
 };
 
 template <typename ObjectT>
-void EventObjectPublisher<ObjectT>::push(const ObjectT & object)
+void EventObjectChannel<ObjectT>::push(const ObjectT & object)
 {
     m_data = object;
     // TODO erase if nullptr
@@ -85,7 +85,7 @@ void EventObjectPublisher<ObjectT>::push(const ObjectT & object)
 }
 
 template <typename ObjectT>
-void EventObjectPublisher<ObjectT>::update(std::function<void(ObjectT &)> && update_callback)
+void EventObjectChannel<ObjectT>::update(std::function<void(ObjectT &)> && update_callback)
 {
     update_callback(m_data);
     // TODO erase if nullptr
@@ -98,7 +98,7 @@ void EventObjectPublisher<ObjectT>::update(std::function<void(ObjectT &)> && upd
 
 template <typename ObjectT>
 std::shared_ptr<EventObjectSubscription<ObjectT>>
-EventObjectPublisher<ObjectT>::subscribe(
+EventObjectChannel<ObjectT>::subscribe(
         const std::shared_ptr<IEventConsumer<LambdaEvent>> & consumer,
         std::function<void(const ObjectT &)> && update_callback)
 {
@@ -110,7 +110,7 @@ EventObjectPublisher<ObjectT>::subscribe(
 }
 
 template <typename ObjectT>
-void EventObjectPublisher<ObjectT>::unsubscribe(xg::Guid guid)
+void EventObjectChannel<ObjectT>::unsubscribe(xg::Guid guid)
 {
     for (auto it = m_update_callbacks.begin(); it != m_update_callbacks.end(); ++it) {
         if (std::get<xg::Guid>(*it) == guid) {
@@ -121,11 +121,11 @@ void EventObjectPublisher<ObjectT>::unsubscribe(xg::Guid guid)
 }
 
 template <typename ObjectT>
-EventObjectPublisher<ObjectT>::~EventObjectPublisher()
+EventObjectChannel<ObjectT>::~EventObjectChannel()
 {
     for (const auto [guid, cb, wptr] : m_update_callbacks) {
         if (auto sptr = wptr.lock()) {
-            sptr->m_publisher = nullptr;
+            sptr->m_channel = nullptr;
         }
     }
     m_update_callbacks.clear();

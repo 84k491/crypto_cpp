@@ -10,43 +10,43 @@
 #include <vector>
 
 template <typename ObjectT>
-class EventPublisher;
+class EventChannel;
 
 template <typename EventT>
 class EventSubscription final : public ISubsription
 {
-    friend class EventPublisher<EventT>;
+    friend class EventChannel<EventT>;
 
 public:
     EventSubscription(
             const std::shared_ptr<IEventConsumer<EventT>> & consumer,
-            EventPublisher<EventT> & publisher,
+            EventChannel<EventT> & channel,
             xg::Guid guid)
         : m_consumer(consumer)
-        , m_publisher(&publisher)
+        , m_channel(&channel)
         , m_guid(guid)
     {
     }
 
     ~EventSubscription() override
     {
-        if (m_publisher) {
-            m_publisher->unsubscribe(m_guid);
+        if (m_channel) {
+            m_channel->unsubscribe(m_guid);
         }
     }
 
 private:
     std::weak_ptr<IEventConsumer<EventT>> m_consumer;
-    EventPublisher<EventT> * m_publisher;
+    EventChannel<EventT> * m_channel;
     xg::Guid m_guid;
 };
 
 template <typename EventT>
-class EventPublisher
+class EventChannel
 {
 public:
-    EventPublisher() = default;
-    ~EventPublisher();
+    EventChannel() = default;
+    ~EventChannel();
 
     void push(const EventT & object);
 
@@ -62,7 +62,7 @@ private:
 };
 
 template <typename EventT>
-void EventPublisher<EventT>::push(const EventT & object)
+void EventChannel<EventT>::push(const EventT & object)
 {
     // TODO erase if nullptr
     auto callbacks_lref = m_update_callbacks.lock();
@@ -75,7 +75,7 @@ void EventPublisher<EventT>::push(const EventT & object)
 
 template <typename EventT>
 std::shared_ptr<EventSubscription<EventT>>
-EventPublisher<EventT>::subscribe(const std::shared_ptr<IEventConsumer<EventT>> & consumer)
+EventChannel<EventT>::subscribe(const std::shared_ptr<IEventConsumer<EventT>> & consumer)
 {
     const auto guid = xg::newGuid();
     auto sptr = std::make_shared<EventSubscription<EventT>>(consumer, *this, guid);
@@ -86,7 +86,7 @@ EventPublisher<EventT>::subscribe(const std::shared_ptr<IEventConsumer<EventT>> 
 }
 
 template <typename EventT>
-void EventPublisher<EventT>::unsubscribe(xg::Guid guid)
+void EventChannel<EventT>::unsubscribe(xg::Guid guid)
 {
     auto callbacks_lref = m_update_callbacks.lock();
     for (auto it = callbacks_lref.get().begin(); it != callbacks_lref.get().end(); ++it) {
@@ -98,12 +98,12 @@ void EventPublisher<EventT>::unsubscribe(xg::Guid guid)
 }
 
 template <typename EventT>
-EventPublisher<EventT>::~EventPublisher()
+EventChannel<EventT>::~EventChannel()
 {
     auto callbacks_lref = m_update_callbacks.lock();
     for (const auto [guid, wptr] : callbacks_lref.get()) {
         if (auto sptr = wptr.lock()) {
-            sptr->m_publisher = nullptr;
+            sptr->m_channel = nullptr;
         }
     }
     callbacks_lref.get().clear();
