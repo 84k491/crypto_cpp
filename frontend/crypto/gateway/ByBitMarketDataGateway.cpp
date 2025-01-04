@@ -1,5 +1,6 @@
 #include "ByBitMarketDataGateway.h"
 
+#include "BybitTradesDownloader.h"
 #include "Logger.h"
 #include "MarketDataMessages.h"
 #include "Ohlc.h"
@@ -74,13 +75,13 @@ OHLC from_strings(const std::string & timestamp,
                   const std::string & volume,
                   const std::string & turnover)
 {
-    return OHLC{std::chrono::milliseconds{std::stoull(timestamp)},
-                std::stod(open),
-                std::stod(high),
-                std::stod(low),
-                std::stod(close),
-                std::stod(volume),
-                std::stod(turnover)};
+    return OHLC{.timestamp = std::chrono::milliseconds{std::stoull(timestamp)},
+                .open = std::stod(open),
+                .high = std::stod(high),
+                .low = std::stod(low),
+                .close = std::stod(close),
+                .volume = std::stod(volume),
+                .turnover = std::stod(turnover)};
 }
 
 void from_json(const json & j, OhlcResult & result)
@@ -112,7 +113,6 @@ void from_json(const json & j, OhlcResponse & response)
 {
     j.at("retCode").get_to(response.ret_code);
     j.at("retMsg").get_to(response.ret_msg);
-    std::string result_raw;
     const auto & j2 = j["result"];
     j2.get_to(response.result);
 }
@@ -184,7 +184,6 @@ void from_json(const json & j, SymbolResponse & response)
 {
     j.at("retCode").get_to(response.ret_code);
     j.at("retMsg").get_to(response.ret_msg);
-    std::string result_raw;
     const auto & j2 = j["result"];
     j2.get_to(response.result);
 }
@@ -288,14 +287,13 @@ std::vector<Symbol> ByBitMarketDataGateway::get_symbols(const std::string & curr
     const auto j = json::parse(str_future.get());
     j.get_to(response);
 
-    response.result.symbol_vec.erase(
-            std::remove_if(
-                    response.result.symbol_vec.begin(),
-                    response.result.symbol_vec.end(),
-                    [&currency](const Symbol & symbol) {
-                        return !symbol.symbol_name.ends_with(currency);
-                    }),
-            response.result.symbol_vec.end());
+    response.result.symbol_vec.erase(std::remove_if(
+                                             response.result.symbol_vec.begin(),
+                                             response.result.symbol_vec.end(),
+                                             [&currency](const Symbol & symbol) {
+                                                 return !symbol.symbol_name.ends_with(currency);
+                                             }),
+                                     response.result.symbol_vec.end());
 
     Logger::logf<LogLevel::Info>("Got {} symbols with currency {}", response.result.symbol_vec.size(), currency);
     return response.result.symbol_vec;
@@ -347,17 +345,19 @@ void ByBitMarketDataGateway::handle_request(const HistoricalMDRequest & request)
         }
     }
 
-    std::map<std::chrono::milliseconds, OHLC> prices;
-    const bool success = request_historical_klines(
-            symbol.symbol_name,
-            histroical_timerange,
-            [&prices,
-             symbol](std::map<std::chrono::milliseconds, OHLC> && ts_and_ohlc_map) {
-                // other thread
-                prices.merge(ts_and_ohlc_map);
-            });
+    // TODO remove
+    // std::map<std::chrono::milliseconds, OHLC> prices;
+    // const bool success = request_historical_klines(
+    //         symbol.symbol_name,
+    //         histroical_timerange,
+    //         [&prices,
+    //          symbol](std::map<std::chrono::milliseconds, OHLC> && ts_and_ohlc_map) {
+    //             prices.merge(ts_and_ohlc_map);
+    //         });
 
-    if (!success) {
+    const auto prices = BybitTradesDownloader::request(request);
+
+    if (prices.empty()) {
         Logger::log<LogLevel::Error>("Failed to request klines");
         m_status.push(WorkStatus::Panic);
         return;
@@ -402,7 +402,7 @@ void ByBitMarketDataGateway::on_price_received(const nlohmann::json & json)
 
     const auto trades_list = json.get<PublicTradeList>();
     for (const auto & trade : trades_list.trades) {
-        OHLC ohlc = {.timestamp=trade.timestamp, .open=trade.price, .high=trade.price, .low=trade.price, .close=trade.price};
+        OHLC ohlc = {.timestamp = trade.timestamp, .open = trade.price, .high = trade.price, .low = trade.price, .close = trade.price};
         MDPriceEvent ev;
         m_live_prices_channel.push(ev);
         ev.ts_and_price = {trade.timestamp, ohlc};

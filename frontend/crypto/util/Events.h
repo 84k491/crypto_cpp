@@ -46,8 +46,8 @@ struct HistoricalMDRequest : public OneWayEvent
     HistoricalMDRequest(
             const Symbol & symbol,
             HistoricalMDRequestData data);
-    HistoricalMDRequestData data;
 
+    HistoricalMDRequestData data;
     Symbol symbol;
     xg::Guid guid;
 };
