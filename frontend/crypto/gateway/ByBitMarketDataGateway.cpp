@@ -55,7 +55,7 @@ bool ByBitMarketDataGateway::reconnect_ws_client()
         }
     }
 
-    m_event_loop->as_consumer<PingCheckEvent>().push_delayed(ws_ping_interval, PingCheckEvent{});
+    m_event_loop.push_delayed(ws_ping_interval, PingCheckEvent{});
     return true;
 }
 
@@ -324,12 +324,12 @@ EventObjectPublisher<WorkStatus> & ByBitMarketDataGateway::status_publisher()
 
 void ByBitMarketDataGateway::push_async_request(HistoricalMDRequest && request)
 {
-    m_event_loop->as_consumer<HistoricalMDRequest>().push(request);
+    m_event_loop.push_event(request);
 }
 
 void ByBitMarketDataGateway::push_async_request(LiveMDRequest && request)
 {
-    m_event_loop->as_consumer<LiveMDRequest>().push(request);
+    m_event_loop.push_event(request);
 }
 
 void ByBitMarketDataGateway::handle_request(const HistoricalMDRequest & request)
@@ -402,7 +402,7 @@ void ByBitMarketDataGateway::on_price_received(const nlohmann::json & json)
 
     const auto trades_list = json.get<PublicTradeList>();
     for (const auto & trade : trades_list.trades) {
-        OHLC ohlc = {trade.timestamp, trade.price, trade.price, trade.price, trade.price};
+        OHLC ohlc = {.timestamp=trade.timestamp, .open=trade.price, .high=trade.price, .low=trade.price, .close=trade.price};
         MDPriceEvent ev;
         m_live_prices_publisher.push(ev);
         ev.ts_and_price = {trade.timestamp, ohlc};
@@ -440,13 +440,13 @@ void ByBitMarketDataGateway::on_connection_lost()
     Logger::log<LogLevel::Warning>("Connection lost on market data, reconnecting...");
     if (!reconnect_ws_client()) {
         Logger::log<LogLevel::Warning>("Failed to connect to ByBit market data");
-        m_event_loop->as_consumer<PingCheckEvent>().push_delayed(std::chrono::seconds{30}, PingCheckEvent{});
+        m_event_loop.push_delayed(std::chrono::seconds{30}, PingCheckEvent{});
     }
 }
 
 void ByBitMarketDataGateway::on_connection_verified()
 {
-    m_event_loop->as_consumer<PingCheckEvent>().push_delayed(ws_ping_interval, PingCheckEvent{});
+    m_event_loop.push_delayed(ws_ping_interval, PingCheckEvent{});
 }
 
 EventPublisher<HistoricalMDPackEvent> & ByBitMarketDataGateway::historical_prices_publisher()

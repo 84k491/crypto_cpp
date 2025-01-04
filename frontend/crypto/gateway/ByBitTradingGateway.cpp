@@ -77,17 +77,17 @@ void ByBitTradingGateway::on_execution(const json & j)
 
 void ByBitTradingGateway::push_order_request(const OrderRequestEvent & order)
 {
-    m_event_loop->as_consumer<OrderRequestEvent>().push(order);
+    m_event_loop.push_event(order);
 }
 
 void ByBitTradingGateway::push_tpsl_request(const TpslRequestEvent & tpsl_ev)
 {
-    m_event_loop->as_consumer<TpslRequestEvent>().push(tpsl_ev);
+    m_event_loop.push_event(tpsl_ev);
 }
 
 void ByBitTradingGateway::push_trailing_stop_request(const TrailingStopLossRequestEvent & trailing_stop_ev)
 {
-    m_event_loop->as_consumer<TrailingStopLossRequestEvent>().push(trailing_stop_ev);
+    m_event_loop.push_event(trailing_stop_ev);
 }
 
 void ByBitTradingGateway::invoke(const std::variant<OrderRequestEvent, TpslRequestEvent, TrailingStopLossRequestEvent, PingCheckEvent> & variant)
@@ -304,7 +304,7 @@ bool ByBitTradingGateway::reconnect_ws_client()
 
     auto weak_ptr = std::weak_ptr<IPingSender>(m_ws_client);
     m_connection_watcher.set_ping_sender(weak_ptr);
-    m_event_loop->as_consumer<PingCheckEvent>().push_delayed(ws_ping_interval, PingCheckEvent{});
+    m_event_loop.push_delayed(ws_ping_interval, PingCheckEvent{});
     return true;
 }
 
@@ -313,13 +313,13 @@ void ByBitTradingGateway::on_connection_lost()
     Logger::log<LogLevel::Warning>("Connection lost on trading, reconnecting...");
     if (!reconnect_ws_client()) {
         Logger::log<LogLevel::Warning>("Failed to connect to ByBit trading");
-        m_event_loop->as_consumer<PingCheckEvent>().push_delayed(std::chrono::seconds{30}, PingCheckEvent{});
+        m_event_loop.push_delayed(std::chrono::seconds{30}, PingCheckEvent{});
     }
 }
 
 void ByBitTradingGateway::on_connection_verified()
 {
-    m_event_loop->as_consumer<PingCheckEvent>().push_delayed(ws_ping_interval, PingCheckEvent{});
+    m_event_loop.push_delayed(ws_ping_interval, PingCheckEvent{});
 }
 
 EventPublisher<OrderResponseEvent> & ByBitTradingGateway::order_response_publisher()

@@ -6,7 +6,6 @@
 #include "EventPublisher.h"
 #include "Events.h"
 #include "GatewayConfig.h"
-#include "Guarded.h"
 #include "ITradingGateway.h"
 #include "RestClient.h"
 #include "WebSocketClient.h"
@@ -60,7 +59,7 @@ private:
     std::shared_ptr<WebSocketClient> m_ws_client;
     ConnectionWatcher m_connection_watcher;
 
-    EventLoopHolder<OrderRequestEvent, TpslRequestEvent, TrailingStopLossRequestEvent, PingCheckEvent> m_event_loop;
+    EventLoopSubscriber<OrderRequestEvent, TpslRequestEvent, TrailingStopLossRequestEvent, PingCheckEvent> m_event_loop;
     EventPublisher<OrderResponseEvent> m_order_response_publisher;
     EventPublisher<TradeEvent> m_trade_publisher;
     EventPublisher<TpslResponseEvent> m_tpsl_response_publisher;

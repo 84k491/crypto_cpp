@@ -41,7 +41,7 @@ template <LogLevel level>
 void Logger::log(std::string && str)
 {
     LogEvent ev(level, std::move(str));
-    i().m_event_loop->push(ev);
+    i().m_event_loop.push_event(std::move(ev));
 }
 
 void Logger::set_min_log_level(LogLevel ll)

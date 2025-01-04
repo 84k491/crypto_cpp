@@ -1,6 +1,7 @@
 #pragma once
 
 #include "EventLoop.h"
+#include "EventLoopSubscriber.h"
 #include "EventTimeseriesPublisher.h"
 #include "ExitStrategyInterface.h"
 #include "IMarketDataGateway.h"
@@ -107,6 +108,7 @@ private:
 
     bool m_backtest_in_progress = false;
 
-    EventLoopHolder<STRATEGY_EVENTS> m_event_loop;
+    EventLoopSubscriber<STRATEGY_EVENTS> m_event_loop;
+    // EventLoopHolder<STRATEGY_EVENTS> m_event_loop;
     std::list<std::shared_ptr<ISubsription>> m_subscriptions; // those must be destroyed before EvLoop
 };

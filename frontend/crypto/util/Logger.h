@@ -1,6 +1,6 @@
 #pragma once
 
-#include "EventLoop.h"
+#include "EventLoopSubscriber.h"
 #include "Events.h"
 
 class Logger : public IEventInvoker<LogEvent>
@@ -42,6 +42,6 @@ private:
     void handle_event(const LogEvent & ev);
 
 private:
-    EventLoopHolder<LogEvent> m_event_loop;
+    EventLoopSubscriber<LogEvent> m_event_loop;
     LogLevel m_min_log_level = LogLevel::Debug;
 };

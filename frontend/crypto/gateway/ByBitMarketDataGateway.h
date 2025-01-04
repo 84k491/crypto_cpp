@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ConnectionWatcher.h"
-#include "EventLoop.h"
+#include "EventLoopSubscriber.h"
 #include "EventObjectPublisher.h"
 #include "EventPublisher.h"
 #include "Events.h"
@@ -96,7 +96,7 @@ private:
     std::shared_ptr<WebSocketClient> m_ws_client;
     ConnectionWatcher m_connection_watcher;
 
-    EventLoopHolder<HistoricalMDRequest, LiveMDRequest, PingCheckEvent> m_event_loop;
+    EventLoopSubscriber<HistoricalMDRequest, LiveMDRequest, PingCheckEvent> m_event_loop;
     EventPublisher<HistoricalMDPackEvent> m_historical_prices_publisher;
     EventPublisher<MDPriceEvent> m_live_prices_publisher;
 };

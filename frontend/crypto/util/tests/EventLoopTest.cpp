@@ -1,5 +1,6 @@
 #include "EventLoop.h"
 
+#include "EventLoopSubscriber.h"
 #include "EventPublisher.h"
 #include "Events.h"
 
@@ -32,7 +33,7 @@ public:
 
     bool order_acked = false;
 
-    EventLoopHolder<OrderResponseEvent, TradeEvent> m_loop;
+    EventLoopSubscriber<OrderResponseEvent, TradeEvent> m_loop;
 };
 
 class MockGateway : public IEventInvoker<OrderRequestEvent>
@@ -57,7 +58,7 @@ public:
 
     std::weak_ptr<IEventConsumer<TradeEvent>> trade_consumer;
 
-    EventLoopHolder<OrderRequestEvent> m_loop;
+    EventLoopSubscriber<OrderRequestEvent> m_loop;
     EventPublisher<OrderResponseEvent> m_order_response_publisher;
 };
 
@@ -72,11 +73,10 @@ TEST_F(EventLoopTest, StrategyDestruction)
 {
     auto strategy = std::make_unique<MockStrategy>();
     MockGateway gateway;
-    auto sub = gateway.m_order_response_publisher.subscribe(strategy->m_loop.sptr());
+    strategy->m_loop.subscribe(gateway.m_order_response_publisher);
 
     // strategy pushes order to gw
-    gateway.m_loop->as_consumer<OrderRequestEvent>().push(
-            OrderRequestEvent{
+    gateway.m_loop.push_event(            OrderRequestEvent{
                     MarketOrder{
                             "BTCUSDT",
                             1.1,

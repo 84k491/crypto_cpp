@@ -43,7 +43,7 @@ private:
 };
 
 template <typename ObjectT>
-class EventObjectPublisher // TODO rename it to object pub
+class EventObjectPublisher // TODO rename it to channel
 {
 public:
     EventObjectPublisher() = default;

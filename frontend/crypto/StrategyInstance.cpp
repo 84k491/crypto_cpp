@@ -70,31 +70,31 @@ StrategyInstance::StrategyInstance(
 
     m_status.push(WorkStatus::Stopped);
 
-    m_subscriptions.push_back(m_md_gateway.historical_prices_publisher().subscribe(m_event_loop.sptr()));
-    m_subscriptions.push_back(m_md_gateway.live_prices_publisher().subscribe(m_event_loop.sptr()));
-    m_subscriptions.push_back(m_tr_gateway.order_response_publisher().subscribe(m_event_loop.sptr()));
-    m_subscriptions.push_back(m_tr_gateway.trade_publisher().subscribe(m_event_loop.sptr()));
-    m_subscriptions.push_back(m_tr_gateway.tpsl_response_publisher().subscribe(m_event_loop.sptr()));
-    m_subscriptions.push_back(m_tr_gateway.tpsl_updated_publisher().subscribe(m_event_loop.sptr()));
-    m_subscriptions.push_back(m_tr_gateway.trailing_stop_response_publisher().subscribe(m_event_loop.sptr()));
-    m_subscriptions.push_back(m_tr_gateway.trailing_stop_update_publisher().subscribe(m_event_loop.sptr()));
+    m_event_loop.subscribe(m_md_gateway.historical_prices_publisher());
+
+    m_event_loop.subscribe(m_md_gateway.live_prices_publisher());
+    m_event_loop.subscribe(m_tr_gateway.order_response_publisher());
+    m_event_loop.subscribe(m_tr_gateway.trade_publisher());
+    m_event_loop.subscribe(m_tr_gateway.tpsl_response_publisher());
+    m_event_loop.subscribe(m_tr_gateway.tpsl_updated_publisher());
+    m_event_loop.subscribe(m_tr_gateway.trailing_stop_response_publisher());
+    m_event_loop.subscribe(m_tr_gateway.trailing_stop_update_publisher());
 
     m_strategy_result.update([&](StrategyResult & res) {
         res.position_currency_amount = m_pos_currency_amount;
     });
 
-    m_gw_status_sub = m_md_gateway.status_publisher().subscribe(
-            m_event_loop.sptr(),
-            [this](const WorkStatus & status) {
-                if (status == WorkStatus::Stopped || status == WorkStatus::Panic) {
-                    if (m_position_manager.opened() != nullptr) {
-                        const bool success = close_position(m_last_ts_and_price.second, m_last_ts_and_price.first);
-                        if (!success) {
-                            std::cout << "ERROR: can't close a position on stop/crash" << std::endl;
-                        }
-                    }
-                }
-            });
+    m_event_loop.subscribe(m_md_gateway.status_publisher(),
+                           [this](const WorkStatus & status) {
+                               if (status == WorkStatus::Stopped || status == WorkStatus::Panic) {
+                                   if (m_position_manager.opened() != nullptr) {
+                                       const bool success = close_position(m_last_ts_and_price.second, m_last_ts_and_price.first);
+                                       if (!success) {
+                                           std::cout << "ERROR: can't close a position on stop/crash" << std::endl;
+                                       }
+                                   }
+                               }
+                           });
 }
 
 StrategyInstance::~StrategyInstance()
@@ -130,7 +130,7 @@ void StrategyInstance::stop_async(bool panic)
     if (panic) {
         m_status_on_stop = WorkStatus::Panic;
     }
-    static_cast<IEventConsumer<StrategyStopRequest> &>(*m_event_loop).push(StrategyStopRequest{});
+    m_event_loop.push_event(StrategyStopRequest{});
 }
 
 std::future<void> StrategyInstance::wait_for_finish()
@@ -310,11 +310,11 @@ void StrategyInstance::handle_event(const HistoricalMDPackEvent & response)
     for (const auto & [ts, ohlc] : *response.ts_and_price_pack) {
         MDPriceEvent ev;
         ev.ts_and_price = {ts, ohlc};
-        static_cast<IEventConsumer<MDPriceEvent> &>(*m_event_loop).push(ev);
+        m_event_loop.push_event(std::move(ev));
     }
 
     m_backtest_in_progress = true;
-    static_cast<IEventConsumer<StrategyStopRequest> &>(*m_event_loop).push(StrategyStopRequest{});
+    m_event_loop.push_event(StrategyStopRequest{});
     const size_t erased_cnt = m_pending_requests.erase(response.request_guid);
     if (erased_cnt == 0) {
         Logger::logf<LogLevel::Error>("unsolicited HistoricalMDPackEvent: {}, this->guid: {}", response.request_guid, m_strategy_guid);

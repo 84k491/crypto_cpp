@@ -138,7 +138,7 @@ private:
 };
 
 template <class... Args>
-class EventLoopHolder;
+class EventLoopSubscriber;
 
 template <class... Args>
 class EventLoop : public std::enable_shared_from_this<EventLoop<Args...>>
@@ -193,7 +193,7 @@ protected:
     }
 
 private:
-    friend class EventLoopHolder<Args...>;
+    friend class EventLoopSubscriber<Args...>;
     void reset_invoker()
     {
         m_invoker.store(nullptr);
@@ -221,37 +221,4 @@ private:
 
     ThreadSafePriorityQueue<std::variant<Args...>> m_queue{};
     std::thread m_thread;
-};
-
-template <class... Args>
-class EventLoopHolder
-{
-public:
-    EventLoopHolder(IEventInvoker<Args...> & invoker)
-        : m_event_loop(EventLoop<Args...>::create(&invoker))
-    {
-    }
-
-    EventLoopHolder(const EventLoopHolder<Args...> &) = delete;
-    EventLoopHolder(EventLoopHolder<Args...> &&) = delete;
-
-    ~EventLoopHolder() { m_event_loop->reset_invoker(); }
-
-    auto sptr() const
-    {
-        return m_event_loop;
-    }
-
-    EventLoop<Args...> & operator*()
-    {
-        return *m_event_loop;
-    }
-
-    EventLoop<Args...> * operator->()
-    {
-        return m_event_loop.get();
-    }
-
-private:
-    std::shared_ptr<EventLoop<Args...>> m_event_loop;
 };
