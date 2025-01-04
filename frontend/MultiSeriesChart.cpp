@@ -49,7 +49,12 @@ void MultiSeriesChart::push_series_vector(
                 std::chrono::milliseconds,
                 double>> & data)
 {
+    auto & last_point = m_last_points[series_name];
     for (const auto & [ts, value] : data) {
+        if (ts < last_point + limit_interval) {
+            continue;
+        }
+        last_point = ts;
         push_series_value_dont_replot(series_name, ts, value, false);
     }
     replot();
