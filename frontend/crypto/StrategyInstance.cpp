@@ -257,6 +257,11 @@ EventTimeseriesChannel<StopLoss> & StrategyInstance::trailing_stop_channel()
 
 void StrategyInstance::invoke(const std::variant<STRATEGY_EVENTS> & var)
 {
+    if (std::holds_alternative<HistoricalMDPackEvent>(var) && m_stop_request_handled) {
+        // can get history MD ev from an other strategy because of fan-out channels. // TODO
+        return;
+    }
+
     std::visit(
             VariantMatcher{
                     [&](const HistoricalMDPackEvent & response) {
@@ -301,6 +306,12 @@ void StrategyInstance::invoke(const std::variant<STRATEGY_EVENTS> & var)
 
 void StrategyInstance::handle_event(const HistoricalMDPackEvent & response)
 {
+    const size_t erased_cnt = m_pending_requests.erase(response.request_guid);
+    if (erased_cnt == 0) {
+        Logger::logf<LogLevel::Debug>("unsolicited HistoricalMDPackEvent: {}, this->guid: {}", response.request_guid, m_strategy_guid);
+        return;
+    }
+
     if (response.ts_and_price_pack == nullptr) {
         Logger::log<LogLevel::Error>("response.ts_and_price_pack == nullptr");
         stop_async(true);
@@ -315,10 +326,6 @@ void StrategyInstance::handle_event(const HistoricalMDPackEvent & response)
 
     m_backtest_in_progress = true;
     m_event_loop.push_event(StrategyStopRequest{});
-    const size_t erased_cnt = m_pending_requests.erase(response.request_guid);
-    if (erased_cnt == 0) {
-        Logger::logf<LogLevel::Error>("unsolicited HistoricalMDPackEvent: {}, this->guid: {}", response.request_guid, m_strategy_guid);
-    }
 }
 
 void StrategyInstance::handle_event(const MDPriceEvent & response)

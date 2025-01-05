@@ -7,6 +7,7 @@
 #include "StrategyFactory.h"
 #include "StrategyInstance.h"
 
+#include <mutex>
 #include <vector>
 
 std::vector<std::pair<JsonStrategyConfig, JsonStrategyConfig>> OptimizerParser::get_possible_configs()
@@ -82,42 +83,67 @@ std::optional<std::pair<JsonStrategyConfig, JsonStrategyConfig>> Optimizer::opti
     Logger::log<LogLevel::Status>("Starting optimizer");
     OptimizerParser parser(m_optimizer_inputs);
 
-    double max_profit = -std::numeric_limits<double>::max();
     const auto configs = parser.get_possible_configs();
+
+    std::mutex mutex;
+    double max_profit = -std::numeric_limits<double>::max();
     std::optional<decltype(configs)::value_type> best_config;
+
     Logger::log<LogLevel::Debug>("Logs will be suppressed during optimization"); // TODO push as event
     Logger::set_min_log_level(LogLevel::Warning);
     ScopeExit se{[]() {
         Logger::set_min_log_level(LogLevel::Debug);
     }};
-    for (unsigned i = 0; i < configs.size(); ++i) {
-        const auto & [entry_config, exit_config] = configs[i];
-        const auto strategy_opt = StrategyFactory::build_strategy(m_strategy_name, entry_config);
-        if (!strategy_opt.has_value() || !strategy_opt.value() || !strategy_opt.value()->is_valid()) {
-            continue;
-        }
 
-        HistoricalMDRequestData md_request_data = {.start = m_timerange.start(), .end = m_timerange.end()};
+    std::atomic<size_t> output_iter = 0;
+    std::atomic<size_t> input_iter = 0;
+    const auto thread_callback = [&] {
+        for (auto i = input_iter.fetch_add(1);
+             i < configs.size();
+             i = input_iter.fetch_add(1)) {
 
-        BacktestTradingGateway tr_gateway;
-        StrategyInstance strategy_instance(
-                m_symbol,
-                md_request_data,
-                strategy_opt.value(),
-                m_exit_strategy_name,
-                exit_config,
-                m_gateway,
-                tr_gateway);
-        tr_gateway.set_price_source(strategy_instance.klines_channel());
-        strategy_instance.run_async();
-        strategy_instance.wait_for_finish().wait();
-        const auto profit = strategy_instance.strategy_result_channel().get().final_profit;
-        if (max_profit < profit) {
-            max_profit = profit;
-            best_config = configs[i];
+            const auto & [entry_config, exit_config] = configs[i];
+            const auto strategy_opt = StrategyFactory::build_strategy(m_strategy_name, entry_config);
+            if (!strategy_opt.has_value() || !strategy_opt.value() || !strategy_opt.value()->is_valid()) {
+                continue;
+            }
+
+            HistoricalMDRequestData md_request_data = {.start = m_timerange.start(), .end = m_timerange.end()};
+
+            BacktestTradingGateway tr_gateway;
+            StrategyInstance strategy_instance(
+                    m_symbol,
+                    md_request_data,
+                    strategy_opt.value(),
+                    m_exit_strategy_name,
+                    exit_config,
+                    m_gateway,
+                    tr_gateway);
+            tr_gateway.set_price_source(strategy_instance.klines_channel());
+            strategy_instance.run_async();
+            strategy_instance.wait_for_finish().wait();
+            const auto profit = strategy_instance.strategy_result_channel().get().final_profit;
+
+            {
+                std::lock_guard lock(mutex);
+                if (max_profit < profit) {
+                    max_profit = profit;
+                    best_config = configs[i];
+                }
+            }
+            m_on_passed_check(output_iter.fetch_add(1), configs.size());
         }
-        m_on_passed_check(i, configs.size());
+    };
+
+    std::list<std::thread> thread_pool;
+    for (unsigned i = 0; i < s_thread_count; ++i) {
+        thread_pool.emplace_back(thread_callback);
     }
+
+    for (auto & t : thread_pool) {
+        t.join();
+    }
+
     if (!best_config.has_value()) {
         return {};
     }

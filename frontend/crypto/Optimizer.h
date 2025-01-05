@@ -34,6 +34,8 @@ private:
 
 class Optimizer
 {
+    static constexpr size_t s_thread_count = 15;
+
 public:
     Optimizer(
             ByBitMarketDataGateway & gateway,
