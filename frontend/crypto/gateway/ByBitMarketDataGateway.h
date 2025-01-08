@@ -1,9 +1,9 @@
 #pragma once
 
 #include "ConnectionWatcher.h"
+#include "EventChannel.h"
 #include "EventLoopSubscriber.h"
 #include "EventObjectChannel.h"
-#include "EventChannel.h"
 #include "Events.h"
 #include "GatewayConfig.h"
 #include "Guarded.h"
@@ -41,7 +41,7 @@ public:
     void push_async_request(HistoricalMDRequest && request) override;
     void push_async_request(LiveMDRequest && request) override;
 
-    EventChannel<HistoricalMDPackEvent> & historical_prices_channel() override;
+    EventChannel<HistoricalMDGeneratorEvent> & historical_prices_channel() override;
     EventChannel<MDPriceEvent> & live_prices_channel() override;
 
     void unsubscribe_from_live(xg::Guid guid) override;
@@ -82,21 +82,22 @@ private:
     std::unique_ptr<WorkerThreadOnce> m_backtest_thread;
     std::unique_ptr<WorkerThreadLoop> m_live_thread;
 
+    // TODO leave only the last one
     // ((prices by ts) by timerange) by symbol
-    std::unordered_map<
-            std::string,
+    using PriceVecPtrByTimerange =
             std::unordered_map<
                     Timerange,
-                    std::shared_ptr<std::map<
-                            std::chrono::milliseconds,
-                            OHLC>>>>
-            m_ranges_by_symbol;
+                    std::shared_ptr<std::vector<
+                            std::pair<
+                                    std::chrono::milliseconds,
+                                    OHLC>>>>;
+    std::unordered_map<std::string, PriceVecPtrByTimerange> m_ranges_by_symbol;
 
     RestClient rest_client;
     std::shared_ptr<WebSocketClient> m_ws_client;
     ConnectionWatcher m_connection_watcher;
 
     EventLoopSubscriber<HistoricalMDRequest, LiveMDRequest, PingCheckEvent> m_event_loop;
-    EventChannel<HistoricalMDPackEvent> m_historical_prices_channel;
+    EventChannel<HistoricalMDGeneratorEvent> m_historical_prices_channel;
     EventChannel<MDPriceEvent> m_live_prices_channel;
 };

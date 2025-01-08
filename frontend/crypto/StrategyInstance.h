@@ -50,7 +50,8 @@ public:
 
 private:
     void invoke(const std::variant<STRATEGY_EVENTS> & value) override;
-    void handle_event(const HistoricalMDPackEvent & response);
+    void handle_event(const HistoricalMDGeneratorEvent & response);
+    void handle_event(const HistoricalMDPriceEvent & response);
     void handle_event(const MDPriceEvent & response);
     void handle_event(const OrderResponseEvent & response);
     void handle_event(const TradeEvent & response);
@@ -106,9 +107,9 @@ private:
     WorkStatus m_status_on_stop = WorkStatus::Stopped;
     std::optional<std::promise<void>> m_finish_promise;
 
+    std::optional<HistoricalMDGeneratorEvent> m_historical_md_generator;
     bool m_backtest_in_progress = false;
 
     EventLoopSubscriber<STRATEGY_EVENTS> m_event_loop;
-    // EventLoopHolder<STRATEGY_EVENTS> m_event_loop;
     std::list<std::shared_ptr<ISubsription>> m_subscriptions; // those must be destroyed before EvLoop
 };

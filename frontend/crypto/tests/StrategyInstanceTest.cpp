@@ -1,5 +1,6 @@
 #include "StrategyInstance.h"
 
+#include "Events.h"
 #include "ScopeExit.h"
 #include "TpslExitStrategy.h"
 #include "Trade.h"
@@ -26,7 +27,7 @@ public:
     {
     }
 
-    EventChannel<HistoricalMDPackEvent> & historical_prices_channel() override
+    EventChannel<HistoricalMDGeneratorEvent> & historical_prices_channel() override
     {
         return m_historical_prices_channel;
     }
@@ -63,7 +64,7 @@ private:
     size_t m_live_requests_count = 0;
     size_t m_unsubscribed_count = 0;
 
-    EventChannel<HistoricalMDPackEvent> m_historical_prices_channel;
+    EventChannel<HistoricalMDGeneratorEvent> m_historical_prices_channel;
     EventChannel<MDPriceEvent> m_live_prices_channel;
 };
 
@@ -255,9 +256,8 @@ TEST_F(StrategyInstanceTest, SubForLiveMarketData_GetPrice_GracefullStop)
 
     const std::chrono::milliseconds ts = std::chrono::milliseconds(1000);
     const double price = 10.1;
-    OHLC ohlc = {ts, price, price, price, price};
-    MDPriceEvent ev;
-    ev.ts_and_price = {ts, ohlc};
+    OHLC ohlc = {.timestamp = ts, .open = price, .high = price, .low = price, .close = price};
+    MDPriceEvent ev{{ts, ohlc}};
     md_gateway.live_prices_channel().push(ev);
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
     ASSERT_EQ(prices_received, 1);
@@ -304,9 +304,8 @@ TEST_F(StrategyInstanceTest, OpenAndClosePos_GetResult_DontCloseTwiceOnStop)
     {
         const std::chrono::milliseconds price_ts = std::chrono::milliseconds(1000);
         const double price = 10.1;
-        OHLC ohlc = {price_ts, price, price, price, price};
-        MDPriceEvent price_event;
-        price_event.ts_and_price = {price_ts, ohlc};
+        OHLC ohlc = {.timestamp = price_ts, .open = price, .high = price, .low = price, .close = price};
+        MDPriceEvent price_event{{price_ts, ohlc}};
         md_gateway.live_prices_channel().push(price_event);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         ASSERT_EQ(prices_received, 1);
@@ -422,9 +421,8 @@ TEST_F(StrategyInstanceTest, OpenPositionWithTpsl_CloseOnGracefullStop)
     {
         const std::chrono::milliseconds price_ts = std::chrono::milliseconds(1000);
         const double price = 10.1;
-        OHLC ohlc = {price_ts, price, price, price, price};
-        MDPriceEvent price_event;
-        price_event.ts_and_price = {price_ts, ohlc};
+        OHLC ohlc = {.timestamp = price_ts, .open = price, .high = price, .low = price, .close = price};
+        MDPriceEvent price_event{{price_ts, ohlc}};
         md_gateway.live_prices_channel().push(price_event);
 
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -543,9 +541,8 @@ TEST_F(StrategyInstanceTest, ManyPricesReceivedWhileOrderIsPending_NoAdditionalO
     {
         const std::chrono::milliseconds price_ts = std::chrono::milliseconds(1000);
         const double price = 10.1;
-        OHLC ohlc = {price_ts, price, price, price, price};
-        MDPriceEvent price_event;
-        price_event.ts_and_price = {price_ts, ohlc};
+        OHLC ohlc = {.timestamp = price_ts, .open = price, .high = price, .low = price, .close = price};
+        MDPriceEvent price_event{{price_ts, ohlc}};
         md_gateway.live_prices_channel().push(price_event);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         ASSERT_EQ(prices_received, 1);
@@ -559,9 +556,8 @@ TEST_F(StrategyInstanceTest, ManyPricesReceivedWhileOrderIsPending_NoAdditionalO
     {
         const std::chrono::milliseconds price_ts = std::chrono::milliseconds(1001);
         const double price = 12.2;
-        OHLC ohlc = {price_ts, price, price, price, price};
-        MDPriceEvent price_event;
-        price_event.ts_and_price = {price_ts, ohlc};
+        OHLC ohlc = {.timestamp = price_ts, .open = price, .high = price, .low = price, .close = price};
+        MDPriceEvent price_event{{price_ts, ohlc}};
         md_gateway.live_prices_channel().push(price_event);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         ASSERT_EQ(prices_received, 2);
@@ -587,9 +583,8 @@ TEST_F(StrategyInstanceTest, EnterOrder_GetReject_Panic)
     {
         const std::chrono::milliseconds price_ts = std::chrono::milliseconds(1000);
         const double price = 10.1;
-        OHLC ohlc = {price_ts, price, price, price, price};
-        MDPriceEvent price_event;
-        price_event.ts_and_price = {price_ts, ohlc};
+        OHLC ohlc = {.timestamp = price_ts, .open = price, .high = price, .low = price, .close = price};
+        MDPriceEvent price_event{{price_ts, ohlc}};
         md_gateway.live_prices_channel().push(price_event);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
@@ -627,9 +622,8 @@ TEST_F(StrategyInstanceTest, OpenPos_TpslReject_ClosePosAndPanic)
     {
         const std::chrono::milliseconds price_ts = std::chrono::milliseconds(1000);
         const double price = 10.1;
-        OHLC ohlc = {price_ts, price, price, price, price};
-        MDPriceEvent price_event;
-        price_event.ts_and_price = {price_ts, ohlc};
+        OHLC ohlc = {.timestamp = price_ts, .open = price, .high = price, .low = price, .close = price};
+        MDPriceEvent price_event{{price_ts, ohlc}};
         md_gateway.live_prices_channel().push(price_event);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }

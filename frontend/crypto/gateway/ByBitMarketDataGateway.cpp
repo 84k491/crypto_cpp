@@ -338,24 +338,13 @@ void ByBitMarketDataGateway::handle_request(const HistoricalMDRequest & request)
     if (auto range_it = m_ranges_by_symbol.find(symbol.symbol_name); range_it != m_ranges_by_symbol.end()) {
         if (auto it = range_it->second.find(histroical_timerange); it != range_it->second.end()) {
             const auto & prices = it->second;
-            HistoricalMDPackEvent ev(request.guid);
-            ev.ts_and_price_pack = prices;
+            HistoricalMDGeneratorEvent ev(request.guid, prices);
             m_historical_prices_channel.push(ev);
             return;
         }
     }
 
-    // TODO remove
-    // std::map<std::chrono::milliseconds, OHLC> prices;
-    // const bool success = request_historical_klines(
-    //         symbol.symbol_name,
-    //         histroical_timerange,
-    //         [&prices,
-    //          symbol](std::map<std::chrono::milliseconds, OHLC> && ts_and_ohlc_map) {
-    //             prices.merge(ts_and_ohlc_map);
-    //         });
-
-    const auto prices = BybitTradesDownloader::request(request);
+    auto prices = BybitTradesDownloader::request(request);
 
     if (prices.empty()) {
         Logger::log<LogLevel::Error>("Failed to request klines");
@@ -364,9 +353,8 @@ void ByBitMarketDataGateway::handle_request(const HistoricalMDRequest & request)
     }
 
     auto & range = m_ranges_by_symbol[symbol.symbol_name][histroical_timerange];
-    range = std::make_shared<std::map<std::chrono::milliseconds, OHLC>>(prices);
-    HistoricalMDPackEvent ev(request.guid);
-    ev.ts_and_price_pack = range;
+    range = std::make_shared<std::vector<std::pair<std::chrono::milliseconds, OHLC>>>(std::move(prices));
+    HistoricalMDGeneratorEvent ev(request.guid, range);
     m_historical_prices_channel.push(ev);
 }
 
@@ -403,9 +391,8 @@ void ByBitMarketDataGateway::on_price_received(const nlohmann::json & json)
     const auto trades_list = json.get<PublicTradeList>();
     for (const auto & trade : trades_list.trades) {
         OHLC ohlc = {.timestamp = trade.timestamp, .open = trade.price, .high = trade.price, .low = trade.price, .close = trade.price};
-        MDPriceEvent ev;
+        MDPriceEvent ev{{trade.timestamp, ohlc}};
         m_live_prices_channel.push(ev);
-        ev.ts_and_price = {trade.timestamp, ohlc};
     }
 }
 
@@ -449,7 +436,7 @@ void ByBitMarketDataGateway::on_connection_verified()
     m_event_loop.push_delayed(ws_ping_interval, PingCheckEvent{});
 }
 
-EventChannel<HistoricalMDPackEvent> & ByBitMarketDataGateway::historical_prices_channel()
+EventChannel<HistoricalMDGeneratorEvent> & ByBitMarketDataGateway::historical_prices_channel()
 {
     return m_historical_prices_channel;
 }

@@ -10,5 +10,5 @@ class BybitTradesDownloader
 public:
     BybitTradesDownloader();
 
-    static std::map<std::chrono::milliseconds, OHLC> request(const HistoricalMDRequest & req);
+    static std::vector<std::pair<std::chrono::milliseconds, OHLC>> request(const HistoricalMDRequest & req);
 };

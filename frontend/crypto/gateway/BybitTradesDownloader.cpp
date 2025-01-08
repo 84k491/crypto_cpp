@@ -69,11 +69,11 @@ std::vector<std::string> split_string(const std::string & s, const std::string &
 // 7 - grossValue,
 // 8 - homeNotional,
 // 9 - foreignNotional
-std::map<std::chrono::milliseconds, OHLC> file_to_map(const std::string & file_name)
+std::vector<std::pair<std::chrono::milliseconds, OHLC>> parse_file(const std::string & file_name)
 {
     std::ifstream ifs(file_name);
     std::string line;
-    std::map<std::chrono::milliseconds, OHLC> res;
+    std::vector<std::pair<std::chrono::milliseconds, OHLC>> res;
     bool skiped_first = false;
     while (std::getline(ifs, line)) {
         if (!skiped_first) {
@@ -104,19 +104,19 @@ std::map<std::chrono::milliseconds, OHLC> file_to_map(const std::string & file_n
         ohlc.timestamp = ohlc_ts;
         ohlc.open = ohlc.close = ohlc.high = ohlc.low = price;
 
-        res[std::chrono::milliseconds{ohlc.timestamp}] = ohlc;
+        res.emplace_back(ohlc_ts, ohlc);
     }
     return res;
 }
 
 // curl -XGET "https://public.bybit.com/trading/BTCUSDT/BTCUSDT2024-12-25.csv.gz"
-std::map<std::chrono::milliseconds, OHLC> BybitTradesDownloader::BybitTradesDownloader::request(const HistoricalMDRequest & req)
+std::vector<std::pair<std::chrono::milliseconds, OHLC>> BybitTradesDownloader::BybitTradesDownloader::request(const HistoricalMDRequest & req)
 {
     if (!std::filesystem::is_directory(download_dir)) {
         std::filesystem::create_directory(download_dir);
     }
 
-    std::map<std::chrono::milliseconds, OHLC> res;
+    std::vector<std::pair<std::chrono::milliseconds, OHLC>> res;
     const auto files_list = csv_file_list(req);
     for (const auto & csv_file : files_list) {
         if (!std::filesystem::exists(std::string(download_dir) + "/" + csv_file)) {
@@ -149,15 +149,13 @@ std::map<std::chrono::milliseconds, OHLC> BybitTradesDownloader::BybitTradesDown
         }
 
         Logger::logf<LogLevel::Debug>("Got file: {}", csv_file);
-        auto map = file_to_map(std::string(download_dir) + "/" + csv_file);
-        std::map<std::chrono::milliseconds, OHLC> filtered = {};
-        for (const auto & [ts, ohlc] : map) {
-            if (ts >= req.data.start && ts <= req.data.end) {
-                filtered[ts] = ohlc;
+        const auto vec = parse_file(std::string(download_dir) + "/" + csv_file);
+        res.reserve(res.size() + vec.size());
+        for (const auto & [ts, ohlc] : vec) {
+            if (req.data.start <= ts || ts < req.data.end) {
+                res.emplace_back(ts, ohlc);
             }
         }
-        map = filtered;
-        res.merge(filtered);
     }
 
     Logger::logf<LogLevel::Debug>("Got {} prices", res.size());

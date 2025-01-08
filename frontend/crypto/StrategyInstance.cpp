@@ -257,14 +257,17 @@ EventTimeseriesChannel<StopLoss> & StrategyInstance::trailing_stop_channel()
 
 void StrategyInstance::invoke(const std::variant<STRATEGY_EVENTS> & var)
 {
-    if (std::holds_alternative<HistoricalMDPackEvent>(var) && m_stop_request_handled) {
+    if (std::holds_alternative<HistoricalMDGeneratorEvent>(var) && m_stop_request_handled) {
         // can get history MD ev from an other strategy because of fan-out channels. // TODO
         return;
     }
 
     std::visit(
             VariantMatcher{
-                    [&](const HistoricalMDPackEvent & response) {
+                    [&](const HistoricalMDGeneratorEvent & response) {
+                        handle_event(response);
+                    },
+                    [&](const HistoricalMDPriceEvent & response) {
                         handle_event(response);
                     },
                     [&](const MDPriceEvent & response) {
@@ -304,28 +307,41 @@ void StrategyInstance::invoke(const std::variant<STRATEGY_EVENTS> & var)
     finish_if_needed_and_ready();
 }
 
-void StrategyInstance::handle_event(const HistoricalMDPackEvent & response)
+void StrategyInstance::handle_event(const HistoricalMDGeneratorEvent & response)
 {
-    const size_t erased_cnt = m_pending_requests.erase(response.request_guid);
+    const size_t erased_cnt = m_pending_requests.erase(response.request_guid());
     if (erased_cnt == 0) {
-        Logger::logf<LogLevel::Debug>("unsolicited HistoricalMDPackEvent: {}, this->guid: {}", response.request_guid, m_strategy_guid);
+        Logger::logf<LogLevel::Debug>("unsolicited HistoricalMDPackEvent: {}, this->guid: {}", response.request_guid(), m_strategy_guid);
         return;
     }
 
-    if (response.ts_and_price_pack == nullptr) {
-        Logger::log<LogLevel::Error>("response.ts_and_price_pack == nullptr");
+    if (!response.has_data()) {
+        Logger::logf<LogLevel::Error>("no data in HistoricalMDPackEvent: {}", response.request_guid());
         stop_async(true);
         return;
     }
 
-    for (const auto & [ts, ohlc] : *response.ts_and_price_pack) {
-        MDPriceEvent ev;
-        ev.ts_and_price = {ts, ohlc};
-        m_event_loop.push_event(std::move(ev));
+    m_historical_md_generator = response;
+    const auto ev_opt = m_historical_md_generator->get_next();
+    if (!ev_opt.has_value()) {
+        Logger::logf<LogLevel::Error>("no event in HistoricalMDPackEvent: {}", response.request_guid());
+        return;
     }
 
     m_backtest_in_progress = true;
-    m_event_loop.push_event(StrategyStopRequest{});
+    m_event_loop.push_event(ev_opt.value());
+}
+
+void StrategyInstance::handle_event(const HistoricalMDPriceEvent & response)
+{
+    handle_event(static_cast<const MDPriceEvent &>(response));
+    auto ev_opt = m_historical_md_generator->get_next();
+    if (!ev_opt.has_value()) {
+        m_event_loop.push_event(StrategyStopRequest{});
+        return;
+    }
+    const auto & ev = ev_opt.value();
+    m_event_loop.push_event(ev);
 }
 
 void StrategyInstance::handle_event(const MDPriceEvent & response)
@@ -442,6 +458,7 @@ void StrategyInstance::handle_event(const StrategyStopRequest &)
     m_live_md_requests.clear();
 
     m_backtest_in_progress = false;
+    m_historical_md_generator.reset();
     m_stop_request_handled = true;
 }
 
@@ -512,7 +529,8 @@ bool StrategyInstance::ready_to_finish() const
 {
     const bool pos_closed = m_position_manager.opened() == nullptr;
     const bool got_active_requests = m_pending_requests.empty() && m_live_md_requests.empty();
-    const bool res = pos_closed && got_active_requests && !m_backtest_in_progress;
+    const bool historical_md_finished = !m_historical_md_generator.has_value();
+    const bool res = pos_closed && got_active_requests && !m_backtest_in_progress && historical_md_finished;
     if (res) {
         Logger::log<LogLevel::Status>("StrategyInstance is ready to finish");
     }

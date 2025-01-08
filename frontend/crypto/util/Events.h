@@ -1,10 +1,10 @@
 #pragma once
 
-#include "ThreadSafePriorityQueue.h"
 #include "LogLevel.h"
 #include "MarketOrder.h"
 #include "Ohlc.h"
 #include "Symbol.h"
+#include "ThreadSafePriorityQueue.h"
 #include "Tpsl.h"
 #include "Trade.h"
 #include "TrailingStopLoss.h"
@@ -21,9 +21,84 @@ struct OneWayEvent
 
 struct MDPriceEvent : public OneWayEvent
 {
-    MDPriceEvent() = default; // no need for guid here, there will be many responses
+    MDPriceEvent(std::pair<std::chrono::milliseconds, OHLC> _ts_and_price)
+        : ts_and_price(_ts_and_price)
+    {
+    }
     Priority priority() const override { return Priority::Low; }
     std::pair<std::chrono::milliseconds, OHLC> ts_and_price;
+};
+
+struct HistoricalMDPriceEvent : MDPriceEvent
+{
+    HistoricalMDPriceEvent(std::pair<std::chrono::milliseconds, OHLC> _ts_and_price)
+        : MDPriceEvent(_ts_and_price)
+    {
+    }
+};
+
+class HistoricalMDGeneratorEvent : public OneWayEvent
+{
+    using PricePackPtr = std::shared_ptr<const std::vector<std::pair<std::chrono::milliseconds, OHLC>>>;
+
+public:
+    HistoricalMDGeneratorEvent(xg::Guid guid, PricePackPtr ts_and_price_pack)
+        : m_request_guid(guid)
+        , m_pack(std::move(ts_and_price_pack))
+    {
+    }
+    HistoricalMDGeneratorEvent(const HistoricalMDGeneratorEvent & other)
+        : m_request_guid(other.m_request_guid)
+        , m_pack(other.m_pack)
+        , m_iter(other.m_iter)
+    {
+    }
+    HistoricalMDGeneratorEvent & operator=(const HistoricalMDGeneratorEvent & other)
+    {
+        if (this == &other) {
+            return *this;
+        }
+        m_request_guid = other.m_request_guid;
+        m_pack = other.m_pack;
+        m_iter = other.m_iter;
+        return *this;
+    }
+    HistoricalMDGeneratorEvent(HistoricalMDGeneratorEvent && other) noexcept
+        : m_request_guid(other.m_request_guid)
+        , m_pack(std::move(other.m_pack))
+        , m_iter(other.m_iter)
+    {
+    }
+
+    HistoricalMDGeneratorEvent & operator=(HistoricalMDGeneratorEvent && other) noexcept
+    {
+        if (this == &other) {
+            return *this;
+        }
+        m_request_guid = other.m_request_guid;
+        m_pack = std::move(other.m_pack);
+        m_iter = other.m_iter;
+        return *this;
+    }
+
+    std::optional<HistoricalMDPriceEvent> get_next()
+    {
+        const auto iter = m_iter++;
+        if (iter >= m_pack->size()) {
+            return std::nullopt;
+        }
+
+        return HistoricalMDPriceEvent{(*m_pack)[iter]};
+    }
+
+    bool has_data() const { return m_pack && !m_pack->empty(); }
+    auto request_guid() const { return m_request_guid; }
+
+private:
+    xg::Guid m_request_guid;
+
+    PricePackPtr m_pack;
+    size_t m_iter = 0;
 };
 
 struct HistoricalMDPackEvent : public OneWayEvent
@@ -214,7 +289,8 @@ struct StrategyStopRequest : public OneWayEvent
     }
 };
 
-#define STRATEGY_EVENTS HistoricalMDPackEvent,         \
+#define STRATEGY_EVENTS HistoricalMDGeneratorEvent,    \
+                        HistoricalMDPriceEvent,        \
                         MDPriceEvent,                  \
                         OrderResponseEvent,            \
                         TradeEvent,                    \
