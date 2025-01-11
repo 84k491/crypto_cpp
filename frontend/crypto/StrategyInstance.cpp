@@ -215,6 +215,16 @@ void StrategyInstance::process_position_result(const PositionResult & new_result
     }
 }
 
+void StrategyInstance::set_channel_capacity(std::optional<std::chrono::milliseconds> capacity)
+{
+    trade_channel().set_capacity(capacity);
+    strategy_internal_data_channel().set_capacity(capacity);
+    klines_channel().set_capacity(capacity);
+    depo_channel().set_capacity(capacity);
+    tpsl_channel().set_capacity(capacity);
+    trailing_stop_channel().set_capacity(capacity);
+}
+
 EventTimeseriesChannel<Trade> & StrategyInstance::trade_channel()
 {
     return m_trade_channel;

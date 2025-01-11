@@ -15,7 +15,7 @@ public:
 
     void push_series_vector(
             const std::string & series_name,
-            const std::vector<std::pair<
+            const std::list<std::pair<
                     std::chrono::milliseconds,
                     double>> & data);
     void push_series_value(const std::string & series_name,

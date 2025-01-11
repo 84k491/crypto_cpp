@@ -39,8 +39,7 @@ void ChartWindow::subscribe_to_strategy()
     m_subscriptions.push_back(str_instance.klines_channel().subscribe(
             m_event_consumer,
             [this](const auto & vec) {
-                std::vector<std::pair<std::chrono::milliseconds, double>> new_data;
-                new_data.reserve(vec.size());
+                std::list<std::pair<std::chrono::milliseconds, double>> new_data;
                 for (const auto & [ts, v] : vec) {
                     new_data.emplace_back(ts, v.close);
                 }
@@ -52,7 +51,7 @@ void ChartWindow::subscribe_to_strategy()
             }));
     m_subscriptions.push_back(str_instance.tpsl_channel().subscribe(
             m_event_consumer,
-            [this](const std::vector<std::pair<std::chrono::milliseconds, Tpsl>> & input_vec) {
+            [this](const std::list<std::pair<std::chrono::milliseconds, Tpsl>> & input_vec) {
                 std::vector<std::pair<std::chrono::milliseconds, double>> tp, sl;
                 for (const auto & [ts, tpsl] : input_vec) {
                     tp.emplace_back(ts, tpsl.take_profit_price);
@@ -67,7 +66,7 @@ void ChartWindow::subscribe_to_strategy()
             }));
     m_subscriptions.push_back(str_instance.trailing_stop_channel().subscribe(
             m_event_consumer,
-            [this](const std::vector<std::pair<std::chrono::milliseconds, StopLoss>> & input_vec) {
+            [this](const std::list<std::pair<std::chrono::milliseconds, StopLoss>> & input_vec) {
                 std::vector<std::pair<std::chrono::milliseconds, double>> tsl_vec;
                 tsl_vec.reserve(input_vec.size());
                 for (const auto & [ts, tsl] : input_vec) {
@@ -84,14 +83,14 @@ void ChartWindow::subscribe_to_strategy()
                     .strategy_internal_data_channel()
                     .subscribe(
                             m_event_consumer,
-                            [this](const std::vector<
+                            [this](const std::list<
                                     std::pair<
                                             std::chrono::milliseconds,
                                             std::tuple<std::string, std::string, double>>> & vec) {
                                 // chart_name -> series_name -> timestamp, value
                                 std::map<std::string,
                                          std::map<std::string,
-                                                  std::vector<std::pair<std::chrono::milliseconds, double>>>>
+                                                  std::list<std::pair<std::chrono::milliseconds, double>>>>
                                         vec_map;
 
                                 for (const auto & [ts, v] : vec) {
@@ -115,7 +114,7 @@ void ChartWindow::subscribe_to_strategy()
                             }));
     m_subscriptions.push_back(str_instance.trade_channel().subscribe(
             m_event_consumer,
-            [this](const std::vector<std::pair<std::chrono::milliseconds, Trade>> & input_vec) {
+            [this](const std::list<std::pair<std::chrono::milliseconds, Trade>> & input_vec) {
                 std::vector<std::pair<std::chrono::milliseconds, double>> buy, sell;
                 for (const auto & [ts, trade] : input_vec) {
                     switch (trade.side().value()) {

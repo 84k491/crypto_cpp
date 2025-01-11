@@ -34,9 +34,9 @@ public:
 
     ~StrategyInstance() override;
 
+    void set_channel_capacity(std::optional<std::chrono::milliseconds> capacity);
     EventTimeseriesChannel<Trade> & trade_channel();
-    EventTimeseriesChannel<std::tuple<std::string, std::string, double>> &
-    strategy_internal_data_channel();
+    EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & strategy_internal_data_channel();
     EventTimeseriesChannel<OHLC> & klines_channel();
     EventTimeseriesChannel<double> & depo_channel();
     EventObjectChannel<StrategyResult> & strategy_result_channel();

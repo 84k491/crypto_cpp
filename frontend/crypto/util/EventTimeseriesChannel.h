@@ -56,8 +56,11 @@ public:
     void push(TimeT timestamp, const ObjectT & object);
     [[nodiscard]] std::shared_ptr<EventTimeseriesSubsription<ObjectT>> subscribe(
             const std::shared_ptr<IEventConsumer<LambdaEvent>> & consumer,
-            std::function<void(const std::vector<std::pair<TimeT, ObjectT>> &)> && snapshot_callback,
+            std::function<void(const std::list<std::pair<TimeT, ObjectT>> &)> && snapshot_callback,
             std::function<void(TimeT, const ObjectT &)> && increment_callback);
+
+    // thread unsafe
+    void set_capacity(std::optional<std::chrono::milliseconds> capacity) { m_capacity = capacity; }
 
     void unsubscribe(xg::Guid guid);
 
@@ -70,14 +73,23 @@ private:
     };
 
 private:
-    Guarded<std::vector<std::pair<TimeT, ObjectT>>> m_data;
+    Guarded<std::list<std::pair<TimeT, ObjectT>>> m_data;
     Guarded<std::list<SubscriberData>> m_increment_callbacks;
+    std::optional<std::chrono::milliseconds> m_capacity;
 };
 
 template <typename ObjectT>
 void EventTimeseriesChannel<ObjectT>::push(EventTimeseriesChannel::TimeT timestamp, const ObjectT & object)
 {
-    m_data.lock().get().emplace_back(timestamp, object);
+    {
+        auto data_lref = m_data.lock();
+        auto & data = data_lref.get();
+        while (m_capacity.has_value() && !data.empty() && data.front().first < timestamp - *m_capacity) {
+            data.pop_front();
+        }
+        data.emplace_back(timestamp, object);
+    }
+
     auto callbacks_lref = m_increment_callbacks.lock();
     for (const auto & el : callbacks_lref.get()) {
         UNWRAP_CONTINUE(subscribtion, el.wptr.lock());
@@ -92,7 +104,7 @@ void EventTimeseriesChannel<ObjectT>::push(EventTimeseriesChannel::TimeT timesta
 template <typename ObjectT>
 std::shared_ptr<EventTimeseriesSubsription<ObjectT>> EventTimeseriesChannel<ObjectT>::subscribe(
         const std::shared_ptr<IEventConsumer<LambdaEvent>> & consumer,
-        std::function<void(const std::vector<std::pair<TimeT, ObjectT>> &)> && snapshot_callback,
+        std::function<void(const std::list<std::pair<TimeT, ObjectT>> &)> && snapshot_callback,
         std::function<void(TimeT, const ObjectT &)> && increment_callback)
 {
     const auto guid = xg::newGuid();

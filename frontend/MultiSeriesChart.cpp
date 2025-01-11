@@ -45,7 +45,7 @@ MultiSeriesChart::MultiSeriesChart(QWidget * parent)
 
 void MultiSeriesChart::push_series_vector(
         const std::string & series_name,
-        const std::vector<std::pair<
+        const std::list<std::pair<
                 std::chrono::milliseconds,
                 double>> & data)
 {

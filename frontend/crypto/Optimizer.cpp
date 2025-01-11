@@ -120,6 +120,7 @@ std::optional<std::pair<JsonStrategyConfig, JsonStrategyConfig>> Optimizer::opti
                     m_gateway,
                     tr_gateway);
             tr_gateway.set_price_source(strategy_instance.klines_channel());
+            strategy_instance.set_channel_capacity(std::chrono::milliseconds{});
             strategy_instance.run_async();
             strategy_instance.wait_for_finish().wait();
             const auto profit = strategy_instance.strategy_result_channel().get().final_profit;
@@ -135,6 +136,7 @@ std::optional<std::pair<JsonStrategyConfig, JsonStrategyConfig>> Optimizer::opti
         }
     };
 
+    m_on_passed_check(0, configs.size());
     std::list<std::thread> thread_pool;
     for (unsigned i = 0; i < s_thread_count; ++i) {
         thread_pool.emplace_back(thread_callback);
