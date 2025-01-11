@@ -62,12 +62,16 @@ public:
     void unsubscribe(xg::Guid guid);
 
 private:
+    struct SubscriberData
+    {
+        xg::Guid guid;
+        std::function<void(TimeT, const ObjectT &)> callback;
+        std::weak_ptr<EventTimeseriesSubsription<ObjectT>> wptr;
+    };
+
+private:
     Guarded<std::vector<std::pair<TimeT, ObjectT>>> m_data;
-    Guarded<std::list<std::tuple<
-            xg::Guid,
-            std::function<void(TimeT, const ObjectT &)>,
-            std::weak_ptr<EventTimeseriesSubsription<ObjectT>>>>>
-            m_increment_callbacks;
+    Guarded<std::list<SubscriberData>> m_increment_callbacks;
 };
 
 template <typename ObjectT>
@@ -75,13 +79,13 @@ void EventTimeseriesChannel<ObjectT>::push(EventTimeseriesChannel::TimeT timesta
 {
     m_data.lock().get().emplace_back(timestamp, object);
     auto callbacks_lref = m_increment_callbacks.lock();
-    for (const auto & [uuid, cb, wptr] : callbacks_lref.get()) {
-        UNWRAP_CONTINUE(subscribtion, wptr.lock());
+    for (const auto & el : callbacks_lref.get()) {
+        UNWRAP_CONTINUE(subscribtion, el.wptr.lock());
         UNWRAP_CONTINUE(consumer, subscribtion.m_consumer.lock());
         consumer.push(LambdaEvent(
-                [cb,
+                [el,
                  timestamp,
-                 object] { cb(timestamp, object); }));
+                 object] { el.callback(timestamp, object); }));
     }
 }
 
@@ -109,7 +113,7 @@ void EventTimeseriesChannel<ObjectT>::unsubscribe(xg::Guid guid)
     auto consumers_lref = m_increment_callbacks.lock();
     auto & consumers = consumers_lref.get();
     for (auto it = consumers.begin(); it != consumers.end(); ++it) {
-        if (std::get<xg::Guid>(*it) == guid) {
+        if (it->guid == guid) {
             consumers.erase(it);
             break;
         }
@@ -120,8 +124,8 @@ template <typename ObjectT>
 EventTimeseriesChannel<ObjectT>::~EventTimeseriesChannel()
 {
     auto consumers_lref = m_increment_callbacks.lock();
-    for (auto & [uuid, _, wptr] : consumers_lref.get()) {
-        UNWRAP_CONTINUE(subscribtion, wptr.lock());
+    for (auto & el : consumers_lref.get()) {
+        UNWRAP_CONTINUE(subscribtion, el.wptr.lock());
         subscribtion.m_channel = nullptr;
     }
     consumers_lref.get().clear();
