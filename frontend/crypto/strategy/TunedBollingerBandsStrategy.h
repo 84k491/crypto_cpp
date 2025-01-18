@@ -3,6 +3,7 @@
 #include "BollingerBands.h"
 #include "JsonStrategyConfig.h"
 #include "Signal.h"
+#include "SimpleMovingAverage.h"
 #include "StrategyInterface.h"
 
 #include <chrono>

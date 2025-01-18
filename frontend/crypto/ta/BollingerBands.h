@@ -1,7 +1,7 @@
 #pragma once
 
-#include "SimpleMovingAverage.h"
 #include "StandardDeviation.h"
+#include "TimeWeightedMovingAverage.h"
 
 #include <chrono>
 
@@ -23,5 +23,5 @@ private:
     double m_std_deviation_coefficient = 0.;
 
     StandardDeviation m_standard_deviation;
-    SimpleMovingAverage m_trend;
+    TimeWeightedMovingAverage m_trend;
 };
