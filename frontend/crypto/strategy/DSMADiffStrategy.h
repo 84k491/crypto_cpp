@@ -5,6 +5,7 @@
 #include "Signal.h"
 #include "SimpleMovingAverage.h"
 #include "StrategyInterface.h"
+#include "TimeWeightedMovingAverage.h"
 
 class DSMADiffStrategyConfig
 {
@@ -35,8 +36,8 @@ public:
 private:
     const DSMADiffStrategyConfig m_config;
 
-    SimpleMovingAverage m_slow_avg;
-    SimpleMovingAverage m_fast_avg;
+    TimeWeightedMovingAverage m_slow_avg;
+    TimeWeightedMovingAverage m_fast_avg;
     double m_diff_threshold = {}; // coef, not percent
 
     EventTimeseriesChannel<std::tuple<std::string, std::string, double>> m_strategy_internal_data_channel;

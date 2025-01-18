@@ -13,3 +13,5 @@ target_include_directories(ta
 target_include_directories(ta PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../util
 )
+
+add_subdirectory(tests)
