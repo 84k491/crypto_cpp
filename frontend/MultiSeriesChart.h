@@ -41,7 +41,7 @@ private:
     QCPGraph * get_graph_for_series(std::string_view series_name, bool is_scatter);
 
 private:
-    const std::chrono::milliseconds limit_interval = std::chrono::minutes{60};
+    const std::chrono::milliseconds limit_interval = std::chrono::minutes{1};
     std::unordered_map<std::string, std::chrono::milliseconds> m_last_points; // to limit the rate
 
     std::map<std::string, int> m_series_indexes;

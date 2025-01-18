@@ -1,19 +1,16 @@
 #pragma once
 
+#include "EventTimeseriesChannel.h"
 #include "JsonStrategyConfig.h"
 #include "Signal.h"
 #include "SimpleMovingAverage.h"
 #include "StrategyInterface.h"
 
-#include <chrono>
-#include <map>
-#include <optional>
-#include <vector>
-
-class DoubleSmaStrategyConfig
+class DSMADiffStrategyConfig
 {
 public:
-    DoubleSmaStrategyConfig(const JsonStrategyConfig & json);
+    DSMADiffStrategyConfig(const JsonStrategyConfig & json);
+    DSMADiffStrategyConfig(std::chrono::milliseconds slow_interval, std::chrono::milliseconds fast_interval);
 
     bool is_valid() const;
 
@@ -21,14 +18,13 @@ public:
 
     std::chrono::milliseconds m_slow_interval = {};
     std::chrono::milliseconds m_fast_interval = {};
+    double m_diff_threshold_percent = {};
 };
 
-class DoubleSmaStrategy final : public IStrategy
+class DSMADiffStrategy final : public IStrategy
 {
 public:
-    using ConfigT = DoubleSmaStrategyConfig;
-
-    DoubleSmaStrategy(const DoubleSmaStrategyConfig & conf);
+    DSMADiffStrategy(const DSMADiffStrategyConfig & conf);
 
     std::optional<Signal> push_price(std::pair<std::chrono::milliseconds, double> ts_and_price) override;
 
@@ -37,13 +33,11 @@ public:
     bool is_valid() const override;
 
 private:
-    const DoubleSmaStrategyConfig m_config;
+    const DSMADiffStrategyConfig m_config;
 
     MovingAverage m_slow_avg;
     MovingAverage m_fast_avg;
-
-    std::optional<double> m_prev_slow_avg;
-    std::optional<double> m_prev_fast_avg;
+    double m_diff_threshold = {}; // coef, not percent
 
     EventTimeseriesChannel<std::tuple<std::string, std::string, double>> m_strategy_internal_data_channel;
 };

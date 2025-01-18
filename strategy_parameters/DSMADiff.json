@@ -1,0 +1,23 @@
+{
+    "strategy_name": "DSMADiff",
+    "parameters": [
+        {
+            "name": "fast_interval_m",
+            "min_value": 5,
+            "step": 2,
+            "max_value": 20
+        },
+        {
+            "name": "slow_interval_m",
+            "min_value": 15,
+            "step": 5,
+            "max_value": 100
+        },
+        {
+            "name": "diff_threshold_percent",
+            "min_value": 0.6,
+            "step": 0.2,
+            "max_value": 2
+        }
+    ]
+}

@@ -1,6 +1,7 @@
 #include "StrategyFactory.h"
 
 #include "BollingerBandsStrategy.h"
+#include "DSMADiffStrategy.h"
 #include "DebugEveryTickStrategy.h"
 #include "DoubleSmaStrategy.h"
 #include "Logger.h"
@@ -60,6 +61,10 @@ std::optional<std::shared_ptr<IStrategy>> StrategyFactory::build_strategy(
     }
     if (strategy_name == "RateOfChange") {
         std::shared_ptr<IStrategy> res = std::make_shared<RateOfChangeStrategy>(config);
+        return res;
+    }
+    if (strategy_name == "DSMADiff") {
+        std::shared_ptr<IStrategy> res = std::make_shared<DSMADiffStrategy>(config);
         return res;
     }
     Logger::logf<LogLevel::Error>("Unknown strategy name: {}", strategy_name);

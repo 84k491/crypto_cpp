@@ -12,12 +12,6 @@ DoubleSmaStrategyConfig::DoubleSmaStrategyConfig(const JsonStrategyConfig & json
     }
 }
 
-DoubleSmaStrategyConfig::DoubleSmaStrategyConfig(std::chrono::milliseconds slow_interval, std::chrono::milliseconds fast_interval)
-    : m_slow_interval(slow_interval)
-    , m_fast_interval(fast_interval)
-{
-}
-
 bool DoubleSmaStrategyConfig::is_valid() const
 {
     return m_slow_interval > m_fast_interval;
@@ -47,14 +41,12 @@ std::optional<Signal> DoubleSmaStrategy::push_price(std::pair<std::chrono::milli
         return std::nullopt;
     }
     const auto current_average_fast = fast_avg.value();
-    m_fast_avg_history.emplace_back(ts_and_price.first, current_average_fast);
     m_strategy_internal_data_channel.push(ts_and_price.first, {"prices", "fast_avg_history", current_average_fast});
 
     if (!slow_avg.has_value()) {
         return std::nullopt;
     }
     const auto current_average_slow = slow_avg.value();
-    m_slow_avg_history.emplace_back(ts_and_price.first, current_average_slow);
     m_strategy_internal_data_channel.push(ts_and_price.first, {"prices", "slow_avg_history", current_average_slow});
 
     ScopeExit scope_exit([&] {
@@ -74,15 +66,6 @@ std::optional<Signal> DoubleSmaStrategy::push_price(std::pair<std::chrono::milli
 
     const auto side = current_slow_above_fast ? Side::sell() : Side::buy();
     return Signal{.side = side, .timestamp = ts_and_price.first, .price = ts_and_price.second};
-}
-
-std::map<std::string, std::vector<std::pair<std::chrono::milliseconds, double>>>
-DoubleSmaStrategy::get_internal_data_history() const
-{
-    return {
-            {"slow_avg_history", m_slow_avg_history},
-            {"fast_avg_history", m_fast_avg_history},
-    };
 }
 
 bool DoubleSmaStrategy::is_valid() const

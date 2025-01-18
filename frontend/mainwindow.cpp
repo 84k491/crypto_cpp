@@ -58,6 +58,7 @@ MainWindow::MainWindow(QWidget * parent)
     ui->cb_strategy->addItem("TunedBB");
     ui->cb_strategy->addItem("DebugEveryTick");
     ui->cb_strategy->addItem("RateOfChange");
+    ui->cb_strategy->addItem("DSMADiff");
     ui->cb_strategy->setCurrentText(saved_state.m_strategy_name.c_str());
     ui->cb_exit_strategy->addItem("TpslExit");
     ui->cb_exit_strategy->addItem("TrailingStop");
