@@ -23,5 +23,5 @@ private:
     double m_std_deviation_coefficient = 0.;
 
     StandardDeviation m_standard_deviation;
-    MovingAverage m_trend;
+    SimpleMovingAverage m_trend;
 };

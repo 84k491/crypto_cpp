@@ -35,8 +35,8 @@ public:
 private:
     const DSMADiffStrategyConfig m_config;
 
-    MovingAverage m_slow_avg;
-    MovingAverage m_fast_avg;
+    SimpleMovingAverage m_slow_avg;
+    SimpleMovingAverage m_fast_avg;
     double m_diff_threshold = {}; // coef, not percent
 
     EventTimeseriesChannel<std::tuple<std::string, std::string, double>> m_strategy_internal_data_channel;

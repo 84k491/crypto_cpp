@@ -33,7 +33,7 @@ public:
 private:
     RateOfChangeStrategyConfig m_config;
     RateOfChange m_rate_of_change;
-    MovingAverage m_moving_average;
+    SimpleMovingAverage m_moving_average;
     std::chrono::milliseconds m_last_below_trigger_ts = {};
     EventTimeseriesChannel<std::tuple<std::string, std::string, double>> m_strategy_internal_data_channel;
 };

@@ -4,10 +4,10 @@
 #include <list>
 #include <optional>
 
-class MovingAverage
+class SimpleMovingAverage
 {
 public:
-    MovingAverage(std::chrono::milliseconds interval);
+    SimpleMovingAverage(std::chrono::milliseconds interval);
 
     std::optional<double> push_value(std::pair<std::chrono::milliseconds, double> ts_and_price);
 

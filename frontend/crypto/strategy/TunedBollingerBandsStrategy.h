@@ -36,7 +36,7 @@ public:
 private:
     TunedBollingerBandsStrategyConfig m_config;
 
-    MovingAverage m_price_filter;
+    SimpleMovingAverage m_price_filter;
     std::optional<double> m_last_filtered_price_opt;
 
     BollingerBands m_bollinger_bands;

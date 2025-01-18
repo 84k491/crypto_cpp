@@ -1,11 +1,11 @@
 #include "SimpleMovingAverage.h"
 
-MovingAverage::MovingAverage(std::chrono::milliseconds interval)
+SimpleMovingAverage::SimpleMovingAverage(std::chrono::milliseconds interval)
     : m_interval(interval)
 {
 }
 
-std::optional<double> MovingAverage::push_value(std::pair<std::chrono::milliseconds, double> ts_and_price)
+std::optional<double> SimpleMovingAverage::push_value(std::pair<std::chrono::milliseconds, double> ts_and_price)
 {
     m_data.push_back(ts_and_price);
     m_sum += ts_and_price.second;

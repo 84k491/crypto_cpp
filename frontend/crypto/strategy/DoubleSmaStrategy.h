@@ -39,8 +39,8 @@ public:
 private:
     const DoubleSmaStrategyConfig m_config;
 
-    MovingAverage m_slow_avg;
-    MovingAverage m_fast_avg;
+    SimpleMovingAverage m_slow_avg;
+    SimpleMovingAverage m_fast_avg;
 
     std::optional<double> m_prev_slow_avg;
     std::optional<double> m_prev_fast_avg;
