@@ -13,16 +13,16 @@ BacktestTradingGateway::BacktestTradingGateway()
 {
 }
 
-void BacktestTradingGateway::set_price_source(EventTimeseriesChannel<OHLC> & channel)
+void BacktestTradingGateway::set_price_source(EventTimeseriesChannel<double> & channel)
 {
     m_price_sub = channel.subscribe(
             m_event_consumer,
             [](auto &) {},
-            [this](std::chrono::milliseconds ts, const OHLC & ohlc) {
-                m_last_price = ohlc.close;
+            [this](std::chrono::milliseconds ts, const double & price) {
+                m_last_price = price;
                 m_last_ts = ts;
                 if (m_tpsl.has_value()) {
-                    const auto tpsl_trade = try_trade_tpsl(ohlc);
+                    const auto tpsl_trade = try_trade_tpsl(ts, price);
                     if (tpsl_trade.has_value()) {
                         m_trade_channel.push(TradeEvent(tpsl_trade.value()));
                         *m_pos_volume = SignedVolume();
@@ -30,7 +30,7 @@ void BacktestTradingGateway::set_price_source(EventTimeseriesChannel<OHLC> & cha
                     }
                 }
                 if (m_trailing_stop.has_value()) {
-                    const auto trade_or_sl = m_trailing_stop->on_price_updated(ohlc);
+                    const auto trade_or_sl = m_trailing_stop->on_price_updated(ts, price);
                     if (trade_or_sl.has_value()) {
                         std::visit(
                                 VariantMatcher{
@@ -51,12 +51,12 @@ void BacktestTradingGateway::set_price_source(EventTimeseriesChannel<OHLC> & cha
             });
 }
 
-std::optional<Trade> BacktestTradingGateway::try_trade_tpsl(OHLC ohlc)
+std::optional<Trade> BacktestTradingGateway::try_trade_tpsl(std::chrono::milliseconds ts, double price)
 {
     if (!m_tpsl.has_value()) {
         return std::nullopt;
     }
-    const auto & last_price = ohlc.close;
+    const auto & last_price = price;
 
     const auto & tpsl = m_tpsl.value().tpsl;
     const auto [pos_volume, pos_side] = m_pos_volume->as_unsigned_and_side();
@@ -90,7 +90,7 @@ std::optional<Trade> BacktestTradingGateway::try_trade_tpsl(OHLC ohlc)
     }
 
     Trade trade{
-            ohlc.timestamp,
+            ts,
             m_symbol,
             trade_price.value(),
             pos_volume,
@@ -177,11 +177,10 @@ BacktestTrailingStopLoss::BacktestTrailingStopLoss(
 {
 }
 
-std::optional<std::variant<Trade, StopLoss>> BacktestTrailingStopLoss::on_price_updated(const OHLC & ohlc)
+std::optional<std::variant<Trade, StopLoss>> BacktestTrailingStopLoss::on_price_updated(std::chrono::milliseconds ts, const double & price)
 {
-    const double tick_price = ohlc.close;
     const auto [vol, side] = m_pos_volume->as_unsigned_and_side();
-    const auto new_stop_loss = m_trailing_stop.calc_new_stop_loss(tick_price, m_current_stop_loss);
+    const auto new_stop_loss = m_trailing_stop.calc_new_stop_loss(price, m_current_stop_loss);
 
     if (new_stop_loss) {
         m_current_stop_loss = new_stop_loss.value();
@@ -192,11 +191,11 @@ std::optional<std::variant<Trade, StopLoss>> BacktestTrailingStopLoss::on_price_
     bool triggered = false;
     switch (side.value()) {
     case SideEnum::Buy: {
-        triggered = tick_price < m_current_stop_loss.stop_price();
+        triggered = price < m_current_stop_loss.stop_price();
         break;
     }
     case SideEnum::Sell: {
-        triggered = tick_price > m_current_stop_loss.stop_price();
+        triggered = price > m_current_stop_loss.stop_price();
         break;
     }
     };
@@ -208,12 +207,12 @@ std::optional<std::variant<Trade, StopLoss>> BacktestTrailingStopLoss::on_price_
 
     const auto opposite_side = side.opposite();
     Trade trade{
-            ohlc.timestamp,
+            ts,
             m_trailing_stop.symbol_name(),
             m_current_stop_loss.stop_price(),
             vol,
             opposite_side,
-            (m_pos_volume->value() * tick_price * m_pos_volume->sign()) * taker_fee_rate,
+            (m_pos_volume->value() * price * m_pos_volume->sign()) * taker_fee_rate,
     };
     return trade;
 }

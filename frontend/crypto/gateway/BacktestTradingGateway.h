@@ -22,7 +22,7 @@ public:
     BacktestTrailingStopLoss(std::shared_ptr<SignedVolume> & pos_volume, double current_price, const TrailingStopLoss & trailing_stop);
 
     [[nodiscard("PossibleTrade or updated StopLoss")]]
-    std::optional<std::variant<Trade, StopLoss>> on_price_updated(const OHLC & ohlc);
+    std::optional<std::variant<Trade, StopLoss>> on_price_updated(std::chrono::milliseconds ts, const double & price);
 
     auto stop_loss() const { return m_current_stop_loss; }
 
@@ -38,7 +38,7 @@ public:
     static constexpr double taker_fee_rate = 0.00055;
     BacktestTradingGateway();
 
-    void set_price_source(EventTimeseriesChannel<OHLC> & channel);
+    void set_price_source(EventTimeseriesChannel<double> & channel);
 
     void push_order_request(const OrderRequestEvent & order) override;
     void push_tpsl_request(const TpslRequestEvent & tpsl_ev) override;
@@ -52,7 +52,7 @@ public:
     EventChannel<TrailingStopLossUpdatedEvent> & trailing_stop_update_channel() override;
 
 private:
-    std::optional<Trade> try_trade_tpsl(OHLC ohlc);
+    std::optional<Trade> try_trade_tpsl(std::chrono::milliseconds ts, double price);
 
 private:
     std::shared_ptr<BacktestEventConsumer> m_event_consumer;

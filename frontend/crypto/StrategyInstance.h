@@ -1,5 +1,6 @@
 #pragma once
 
+#include "CandleBuiler.h"
 #include "EventLoop.h"
 #include "EventLoopSubscriber.h"
 #include "EventTimeseriesChannel.h"
@@ -22,6 +23,7 @@
 
 class StrategyInstance : public IEventInvoker<STRATEGY_EVENTS>
 {
+    static constexpr std::chrono::milliseconds timeframe = std::chrono::minutes(1);
 public:
     StrategyInstance(
             const Symbol & symbol,
@@ -37,7 +39,8 @@ public:
     void set_channel_capacity(std::optional<std::chrono::milliseconds> capacity);
     EventTimeseriesChannel<Trade> & trade_channel();
     EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & strategy_internal_data_channel();
-    EventTimeseriesChannel<OHLC> & klines_channel();
+    EventTimeseriesChannel<double> & price_channel();
+    EventTimeseriesChannel<Candle> & candle_channel();
     EventTimeseriesChannel<double> & depo_channel();
     EventObjectChannel<StrategyResult> & strategy_result_channel();
     EventObjectChannel<WorkStatus> & status_channel();
@@ -74,6 +77,7 @@ private:
 
 private:
     const xg::Guid m_strategy_guid;
+    CandleBuilder m_candle_builder;
 
     IMarketDataGateway & m_md_gateway;
     ITradingGateway & m_tr_gateway;
@@ -82,7 +86,8 @@ private:
     EventObjectChannel<StrategyResult> m_strategy_result;
 
     EventTimeseriesChannel<Trade> m_trade_channel;
-    EventTimeseriesChannel<OHLC> m_klines_channel;
+    EventTimeseriesChannel<double> m_price_channel;
+    EventTimeseriesChannel<Candle> m_candle_channel;
     EventTimeseriesChannel<double> m_depo_channel;
 
     const Symbol m_symbol;

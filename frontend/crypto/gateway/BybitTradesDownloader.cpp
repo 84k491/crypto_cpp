@@ -69,11 +69,11 @@ std::vector<std::string> split_string(const std::string & s, const std::string &
 // 7 - grossValue,
 // 8 - homeNotional,
 // 9 - foreignNotional
-std::vector<std::pair<std::chrono::milliseconds, OHLC>> parse_file(const std::string & file_name)
+std::vector<std::pair<std::chrono::milliseconds, double>> parse_file(const std::string & file_name)
 {
     std::ifstream ifs(file_name);
     std::string line;
-    std::vector<std::pair<std::chrono::milliseconds, OHLC>> res;
+    std::vector<std::pair<std::chrono::milliseconds, double>> res;
     bool skiped_first = false;
     while (std::getline(ifs, line)) {
         if (!skiped_first) {
@@ -95,28 +95,24 @@ std::vector<std::pair<std::chrono::milliseconds, OHLC>> parse_file(const std::st
             milli = std::stoll(milli_str) * multiplier;
         }
 
-        const std::chrono::milliseconds ohlc_ts = std::chrono::seconds{seconds} + std::chrono::milliseconds{milli};
+        const std::chrono::milliseconds ts = std::chrono::seconds{seconds} + std::chrono::milliseconds{milli};
 
         const std::string & price_str = split_str[4];
         const double price = std::stod(price_str);
 
-        OHLC ohlc = {};
-        ohlc.timestamp = ohlc_ts;
-        ohlc.open = ohlc.close = ohlc.high = ohlc.low = price;
-
-        res.emplace_back(ohlc_ts, ohlc);
+        res.emplace_back(ts, price);
     }
     return res;
 }
 
 // curl -XGET "https://public.bybit.com/trading/BTCUSDT/BTCUSDT2024-12-25.csv.gz"
-std::vector<std::pair<std::chrono::milliseconds, OHLC>> BybitTradesDownloader::BybitTradesDownloader::request(const HistoricalMDRequest & req)
+std::vector<std::pair<std::chrono::milliseconds, double>> BybitTradesDownloader::BybitTradesDownloader::request(const HistoricalMDRequest & req)
 {
     if (!std::filesystem::is_directory(download_dir)) {
         std::filesystem::create_directory(download_dir);
     }
 
-    std::vector<std::pair<std::chrono::milliseconds, OHLC>> res;
+    std::vector<std::pair<std::chrono::milliseconds, double>> res;
     const auto files_list = csv_file_list(req);
     for (const auto & csv_file : files_list) {
         if (!std::filesystem::exists(std::string(download_dir) + "/" + csv_file)) {
@@ -151,9 +147,9 @@ std::vector<std::pair<std::chrono::milliseconds, OHLC>> BybitTradesDownloader::B
         Logger::logf<LogLevel::Debug>("Got file: {}", csv_file);
         const auto vec = parse_file(std::string(download_dir) + "/" + csv_file);
         res.reserve(res.size() + vec.size());
-        for (const auto & [ts, ohlc] : vec) {
+        for (const auto & [ts, price] : vec) {
             if (req.data.start <= ts || ts < req.data.end) {
-                res.emplace_back(ts, ohlc);
+                res.emplace_back(ts, price);
             }
         }
     }

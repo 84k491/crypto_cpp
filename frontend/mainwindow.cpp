@@ -187,7 +187,7 @@ void MainWindow::on_pb_run_clicked()
     ui->pb_charts->setEnabled(true);
 
     if (auto * ptr = dynamic_cast<BacktestTradingGateway *>(&tr_gateway); ptr != nullptr) {
-        ptr->set_price_source(m_strategy_instance->klines_channel());
+        ptr->set_price_source(m_strategy_instance->price_channel());
     }
 
     m_subscriptions.push_back(m_strategy_instance->status_channel().subscribe(

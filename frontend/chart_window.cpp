@@ -36,18 +36,18 @@ void ChartWindow::subscribe_to_strategy()
 {
     UNWRAP_RET_VOID(str_instance, m_strategy_instance.lock());
 
-    m_subscriptions.push_back(str_instance.klines_channel().subscribe(
+    m_subscriptions.push_back(str_instance.price_channel().subscribe(
             m_event_consumer,
             [this](const auto & vec) {
                 std::list<std::pair<std::chrono::milliseconds, double>> new_data;
-                for (const auto & [ts, v] : vec) {
-                    new_data.emplace_back(ts, v.close);
+                for (const auto & [ts, price] : vec) {
+                    new_data.emplace_back(ts, price);
                 }
                 auto & plot = get_or_create_chart(m_price_chart_name);
                 plot.push_series_vector("price", new_data);
             },
-            [&](std::chrono::milliseconds ts, const OHLC & ohlc) {
-                get_or_create_chart(m_price_chart_name).push_series_value("price", ts, ohlc.close);
+            [&](std::chrono::milliseconds ts, const double & price) {
+                get_or_create_chart(m_price_chart_name).push_series_value("price", ts, price);
             }));
     m_subscriptions.push_back(str_instance.tpsl_channel().subscribe(
             m_event_consumer,

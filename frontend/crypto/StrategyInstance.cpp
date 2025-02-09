@@ -47,6 +47,7 @@ StrategyInstance::StrategyInstance(
         IMarketDataGateway & md_gateway,
         ITradingGateway & tr_gateway)
     : m_strategy_guid(xg::newGuid())
+    , m_candle_builder{timeframe}
     , m_md_gateway(md_gateway)
     , m_tr_gateway(tr_gateway)
     , m_strategy(strategy_ptr)
@@ -219,7 +220,7 @@ void StrategyInstance::set_channel_capacity(std::optional<std::chrono::milliseco
 {
     trade_channel().set_capacity(capacity);
     strategy_internal_data_channel().set_capacity(capacity);
-    klines_channel().set_capacity(capacity);
+    candle_channel().set_capacity(capacity);
     depo_channel().set_capacity(capacity);
     tpsl_channel().set_capacity(capacity);
     trailing_stop_channel().set_capacity(capacity);
@@ -235,9 +236,14 @@ EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & StrategyI
     return m_strategy->strategy_internal_data_channel();
 }
 
-EventTimeseriesChannel<OHLC> & StrategyInstance::klines_channel()
+EventTimeseriesChannel<double> & StrategyInstance::price_channel()
 {
-    return m_klines_channel;
+    return m_price_channel;
+}
+
+EventTimeseriesChannel<Candle> & StrategyInstance::candle_channel()
+{
+    return m_candle_channel;
 }
 
 EventTimeseriesChannel<double> & StrategyInstance::depo_channel()
@@ -356,22 +362,22 @@ void StrategyInstance::handle_event(const HistoricalMDPriceEvent & response)
 
 void StrategyInstance::handle_event(const MDPriceEvent & response)
 {
-    const auto & [ts, ohlc] = response.ts_and_price;
-    m_last_ts_and_price = {ts, ohlc.close};
-    m_klines_channel.push(ts, ohlc);
+    const auto & [ts, price] = response.ts_and_price;
+    m_last_ts_and_price = {ts, price};
+    m_price_channel.push(ts, price);
     if (!first_price_received) {
         m_depo_channel.push(ts, 0.);
         first_price_received = true;
     }
 
-    const auto signal = m_strategy->push_price({ts, ohlc.close});
+    const auto signal = m_strategy->push_price({ts, price});
     if (m_position_manager.opened() == nullptr && m_pending_orders.empty()) {
         if (signal.has_value()) {
             on_signal(signal.value());
         }
     }
 
-    if (const auto err = m_exit_strategy->on_price_changed({ts, ohlc.close})) {
+    if (const auto err = m_exit_strategy->on_price_changed({ts, price})) {
         Logger::logf<LogLevel::Error>("Exit strategy error on price update: {}", err.value());
     }
 }

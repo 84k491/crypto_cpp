@@ -338,6 +338,7 @@ void ByBitMarketDataGateway::handle_request(const HistoricalMDRequest & request)
     if (auto range_it = m_ranges_by_symbol.find(symbol.symbol_name); range_it != m_ranges_by_symbol.end()) {
         if (auto it = range_it->second.find(histroical_timerange); it != range_it->second.end()) {
             const auto & prices = it->second;
+
             HistoricalMDGeneratorEvent ev(request.guid, prices);
             m_historical_prices_channel.push(ev);
             return;
@@ -353,7 +354,7 @@ void ByBitMarketDataGateway::handle_request(const HistoricalMDRequest & request)
     }
 
     auto & range = m_ranges_by_symbol[symbol.symbol_name][histroical_timerange];
-    range = std::make_shared<std::vector<std::pair<std::chrono::milliseconds, OHLC>>>(std::move(prices));
+    range = std::make_shared<std::vector<std::pair<std::chrono::milliseconds, double>>>(std::move(prices));
     HistoricalMDGeneratorEvent ev(request.guid, range);
     m_historical_prices_channel.push(ev);
 }
@@ -391,7 +392,8 @@ void ByBitMarketDataGateway::on_price_received(const nlohmann::json & json)
     const auto trades_list = json.get<PublicTradeList>();
     for (const auto & trade : trades_list.trades) {
         OHLC ohlc = {.timestamp = trade.timestamp, .open = trade.price, .high = trade.price, .low = trade.price, .close = trade.price};
-        MDPriceEvent ev{{trade.timestamp, ohlc}};
+        // TODO pushing only close price is not quite correct
+        MDPriceEvent ev{{trade.timestamp, ohlc.close}};
         m_live_prices_channel.push(ev);
     }
 }

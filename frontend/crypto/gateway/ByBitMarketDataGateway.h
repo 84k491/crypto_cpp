@@ -90,7 +90,7 @@ private:
                     std::shared_ptr<std::vector<
                             std::pair<
                                     std::chrono::milliseconds,
-                                    OHLC>>>>;
+                                    double>>>>;
     std::unordered_map<std::string, PriceVecPtrByTimerange> m_ranges_by_symbol;
 
     RestClient rest_client;
