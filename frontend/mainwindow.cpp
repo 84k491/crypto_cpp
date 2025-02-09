@@ -118,7 +118,7 @@ void MainWindow::subscribe_to_strategy()
 void MainWindow::on_pb_stop_clicked()
 {
     m_strategy_instance->stop_async();
-    m_strategy_instance->wait_for_finish().wait();
+    m_strategy_instance->finish_future().wait();
     Logger::log<LogLevel::Status>("Strategy stopped");
 }
 

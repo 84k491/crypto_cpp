@@ -133,7 +133,7 @@ void StrategyInstance::stop_async(bool panic)
     m_event_loop.push_event(StrategyStopRequest{});
 }
 
-std::future<void> StrategyInstance::wait_for_finish()
+std::future<void> StrategyInstance::finish_future()
 {
     m_finish_promise = std::promise<void>();
     if (ready_to_finish()) {

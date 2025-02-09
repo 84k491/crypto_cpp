@@ -46,7 +46,7 @@ public:
 
     void run_async();
     void stop_async(bool panic = false);
-    [[nodiscard("wait in future")]] std::future<void> wait_for_finish();
+    [[nodiscard("wait in future")]] std::future<void> finish_future();
 
 private:
     void invoke(const std::variant<STRATEGY_EVENTS> & value) override;

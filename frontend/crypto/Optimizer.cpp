@@ -122,7 +122,7 @@ std::optional<std::pair<JsonStrategyConfig, JsonStrategyConfig>> Optimizer::opti
             tr_gateway.set_price_source(strategy_instance.klines_channel());
             strategy_instance.set_channel_capacity(std::chrono::milliseconds{});
             strategy_instance.run_async();
-            strategy_instance.wait_for_finish().wait();
+            strategy_instance.finish_future().wait();
             const auto profit = strategy_instance.strategy_result_channel().get().final_profit;
 
             {
