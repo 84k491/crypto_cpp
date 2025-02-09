@@ -33,7 +33,6 @@ MultiSeriesChart::MultiSeriesChart(QWidget * parent)
     : QCustomPlot(parent)
 {
     QSharedPointer<QCPAxisTickerDateTime> dateTicker(new QCPAxisTickerDateTime);
-    // dateTicker->setDateTimeFormat("d. MMMM\nyyyy");
     dateTicker->setDateTimeFormat("hh:mm / dd.MM");
     dateTicker->setTickCount(11);
     xAxis->setTicker(dateTicker);
@@ -41,6 +40,38 @@ MultiSeriesChart::MultiSeriesChart(QWidget * parent)
     connect(xAxis, SIGNAL(rangeChanged(QCPRange)), xAxis2, SLOT(setRange(QCPRange)));
     connect(yAxis, SIGNAL(rangeChanged(QCPRange)), yAxis2, SLOT(setRange(QCPRange)));
     setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
+}
+
+void MultiSeriesChart::push_candle(const Candle & c)
+{
+    // TODO implement
+}
+
+void MultiSeriesChart::push_candle_vector(const std::list<Candle> & data)
+{
+    if (m_candle_graph == nullptr) {
+        m_candle_graph = new QCPFinancial(xAxis, yAxis);
+        m_candle_graph->setChartStyle(QCPFinancial::csCandlestick);
+        m_candle_graph->setWidth(60 * 0.9); // TODO get from candle
+        m_candle_graph->setTwoColored(true);
+        m_candle_graph->setBrushPositive(QColor(9, 121, 105)); // TODO move out to the top
+        m_candle_graph->setBrushNegative(QColor( 255, 87, 51 ));
+        m_candle_graph->setPenPositive(QPen(QColor(0, 0, 0)));
+        m_candle_graph->setPenNegative(QPen(QColor(0, 0, 0)));
+    }
+
+    QVector<QCPFinancialData> fin_data;
+    for (const auto & candle : data) {
+        fin_data.emplace_back(
+                static_cast<double>(candle.timestamp().count()) / 1000.,
+                candle.open(),
+                candle.high(),
+                candle.low(),
+                candle.close());
+    }
+    m_candle_graph->data()->set(fin_data, true);
+    rescaleAxes();
+    replot();
 }
 
 void MultiSeriesChart::push_series_vector(
@@ -78,13 +109,6 @@ void MultiSeriesChart::push_series_value(const std::string & series_name,
                                          double data)
 {
     push_series_value_dont_replot(series_name, ts, data, false);
-    replot();
-}
-
-void MultiSeriesChart::clear()
-{
-    clearGraphs();
-    m_series_indexes.clear();
     replot();
 }
 

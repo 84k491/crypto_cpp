@@ -36,19 +36,31 @@ void ChartWindow::subscribe_to_strategy()
 {
     UNWRAP_RET_VOID(str_instance, m_strategy_instance.lock());
 
-    m_subscriptions.push_back(str_instance.price_channel().subscribe(
+    m_subscriptions.push_back(str_instance.candle_channel().subscribe(
             m_event_consumer,
             [this](const auto & vec) {
-                std::list<std::pair<std::chrono::milliseconds, double>> new_data;
-                for (const auto & [ts, price] : vec) {
-                    new_data.emplace_back(ts, price);
+                std::list<Candle> candles;
+                for (const auto & [ts, candle] : vec) {
+                    candles.push_back(candle);
                 }
                 auto & plot = get_or_create_chart(m_price_chart_name);
-                plot.push_series_vector("price", new_data);
+                plot.push_candle_vector(candles);
             },
-            [&](std::chrono::milliseconds ts, const double & price) {
-                get_or_create_chart(m_price_chart_name).push_series_value("price", ts, price);
+            [&](std::chrono::milliseconds ts, const Candle & candle) {
+                auto & plot = get_or_create_chart(m_price_chart_name);
+                plot.push_candle(candle);
             }));
+
+    // TODO remove?
+    // m_subscriptions.push_back(str_instance.price_channel().subscribe(
+    //         m_event_consumer,
+    //         [this](const auto & vec) {
+    //             auto & plot = get_or_create_chart(m_price_chart_name);
+    //             plot.push_series_vector("price", vec);
+    //         },
+    //         [&](std::chrono::milliseconds ts, const double & price) {
+    //             get_or_create_chart(m_price_chart_name).push_series_value("price", ts, price);
+    //         }));
     m_subscriptions.push_back(str_instance.tpsl_channel().subscribe(
             m_event_consumer,
             [this](const std::list<std::pair<std::chrono::milliseconds, Tpsl>> & input_vec) {

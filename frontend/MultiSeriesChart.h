@@ -1,17 +1,18 @@
 #pragma once
 
-#include "Ohlc.h"
+#include "Candle.h"
 #include "Tpsl.h"
 #include "Trade.h"
-#include "TrailingStopLoss.h"
 #include "qcustomplot.h"
 
 class MultiSeriesChart : public QCustomPlot
 {
 public:
     MultiSeriesChart(QWidget * parent = nullptr);
+    ~MultiSeriesChart() override = default;
 
-    void clear();
+    void push_candle(const Candle & c);
+    void push_candle_vector(const std::list<Candle> & data);
 
     void push_series_vector(
             const std::string & series_name,
@@ -30,7 +31,7 @@ public:
     void push_tpsl(std::chrono::milliseconds ts, Tpsl tpsl);
     void push_stop_loss(std::chrono::milliseconds ts, double stop_price);
 
-    void set_title(const std::string & title);
+    void set_title(const std::string & title); // TODO implement
 
 private:
     void push_series_value_dont_replot(const std::string & series_name,
@@ -43,6 +44,8 @@ private:
 private:
     const std::chrono::milliseconds limit_interval = std::chrono::minutes{1};
     std::unordered_map<std::string, std::chrono::milliseconds> m_last_points; // to limit the rate
+
+    QCPFinancial * m_candle_graph = nullptr;
 
     std::map<std::string, int> m_series_indexes;
 };
