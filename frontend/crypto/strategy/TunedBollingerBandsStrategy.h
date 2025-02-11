@@ -34,6 +34,8 @@ public:
     EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & strategy_internal_data_channel() override;
     bool is_valid() const override;
 
+    std::optional<std::chrono::milliseconds> timeframe() const override;
+
 private:
     TunedBollingerBandsStrategyConfig m_config;
 

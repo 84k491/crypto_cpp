@@ -39,6 +39,11 @@ bool TunedBollingerBandsStrategy::is_valid() const
     return m_config.is_valid();
 }
 
+std::optional<std::chrono::milliseconds> TunedBollingerBandsStrategy::timeframe() const
+{
+    return {};
+}
+
 #define UNWRAP_RET(var, ret_value) \
     if (!var##_opt.has_value()) {  \
         return ret_value;          \

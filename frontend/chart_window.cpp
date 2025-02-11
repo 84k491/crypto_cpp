@@ -46,7 +46,7 @@ void ChartWindow::subscribe_to_strategy()
                 auto & plot = get_or_create_chart(m_price_chart_name);
                 plot.push_candle_vector(candles);
             },
-            [&](std::chrono::milliseconds ts, const Candle & candle) {
+            [&](std::chrono::milliseconds, const Candle & candle) {
                 auto & plot = get_or_create_chart(m_price_chart_name);
                 plot.push_candle(candle);
             }));

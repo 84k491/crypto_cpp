@@ -9,8 +9,6 @@ CandleBuilder::CandleBuilder(std::chrono::milliseconds timeframe)
 
 std::vector<Candle> CandleBuilder::push_trade(double price, SignedVolume volume, std::chrono::milliseconds timestamp)
 {
-    // TODO case with empty candles between the last and the new
-
     const auto current_timeframe_iter = timestamp.count() / m_timeframe.count();
     const auto saved_timeframe_iter = m_start.count() / m_timeframe.count();
     const auto current_start_ts = current_timeframe_iter * m_timeframe.count();
@@ -34,9 +32,23 @@ std::vector<Candle> CandleBuilder::push_trade(double price, SignedVolume volume,
     if (m_start != std::chrono::milliseconds{}) {
         // pushing empty candles with close price
         for (int i = 0; i < current_timeframe_iter - saved_timeframe_iter - 1; ++i) {
-            res.emplace_back((current_timeframe_iter + 1) * m_timeframe, m_close, m_close, m_close, m_close, 0.);
+            res.emplace_back(
+                    m_timeframe,
+                    (current_timeframe_iter + 1) * m_timeframe,
+                    m_close,
+                    m_close,
+                    m_close,
+                    m_close,
+                    0.);
         }
-        res.emplace_back(m_start, m_open, m_high, m_low, m_close, m_volume);
+        res.emplace_back(
+                m_timeframe,
+                m_start,
+                m_open,
+                m_high,
+                m_low,
+                m_close,
+                m_volume);
     }
 
     // initializing the new candle

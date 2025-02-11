@@ -42,20 +42,22 @@ MultiSeriesChart::MultiSeriesChart(QWidget * parent)
     setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
 }
 
-void MultiSeriesChart::push_candle(const Candle & c)
+void MultiSeriesChart::push_candle(const Candle &)
 {
     // TODO implement
+    throw std::runtime_error("Not implemented");
 }
 
 void MultiSeriesChart::push_candle_vector(const std::list<Candle> & data)
 {
     if (m_candle_graph == nullptr) {
+        const auto timeframe = std::chrono::duration_cast<std::chrono::seconds>(data.front().timeframe()).count();
         m_candle_graph = new QCPFinancial(xAxis, yAxis);
         m_candle_graph->setChartStyle(QCPFinancial::csCandlestick);
-        m_candle_graph->setWidth(60 * 0.9); // TODO get from candle
+        m_candle_graph->setWidth(timeframe * 0.9);
         m_candle_graph->setTwoColored(true);
         m_candle_graph->setBrushPositive(QColor(9, 121, 105)); // TODO move out to the top
-        m_candle_graph->setBrushNegative(QColor( 255, 87, 51 ));
+        m_candle_graph->setBrushNegative(QColor(255, 87, 51));
         m_candle_graph->setPenPositive(QPen(QColor(0, 0, 0)));
         m_candle_graph->setPenNegative(QPen(QColor(0, 0, 0)));
     }
@@ -63,7 +65,7 @@ void MultiSeriesChart::push_candle_vector(const std::list<Candle> & data)
     QVector<QCPFinancialData> fin_data;
     for (const auto & candle : data) {
         fin_data.emplace_back(
-                static_cast<double>(candle.timestamp().count()) / 1000.,
+                static_cast<double>(candle.ts().count()) / 1000.,
                 candle.open(),
                 candle.high(),
                 candle.low(),

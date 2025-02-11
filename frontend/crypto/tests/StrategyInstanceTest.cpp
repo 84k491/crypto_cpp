@@ -150,6 +150,11 @@ public:
 
     bool is_valid() const override { return true; }
 
+    std::optional<std::chrono::milliseconds> timeframe() const override
+    {
+        return {};
+    }
+
 public:
     void signal_on_next_tick(const Side & signal_side)
     {

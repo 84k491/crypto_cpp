@@ -32,6 +32,8 @@ public:
 
     bool is_valid() const override;
 
+    std::optional<std::chrono::milliseconds> timeframe() const override;
+
 private:
     BollingerBandsStrategyConfig m_config;
 

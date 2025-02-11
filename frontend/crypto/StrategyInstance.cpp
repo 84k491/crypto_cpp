@@ -47,7 +47,7 @@ StrategyInstance::StrategyInstance(
         IMarketDataGateway & md_gateway,
         ITradingGateway & tr_gateway)
     : m_strategy_guid(xg::newGuid())
-    , m_candle_builder{timeframe}
+    , m_candle_builder{strategy_ptr->timeframe().value_or(std::chrono::seconds{1})}
     , m_md_gateway(md_gateway)
     , m_tr_gateway(tr_gateway)
     , m_strategy(strategy_ptr)
@@ -372,7 +372,7 @@ void StrategyInstance::handle_event(const MDPriceEvent & response)
 
     const auto candles = m_candle_builder.push_trade(price, SignedVolume{}, ts);
     for (const auto & candle : candles) {
-        m_candle_channel.push(candle.timestamp(), candle);
+        m_candle_channel.push(candle.ts(), candle);
     }
 
     const auto signal = m_strategy->push_price({ts, price});

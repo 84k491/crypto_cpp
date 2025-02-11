@@ -1,4 +1,5 @@
 #include "BollingerBandsStrategy.h"
+
 #include "Enums.h"
 
 BollingerBandsStrategyConfig::BollingerBandsStrategyConfig(const JsonStrategyConfig & json)
@@ -33,6 +34,11 @@ BollingerBandsStrategy::BollingerBandsStrategy(const BollingerBandsStrategyConfi
 bool BollingerBandsStrategy::is_valid() const
 {
     return m_config.is_valid();
+}
+
+std::optional<std::chrono::milliseconds> BollingerBandsStrategy::timeframe() const
+{
+    return {};
 }
 
 std::optional<Signal> BollingerBandsStrategy::push_price(std::pair<std::chrono::milliseconds, double> ts_and_price)

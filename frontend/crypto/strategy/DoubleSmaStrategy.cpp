@@ -73,6 +73,11 @@ bool DoubleSmaStrategy::is_valid() const
     return m_config.is_valid();
 }
 
+std::optional<std::chrono::milliseconds> DoubleSmaStrategy::timeframe() const
+{
+    return {};
+}
+
 EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & DoubleSmaStrategy::strategy_internal_data_channel()
 {
     return m_strategy_internal_data_channel;

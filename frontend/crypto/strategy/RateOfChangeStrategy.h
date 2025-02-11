@@ -30,6 +30,8 @@ public:
 
     bool is_valid() const override;
 
+    std::optional<std::chrono::milliseconds> timeframe() const override;
+
 private:
     RateOfChangeStrategyConfig m_config;
     RateOfChange m_rate_of_change;

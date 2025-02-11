@@ -33,6 +33,8 @@ public:
 
     bool is_valid() const override;
 
+    std::optional<std::chrono::milliseconds> timeframe() const override;
+
 private:
     const DSMADiffStrategyConfig m_config;
 

@@ -80,3 +80,9 @@ bool DSMADiffStrategy::is_valid() const
 {
     return m_config.is_valid();
 }
+
+std::optional<std::chrono::milliseconds> DSMADiffStrategy::timeframe() const
+{
+    return {};
+}
+
