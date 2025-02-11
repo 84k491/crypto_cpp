@@ -23,7 +23,6 @@
 
 class StrategyInstance : public IEventInvoker<STRATEGY_EVENTS>
 {
-    static constexpr std::chrono::seconds timeframe = std::chrono::minutes(1);
 public:
     StrategyInstance(
             const Symbol & symbol,

@@ -57,6 +57,7 @@ StrategyInstance::StrategyInstance(
     , m_historical_md_request(historical_md_request)
     , m_event_loop(*this)
 {
+    // TODO build exit strategy outside
     const auto exit_strategy_opt = ExitStrategyFactory::build_exit_strategy(
             exit_strategy_name,
             exit_strategy_config,
@@ -371,14 +372,21 @@ void StrategyInstance::handle_event(const MDPriceEvent & response)
     }
 
     const auto candles = m_candle_builder.push_trade(price, SignedVolume{}, ts);
+    std::optional<Signal> signal_opt;
     for (const auto & candle : candles) {
+        auto s = m_strategy->push_candle(candle);
+        if (s.has_value()) {
+            signal_opt = s.value();
+        }
         m_candle_channel.push(candle.ts(), candle);
     }
 
-    const auto signal = m_strategy->push_price({ts, price});
+    if (!signal_opt) {
+        signal_opt = m_strategy->push_price({ts, price});
+    }
     if (m_position_manager.opened() == nullptr && m_pending_orders.empty()) {
-        if (signal.has_value()) {
-            on_signal(signal.value());
+        if (signal_opt.has_value()) {
+            on_signal(signal_opt.value());
         }
     }
 

@@ -142,6 +142,7 @@ public:
         }
         return std::nullopt;
     }
+    std::optional<Signal> push_candle(const Candle &) override { return {}; }
 
     EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & strategy_internal_data_channel() override
     {

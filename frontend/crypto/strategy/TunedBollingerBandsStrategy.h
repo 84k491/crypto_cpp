@@ -30,6 +30,7 @@ public:
     TunedBollingerBandsStrategy(const TunedBollingerBandsStrategyConfig & config);
 
     std::optional<Signal> push_price(std::pair<std::chrono::milliseconds, double> ts_and_price) override;
+    std::optional<Signal> push_candle(const Candle &) override { return {}; }
 
     EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & strategy_internal_data_channel() override;
     bool is_valid() const override;
