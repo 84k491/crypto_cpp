@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Side.h"
 #include "nlohmann/json.hpp"
 
 class Candle
@@ -31,6 +32,7 @@ public:
     double low() const { return m_low; }
     double close() const { return m_close; }
     double volume() const { return m_volume; }
+    Side side() const { return m_close > m_open ? Side::buy() : Side::sell(); }
 
     nlohmann::json to_json() const;
 

@@ -1,8 +1,6 @@
 #pragma once
 
 #include "JsonStrategyConfig.h"
-#include "RateOfChange.h"
-#include "SimpleMovingAverage.h"
 #include "StrategyInterface.h"
 
 class RateOfChangeStrategyConfig
@@ -16,12 +14,12 @@ public:
 
     std::chrono::milliseconds m_timeframe = {};
     int m_trigger_interval = {};
-    int m_roc_interval = {};
     double m_signal_threshold = 0.;
 };
 
 class RateOfChangeStrategy : public IStrategy
 {
+    static constexpr size_t s_roc_interval = 1;
 public:
     RateOfChangeStrategy(const RateOfChangeStrategyConfig & config);
 
@@ -35,7 +33,7 @@ public:
 
 private:
     std::list<double> m_prev_closing_prices;
-    unsigned m_trigger_iter = 0;
+    int m_trigger_iter = 0;
     RateOfChangeStrategyConfig m_config;
     EventTimeseriesChannel<std::tuple<std::string, std::string, double>> m_strategy_internal_data_channel;
 };

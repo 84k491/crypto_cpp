@@ -17,7 +17,7 @@ class BacktestEventConsumer : public IEventConsumer<LambdaEvent>
 
 class BacktestTrailingStopLoss
 {
-    static constexpr double taker_fee_rate = 0.00055; // TODO take it from BTGW
+    static constexpr double taker_fee_rate = 0.001; // TODO take it from BTGW
 public:
     BacktestTrailingStopLoss(std::shared_ptr<SignedVolume> & pos_volume, double current_price, const TrailingStopLoss & trailing_stop);
 
@@ -35,7 +35,7 @@ private:
 class BacktestTradingGateway : public ITradingGateway
 {
 public:
-    static constexpr double taker_fee_rate = 0.00055;
+    static constexpr double taker_fee_rate = 0.001;
     BacktestTradingGateway();
 
     void set_price_source(EventTimeseriesChannel<double> & channel);
