@@ -5,6 +5,7 @@
 #include <optional>
 #include <utility>
 
+// TODO useless now? remove?
 class RateOfChange
 {
 public:

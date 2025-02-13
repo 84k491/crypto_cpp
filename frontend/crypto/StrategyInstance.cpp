@@ -47,7 +47,7 @@ StrategyInstance::StrategyInstance(
         IMarketDataGateway & md_gateway,
         ITradingGateway & tr_gateway)
     : m_strategy_guid(xg::newGuid())
-    , m_candle_builder{strategy_ptr->timeframe().value_or(std::chrono::seconds{1})}
+    , m_candle_builder{strategy_ptr->timeframe().value_or(std::chrono::minutes{5})}
     , m_md_gateway(md_gateway)
     , m_tr_gateway(tr_gateway)
     , m_strategy(strategy_ptr)

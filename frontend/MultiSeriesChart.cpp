@@ -50,8 +50,14 @@ void MultiSeriesChart::push_candle(const Candle &)
 
 void MultiSeriesChart::push_candle_vector(const std::list<Candle> & data)
 {
+    const auto timeframe = [&]() -> size_t{
+        if (data.empty()) {
+            return 10;
+        }
+        return std::chrono::duration_cast<std::chrono::seconds>(data.front().timeframe()).count();
+    }();
+
     if (m_candle_graph == nullptr) {
-        const auto timeframe = std::chrono::duration_cast<std::chrono::seconds>(data.front().timeframe()).count();
         m_candle_graph = new QCPFinancial(xAxis, yAxis);
         m_candle_graph->setChartStyle(QCPFinancial::csCandlestick);
         m_candle_graph->setWidth(timeframe * 0.9);
@@ -65,7 +71,7 @@ void MultiSeriesChart::push_candle_vector(const std::list<Candle> & data)
     QVector<QCPFinancialData> fin_data;
     for (const auto & candle : data) {
         fin_data.emplace_back(
-                static_cast<double>(candle.ts().count()) / 1000.,
+                (static_cast<double>(candle.ts().count()) / 1000.) + (timeframe * 0.5), // QCP renders candle from the middle
                 candle.open(),
                 candle.high(),
                 candle.low(),

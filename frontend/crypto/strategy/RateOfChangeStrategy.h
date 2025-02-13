@@ -14,9 +14,9 @@ public:
 
     JsonStrategyConfig to_json() const;
 
-    std::chrono::milliseconds m_sma_interval = {};
-    std::chrono::milliseconds m_trigger_interval = {};
-    std::chrono::milliseconds m_roc_interval = {};
+    std::chrono::milliseconds m_timeframe = {};
+    int m_trigger_interval = {};
+    int m_roc_interval = {};
     double m_signal_threshold = 0.;
 };
 
@@ -26,7 +26,7 @@ public:
     RateOfChangeStrategy(const RateOfChangeStrategyConfig & config);
 
     std::optional<Signal> push_price(std::pair<std::chrono::milliseconds, double> ts_and_price) override;
-    std::optional<Signal> push_candle(const Candle &) override { return {}; }
+    std::optional<Signal> push_candle(const Candle &) override;
     EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & strategy_internal_data_channel() override;
 
     bool is_valid() const override;
@@ -34,9 +34,8 @@ public:
     std::optional<std::chrono::milliseconds> timeframe() const override;
 
 private:
+    std::list<double> m_prev_closing_prices;
+    unsigned m_trigger_iter = 0;
     RateOfChangeStrategyConfig m_config;
-    RateOfChange m_rate_of_change;
-    SimpleMovingAverage m_moving_average;
-    std::chrono::milliseconds m_last_below_trigger_ts = {};
     EventTimeseriesChannel<std::tuple<std::string, std::string, double>> m_strategy_internal_data_channel;
 };

@@ -25,6 +25,7 @@ public:
 
     std::chrono::milliseconds timeframe() const { return m_timeframe; }
     std::chrono::milliseconds ts() const { return m_timestamp; }
+    std::chrono::milliseconds close_ts() const { return m_timestamp + m_timeframe; }
     double open() const { return m_open; }
     double high() const { return m_high; }
     double low() const { return m_low; }
