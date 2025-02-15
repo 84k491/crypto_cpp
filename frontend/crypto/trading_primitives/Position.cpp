@@ -4,7 +4,8 @@
 #include "ScopeExit.h"
 
 OpenedPosition::OpenedPosition(const Trade & trade)
-    : m_open_ts(trade.ts())
+    : m_single_trade_fee(trade.fee())
+    , m_open_ts(trade.ts())
 {
     on_trade(trade.price(), SignedVolume(trade.unsigned_volume(), trade.side()), trade.fee());
 }
@@ -26,7 +27,7 @@ std::optional<ClosedPosition> OpenedPosition::on_trade(double price, const Signe
         const auto trade_amount = price * vol.value();
 
         m_avg_entry_price = (amount_before_trade + trade_amount) / (m_absolute_volume.value() + vol.value());
-        m_entry_fee += fee;
+        m_total_entry_fee += fee;
         return std::nullopt;
     }
 
@@ -49,6 +50,25 @@ ClosedPosition & ClosedPosition::operator+=(const ClosedPosition & other)
     m_rpnl += other.m_rpnl;
     m_close_fee += other.m_close_fee;
     return *this;
+}
+
+double OpenedPosition::upnl(double current_price) const
+{
+    return ((current_price - m_avg_entry_price) * m_absolute_volume.value()) - expected_total_fee();
+}
+
+double OpenedPosition::price_for_upnl(double required_upnl) const
+{
+    return m_avg_entry_price + ((required_upnl + expected_total_fee()) / m_absolute_volume.value());
+}
+
+ProfitPriceLevels OpenedPosition::price_levels() const
+{
+    double fee_profit_price = price_for_upnl(expected_total_fee());
+    double no_loss_price = price_for_upnl(0.0);
+    double fee_loss_price = price_for_upnl(-expected_total_fee());
+
+    return {.fee_profit_price=fee_profit_price, .no_loss_price=no_loss_price, .fee_loss_price=fee_loss_price};
 }
 
 std::ostream & operator<<(std::ostream & os, const OpenedPosition & pos)
