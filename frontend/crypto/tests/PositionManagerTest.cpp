@@ -281,6 +281,14 @@ TEST_F(PositionManagerTest, LongOpenedWithTwoTradesProfit)
     pm.on_trade_received(open_trade1);
     pm.on_trade_received(open_trade2);
 
+    ASSERT_TRUE(pm.opened());
+    const auto & pos = *pm.opened();
+    EXPECT_EQ(pos.side(), Side::buy());
+    EXPECT_EQ(pos.open_ts().count(), 123);
+    EXPECT_EQ(pos.entry_fee(), 0.5);
+    EXPECT_EQ(pos.opened_volume().value(), 2.);
+    EXPECT_EQ(pos.avg_entry_price(), 11.);
+
     Trade close_trade(std::chrono::milliseconds(223),
                       m_symbol.symbol_name,
                       20.,
@@ -319,6 +327,14 @@ TEST_F(PositionManagerTest, ShortOpenedWithTwoTradesProfit)
                       0.3};
     pm.on_trade_received(open_trade1);
     pm.on_trade_received(open_trade2);
+
+    ASSERT_TRUE(pm.opened());
+    const auto & pos = *pm.opened();
+    EXPECT_EQ(pos.side(), Side::sell());
+    EXPECT_EQ(pos.open_ts().count(), 123);
+    EXPECT_EQ(pos.entry_fee(), 0.5);
+    EXPECT_EQ(pos.opened_volume().value(), -2.);
+    EXPECT_EQ(pos.avg_entry_price(), 9.);
 
     Trade close_trade(std::chrono::milliseconds(223),
                       m_symbol.symbol_name,
@@ -359,13 +375,21 @@ TEST_F(PositionManagerTest, LongClosedWithTwoTradesProfit)
                        UnsignedVolume::from(1.).value(),
                        Side::sell(),
                        0.3);
+    EXPECT_FALSE(pm.on_trade_received(close_trade1).has_value());
+
+    ASSERT_TRUE(pm.opened());
+    const auto & pos = *pm.opened();
+    EXPECT_EQ(pos.side(), Side::buy());
+    EXPECT_EQ(pos.entry_fee(), 0.2);
+    EXPECT_EQ(pos.opened_volume().value(), 1.);
+    EXPECT_EQ(pos.avg_entry_price(), 10.);
+
     Trade close_trade2(std::chrono::milliseconds(223),
                        m_symbol.symbol_name,
                        14.,
                        UnsignedVolume::from(1.).value(),
                        Side::sell(),
                        0.4);
-    EXPECT_FALSE(pm.on_trade_received(close_trade1).has_value());
     const auto res_opt = pm.on_trade_received(close_trade2);
     ASSERT_TRUE(res_opt.has_value());
     EXPECT_FALSE(pm.opened());
@@ -581,7 +605,7 @@ TEST_F(PositionManagerTest, LongCloseWithLossFractionalPrice)
     const auto open_amount = 0.05802 * 1723;
     const auto close_amount = 0.05796 * 1723;
     const auto fees = 0.0549827 + 0.0549258;
-    EXPECT_EQ(res.pnl_with_fee, close_amount - open_amount - fees);
+    EXPECT_NEAR(res.pnl_with_fee, close_amount - open_amount - fees, double_epsilon);
     EXPECT_EQ(res.fees_paid, fees);
     EXPECT_EQ(res.opened_time.count(), 100);
 }

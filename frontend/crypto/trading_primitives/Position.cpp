@@ -1,6 +1,7 @@
 #include "Position.h"
 
 #include "Logger.h"
+#include "ScopeExit.h"
 
 OpenedPosition::OpenedPosition(const Trade & trade)
     : m_open_ts(trade.ts())
@@ -15,25 +16,25 @@ std::optional<ClosedPosition> OpenedPosition::on_trade(double price, const Signe
         return std::nullopt;
     }
 
+    ScopeExit se{[&]() {
+        m_absolute_volume += vol;
+    }};
+
     // open or increase
     if (m_absolute_volume.is_zero() || vol.sign() == m_absolute_volume.sign()) {
-        m_absolute_volume += vol;
-        m_currency_amount += price * -1 * vol.value();
+        const auto amount_before_trade = m_avg_entry_price * m_absolute_volume.value();
+        const auto trade_amount = price * vol.value();
 
+        m_avg_entry_price = (amount_before_trade + trade_amount) / (m_absolute_volume.value() + vol.value());
         m_entry_fee += fee;
         return std::nullopt;
     }
 
     ClosedPosition closed_pos;
-    closed_pos.m_currency_amount = price * -1 * vol.value();
+    closed_pos.m_avg_closed_price = price;
     closed_pos.m_closed_volume = vol;
     closed_pos.m_close_fee = fee;
-
-    const auto old_opened_currency_amount = m_currency_amount;
-    m_currency_amount -= -vol.sign() * (m_currency_amount / m_absolute_volume.value()) * vol.as_unsigned_and_side().first.value();
-    const auto entry_amount_closed = (old_opened_currency_amount - m_currency_amount);
-    auto raw_profit_on_close = (closed_pos.m_currency_amount + entry_amount_closed);
-    m_absolute_volume += vol;
+    const auto raw_profit_on_close = (price - m_avg_entry_price) * -vol.value();
     closed_pos.m_rpnl = raw_profit_on_close - fee;
 
     return closed_pos;
@@ -42,7 +43,9 @@ std::optional<ClosedPosition> OpenedPosition::on_trade(double price, const Signe
 ClosedPosition & ClosedPosition::operator+=(const ClosedPosition & other)
 {
     m_closed_volume += other.m_closed_volume;
-    m_currency_amount += other.m_currency_amount;
+    const auto current_amount = m_closed_volume.value() * m_avg_closed_price;
+    const auto other_amount = other.m_closed_volume.value() * other.m_avg_closed_price;
+    m_avg_closed_price = (current_amount + other_amount) / (m_closed_volume.value() + other.m_closed_volume.value());
     m_rpnl += other.m_rpnl;
     m_close_fee += other.m_close_fee;
     return *this;
@@ -54,7 +57,8 @@ std::ostream & operator<<(std::ostream & os, const OpenedPosition & pos)
        << "side = " << pos.side()
        << ", open_ts = " << pos.open_ts()
        << ", entry_fee = " << pos.entry_fee()
-       << ", opened_volume = " << pos.opened_volume().as_unsigned_and_side().first;
+       << ", opened_volume = " << pos.opened_volume().as_unsigned_and_side().first
+       << ", avg_entry_price = " << pos.m_avg_entry_price;
     return os;
 }
 
@@ -62,7 +66,7 @@ std::ostream & operator<<(std::ostream & os, const ClosedPosition & pos)
 {
     os << "ClosedPosition: "
        << "closed_volume = " << pos.m_closed_volume.value()
-       << ", currency_amount = " << pos.m_currency_amount
+       << ", avg_closed_price = " << pos.m_avg_closed_price
        << ", rpnl = " << pos.m_rpnl
        << ", close_fee = " << pos.m_close_fee;
     return os;
