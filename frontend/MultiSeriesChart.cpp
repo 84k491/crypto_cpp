@@ -22,9 +22,12 @@ std::map<std::string, std::tuple<QCPScatterStyle::ScatterShape, QColor, QColor, 
         scatter_series_display_params = {
                 {"buy_trade", {QCPScatterStyle::ssTriangle, Qt::black, Qt::green, 10}},
                 {"sell_trade", {QCPScatterStyle::ssTriangleInverted, Qt::black, Qt::red, 10}},
-                {"take_profit", {QCPScatterStyle::ssCircle, Qt::black, Qt::green, 10}},
+                {"take_profit", {QCPScatterStyle::ssDiamond, Qt::black, Qt::green, 10}},
                 {"stop_loss", {QCPScatterStyle::ssDiamond, Qt::black, Qt::red, 10}},
                 {"trailing_stop_loss", {QCPScatterStyle::ssDiamond, Qt::black, Qt::darkYellow, 10}},
+                {"fee_profit_price", {QCPScatterStyle::ssCircle, Qt::black, Qt::green, 10}},
+                {"no_loss_price", {QCPScatterStyle::ssCircle, Qt::black, Qt::yellow, 10}},
+                {"fee_loss_price", {QCPScatterStyle::ssCircle, Qt::black, Qt::red, 10}},
 };
 
 } // namespace

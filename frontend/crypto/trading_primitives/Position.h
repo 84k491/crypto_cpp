@@ -46,9 +46,6 @@ public:
     auto expected_total_fee() const { return m_total_entry_fee + m_single_trade_fee; }
     ProfitPriceLevels price_levels() const;
 
-    double upnl(double current_price) const;
-    
-
     std::optional<ClosedPosition> on_trade(double price, const SignedVolume & vol, double fee);
 
 private:

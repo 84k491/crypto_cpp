@@ -52,11 +52,6 @@ ClosedPosition & ClosedPosition::operator+=(const ClosedPosition & other)
     return *this;
 }
 
-double OpenedPosition::upnl(double current_price) const
-{
-    return ((current_price - m_avg_entry_price) * m_absolute_volume.value()) - expected_total_fee();
-}
-
 double OpenedPosition::price_for_upnl(double required_upnl) const
 {
     return m_avg_entry_price + ((required_upnl + expected_total_fee()) / m_absolute_volume.value());

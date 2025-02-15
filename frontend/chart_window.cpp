@@ -51,16 +51,26 @@ void ChartWindow::subscribe_to_strategy()
                 plot.push_candle(candle);
             }));
 
-    // TODO remove?
-    // m_subscriptions.push_back(str_instance.price_channel().subscribe(
-    //         m_event_consumer,
-    //         [this](const auto & vec) {
-    //             auto & plot = get_or_create_chart(m_price_chart_name);
-    //             plot.push_series_vector("price", vec);
-    //         },
-    //         [&](std::chrono::milliseconds ts, const double & price) {
-    //             get_or_create_chart(m_price_chart_name).push_series_value("price", ts, price);
-    //         }));
+    m_subscriptions.push_back(str_instance.price_levels_channel().subscribe(
+            m_event_consumer,
+            [this](const auto & vec) {
+                std::vector<std::pair<std::chrono::milliseconds, double>> fee_profit;
+                std::vector<std::pair<std::chrono::milliseconds, double>> no_loss;
+                std::vector<std::pair<std::chrono::milliseconds, double>> fee_loss;
+                for (const auto & [ts, l] : vec) {
+                    fee_profit.push_back({ts, l.fee_profit_price});
+                    no_loss.push_back({ts, l.no_loss_price});
+                    fee_loss.push_back({ts, l.fee_loss_price });
+                }
+                auto & plot = get_or_create_chart(m_price_chart_name);
+                plot.push_scatter_series_vector("fee_profit_price", fee_profit);
+                plot.push_scatter_series_vector("no_loss_price", no_loss);
+                // plot.push_scatter_series_vector("fee_loss_price", fee_loss); // there will be a trade marker here
+            },
+            [&](std::chrono::milliseconds, const ProfitPriceLevels & candle) {
+
+            }));
+
     m_subscriptions.push_back(str_instance.tpsl_channel().subscribe(
             m_event_consumer,
             [this](const std::list<std::pair<std::chrono::milliseconds, Tpsl>> & input_vec) {

@@ -225,6 +225,12 @@ void StrategyInstance::set_channel_capacity(std::optional<std::chrono::milliseco
     depo_channel().set_capacity(capacity);
     tpsl_channel().set_capacity(capacity);
     trailing_stop_channel().set_capacity(capacity);
+    price_channel().set_capacity(capacity);
+}
+
+EventTimeseriesChannel<ProfitPriceLevels> & StrategyInstance::price_levels_channel()
+{
+    return m_price_levels_channel;
 }
 
 EventTimeseriesChannel<Trade> & StrategyInstance::trade_channel()
@@ -445,6 +451,10 @@ void StrategyInstance::handle_event(const TradeEvent & response)
             return *m_position_manager.opened();
         }
     }();
+
+    if (pos.has_value()) {
+        m_price_levels_channel.push(trade.ts(), pos->price_levels());
+    }
 
     if (const auto err = m_exit_strategy->on_trade(pos, trade); err.has_value()) {
         // stop_async(true);
