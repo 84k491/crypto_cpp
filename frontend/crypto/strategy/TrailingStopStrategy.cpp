@@ -10,7 +10,7 @@ TrailigStopLossStrategyConfig::TrailigStopLossStrategyConfig(const JsonStrategyC
     if (config.get().contains("risk")) {
         m_risk = config.get()["risk"].get<double>();
     }
-    Logger::log<LogLevel::Info>("TrailigStopLossStrategyConfig c-tor");
+    Logger::log<LogLevel::Debug>("TrailigStopLossStrategyConfig c-tor");
 }
 
 TrailigStopLossStrategyConfig::TrailigStopLossStrategyConfig(double risk)

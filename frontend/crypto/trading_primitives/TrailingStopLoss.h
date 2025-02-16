@@ -36,7 +36,7 @@ public:
     }
 
     auto price_distance() const { return m_price_distance; }
-    auto side() const { return m_side; }
+    auto side() const { return m_side; } // opposite to position's
     auto symbol_name() const { return m_symbol_name; }
 
     // TODO make two methods. One with opt return, one with guaranteed return

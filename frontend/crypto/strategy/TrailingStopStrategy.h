@@ -44,16 +44,14 @@ public:
     [[nodiscard]] std::optional<std::pair<std::string, bool>>
     handle_event(const TrailingStopLossUpdatedEvent & response) override;
 
-private:
+protected:
     TrailingStopLoss calc_trailing_stop(const Trade & trade);
     void send_trailing_stop(TrailingStopLoss trailing_stop);
-    StopLoss calc_current_stop() const;
 
-private:
+protected:
     Symbol m_symbol;
 
     std::set<xg::Guid> m_pending_requests;
-    std::optional<OpenedPosition> m_opened_position;
 
     std::optional<TrailingStopLoss> m_active_stop_loss;
 

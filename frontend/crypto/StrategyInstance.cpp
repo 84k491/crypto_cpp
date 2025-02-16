@@ -10,6 +10,7 @@
 #include "TrailingStopStrategy.h"
 #include "Volume.h"
 #include "WorkStatus.h"
+#include "DynamicTrailingStopLossStrategy.h"
 
 #include <chrono>
 #include <future>
@@ -31,6 +32,10 @@ public:
         }
         if (strategy_name == "TrailingStop") {
             std::shared_ptr<IExitStrategy> res = std::make_shared<TrailigStopLossStrategy>(symbol, config, gateway);
+            return res;
+        }
+        if (strategy_name == "DynamicTrailingStop") {
+            std::shared_ptr<IExitStrategy> res = std::make_shared<DynamicTrailingStopLossStrategy>(symbol, config, gateway);
             return res;
         }
         Logger::logf<LogLevel::Error>("Unknown exit strategy name: {}", strategy_name);
@@ -73,8 +78,8 @@ StrategyInstance::StrategyInstance(
     m_status.push(WorkStatus::Stopped);
 
     m_event_loop.subscribe(m_md_gateway.historical_prices_channel());
-
     m_event_loop.subscribe(m_md_gateway.live_prices_channel());
+
     m_event_loop.subscribe(m_tr_gateway.order_response_channel());
     m_event_loop.subscribe(m_tr_gateway.trade_channel());
     m_event_loop.subscribe(m_tr_gateway.tpsl_response_channel());
@@ -454,6 +459,7 @@ void StrategyInstance::handle_event(const TradeEvent & response)
 
     if (pos.has_value()) {
         m_price_levels_channel.push(trade.ts(), pos->price_levels());
+        m_exit_strategy->push_price_level(pos->price_levels());
     }
 
     if (const auto err = m_exit_strategy->on_trade(pos, trade); err.has_value()) {

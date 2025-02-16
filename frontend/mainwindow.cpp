@@ -62,7 +62,8 @@ MainWindow::MainWindow(QWidget * parent)
     ui->cb_strategy->setCurrentText(saved_state.m_strategy_name.c_str());
     ui->cb_exit_strategy->addItem("TpslExit");
     ui->cb_exit_strategy->addItem("TrailingStop");
-    ui->cb_exit_strategy->setCurrentText("TrailingStop");
+    ui->cb_exit_strategy->addItem("DynamicTrailingStop");
+    ui->cb_exit_strategy->setCurrentText("DynamicTrailingStop");
 
     const auto symbols = m_gateway.get_symbols("USDT");
     for (const auto & symbol : symbols) {

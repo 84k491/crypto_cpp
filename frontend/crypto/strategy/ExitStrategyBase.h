@@ -16,6 +16,9 @@ public:
     {
     }
 
+    std::optional<std::pair<std::string, bool>>
+    push_price_level(const ProfitPriceLevels &) override { return std::nullopt; }
+
     EventTimeseriesChannel<Tpsl> & tpsl_channel() override { return m_tpsl_channel; }
     EventTimeseriesChannel<StopLoss> & trailing_stop_channel() override { return m_trailing_stop_channel; }
 
