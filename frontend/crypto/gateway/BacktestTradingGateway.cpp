@@ -150,8 +150,8 @@ void BacktestTradingGateway::push_trailing_stop_request(const TrailingStopLossRe
                     trailing_stop_ev.trailing_stop_loss));
 
     m_trailing_stop_update_channel.push({m_symbol,
-                                           m_trailing_stop->stop_loss(),
-                                           m_last_ts});
+                                         m_trailing_stop->stop_loss(),
+                                         m_last_ts});
 }
 
 bool BacktestEventConsumer::push_to_queue(const std::any value)
@@ -203,7 +203,6 @@ std::optional<std::variant<Trade, StopLoss>> BacktestTrailingStopLoss::on_price_
     if (!triggered) {
         return std::nullopt;
     }
-    // Logger::logf<LogLevel::Debug>("Triggered");
 
     const auto opposite_side = side.opposite();
     Trade trade{

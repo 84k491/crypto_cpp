@@ -35,4 +35,6 @@ public:
 private:
     ProfitPriceLevels m_last_pos_price_levels = {};
     DynamicTrailigStopLossStrategyConfig m_dynamic_config; // TODO unify it with m_config
+
+    bool m_triggered_once = false;
 };

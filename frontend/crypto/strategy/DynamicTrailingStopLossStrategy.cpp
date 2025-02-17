@@ -38,12 +38,19 @@ std::optional<std::string> DynamicTrailingStopLossStrategy::on_price_changed(
         std::pair<std::chrono::milliseconds, double> ts_and_price)
 {
     if (!m_active_stop_loss.has_value() || !m_pending_requests.empty()) {
+        m_triggered_once = false;
         return std::nullopt;
     }
+
+    if (m_triggered_once) {
+        return std::nullopt;
+    }
+
     const auto & [ts, price] = ts_and_price;
 
     const int side_sign = m_active_stop_loss->side().opposite().sign();
 
+    // TODO doesn't count fees!
     const auto desired_price_distance = m_active_stop_loss->price_distance() * m_dynamic_config.no_loss_coef();
     const auto no_risk_trigger_price = m_last_pos_price_levels.no_loss_price + (desired_price_distance * side_sign);
     const auto price_distance_side_abs = [&](double current_price, double ref) {
@@ -56,7 +63,7 @@ std::optional<std::string> DynamicTrailingStopLossStrategy::on_price_changed(
         return std::nullopt;
     }
 
-    const double current_stop_price = price - (m_active_stop_loss->price_distance() * side_sign);
+    const double current_stop_price = price - (m_active_stop_loss->price_distance() * side_sign); // TODO it's not trailing! Can go backwards!
     if (price_distance_side_abs(current_stop_price, m_last_pos_price_levels.no_loss_price) >= 0.) {
         // already triggered
         return std::nullopt;
@@ -69,6 +76,7 @@ std::optional<std::string> DynamicTrailingStopLossStrategy::on_price_changed(
 
     Logger::logf<LogLevel::Status>("Updating stop loss' price distance to {}", desired_price_distance);
     send_trailing_stop(new_trailing_stop);
+    m_triggered_once = true;
 
     return std::nullopt;
 }

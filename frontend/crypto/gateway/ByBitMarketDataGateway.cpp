@@ -307,7 +307,7 @@ std::chrono::milliseconds ByBitMarketDataGateway::get_server_time()
     str_future.wait();
 
     ServerTimeResponse response{};
-    const auto j = json::parse(str_future.get());
+    const auto j = json::parse(str_future.get()); // TODO there can be an empty string
     j.get_to(response);
 
     const auto server_time = std::chrono::duration_cast<std::chrono::milliseconds>(response.result.time_nano);

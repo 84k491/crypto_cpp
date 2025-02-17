@@ -1,5 +1,6 @@
 #include "StrategyInstance.h"
 
+#include "DynamicTrailingStopLossStrategy.h"
 #include "EventLoop.h"
 #include "Events.h"
 #include "ITradingGateway.h"
@@ -10,7 +11,6 @@
 #include "TrailingStopStrategy.h"
 #include "Volume.h"
 #include "WorkStatus.h"
-#include "DynamicTrailingStopLossStrategy.h"
 
 #include <chrono>
 #include <future>
