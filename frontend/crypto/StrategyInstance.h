@@ -54,6 +54,7 @@ public:
 private:
     void invoke(const std::variant<STRATEGY_EVENTS> & value) override;
     void handle_event(const HistoricalMDGeneratorEvent & response);
+    void handle_event(const HistoricalMDGeneratorLowMemEvent & response);
     void handle_event(const HistoricalMDPriceEvent & response);
     void handle_event(const MDPriceEvent & response);
     void handle_event(const OrderResponseEvent & response);
@@ -114,6 +115,7 @@ private:
     std::optional<std::promise<void>> m_finish_promise;
 
     std::optional<HistoricalMDGeneratorEvent> m_historical_md_generator;
+    std::optional<HistoricalMDGeneratorLowMemEvent> m_historical_md_lowmem_generator;
     bool m_backtest_in_progress = false;
 
     EventLoopSubscriber<STRATEGY_EVENTS> m_event_loop;

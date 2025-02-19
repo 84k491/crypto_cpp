@@ -1,5 +1,6 @@
 #include "StrategyInstance.h"
 
+#include "BybitTradesDownloader.h"
 #include "DynamicTrailingStopLossStrategy.h"
 #include "EventLoop.h"
 #include "Events.h"
@@ -78,6 +79,7 @@ StrategyInstance::StrategyInstance(
     m_status.push(WorkStatus::Stopped);
 
     m_event_loop.subscribe(m_md_gateway.historical_prices_channel());
+    m_event_loop.subscribe(m_md_gateway.historical_lowmem_channel());
     m_event_loop.subscribe(m_md_gateway.live_prices_channel());
 
     m_event_loop.subscribe(m_tr_gateway.order_response_channel());
@@ -295,6 +297,9 @@ void StrategyInstance::invoke(const std::variant<STRATEGY_EVENTS> & var)
                     [&](const HistoricalMDGeneratorEvent & response) {
                         handle_event(response);
                     },
+                    [&](const HistoricalMDGeneratorLowMemEvent & response) {
+                        handle_event(response);
+                    },
                     [&](const HistoricalMDPriceEvent & response) {
                         handle_event(response);
                     },
@@ -360,12 +365,37 @@ void StrategyInstance::handle_event(const HistoricalMDGeneratorEvent & response)
     m_event_loop.push_event(ev_opt.value());
 }
 
+void StrategyInstance::handle_event(const HistoricalMDGeneratorLowMemEvent & response)
+{
+    const size_t erased_cnt = m_pending_requests.erase(response.request_guid());
+    if (erased_cnt == 0) {
+        Logger::logf<LogLevel::Debug>("unsolicited HistoricalMDPackEvent: {}, this->guid: {}", response.request_guid(), m_strategy_guid);
+        return;
+    }
+
+    m_historical_md_lowmem_generator = response;
+    const auto ev_opt = m_historical_md_generator->get_next();
+    if (!ev_opt.has_value()) {
+        Logger::logf<LogLevel::Error>("no event in HistoricalMDPackEvent: {}", response.request_guid());
+        return;
+    }
+
+    m_backtest_in_progress = true;
+    m_event_loop.push_event(ev_opt.value());
+}
+
 void StrategyInstance::handle_event(const HistoricalMDPriceEvent & response)
 {
     handle_event(static_cast<const MDPriceEvent &>(response));
-    auto ev_opt = m_historical_md_generator->get_next();
+    auto ev_opt = response.lowmem ? m_historical_md_lowmem_generator->get_next() : m_historical_md_generator->get_next();
     if (!ev_opt.has_value()) {
         m_event_loop.push_event(StrategyStopRequest{});
+        if (response.lowmem) {
+            m_historical_md_lowmem_generator.reset();
+        }
+        else {
+            m_historical_md_generator.reset();
+        }
         return;
     }
     const auto & ev = ev_opt.value();

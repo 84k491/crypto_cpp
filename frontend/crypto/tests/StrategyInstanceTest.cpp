@@ -27,6 +27,11 @@ public:
     {
     }
 
+    EventChannel<HistoricalMDGeneratorLowMemEvent> & historical_lowmem_channel() override
+    {
+        return m_historical_lowmem_channel;
+    }
+
     EventChannel<HistoricalMDGeneratorEvent> & historical_prices_channel() override
     {
         return m_historical_prices_channel;
@@ -65,6 +70,7 @@ private:
     size_t m_unsubscribed_count = 0;
 
     EventChannel<HistoricalMDGeneratorEvent> m_historical_prices_channel;
+    EventChannel<HistoricalMDGeneratorLowMemEvent> m_historical_lowmem_channel;
     EventChannel<MDPriceEvent> m_live_prices_channel;
 };
 

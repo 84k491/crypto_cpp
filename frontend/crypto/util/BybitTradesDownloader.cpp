@@ -202,3 +202,13 @@ std::vector<std::pair<std::chrono::milliseconds, double>> BybitTradesDownloader:
     Logger::logf<LogLevel::Debug>("Got {} prices", res.size());
     return res;
 }
+
+std::shared_ptr<SequentialMarketDataReader> BybitTradesDownloader::request_lowmem(const HistoricalMDRequest & req)
+{
+    std::vector<std::pair<std::chrono::milliseconds, double>> res;
+
+    const auto files = download(req);
+    const auto reader = std::make_shared<SequentialMarketDataReader>(files);
+
+    return reader;
+}

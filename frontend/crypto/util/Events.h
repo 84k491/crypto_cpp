@@ -31,10 +31,13 @@ struct MDPriceEvent : public OneWayEvent
 
 struct HistoricalMDPriceEvent : MDPriceEvent
 {
-    HistoricalMDPriceEvent(std::pair<std::chrono::milliseconds, double> _ts_and_price)
+    HistoricalMDPriceEvent(std::pair<std::chrono::milliseconds, double> _ts_and_price, bool lowmem)
         : MDPriceEvent(_ts_and_price)
+        , lowmem(lowmem)
     {
     }
+
+    bool lowmem; // TODO make it possible to use const here
 };
 
 class HistoricalMDGeneratorEvent : public OneWayEvent
@@ -88,10 +91,10 @@ public:
             return std::nullopt;
         }
 
-        return HistoricalMDPriceEvent{(*m_pack)[iter]};
+        return HistoricalMDPriceEvent{(*m_pack)[iter], false};
     }
 
-    bool has_data() const { return m_pack && !m_pack->empty(); }
+    bool has_data() const { return m_pack && !m_pack->empty(); } // TODO useless
     auto request_guid() const { return m_request_guid; }
 
 private:
@@ -99,6 +102,61 @@ private:
 
     PricePackPtr m_pack;
     size_t m_iter = 0;
+};
+
+class SequentialMarketDataReader;
+
+class HistoricalMDGeneratorLowMemEvent : public OneWayEvent
+{
+    using PricePackPtr = std::shared_ptr<const std::vector<std::pair<std::chrono::milliseconds, double>>>;
+
+public:
+    HistoricalMDGeneratorLowMemEvent(xg::Guid guid, std::shared_ptr<SequentialMarketDataReader> reader)
+        : m_request_guid(guid)
+        , m_reader(std::move(reader))
+    {
+    }
+
+    HistoricalMDGeneratorLowMemEvent(const HistoricalMDGeneratorLowMemEvent & other)
+        : m_request_guid(other.m_request_guid)
+        , m_reader(other.m_reader)
+    {
+    }
+
+    HistoricalMDGeneratorLowMemEvent & operator=(const HistoricalMDGeneratorLowMemEvent & other)
+    {
+        if (this == &other) {
+            return *this;
+        }
+        m_request_guid = other.m_request_guid;
+        m_reader = other.m_reader;
+        return *this;
+    }
+
+    HistoricalMDGeneratorLowMemEvent(HistoricalMDGeneratorLowMemEvent && other) noexcept
+        : m_request_guid(other.m_request_guid)
+        , m_reader(std::move(other.m_reader))
+    {
+    }
+
+    HistoricalMDGeneratorLowMemEvent & operator=(HistoricalMDGeneratorLowMemEvent && other) noexcept
+    {
+        if (this == &other) {
+            return *this;
+        }
+        m_request_guid = other.m_request_guid;
+        m_reader = std::move(other.m_reader);
+        return *this;
+    }
+
+    std::optional<HistoricalMDPriceEvent> get_next();
+
+    auto request_guid() const { return m_request_guid; }
+
+private:
+    xg::Guid m_request_guid;
+
+    std::shared_ptr<SequentialMarketDataReader> m_reader;
 };
 
 struct HistoricalMDPackEvent : public OneWayEvent
@@ -119,6 +177,18 @@ std::ostream & operator<<(std::ostream & os, const HistoricalMDRequestData & dat
 struct HistoricalMDRequest : public OneWayEvent
 {
     HistoricalMDRequest(
+            const Symbol & symbol,
+            HistoricalMDRequestData data);
+
+    HistoricalMDRequestData data;
+    Symbol symbol;
+    bool lowmem = true;
+    xg::Guid guid;
+};
+
+struct HistoricalMDLowMemRequest : public OneWayEvent
+{
+    HistoricalMDLowMemRequest(
             const Symbol & symbol,
             HistoricalMDRequestData data);
 
@@ -289,14 +359,15 @@ struct StrategyStopRequest : public OneWayEvent
     }
 };
 
-#define STRATEGY_EVENTS HistoricalMDGeneratorEvent,    \
-                        HistoricalMDPriceEvent,        \
-                        MDPriceEvent,                  \
-                        OrderResponseEvent,            \
-                        TradeEvent,                    \
-                        TpslResponseEvent,             \
-                        TpslUpdatedEvent,              \
-                        TrailingStopLossResponseEvent, \
-                        TrailingStopLossUpdatedEvent,  \
-                        StrategyStopRequest,           \
-                        LambdaEvent
+#define STRATEGY_EVENTS LambdaEvent,                      \
+                        HistoricalMDGeneratorEvent,       \
+                        HistoricalMDGeneratorLowMemEvent, \
+                        HistoricalMDPriceEvent,           \
+                        MDPriceEvent,                     \
+                        OrderResponseEvent,               \
+                        TradeEvent,                       \
+                        TpslResponseEvent,                \
+                        TpslUpdatedEvent,                 \
+                        TrailingStopLossResponseEvent,    \
+                        TrailingStopLossUpdatedEvent,     \
+                        StrategyStopRequest

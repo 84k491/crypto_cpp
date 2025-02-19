@@ -332,6 +332,12 @@ void ByBitMarketDataGateway::push_async_request(LiveMDRequest && request)
 
 void ByBitMarketDataGateway::handle_request(const HistoricalMDRequest & request)
 {
+    if (request.lowmem) {
+        const auto reader_ptr = BybitTradesDownloader::request_lowmem(request);
+        HistoricalMDGeneratorLowMemEvent ev(request.guid, reader_ptr);
+        // m_historical_lowmem_channel.push(ev);
+    }
+
     const auto symbol = request.symbol;
     const auto histroical_timerange = Timerange{request.data.start, request.data.end};
 
@@ -442,4 +448,10 @@ EventChannel<HistoricalMDGeneratorEvent> & ByBitMarketDataGateway::historical_pr
 {
     return m_historical_prices_channel;
 }
+
+EventChannel<HistoricalMDGeneratorLowMemEvent> & ByBitMarketDataGateway::historical_lowmem_channel()
+{
+    return m_historical_lowmem_channel;
+}
+
 EventChannel<MDPriceEvent> & ByBitMarketDataGateway::live_prices_channel() { return m_live_prices_channel; }

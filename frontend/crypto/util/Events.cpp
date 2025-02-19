@@ -1,4 +1,5 @@
 #include "Events.h"
+#include "BybitTradesDownloader.h"
 
 HistoricalMDRequest::HistoricalMDRequest(const Symbol & symbol,
                                          HistoricalMDRequestData data)
@@ -24,4 +25,13 @@ std::ostream & operator<<(std::ostream & os, const HistoricalMDRequestData & dat
 {
     return os << "HistoricalMDRequestData{"
               << "start: " << data.start << ", end: " << data.end << "}";
+}
+
+std::optional<HistoricalMDPriceEvent> HistoricalMDGeneratorLowMemEvent::get_next()
+{
+    const auto price_opt = m_reader->get_next();
+    if (!price_opt.has_value()) {
+        return std::nullopt;
+    }
+    return HistoricalMDPriceEvent{price_opt.value(), true};
 }
