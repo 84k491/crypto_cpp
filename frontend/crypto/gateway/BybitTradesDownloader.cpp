@@ -2,10 +2,10 @@
 
 #include "Logger.h"
 
-#include <algorithm>
 #include <filesystem>
-#include <fstream>
 #include <list>
+
+namespace {
 
 std::string time_to_string(const std::chrono::milliseconds & tp)
 {
@@ -59,6 +59,65 @@ std::vector<std::string> split_string(const std::string & s, const std::string &
     return res;
 }
 
+} // namespace
+
+FileReader::FileReader(std::string filepath)
+    : ifs(filepath)
+{
+    std::getline(ifs, last_line); // skip csv header
+}
+
+std::optional<std::pair<std::chrono::milliseconds, double>> FileReader::get_next()
+{
+    if (!std::getline(ifs, last_line)) {
+        return std::nullopt;
+    }
+
+    const auto split_str = split_string(last_line, ",");
+    const std::string & ts_str = split_str[0];
+    const auto ts_split = split_string(ts_str, ".");
+    const auto seconds = std::stoll(ts_split[0]);
+
+    size_t milli = 0;
+    if (ts_split.size() > 1) {
+        // there can be from 0 to N digits.
+        // keeping first 3
+        const std::string milli_str = ts_split[1].substr(0, 3);
+        // the rest must be multiplied, e.g 1712967661.67 -> multiply by 10 to get 670
+        const auto multiplier = std::pow(10, 3 - milli_str.size());
+        milli = std::stoll(milli_str) * multiplier;
+    }
+
+    const std::chrono::milliseconds ts = std::chrono::seconds{seconds} + std::chrono::milliseconds{milli};
+
+    const std::string & price_str = split_str[4];
+    const double price = std::stod(price_str);
+
+    return {{ts, price}};
+}
+
+SequentialMarketDataReader::SequentialMarketDataReader(std::list<std::string> files)
+{
+    for (auto & file : files) {
+        m_readers.emplace_back(std::move(file));
+    }
+}
+
+std::optional<std::pair<std::chrono::milliseconds, double>> SequentialMarketDataReader::get_next()
+{
+    if (m_readers.empty()) {
+        return std::nullopt;
+    }
+
+    auto next = m_readers.front().get_next();
+    if (next.has_value()) {
+        return next;
+    }
+
+    m_readers.pop_front();
+    return get_next();
+}
+
 // 0 - timestamp,
 // 1 - symbol,
 // 2 - side,
@@ -71,48 +130,22 @@ std::vector<std::string> split_string(const std::string & s, const std::string &
 // 9 - foreignNotional
 std::vector<std::pair<std::chrono::milliseconds, double>> parse_file(const std::string & file_name)
 {
-    std::ifstream ifs(file_name);
-    std::string line;
     std::vector<std::pair<std::chrono::milliseconds, double>> res;
-    bool skiped_first = false;
-    while (std::getline(ifs, line)) {
-        if (!skiped_first) {
-            skiped_first = true;
-            continue;
-        }
-        const auto split_str = split_string(line, ",");
-        const std::string & ts_str = split_str[0];
-        const auto ts_split = split_string(ts_str, ".");
-        const auto seconds = std::stoll(ts_split[0]);
 
-        size_t milli = 0;
-        if (ts_split.size() > 1) {
-            // there can be from 0 to N digits.
-            // keeping first 3
-            const std::string milli_str = ts_split[1].substr(0, 3);
-            // the rest must be multiplied, e.g 1712967661.67 -> multiply by 10 to get 670
-            const auto multiplier = std::pow(10, 3 - milli_str.size());
-            milli = std::stoll(milli_str) * multiplier;
-        }
-
-        const std::chrono::milliseconds ts = std::chrono::seconds{seconds} + std::chrono::milliseconds{milli};
-
-        const std::string & price_str = split_str[4];
-        const double price = std::stod(price_str);
-
-        res.emplace_back(ts, price);
+    FileReader reader(file_name);
+    for (auto line = reader.get_next(); line.has_value(); line = reader.get_next()) {
+        res.push_back(line.value());
     }
+
     return res;
 }
 
-// curl -XGET "https://public.bybit.com/trading/BTCUSDT/BTCUSDT2024-12-25.csv.gz"
-std::vector<std::pair<std::chrono::milliseconds, double>> BybitTradesDownloader::BybitTradesDownloader::request(const HistoricalMDRequest & req)
+std::list<std::string> BybitTradesDownloader::download(const HistoricalMDRequest & req)
 {
     if (!std::filesystem::is_directory(download_dir)) {
         std::filesystem::create_directory(download_dir);
     }
 
-    std::vector<std::pair<std::chrono::milliseconds, double>> res;
     const auto files_list = csv_file_list(req);
     for (const auto & csv_file : files_list) {
         if (!std::filesystem::exists(std::string(download_dir) + "/" + csv_file)) {
@@ -142,16 +175,28 @@ std::vector<std::pair<std::chrono::milliseconds, double>> BybitTradesDownloader:
                 Logger::logf<LogLevel::Error>("Can't download file: {}", csv_file);
                 return {};
             }
-        }
 
-        Logger::logf<LogLevel::Debug>("Got file: {}", csv_file);
-        const auto vec = parse_file(std::string(download_dir) + "/" + csv_file);
-        res.reserve(res.size() + vec.size());
-        for (const auto & [ts, price] : vec) {
-            if (req.data.start <= ts || ts < req.data.end) {
-                res.emplace_back(ts, price);
-            }
+            Logger::logf<LogLevel::Debug>("Downloaded file: {}", csv_file);
         }
+    }
+
+    std::list<std::string> res;
+    for (const auto & csv_file : files_list) {
+        res.push_back(std::string{download_dir} + "/" + csv_file);
+    }
+    return res;
+}
+
+// curl -XGET "https://public.bybit.com/trading/BTCUSDT/BTCUSDT2024-12-25.csv.gz"
+std::vector<std::pair<std::chrono::milliseconds, double>> BybitTradesDownloader::BybitTradesDownloader::request(const HistoricalMDRequest & req)
+{
+    std::vector<std::pair<std::chrono::milliseconds, double>> res;
+
+    const auto files = download(req);
+    SequentialMarketDataReader reader(files);
+
+    for (auto line = reader.get_next(); line.has_value(); line = reader.get_next()) {
+        res.push_back(line.value());
     }
 
     Logger::logf<LogLevel::Debug>("Got {} prices", res.size());
