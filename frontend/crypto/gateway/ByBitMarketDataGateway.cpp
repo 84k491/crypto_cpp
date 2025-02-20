@@ -335,7 +335,8 @@ void ByBitMarketDataGateway::handle_request(const HistoricalMDRequest & request)
     if (request.lowmem) {
         const auto reader_ptr = BybitTradesDownloader::request_lowmem(request);
         HistoricalMDGeneratorLowMemEvent ev(request.guid, reader_ptr);
-        // m_historical_lowmem_channel.push(ev);
+        m_historical_lowmem_channel.push(ev);
+        return;
     }
 
     const auto symbol = request.symbol;
