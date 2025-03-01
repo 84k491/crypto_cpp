@@ -82,7 +82,7 @@ void MainWindow::handle_status_changed(WorkStatus status)
         ui->pb_run->setEnabled(false);
         ui->pb_stop->setEnabled(true);
     }
-    if (status == WorkStatus::Stopped || status == WorkStatus::Live) {
+    if (status == WorkStatus::Stopped || status == WorkStatus::Live || status == WorkStatus::Backtesting) {
         subscribe_to_strategy();
     }
     if (status == WorkStatus::Stopped || status == WorkStatus::Panic) {
@@ -105,14 +105,7 @@ void MainWindow::subscribe_to_strategy()
     m_subscriptions.push_back(m_strategy_instance->strategy_result_channel().subscribe(
             m_event_consumer,
             [&](const StrategyResult & result) {
-                const auto status = m_strategy_instance->status_channel().get();
-                switch (status) {
-                case WorkStatus::Backtesting: break;
-                default: {
-                    render_result(result);
-                    break;
-                }
-                }
+                render_result(result);
             }));
 }
 
@@ -185,6 +178,7 @@ void MainWindow::on_pb_run_clicked()
             ui->wt_exit_params->get_config(),
             m_gateway,
             tr_gateway);
+    m_strategy_instance->set_channel_capacity(std::chrono::hours{ui->sb_channel_capacity_h->value()});
     ui->pb_charts->setEnabled(true);
 
     if (auto * ptr = dynamic_cast<BacktestTradingGateway *>(&tr_gateway); ptr != nullptr) {
@@ -217,6 +211,7 @@ void MainWindow::render_result(StrategyResult result)
     ui->lb_position_amount->setText(QString::number(result.position_currency_amount));
     ui->lb_final_profit->setText(QString::number(result.final_profit));
     ui->lb_trades_count->setText(QString::number(result.trades_count));
+    ui->lb_trade_date->setText(QString::fromStdString(result.last_trade_date));
     ui->lb_fees_paid->setText(QString::number(result.fees_paid));
     ui->lb_profit_per_trade->setText(QString::number(result.profit_per_trade()));
     ui->lb_best_profit->setText(QString::number(result.best_profit_trade.value_or(0.0)));
@@ -314,7 +309,8 @@ void MainWindow::on_pb_optimize_clicked()
                 timerange,
                 entry_strategy_name,
                 exit_strategy_name,
-                optimizer_inputs);
+                optimizer_inputs,
+                ui->sb_optimizer_threads->value());
 
         optimizer.subscribe_for_passed_check([this](int passed_checks, int total_checks) {
             emit signal_optimizer_passed_check(passed_checks, total_checks);

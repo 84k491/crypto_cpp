@@ -5,6 +5,7 @@ std::ostream & operator<<(std::ostream & out, const StrategyResult & result)
     out << "position_currency_amount: " << result.position_currency_amount << std::endl;
     out << "final_profit: " << result.final_profit << std::endl;
     out << "trades_count: " << result.trades_count << std::endl;
+    out << "last_trade_date: " << result.last_trade_date << std::endl;
     out << "profit_poitions_count: " << result.profit_positions_cnt << std::endl;
     out << "loss_poitions_count: " << result.loss_positions_cnt << std::endl;
     out << "fees_paid: " << result.fees_paid << std::endl;

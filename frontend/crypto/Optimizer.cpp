@@ -132,7 +132,7 @@ std::optional<std::pair<JsonStrategyConfig, JsonStrategyConfig>> Optimizer::opti
 
     m_on_passed_check(0, configs.size());
     std::list<std::thread> thread_pool;
-    for (unsigned i = 0; i < s_thread_count; ++i) {
+    for (unsigned i = 0; i < m_thread_count; ++i) {
         thread_pool.emplace_back(thread_callback);
     }
 

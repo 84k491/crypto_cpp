@@ -229,7 +229,7 @@ void StrategyInstance::set_channel_capacity(std::optional<std::chrono::milliseco
     trade_channel().set_capacity(capacity);
     strategy_internal_data_channel().set_capacity(capacity);
     candle_channel().set_capacity(capacity);
-    depo_channel().set_capacity(capacity);
+    // depo_channel().set_capacity(capacity);
     tpsl_channel().set_capacity(capacity);
     trailing_stop_channel().set_capacity(capacity);
     price_channel().set_capacity(capacity);
@@ -476,6 +476,7 @@ void StrategyInstance::handle_event(const TradeEvent & response)
     }
     m_strategy_result.update([&](StrategyResult & res) {
         res.trades_count++;
+        res.set_last_trade_date(trade.ts());
     });
 
     const auto pos = [&]() -> std::optional<OpenedPosition> {
