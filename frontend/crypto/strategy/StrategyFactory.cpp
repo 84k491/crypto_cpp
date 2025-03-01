@@ -50,7 +50,7 @@ std::optional<std::shared_ptr<IStrategy>> StrategyFactory::build_strategy(
         return res;
     }
     if (strategy_name == "TunedBB") {
-        std::shared_ptr<IStrategy> res = std::make_shared<TunedBollingerBandsStrategy>(config);
+        std::shared_ptr<IStrategy> res = std::make_shared<CandleBollingerBandsStrategy>(config);
         return res;
     }
     if (strategy_name == "DebugEveryTick") {

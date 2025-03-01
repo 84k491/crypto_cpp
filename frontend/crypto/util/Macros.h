@@ -20,3 +20,9 @@
         continue;                  \
     }                              \
     auto &(VAR) = *VAR##_PTR;
+
+#define UNWRAP_RET(var, ret_value) \
+    if (!var##_opt.has_value()) {  \
+        return ret_value;          \
+    }                              \
+    const auto &(var) = var##_opt.value();
