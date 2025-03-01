@@ -38,12 +38,12 @@ void OptimizerParametersWidget::setup_widget(const JsonStrategyMetaInfo & entry_
     setLayout(top_layout);
 }
 
-std::vector<std::string> OptimizerParametersWidget::optimizable_parameters()
+std::set<std::string> OptimizerParametersWidget::optimizable_parameters()
 {
-    std::vector<std::string> output;
+    std::set<std::string> output;
     for (const auto & [name, checkbox] : m_checkboxes) {
         if (checkbox->isChecked()) {
-            output.push_back(name);
+            output.insert(name);
         }
     }
     return output;

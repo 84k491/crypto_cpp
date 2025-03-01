@@ -6,16 +6,24 @@
 
 #include <nlohmann/json.hpp>
 
+#include <set>
 #include <utility>
 #include <vector>
 
-struct OptimizerInputs
+struct StrategyOptimizerInputs
 {
-    // set of configs or one config (optimize or not)
-    std::variant<JsonStrategyMetaInfo, JsonStrategyConfig> entry_strategy;
-    std::variant<JsonStrategyMetaInfo, JsonStrategyConfig> exit_strategy;
+    JsonStrategyMetaInfo meta;
+    JsonStrategyConfig current_config;
+    std::set<std::string> optimizable_parameters;
 };
 
+struct OptimizerInputs
+{
+    StrategyOptimizerInputs entry_strategy;
+    StrategyOptimizerInputs exit_strategy;
+};
+
+// TODO move to separate file and implement tests
 class OptimizerParser
 {
 public:
@@ -27,7 +35,7 @@ public:
     std::vector<std::pair<JsonStrategyConfig, JsonStrategyConfig>> get_possible_configs();
 
 private:
-    static std::vector<JsonStrategyConfig> get_possible_configs(const JsonStrategyMetaInfo & meta_info);
+    static std::vector<JsonStrategyConfig> get_possible_configs(const StrategyOptimizerInputs & strategy_optimizer_inputs);
 
     const OptimizerInputs m_inputs;
 };

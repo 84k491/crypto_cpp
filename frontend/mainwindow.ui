@@ -452,23 +452,6 @@
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout_6">
         <item>
-         <widget class="QCheckBox" name="cb_optimize_entry">
-          <property name="text">
-           <string>Optimize entry strategy</string>
-          </property>
-          <property name="checked">
-           <bool>true</bool>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QCheckBox" name="cb_optimize_exit">
-          <property name="text">
-           <string>Optimize exit strategy</string>
-          </property>
-         </widget>
-        </item>
-        <item>
          <widget class="OptimizerParametersWidget" name="wt_optimizer_parameters" native="true">
           <property name="minimumSize">
            <size>

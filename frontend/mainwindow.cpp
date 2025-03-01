@@ -268,25 +268,20 @@ void MainWindow::on_pb_optimize_clicked()
         Logger::log<LogLevel::Error>("No value in required optional");
         return;
     }
-    std::string strategy_name = ui->cb_strategy->currentText().toStdString();
-    const auto entry_config = [&]() -> std::variant<JsonStrategyMetaInfo, JsonStrategyConfig> {
-        if (ui->cb_optimize_entry->isChecked()) {
-            return entry_strategy_meta_info.value();
-        }
-        else {
-            return ui->wt_entry_params->get_config();
-        }
-    };
-    std::string exit_strategy_name = ui->cb_exit_strategy->currentText().toStdString();
-    const auto exit_config = [&]() -> std::variant<JsonStrategyMetaInfo, JsonStrategyConfig> {
-        if (ui->cb_optimize_exit->isChecked()) {
-            return exit_strategy_meta_info.value();
-        }
-        else {
-            return ui->wt_exit_params->get_config();
-        }
-    };
-    OptimizerInputs optimizer_inputs = {.entry_strategy = entry_config(), .exit_strategy = exit_config()};
+    const std::string entry_strategy_name = ui->cb_strategy->currentText().toStdString();
+    const std::string exit_strategy_name = ui->cb_exit_strategy->currentText().toStdString();
+
+    OptimizerInputs optimizer_inputs = {
+            .entry_strategy = {
+                    .meta = entry_strategy_meta_info.value(),
+                    .current_config = ui->wt_entry_params->get_config(),
+                    .optimizable_parameters = ui->wt_optimizer_parameters->optimizable_parameters(),
+            },
+            .exit_strategy = {
+                    .meta = exit_strategy_meta_info.value(),
+                    .current_config = ui->wt_exit_params->get_config(),
+                    .optimizable_parameters = ui->wt_optimizer_parameters->optimizable_parameters(),
+            }};
 
     const auto & timerange = *timerange_opt;
 
@@ -311,13 +306,13 @@ void MainWindow::on_pb_optimize_clicked()
                    timerange,
                    optimizer_inputs,
                    symbol,
-                   strategy_name,
+                   entry_strategy_name,
                    exit_strategy_name]() {
         Optimizer optimizer(
                 m_gateway,
                 symbol.value(),
                 timerange,
-                strategy_name,
+                entry_strategy_name,
                 exit_strategy_name,
                 optimizer_inputs);
 
