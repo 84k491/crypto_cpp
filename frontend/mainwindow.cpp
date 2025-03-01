@@ -178,7 +178,9 @@ void MainWindow::on_pb_run_clicked()
             ui->wt_exit_params->get_config(),
             m_gateway,
             tr_gateway);
-    m_strategy_instance->set_channel_capacity(std::chrono::hours{ui->sb_channel_capacity_h->value()});
+    if (ui->sb_channel_capacity_h->value() >= 0) {
+        m_strategy_instance->set_channel_capacity(std::chrono::hours{ui->sb_channel_capacity_h->value()});
+    }
     ui->pb_charts->setEnabled(true);
 
     if (auto * ptr = dynamic_cast<BacktestTradingGateway *>(&tr_gateway); ptr != nullptr) {

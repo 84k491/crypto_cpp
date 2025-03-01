@@ -8,6 +8,12 @@
             "max_value": 600
         },
         {
+            "name": "candles_threshold",
+            "min_value": 1,
+            "step": 1,
+            "max_value": 5
+        },
+        {
             "name": "std_dev",
             "min_value": 2,
             "step": 0.2,

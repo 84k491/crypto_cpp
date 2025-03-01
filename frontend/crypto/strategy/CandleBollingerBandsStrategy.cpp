@@ -94,12 +94,13 @@ std::optional<Signal> CandleBollingerBandsStrategy::push_candle(const Candle & c
         return std::nullopt;
     }
 
-    if (m_candles_above_price_trigger <= m_config.m_candles_threshold && price > bb_res.m_trend) {
+    const bool not_too_much_candles_above = std::abs(m_candles_above_price_trigger) <= m_config.m_candles_threshold;
+    if (not_too_much_candles_above && m_candles_above_price_trigger > 0) {
         const auto signal = Signal{.side = Side::sell(), .timestamp = ts, .price = price};
         m_last_signal_side = signal.side;
         return signal;
     }
-    if (m_candles_above_price_trigger >= -m_config.m_candles_threshold && price < bb_res.m_trend) {
+    if (not_too_much_candles_above && m_candles_above_price_trigger < 0) {
         const auto signal = Signal{.side = Side::buy(), .timestamp = ts, .price = price};
         m_last_signal_side = signal.side;
         return signal;

@@ -49,7 +49,7 @@ std::optional<std::shared_ptr<IStrategy>> StrategyFactory::build_strategy(
         std::shared_ptr<IStrategy> res = std::make_shared<BollingerBandsStrategy>(config);
         return res;
     }
-    if (strategy_name == "TunedBB") {
+    if (strategy_name == "CandleBB") {
         std::shared_ptr<IStrategy> res = std::make_shared<CandleBollingerBandsStrategy>(config);
         return res;
     }
