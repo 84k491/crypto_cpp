@@ -1,6 +1,12 @@
 {
-    "strategy_name": "TunedBollingerBands",
+    "strategy_name": "CandleBollingerBands",
     "parameters": [
+        {
+            "name": "timeframe_s",
+            "min_value": 60,
+            "step": 60,
+            "max_value": 600
+        },
         {
             "name": "std_dev",
             "min_value": 2,

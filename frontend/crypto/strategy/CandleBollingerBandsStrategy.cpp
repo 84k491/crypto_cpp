@@ -1,4 +1,4 @@
-#include "TunedBollingerBandsStrategy.h"
+#include "CandleBollingerBandsStrategy.h"
 
 CandleBollingerBandsStrategyConfig::CandleBollingerBandsStrategyConfig(const JsonStrategyConfig & json)
 {

@@ -6,7 +6,7 @@
 #include "DoubleSmaStrategy.h"
 #include "Logger.h"
 #include "StrategyInterface.h"
-#include "TunedBollingerBandsStrategy.h"
+#include "CandleBollingerBandsStrategy.h"
 #include "RateOfChangeStrategy.h"
 
 #include <fstream>

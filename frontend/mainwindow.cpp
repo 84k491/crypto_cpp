@@ -55,7 +55,7 @@ MainWindow::MainWindow(QWidget * parent)
 
     ui->cb_strategy->addItem("DoubleSma");
     ui->cb_strategy->addItem("BollingerBands");
-    ui->cb_strategy->addItem("TunedBB");
+    ui->cb_strategy->addItem("CandleBB");
     ui->cb_strategy->addItem("DebugEveryTick");
     ui->cb_strategy->addItem("RateOfChange");
     ui->cb_strategy->addItem("DSMADiff");
