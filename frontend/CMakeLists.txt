@@ -21,6 +21,8 @@ set(PROJECT_SOURCES
         MultiSeriesChart.cpp
         StrategyParametersWidget.h
         StrategyParametersWidget.cpp
+        OptimizerParamsWidget.h
+        OptimizerParamsWidget.cpp
 )
 
 qt_add_executable(frontend

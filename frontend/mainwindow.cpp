@@ -353,6 +353,11 @@ void MainWindow::on_cb_strategy_currentTextChanged(const QString &)
     const auto entry_params_opt = get_entry_strategy_parameters();
     if (entry_params_opt) {
         ui->wt_entry_params->setup_widget(entry_params_opt.value());
+
+        const auto exit_params_opt = get_exit_strategy_parameters();
+        if (exit_params_opt.has_value()) {
+            ui->wt_optimizer_parameters->setup_widget(entry_params_opt.value(), exit_params_opt.value());
+        }
     }
 }
 
@@ -361,6 +366,11 @@ void MainWindow::on_cb_exit_strategy_currentTextChanged(const QString &)
     const auto exit_params_opt = get_exit_strategy_parameters();
     if (exit_params_opt) {
         ui->wt_exit_params->setup_widget(exit_params_opt.value());
+
+        const auto entry_params_opt = get_entry_strategy_parameters();
+        if (entry_params_opt) {
+            ui->wt_optimizer_parameters->setup_widget(entry_params_opt.value(), exit_params_opt.value());
+        }
     }
 }
 

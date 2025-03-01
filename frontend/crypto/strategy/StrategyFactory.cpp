@@ -6,8 +6,6 @@
 #include "DoubleSmaStrategy.h"
 #include "Logger.h"
 #include "StrategyInterface.h"
-#include "TpslExitStrategy.h"
-#include "TrailingStopStrategy.h"
 #include "TunedBollingerBandsStrategy.h"
 #include "RateOfChangeStrategy.h"
 
