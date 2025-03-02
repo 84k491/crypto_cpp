@@ -64,6 +64,10 @@ std::vector<std::string> split_string(const std::string & s, const std::string &
 FileReader::FileReader(std::string filepath)
     : ifs(filepath)
 {
+    if (!ifs.is_open()) {
+        Logger::logf<LogLevel::Error>("Can't open file: {}, {}", filepath, errno);
+        return;
+    }
     std::getline(ifs, last_line); // skip csv header
 }
 
@@ -97,24 +101,27 @@ std::optional<std::pair<std::chrono::milliseconds, double>> FileReader::get_next
 }
 
 SequentialMarketDataReader::SequentialMarketDataReader(std::list<std::string> files)
+    : m_files(std::move(files))
 {
-    for (auto & file : files) {
-        m_readers.emplace_back(std::move(file));
-    }
 }
 
 std::optional<std::pair<std::chrono::milliseconds, double>> SequentialMarketDataReader::get_next()
 {
-    if (m_readers.empty()) {
+    if (m_files.empty()) {
         return std::nullopt;
     }
 
-    auto next = m_readers.front().get_next();
+    if (m_reader == nullptr) {
+        m_reader = std::make_unique<FileReader>(m_files.front());
+        m_files.pop_front();
+    }
+
+    auto next = m_reader->get_next();
     if (next.has_value()) {
         return next;
     }
 
-    m_readers.pop_front();
+    m_reader.reset();
     return get_next();
 }
 

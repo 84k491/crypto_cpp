@@ -376,7 +376,7 @@ void StrategyInstance::handle_event(const HistoricalMDGeneratorLowMemEvent & res
     m_historical_md_lowmem_generator = response;
     const auto ev_opt = m_historical_md_lowmem_generator->get_next();
     if (!ev_opt.has_value()) {
-        Logger::logf<LogLevel::Error>("no event in HistoricalMDPackEvent: {}", response.request_guid());
+        Logger::logf<LogLevel::Error>("no event in HistoricalMDGeneratorLowMemEvent: {}", response.request_guid());
         return;
     }
 

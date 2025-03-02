@@ -25,7 +25,8 @@ public:
     std::optional<std::pair<std::chrono::milliseconds, double>> get_next();
 
 private:
-    std::list<FileReader> m_readers;
+    std::list<std::string> m_files;
+    std::unique_ptr<FileReader> m_reader;
 };
 
 class BybitTradesDownloader
