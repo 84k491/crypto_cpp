@@ -1,5 +1,7 @@
 #include "CandleBollingerBandsStrategy.h"
 
+#include <algorithm>
+
 CandleBollingerBandsStrategyConfig::CandleBollingerBandsStrategyConfig(const JsonStrategyConfig & json)
 {
     if (json.get().contains("std_dev")) {
@@ -80,11 +82,13 @@ std::optional<Signal> CandleBollingerBandsStrategy::push_candle(const Candle & c
         return std::nullopt;
     }
 
-    if (price > bb_res.m_upper_band) {
+    if (price > bb_res.m_upper_band && candle.side() == SideEnum::Buy) {
+        m_candles_above_price_trigger = std::max(m_candles_above_price_trigger, 0);
         ++m_candles_above_price_trigger;
         return std::nullopt;
     }
-    if (price < bb_res.m_lower_band) {
+    if (price < bb_res.m_lower_band && candle.side() == SideEnum::Sell) {
+        m_candles_above_price_trigger = std::min(m_candles_above_price_trigger, 0);
         --m_candles_above_price_trigger;
         return std::nullopt;
     }
@@ -94,13 +98,13 @@ std::optional<Signal> CandleBollingerBandsStrategy::push_candle(const Candle & c
         return std::nullopt;
     }
 
-    const bool not_too_much_candles_above = std::abs(m_candles_above_price_trigger) <= m_config.m_candles_threshold;
-    if (not_too_much_candles_above && m_candles_above_price_trigger > 0) {
+    const bool too_many_candles_above = std::abs(m_candles_above_price_trigger) > m_config.m_candles_threshold;
+    if (!too_many_candles_above && m_candles_above_price_trigger > 0 && candle.side() == SideEnum::Sell) {
         const auto signal = Signal{.side = Side::sell(), .timestamp = ts, .price = price};
         m_last_signal_side = signal.side;
         return signal;
     }
-    if (not_too_much_candles_above && m_candles_above_price_trigger < 0) {
+    if (!too_many_candles_above && m_candles_above_price_trigger < 0 && candle.side() == SideEnum::Buy) {
         const auto signal = Signal{.side = Side::buy(), .timestamp = ts, .price = price};
         m_last_signal_side = signal.side;
         return signal;
