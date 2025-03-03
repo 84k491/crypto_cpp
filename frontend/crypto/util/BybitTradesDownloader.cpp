@@ -107,21 +107,23 @@ SequentialMarketDataReader::SequentialMarketDataReader(std::list<std::string> fi
 
 std::optional<std::pair<std::chrono::milliseconds, double>> SequentialMarketDataReader::get_next()
 {
+    if (!m_public_trades.empty()) {
+        auto res = m_public_trades.front();
+        m_public_trades.pop_front();
+        return res;
+    }
+
     if (m_files.empty()) {
         return std::nullopt;
     }
 
-    if (m_reader == nullptr) {
-        m_reader = std::make_unique<FileReader>(m_files.front());
-        m_files.pop_front();
+    auto reader = FileReader{m_files.front()};
+    m_files.pop_front();
+
+    for (auto line = reader.get_next(); line.has_value(); line = reader.get_next()) {
+        m_public_trades.push_back(line.value());
     }
 
-    auto next = m_reader->get_next();
-    if (next.has_value()) {
-        return next;
-    }
-
-    m_reader.reset();
     return get_next();
 }
 

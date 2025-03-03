@@ -26,7 +26,7 @@ public:
 
 private:
     std::list<std::string> m_files;
-    std::unique_ptr<FileReader> m_reader;
+    std::list<std::pair<std::chrono::milliseconds, double>> m_public_trades;
 };
 
 class BybitTradesDownloader
