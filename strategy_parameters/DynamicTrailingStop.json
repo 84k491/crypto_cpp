@@ -9,8 +9,8 @@
         },
         {
             "name": "risk",
-            "min_value": 0.001,
-            "step": 0.0005,
+            "min_value": 0.01,
+            "step": 0.001,
             "max_value": 0.030
         }
     ]

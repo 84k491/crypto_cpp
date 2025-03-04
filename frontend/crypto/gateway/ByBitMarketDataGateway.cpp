@@ -332,38 +332,9 @@ void ByBitMarketDataGateway::push_async_request(LiveMDRequest && request)
 
 void ByBitMarketDataGateway::handle_request(const HistoricalMDRequest & request)
 {
-    if (request.lowmem) {
-        const auto reader_ptr = BybitTradesDownloader::request_lowmem(request);
-        HistoricalMDGeneratorLowMemEvent ev(request.guid, reader_ptr);
-        m_historical_lowmem_channel.push(ev);
-        return;
-    }
-
-    const auto symbol = request.symbol;
-    const auto histroical_timerange = Timerange{request.data.start, request.data.end};
-
-    if (auto range_it = m_ranges_by_symbol.find(symbol.symbol_name); range_it != m_ranges_by_symbol.end()) {
-        if (auto it = range_it->second.find(histroical_timerange); it != range_it->second.end()) {
-            const auto & prices = it->second;
-
-            HistoricalMDGeneratorEvent ev(request.guid, prices);
-            m_historical_prices_channel.push(ev);
-            return;
-        }
-    }
-
-    auto prices = BybitTradesDownloader::request(request);
-
-    if (prices.empty()) {
-        Logger::log<LogLevel::Error>("Failed to request klines");
-        m_status.push(WorkStatus::Panic);
-        return;
-    }
-
-    auto & range = m_ranges_by_symbol[symbol.symbol_name][histroical_timerange];
-    range = std::make_shared<std::vector<std::pair<std::chrono::milliseconds, double>>>(std::move(prices));
-    HistoricalMDGeneratorEvent ev(request.guid, range);
-    m_historical_prices_channel.push(ev);
+    const auto reader_ptr = BybitTradesDownloader::request_lowmem(request);
+    HistoricalMDGeneratorLowMemEvent ev(request.guid, reader_ptr);
+    m_historical_lowmem_channel.push(ev);
 }
 
 void ByBitMarketDataGateway::handle_request(const LiveMDRequest & request)
@@ -400,7 +371,7 @@ void ByBitMarketDataGateway::on_price_received(const nlohmann::json & json)
     for (const auto & trade : trades_list.trades) {
         OHLC ohlc = {.timestamp = trade.timestamp, .open = trade.price, .high = trade.price, .low = trade.price, .close = trade.price};
         // TODO pushing only close price is not quite correct
-        MDPriceEvent ev{{trade.timestamp, ohlc.close}};
+        MDPriceEvent ev{{trade.timestamp, ohlc.close, SignedVolume{0.}}}; // TODO
         m_live_prices_channel.push(ev);
     }
 }

@@ -18,7 +18,7 @@ std::vector<Candle> CandleBuilder::push_trade(double price, SignedVolume volume,
         m_high = std::max(m_high, price);
         m_low = std::min(m_low, price);
         m_close = price;
-        m_volume += volume.as_unsigned_and_side().first.value();
+        m_volume += volume.value();
         return {};
     }
 

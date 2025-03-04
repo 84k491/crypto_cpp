@@ -83,17 +83,6 @@ private:
     std::unique_ptr<WorkerThreadOnce> m_backtest_thread;
     std::unique_ptr<WorkerThreadLoop> m_live_thread;
 
-    // TODO leave only the last one
-    // ((prices by ts) by timerange) by symbol
-    using PriceVecPtrByTimerange =
-            std::unordered_map<
-                    Timerange,
-                    std::shared_ptr<std::vector<
-                            std::pair<
-                                    std::chrono::milliseconds,
-                                    double>>>>;
-    std::unordered_map<std::string, PriceVecPtrByTimerange> m_ranges_by_symbol;
-
     RestClient rest_client;
     std::shared_ptr<WebSocketClient> m_ws_client;
     ConnectionWatcher m_connection_watcher;

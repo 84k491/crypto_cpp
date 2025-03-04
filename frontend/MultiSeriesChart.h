@@ -46,6 +46,10 @@ private:
     std::unordered_map<std::string, std::chrono::milliseconds> m_last_points; // to limit the rate
 
     QCPFinancial * m_candle_graph = nullptr;
+    QCPAxisRect * m_volumeAxisRect = nullptr;
+    QCPBars *volumePos = nullptr;
+    QCPBars *volumeNeg = nullptr;
+    QCPMarginGroup * m_marginGroup = nullptr;
 
     std::map<std::string, int> m_series_indexes;
 };

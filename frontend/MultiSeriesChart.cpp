@@ -43,6 +43,9 @@ MultiSeriesChart::MultiSeriesChart(QWidget * parent)
     connect(xAxis, SIGNAL(rangeChanged(QCPRange)), xAxis2, SLOT(setRange(QCPRange)));
     connect(yAxis, SIGNAL(rangeChanged(QCPRange)), yAxis2, SLOT(setRange(QCPRange)));
     setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
+
+    m_marginGroup = new QCPMarginGroup(this);
+    axisRect()->setMarginGroup(QCP::msLeft | QCP::msRight, m_marginGroup);
 }
 
 void MultiSeriesChart::push_candle(const Candle &)
@@ -53,7 +56,7 @@ void MultiSeriesChart::push_candle(const Candle &)
 
 void MultiSeriesChart::push_candle_vector(const std::list<Candle> & data)
 {
-    const auto timeframe = [&]() -> size_t{
+    const auto timeframe = [&]() -> size_t {
         if (data.empty()) {
             return 10;
         }
@@ -69,18 +72,59 @@ void MultiSeriesChart::push_candle_vector(const std::list<Candle> & data)
         m_candle_graph->setBrushNegative(QColor(255, 87, 51));
         m_candle_graph->setPenPositive(QPen(QColor(0, 0, 0)));
         m_candle_graph->setPenNegative(QPen(QColor(0, 0, 0)));
+        xAxis->setTickLabels(false);
+        xAxis->setTicks(false);
     }
 
+    // TODO check nullptr
+    m_volumeAxisRect = new QCPAxisRect(this);
+    plotLayout()->addElement(1, 0, m_volumeAxisRect);
+    m_volumeAxisRect->setMaximumSize(QSize(QWIDGETSIZE_MAX, 100));
+    m_volumeAxisRect->axis(QCPAxis::atBottom)->setLayer("axes");
+    m_volumeAxisRect->axis(QCPAxis::atBottom)->grid()->setLayer("grid");
+    QSharedPointer<QCPAxisTickerDateTime> dateTicker(new QCPAxisTickerDateTime);
+    dateTicker->setDateTimeFormat("hh:mm / dd.MM");
+    dateTicker->setTickCount(11);
+    m_volumeAxisRect->axis(QCPAxis::atBottom)->setTicker(dateTicker);
+    m_volumeAxisRect->axis(QCPAxis::atBottom)->setTickLabelRotation(30.);
+
+    plotLayout()->setRowSpacing(0);
+    m_volumeAxisRect->setAutoMargins(QCP::msLeft | QCP::msRight | QCP::msBottom);
+    m_volumeAxisRect->setMargins(QMargins(0, 0, 0, 0));
+    m_volumeAxisRect->setMarginGroup(QCP::msLeft | QCP::msRight, m_marginGroup);
+
+    volumePos = new QCPBars(m_volumeAxisRect->axis(QCPAxis::atBottom), m_volumeAxisRect->axis(QCPAxis::atLeft));
+    volumeNeg = new QCPBars(m_volumeAxisRect->axis(QCPAxis::atBottom), m_volumeAxisRect->axis(QCPAxis::atLeft));
+    volumePos->setWidth(timeframe * 0.9);
+    volumePos->setPen(Qt::NoPen);
+    volumePos->setBrush(QColor(100, 180, 110));
+    volumeNeg->setWidth(timeframe * 0.9);
+    volumeNeg->setPen(Qt::NoPen);
+    volumeNeg->setBrush(QColor(180, 90, 90));
+
     QVector<QCPFinancialData> fin_data;
+    QSharedPointer<QCPBarsDataContainer> long_volume_data(new QCPBarsDataContainer);
+    QSharedPointer<QCPBarsDataContainer> short_volume_data(new QCPBarsDataContainer);
     for (const auto & candle : data) {
+        const double time = (static_cast<double>(candle.ts().count()) / 1000.) + (timeframe * 0.5); // QCP renders candle from the middle
         fin_data.emplace_back(
-                (static_cast<double>(candle.ts().count()) / 1000.) + (timeframe * 0.5), // QCP renders candle from the middle
+                time,
                 candle.open(),
                 candle.high(),
                 candle.low(),
                 candle.close());
+
+        auto & container = candle.volume() > 0 ? long_volume_data : short_volume_data;
+        QCPBarsData d{time, std::fabs(candle.volume())};
+        container->add(d);
     }
     m_candle_graph->data()->set(fin_data, true);
+    volumePos->setData(long_volume_data);
+    volumeNeg->setData(short_volume_data);
+
+    connect(xAxis, SIGNAL(rangeChanged(QCPRange)), m_volumeAxisRect->axis(QCPAxis::atBottom), SLOT(setRange(QCPRange)));
+    connect(m_volumeAxisRect->axis(QCPAxis::atBottom), SIGNAL(rangeChanged(QCPRange)), xAxis, SLOT(setRange(QCPRange)));
+
     rescaleAxes();
     replot();
 }

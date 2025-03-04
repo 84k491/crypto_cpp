@@ -404,15 +404,15 @@ void StrategyInstance::handle_event(const HistoricalMDPriceEvent & response)
 
 void StrategyInstance::handle_event(const MDPriceEvent & response)
 {
-    const auto & [ts, price] = response.ts_and_price;
-    m_last_ts_and_price = {ts, price};
-    m_price_channel.push(ts, price);
+    const auto & public_trade = response.public_trade;
+    m_last_ts_and_price = {public_trade.ts(), public_trade.price()};
+    m_price_channel.push(public_trade.ts(), public_trade.price());
     if (!first_price_received) {
-        m_depo_channel.push(ts, 0.); // TODO move it to c-tor?
+        m_depo_channel.push(public_trade.ts(), 0.); // TODO move it to c-tor?
         first_price_received = true;
     }
 
-    const auto candles = m_candle_builder.push_trade(price, SignedVolume{}, ts);
+    const auto candles = m_candle_builder.push_trade(public_trade.price(), public_trade.volume(), public_trade.ts());
     std::optional<Signal> signal_opt;
     for (const auto & candle : candles) {
         auto s = m_strategy->push_candle(candle);
@@ -423,7 +423,7 @@ void StrategyInstance::handle_event(const MDPriceEvent & response)
     }
 
     if (!signal_opt) {
-        signal_opt = m_strategy->push_price({ts, price});
+        signal_opt = m_strategy->push_price({public_trade.ts(), public_trade.price()});
     }
     if (m_position_manager.opened() == nullptr && m_pending_orders.empty()) {
         if (signal_opt.has_value()) {
@@ -431,7 +431,7 @@ void StrategyInstance::handle_event(const MDPriceEvent & response)
         }
     }
 
-    if (const auto err = m_exit_strategy->on_price_changed({ts, price})) {
+    if (const auto err = m_exit_strategy->on_price_changed({public_trade.ts(), public_trade.price()})) {
         Logger::logf<LogLevel::Error>("Exit strategy error on price update: {}", err.value());
     }
 }

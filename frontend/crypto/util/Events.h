@@ -21,17 +21,17 @@ struct OneWayEvent
 
 struct MDPriceEvent : public OneWayEvent
 {
-    MDPriceEvent(std::pair<std::chrono::milliseconds, double> _ts_and_price)
-        : ts_and_price(_ts_and_price)
+    MDPriceEvent(CsvPublicTrade _public_trade)
+        : public_trade(_public_trade)
     {
     }
     Priority priority() const override { return Priority::Low; }
-    std::pair<std::chrono::milliseconds, double> ts_and_price;
+    CsvPublicTrade public_trade;
 };
 
 struct HistoricalMDPriceEvent : MDPriceEvent
 {
-    HistoricalMDPriceEvent(std::pair<std::chrono::milliseconds, double> _ts_and_price, bool lowmem)
+    HistoricalMDPriceEvent(CsvPublicTrade _ts_and_price, bool lowmem)
         : MDPriceEvent(_ts_and_price)
         , lowmem(lowmem)
     {
@@ -42,7 +42,7 @@ struct HistoricalMDPriceEvent : MDPriceEvent
 
 class HistoricalMDGeneratorEvent : public OneWayEvent
 {
-    using PricePackPtr = std::shared_ptr<const std::vector<std::pair<std::chrono::milliseconds, double>>>;
+    using PricePackPtr = std::shared_ptr<const std::vector<CsvPublicTrade>>;
 
 public:
     HistoricalMDGeneratorEvent(xg::Guid guid, PricePackPtr ts_and_price_pack)

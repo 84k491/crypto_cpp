@@ -88,7 +88,7 @@ private:
 
     EventTimeseriesChannel<ProfitPriceLevels> m_price_levels_channel;
     EventTimeseriesChannel<Trade> m_trade_channel;
-    EventTimeseriesChannel<double> m_price_channel;
+    EventTimeseriesChannel<double> m_price_channel; // TODO do i need it?
     EventTimeseriesChannel<Candle> m_candle_channel;
     EventTimeseriesChannel<double> m_depo_channel;
 

@@ -10,7 +10,7 @@ class FileReader
 public:
     FileReader(std::string filepath);
 
-    std::optional<std::pair<std::chrono::milliseconds, double>> get_next();
+    std::optional<CsvPublicTrade> get_next();
 
 private:
     std::ifstream ifs;
@@ -22,11 +22,11 @@ class SequentialMarketDataReader
 public:
     SequentialMarketDataReader(std::list<std::string> files);
 
-    std::optional<std::pair<std::chrono::milliseconds, double>> get_next();
+    std::optional<CsvPublicTrade> get_next();
 
 private:
     std::list<std::string> m_files;
-    std::list<std::pair<std::chrono::milliseconds, double>> m_public_trades;
+    std::list<CsvPublicTrade> m_public_trades;
 };
 
 class BybitTradesDownloader
@@ -37,7 +37,7 @@ class BybitTradesDownloader
 public:
     BybitTradesDownloader();
 
-    static std::vector<std::pair<std::chrono::milliseconds, double>> request(const HistoricalMDRequest & req);
+    static std::vector<CsvPublicTrade> request(const HistoricalMDRequest & req);
     static std::shared_ptr<SequentialMarketDataReader> request_lowmem(const HistoricalMDRequest & req);
 
 private:

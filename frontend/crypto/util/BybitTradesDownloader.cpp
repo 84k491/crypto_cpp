@@ -71,7 +71,17 @@ FileReader::FileReader(std::string filepath)
     std::getline(ifs, last_line); // skip csv header
 }
 
-std::optional<std::pair<std::chrono::milliseconds, double>> FileReader::get_next()
+// 0 - timestamp,
+// 1 - symbol,
+// 2 - side,
+// 3 - size,
+// 4 - price,
+// 5 - tickDirection,
+// 6 - trdMatchID,
+// 7 - grossValue,
+// 8 - homeNotional,
+// 9 - foreignNotional
+std::optional<CsvPublicTrade> FileReader::get_next()
 {
     if (!std::getline(ifs, last_line)) {
         return std::nullopt;
@@ -97,7 +107,14 @@ std::optional<std::pair<std::chrono::milliseconds, double>> FileReader::get_next
     const std::string & price_str = split_str[4];
     const double price = std::stod(price_str);
 
-    return {{ts, price}};
+    const std::string side_str = split_str[2];
+    const Side side = side_str == "Buy" ? Side::buy() : Side::sell();
+
+    const std::string & volume_str = split_str[3];
+    const double volume_double = std::stod(volume_str);
+    const SignedVolume volume = SignedVolume(UnsignedVolume::from(volume_double).value(), side); // assuming vol is positive
+
+    return {{ts, price, volume}};
 }
 
 SequentialMarketDataReader::SequentialMarketDataReader(std::list<std::string> files)
@@ -105,7 +122,7 @@ SequentialMarketDataReader::SequentialMarketDataReader(std::list<std::string> fi
 {
 }
 
-std::optional<std::pair<std::chrono::milliseconds, double>> SequentialMarketDataReader::get_next()
+std::optional<CsvPublicTrade> SequentialMarketDataReader::get_next()
 {
     if (!m_public_trades.empty()) {
         auto res = m_public_trades.front();
@@ -125,28 +142,6 @@ std::optional<std::pair<std::chrono::milliseconds, double>> SequentialMarketData
     }
 
     return get_next();
-}
-
-// 0 - timestamp,
-// 1 - symbol,
-// 2 - side,
-// 3 - size,
-// 4 - price,
-// 5 - tickDirection,
-// 6 - trdMatchID,
-// 7 - grossValue,
-// 8 - homeNotional,
-// 9 - foreignNotional
-std::vector<std::pair<std::chrono::milliseconds, double>> parse_file(const std::string & file_name)
-{
-    std::vector<std::pair<std::chrono::milliseconds, double>> res;
-
-    FileReader reader(file_name);
-    for (auto line = reader.get_next(); line.has_value(); line = reader.get_next()) {
-        res.push_back(line.value());
-    }
-
-    return res;
 }
 
 std::list<std::string> BybitTradesDownloader::download(const HistoricalMDRequest & req)
@@ -197,9 +192,9 @@ std::list<std::string> BybitTradesDownloader::download(const HistoricalMDRequest
 }
 
 // curl -XGET "https://public.bybit.com/trading/BTCUSDT/BTCUSDT2024-12-25.csv.gz"
-std::vector<std::pair<std::chrono::milliseconds, double>> BybitTradesDownloader::BybitTradesDownloader::request(const HistoricalMDRequest & req)
+std::vector<CsvPublicTrade> BybitTradesDownloader::BybitTradesDownloader::request(const HistoricalMDRequest & req)
 {
-    std::vector<std::pair<std::chrono::milliseconds, double>> res;
+    std::vector<CsvPublicTrade> res;
 
     const auto files = download(req);
     SequentialMarketDataReader reader(files);
