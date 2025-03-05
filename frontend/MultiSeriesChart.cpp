@@ -114,7 +114,7 @@ void MultiSeriesChart::push_candle_vector(const std::list<Candle> & data)
                 candle.low(),
                 candle.close());
 
-        auto & container = candle.volume() > 0 ? long_volume_data : short_volume_data;
+        auto & container = candle.side() == Side::buy() ? long_volume_data : short_volume_data;
         QCPBarsData d{time, std::fabs(candle.volume())};
         container->add(d);
     }
