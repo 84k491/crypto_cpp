@@ -1,6 +1,7 @@
 #include "chart_window.h"
 
 #include "Enums.h"
+#include "Logger.h"
 #include "ui_chart_window.h"
 
 ChartWindow::ChartWindow(const std::shared_ptr<StrategyInstance> & strategy, QWidget * parent)
@@ -10,6 +11,10 @@ ChartWindow::ChartWindow(const std::shared_ptr<StrategyInstance> & strategy, QWi
     , m_strategy_instance(strategy)
 {
     ui->setupUi(this);
+    m_holder_widget = new QWidget(ui->scrollArea);
+    m_layout = new QVBoxLayout(m_holder_widget);
+    ui->scrollArea->setWidget(m_holder_widget);
+    ui->scrollArea->setWidgetResizable(true);
     this->setWindowTitle("Charts");
     connect(this, &ChartWindow::signal_lambda, this, &ChartWindow::on_lambda);
     subscribe_to_strategy();
@@ -20,15 +25,28 @@ ChartWindow::~ChartWindow()
     delete ui;
 }
 
+int get_child_height(int parent_height, double factor)
+{
+    return static_cast<int>(std::roundl(parent_height * factor));
+}
+
+void ChartWindow::resizeEvent(QResizeEvent * ev)
+{
+    for (auto & [name, chart] : m_charts) {
+        chart->setFixedHeight(get_child_height(ev->size().height(), height_factor));
+    }
+}
+
 MultiSeriesChart & ChartWindow::get_or_create_chart(const std::string & chart_name)
 {
     if (auto it = m_charts.find(chart_name); it != m_charts.end()) {
         return *it->second;
     }
     auto * new_chart = new MultiSeriesChart();
+    new_chart->setFixedHeight(get_child_height(height(), height_factor));
     new_chart->set_title(chart_name);
     m_charts[chart_name] = new_chart;
-    ui->verticalLayout_graph->addWidget(new_chart);
+    m_layout->addWidget(new_chart);
     return *new_chart;
 }
 
@@ -60,7 +78,7 @@ void ChartWindow::subscribe_to_strategy()
                 for (const auto & [ts, l] : vec) {
                     fee_profit.push_back({ts, l.fee_profit_price});
                     no_loss.push_back({ts, l.no_loss_price});
-                    fee_loss.push_back({ts, l.fee_loss_price });
+                    fee_loss.push_back({ts, l.fee_loss_price});
                 }
                 auto & plot = get_or_create_chart(m_price_chart_name);
                 plot.push_scatter_series_vector("fee_profit_price", fee_profit);

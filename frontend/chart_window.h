@@ -39,6 +39,8 @@ public:
 
     MultiSeriesChart & get_or_create_chart(const std::string & chart_name);
 
+    void resizeEvent(QResizeEvent * event) override;
+
 signals:
     void signal_lambda(std::function<void()> lambda);
 
@@ -49,7 +51,11 @@ private:
     void subscribe_to_strategy();
 
 private:
+    static constexpr double height_factor = 0.7;
+
     Ui::ChartWindow * ui;
+    QWidget * m_holder_widget = nullptr;
+    QVBoxLayout * m_layout = nullptr;
     std::shared_ptr<ChartWindowEventConsumer> m_event_consumer;
 
     const std::string m_price_chart_name = "prices";
