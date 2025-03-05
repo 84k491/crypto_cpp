@@ -47,8 +47,8 @@ private:
 
     QCPFinancial * m_candle_graph = nullptr;
     QCPAxisRect * m_volumeAxisRect = nullptr;
-    QCPBars *volumePos = nullptr;
-    QCPBars *volumeNeg = nullptr;
+    QCPBars * m_volume_long_bars = nullptr;
+    QCPBars * m_volume_short_bars = nullptr;
     QCPMarginGroup * m_marginGroup = nullptr;
 
     std::map<std::string, int> m_series_indexes;

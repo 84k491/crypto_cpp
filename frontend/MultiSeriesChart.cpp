@@ -11,6 +11,9 @@ std::vector<QColor> colors = {
         QColor(140, 50, 80),
 };
 
+const auto long_bar_color = QColor(9, 121, 105);
+const auto short_bar_color = QColor(255, 87, 51);
+
 std::map<std::string, QColor> line_series_colors = {
         {"price", QColor(0, 0, 0)},
         {"upper_band", QColor::fromString("#e88d38")},
@@ -68,39 +71,40 @@ void MultiSeriesChart::push_candle_vector(const std::list<Candle> & data)
         m_candle_graph->setChartStyle(QCPFinancial::csCandlestick);
         m_candle_graph->setWidth(timeframe * 0.9);
         m_candle_graph->setTwoColored(true);
-        m_candle_graph->setBrushPositive(QColor(9, 121, 105)); // TODO move out to the top
-        m_candle_graph->setBrushNegative(QColor(255, 87, 51));
+        m_candle_graph->setBrushPositive(long_bar_color);
+        m_candle_graph->setBrushNegative(short_bar_color);
         m_candle_graph->setPenPositive(QPen(QColor(0, 0, 0)));
         m_candle_graph->setPenNegative(QPen(QColor(0, 0, 0)));
         xAxis->setTickLabels(false);
         xAxis->setTicks(false);
     }
 
-    // TODO check nullptr
-    m_volumeAxisRect = new QCPAxisRect(this);
-    plotLayout()->addElement(1, 0, m_volumeAxisRect);
-    m_volumeAxisRect->setMaximumSize(QSize(QWIDGETSIZE_MAX, 100));
-    m_volumeAxisRect->axis(QCPAxis::atBottom)->setLayer("axes");
-    m_volumeAxisRect->axis(QCPAxis::atBottom)->grid()->setLayer("grid");
-    QSharedPointer<QCPAxisTickerDateTime> dateTicker(new QCPAxisTickerDateTime);
-    dateTicker->setDateTimeFormat("hh:mm / dd.MM");
-    dateTicker->setTickCount(11);
-    m_volumeAxisRect->axis(QCPAxis::atBottom)->setTicker(dateTicker);
-    m_volumeAxisRect->axis(QCPAxis::atBottom)->setTickLabelRotation(30.);
+    if (m_volumeAxisRect == nullptr) {
+        m_volumeAxisRect = new QCPAxisRect(this);
+        plotLayout()->addElement(1, 0, m_volumeAxisRect);
+        m_volumeAxisRect->setMaximumSize(QSize(QWIDGETSIZE_MAX, 100));
+        m_volumeAxisRect->axis(QCPAxis::atBottom)->setLayer("axes");
+        m_volumeAxisRect->axis(QCPAxis::atBottom)->grid()->setLayer("grid");
+        QSharedPointer<QCPAxisTickerDateTime> dateTicker(new QCPAxisTickerDateTime);
+        dateTicker->setDateTimeFormat("hh:mm / dd.MM");
+        dateTicker->setTickCount(11);
+        m_volumeAxisRect->axis(QCPAxis::atBottom)->setTicker(dateTicker);
+        m_volumeAxisRect->axis(QCPAxis::atBottom)->setTickLabelRotation(30.);
 
-    plotLayout()->setRowSpacing(0);
-    m_volumeAxisRect->setAutoMargins(QCP::msLeft | QCP::msRight | QCP::msBottom);
-    m_volumeAxisRect->setMargins(QMargins(0, 0, 0, 0));
-    m_volumeAxisRect->setMarginGroup(QCP::msLeft | QCP::msRight, m_marginGroup);
+        plotLayout()->setRowSpacing(0);
+        m_volumeAxisRect->setAutoMargins(QCP::msLeft | QCP::msRight | QCP::msBottom);
+        m_volumeAxisRect->setMargins(QMargins(0, 0, 0, 0));
+        m_volumeAxisRect->setMarginGroup(QCP::msLeft | QCP::msRight, m_marginGroup);
 
-    volumePos = new QCPBars(m_volumeAxisRect->axis(QCPAxis::atBottom), m_volumeAxisRect->axis(QCPAxis::atLeft));
-    volumeNeg = new QCPBars(m_volumeAxisRect->axis(QCPAxis::atBottom), m_volumeAxisRect->axis(QCPAxis::atLeft));
-    volumePos->setWidth(timeframe * 0.9);
-    volumePos->setPen(Qt::NoPen);
-    volumePos->setBrush(QColor(100, 180, 110));
-    volumeNeg->setWidth(timeframe * 0.9);
-    volumeNeg->setPen(Qt::NoPen);
-    volumeNeg->setBrush(QColor(180, 90, 90));
+        m_volume_long_bars = new QCPBars(m_volumeAxisRect->axis(QCPAxis::atBottom), m_volumeAxisRect->axis(QCPAxis::atLeft));
+        m_volume_short_bars = new QCPBars(m_volumeAxisRect->axis(QCPAxis::atBottom), m_volumeAxisRect->axis(QCPAxis::atLeft));
+        m_volume_long_bars->setWidth(timeframe * 0.9);
+        m_volume_long_bars->setPen(Qt::NoPen);
+        m_volume_long_bars->setBrush(long_bar_color);
+        m_volume_short_bars->setWidth(timeframe * 0.9);
+        m_volume_short_bars->setPen(Qt::NoPen);
+        m_volume_short_bars->setBrush(short_bar_color);
+    }
 
     QVector<QCPFinancialData> fin_data;
     QSharedPointer<QCPBarsDataContainer> long_volume_data(new QCPBarsDataContainer);
@@ -119,8 +123,8 @@ void MultiSeriesChart::push_candle_vector(const std::list<Candle> & data)
         container->add(d);
     }
     m_candle_graph->data()->set(fin_data, true);
-    volumePos->setData(long_volume_data);
-    volumeNeg->setData(short_volume_data);
+    m_volume_long_bars->setData(long_volume_data);
+    m_volume_short_bars->setData(short_volume_data);
 
     connect(xAxis, SIGNAL(rangeChanged(QCPRange)), m_volumeAxisRect->axis(QCPAxis::atBottom), SLOT(setRange(QCPRange)));
     connect(m_volumeAxisRect->axis(QCPAxis::atBottom), SIGNAL(rangeChanged(QCPRange)), xAxis, SLOT(setRange(QCPRange)));
