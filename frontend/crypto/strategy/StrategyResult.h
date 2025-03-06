@@ -38,6 +38,13 @@ public:
     std::optional<double> worst_loss_trade = 0.;
     double max_depo = 0.;
     double min_depo = 0.;
+
+    std::chrono::seconds total_time_in_profit_pos = {};
+    std::chrono::seconds total_time_in_loss_pos = {};
+
+    double avg_profit_pos_time = {};
+    double avg_loss_pos_time = {};
+
     std::chrono::seconds longest_profit_trade_time = {};
     std::chrono::seconds longest_loss_trade_time = {};
 };

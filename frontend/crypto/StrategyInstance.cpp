@@ -13,6 +13,7 @@
 #include "Volume.h"
 #include "WorkStatus.h"
 
+#include <algorithm>
 #include <chrono>
 #include <future>
 #include <optional>
@@ -185,43 +186,44 @@ void StrategyInstance::process_position_result(const PositionResult & new_result
     m_strategy_result.update([&](StrategyResult & res) {
         res.final_profit += new_result.pnl_with_fee;
         res.fees_paid += new_result.fees_paid;
-    });
-    m_depo_channel.push(ts, m_strategy_result.get().final_profit);
-    m_strategy_result.update([&](StrategyResult & res) {
+
         if (new_result.pnl_with_fee > 0.) {
             res.profit_positions_cnt++;
         }
         else {
             res.loss_positions_cnt++;
         }
-    });
-    if (const auto best_profit = m_strategy_result.get().best_profit_trade;
-        !best_profit.has_value() || best_profit < new_result.pnl_with_fee) {
-        m_strategy_result.update([&](StrategyResult & res) {
-            res.best_profit_trade = new_result.pnl_with_fee;
-            res.longest_profit_trade_time =
-                    std::chrono::duration_cast<std::chrono::seconds>(new_result.opened_time);
-        });
-    }
-    if (const auto worst_loss = m_strategy_result.get().worst_loss_trade;
-        !worst_loss.has_value() || worst_loss > new_result.pnl_with_fee) {
-        m_strategy_result.update([&](StrategyResult & res) {
-            res.worst_loss_trade = new_result.pnl_with_fee;
-            res.longest_loss_trade_time =
-                    std::chrono::duration_cast<std::chrono::seconds>(new_result.opened_time);
-        });
-    }
 
-    if (m_strategy_result.get().max_depo < m_strategy_result.get().final_profit) {
-        m_strategy_result.update([&](StrategyResult & res) {
-            res.max_depo = res.final_profit;
-        });
-    }
-    if (m_strategy_result.get().min_depo > m_strategy_result.get().final_profit) {
-        m_strategy_result.update([&](StrategyResult & res) {
-            res.min_depo = m_strategy_result.get().final_profit;
-        });
-    }
+        if (!res.best_profit_trade.has_value() || res.best_profit_trade < new_result.pnl_with_fee) {
+            res.best_profit_trade = new_result.pnl_with_fee;
+        }
+        if (!res.worst_loss_trade.has_value() || res.worst_loss_trade > new_result.pnl_with_fee) {
+            res.worst_loss_trade = new_result.pnl_with_fee;
+        }
+
+        if (new_result.pnl_with_fee > 0.) {
+            if (res.longest_profit_trade_time < new_result.opened_time) {
+                res.longest_profit_trade_time =
+                        std::chrono::duration_cast<std::chrono::seconds>(new_result.opened_time);
+            }
+            res.total_time_in_profit_pos += std::chrono::duration_cast<std::chrono::seconds>(new_result.opened_time);
+        }
+        if (new_result.pnl_with_fee < 0.) {
+            if (res.longest_loss_trade_time < new_result.opened_time) {
+                res.longest_loss_trade_time =
+                        std::chrono::duration_cast<std::chrono::seconds>(new_result.opened_time);
+            }
+            res.total_time_in_loss_pos += std::chrono::duration_cast<std::chrono::seconds>(new_result.opened_time);
+        }
+
+        res.avg_profit_pos_time = static_cast<double>(res.total_time_in_profit_pos.count()) / static_cast<double>(res.profit_positions_cnt);
+        res.avg_loss_pos_time = static_cast<double>(res.total_time_in_loss_pos.count()) / static_cast<double>(res.loss_positions_cnt);
+
+        res.max_depo = std::max(res.max_depo, res.final_profit);
+        res.min_depo = std::min(res.min_depo, res.final_profit);
+    });
+
+    m_depo_channel.push(ts, m_strategy_result.get().final_profit);
 }
 
 void StrategyInstance::set_channel_capacity(std::optional<std::chrono::milliseconds> capacity)

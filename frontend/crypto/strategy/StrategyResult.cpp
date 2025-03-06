@@ -14,6 +14,8 @@ std::ostream & operator<<(std::ostream & out, const StrategyResult & result)
     out << "worst_loss_trade: " << result.worst_loss_trade.value_or(0.) << std::endl;
     out << "max_depo: " << result.max_depo << std::endl;
     out << "min_depo: " << result.min_depo << std::endl;
+    out << "avg_profit_pos_time: " << result.avg_profit_pos_time << std::endl;
+    out << "avg_loss_pos_time: " << result.avg_loss_pos_time << std::endl;
     out << "longest_profit_trade_time: " << result.longest_profit_trade_time.count() << std::endl;
     out << "longest_loss_trade_time: " << result.longest_loss_trade_time.count() << std::endl;
     return out;
