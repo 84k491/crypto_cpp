@@ -113,6 +113,7 @@ private slots:
 
     void on_pb_charts_clicked();
     void render_result(StrategyResult result);
+    void subscribe_for_positions();
     void optimized_config_slot(const JsonStrategyConfig & entry_config, const JsonStrategyConfig & exit_config);
 
     void on_lambda(const std::function<void()> & lambda);

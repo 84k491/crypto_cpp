@@ -183,6 +183,8 @@ void StrategyInstance::on_signal(const Signal & signal)
 
 void StrategyInstance::process_position_result(const PositionResult & new_result, std::chrono::milliseconds ts)
 {
+    m_positions_channel.push(ts, new_result);
+
     m_strategy_result.update([&](StrategyResult & res) {
         res.final_profit += new_result.pnl_with_fee;
         res.fees_paid += new_result.fees_paid;
@@ -202,18 +204,18 @@ void StrategyInstance::process_position_result(const PositionResult & new_result
         }
 
         if (new_result.pnl_with_fee > 0.) {
-            if (res.longest_profit_trade_time < new_result.opened_time) {
+            if (res.longest_profit_trade_time < new_result.opened_time()) {
                 res.longest_profit_trade_time =
-                        std::chrono::duration_cast<std::chrono::seconds>(new_result.opened_time);
+                        std::chrono::duration_cast<std::chrono::seconds>(new_result.opened_time());
             }
-            res.total_time_in_profit_pos += std::chrono::duration_cast<std::chrono::seconds>(new_result.opened_time);
+            res.total_time_in_profit_pos += std::chrono::duration_cast<std::chrono::seconds>(new_result.opened_time());
         }
         if (new_result.pnl_with_fee < 0.) {
-            if (res.longest_loss_trade_time < new_result.opened_time) {
+            if (res.longest_loss_trade_time < new_result.opened_time()) {
                 res.longest_loss_trade_time =
-                        std::chrono::duration_cast<std::chrono::seconds>(new_result.opened_time);
+                        std::chrono::duration_cast<std::chrono::seconds>(new_result.opened_time());
             }
-            res.total_time_in_loss_pos += std::chrono::duration_cast<std::chrono::seconds>(new_result.opened_time);
+            res.total_time_in_loss_pos += std::chrono::duration_cast<std::chrono::seconds>(new_result.opened_time());
         }
 
         res.avg_profit_pos_time = static_cast<double>(res.total_time_in_profit_pos.count()) / static_cast<double>(res.profit_positions_cnt);
@@ -265,6 +267,11 @@ EventTimeseriesChannel<Candle> & StrategyInstance::candle_channel()
 EventTimeseriesChannel<double> & StrategyInstance::depo_channel()
 {
     return m_depo_channel;
+}
+
+EventTimeseriesChannel<PositionResult> & StrategyInstance::positions_channel()
+{
+    return m_positions_channel;
 }
 
 EventObjectChannel<StrategyResult> & StrategyInstance::strategy_result_channel()

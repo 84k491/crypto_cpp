@@ -5,6 +5,7 @@
 #include "JsonStrategyConfig.h"
 #include "Logger.h"
 #include "Optimizer.h"
+#include "PositionResultView.h"
 #include "StrategyInstance.h"
 #include "StrategyParametersWidget.h"
 #include "Symbol.h"
@@ -94,6 +95,7 @@ void MainWindow::handle_status_changed(WorkStatus status)
     case WorkStatus::Backtesting: break;
     default: {
         render_result(m_strategy_instance->strategy_result_channel().get());
+        subscribe_for_positions();
         break;
     }
     }
@@ -225,6 +227,29 @@ void MainWindow::render_result(StrategyResult result)
     ui->lb_win_rate->setText(QString::number(result.win_rate() * 100.));
     ui->lb_avg_profit_pos_time->setText(QString::number(result.avg_profit_pos_time));
     ui->lb_avg_loss_pos_time->setText(QString::number(result.avg_loss_pos_time));
+}
+
+void MainWindow::subscribe_for_positions()
+{
+    auto * holder_widget = new QWidget(ui->sa_positions);
+    auto * lo = new QVBoxLayout(holder_widget);
+    ui->sa_positions->setWidget(holder_widget);
+    ui->sa_positions->setWidgetResizable(true);
+
+    m_subscriptions.push_back(m_strategy_instance->positions_channel().subscribe(
+            m_event_consumer,
+            [&](const std::list<std::pair<std::chrono::milliseconds, PositionResult>> & list) {
+                for (const auto & [_, position_result] : list) {
+                    auto * view = new PositionResultView();
+                    view->update(position_result);
+                    lo->addWidget(view);
+                }
+            },
+            [&](auto, auto) {
+                // TODO implement
+                // it requieres a separate class of view to handle updates
+                // to avoid rendering all positions on each update
+            }));
 }
 
 void MainWindow::optimized_config_slot(const JsonStrategyConfig & entry_config, const JsonStrategyConfig & exit_config)

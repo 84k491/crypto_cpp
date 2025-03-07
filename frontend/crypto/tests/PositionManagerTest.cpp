@@ -98,7 +98,7 @@ TEST_F(PositionManagerTest, LongCloseRawProfitBiggerThanFee)
 
     EXPECT_EQ(res.pnl_with_fee, 5000 - 0.2 - 0.3);
     EXPECT_EQ(res.fees_paid, 0.2 + 0.3);
-    EXPECT_EQ(res.opened_time.count(), 100);
+    EXPECT_EQ(res.opened_time().count(), 100);
 }
 
 // open a short position, close it
@@ -129,7 +129,7 @@ TEST_F(PositionManagerTest, ShortCloseRawProfitBiggerThanFee)
 
     EXPECT_EQ(res.pnl_with_fee, 5000 - 0.2 - 0.3);
     EXPECT_EQ(res.fees_paid, 0.2 + 0.3);
-    EXPECT_EQ(res.opened_time.count(), 100);
+    EXPECT_EQ(res.opened_time().count(), 100);
 }
 
 // open a long position, close it
@@ -161,7 +161,7 @@ TEST_F(PositionManagerTest, LongCloseRawProfitLessThanFee)
 
     EXPECT_NEAR(res.pnl_with_fee, 0.4 - 0.2 - 0.3, double_epsilon);
     EXPECT_EQ(res.fees_paid, 0.2 + 0.3);
-    EXPECT_EQ(res.opened_time.count(), 100);
+    EXPECT_EQ(res.opened_time().count(), 100);
 }
 
 // open a short position, close it
@@ -193,7 +193,7 @@ TEST_F(PositionManagerTest, ShortCloseRawProfitLessThanFee)
 
     EXPECT_NEAR(res.pnl_with_fee, 0.4 - 0.2 - 0.3, double_epsilon);
     EXPECT_EQ(res.fees_paid, 0.2 + 0.3);
-    EXPECT_EQ(res.opened_time.count(), 100);
+    EXPECT_EQ(res.opened_time().count(), 100);
 }
 
 // open a long position, close it
@@ -225,7 +225,7 @@ TEST_F(PositionManagerTest, LongCloseSamePrice)
 
     EXPECT_NEAR(res.pnl_with_fee, -0.2 - 0.3, double_epsilon);
     EXPECT_EQ(res.fees_paid, 0.2 + 0.3);
-    EXPECT_EQ(res.opened_time.count(), 100);
+    EXPECT_EQ(res.opened_time().count(), 100);
 }
 
 // open a short position, close it
@@ -257,7 +257,7 @@ TEST_F(PositionManagerTest, ShortCloseSamePrice)
 
     EXPECT_NEAR(res.pnl_with_fee, -0.2 - 0.3, double_epsilon);
     EXPECT_EQ(res.fees_paid, 0.2 + 0.3);
-    EXPECT_EQ(res.opened_time.count(), 100);
+    EXPECT_EQ(res.opened_time().count(), 100);
 }
 
 // open a long position with two trades, close it with one
@@ -305,7 +305,7 @@ TEST_F(PositionManagerTest, LongOpenedWithTwoTradesProfit)
     const double fee_sum = 0.2 + 0.3 + 0.4;
     EXPECT_NEAR(res.pnl_with_fee, expected_raw_profit - fee_sum, double_epsilon);
     EXPECT_EQ(res.fees_paid, fee_sum);
-    EXPECT_EQ(res.opened_time.count(), 100);
+    EXPECT_EQ(res.opened_time().count(), 100);
 }
 
 // same as above, but for short
@@ -352,7 +352,7 @@ TEST_F(PositionManagerTest, ShortOpenedWithTwoTradesProfit)
     const double fee_sum = 0.2 + 0.3 + 0.4;
     EXPECT_NEAR(res.pnl_with_fee, expected_raw_profit - fee_sum, double_epsilon);
     EXPECT_EQ(res.fees_paid, fee_sum);
-    EXPECT_EQ(res.opened_time.count(), 100);
+    EXPECT_EQ(res.opened_time().count(), 100);
 }
 
 // open long with one trade, close with two
@@ -400,7 +400,7 @@ TEST_F(PositionManagerTest, LongClosedWithTwoTradesProfit)
     const double fee_sum = 0.2 + 0.3 + 0.4;
     EXPECT_NEAR(res.pnl_with_fee, expected_raw_profit - fee_sum, double_epsilon);
     EXPECT_NEAR(res.fees_paid, fee_sum, double_epsilon);
-    EXPECT_EQ(res.opened_time.count(), 100);
+    EXPECT_EQ(res.opened_time().count(), 100);
 }
 
 // same as above, but for short
@@ -439,7 +439,7 @@ TEST_F(PositionManagerTest, ShortClosedWithTwoTradesProfit)
     const double fee_sum = 0.2 + 0.3 + 0.4;
     EXPECT_NEAR(res.pnl_with_fee, expected_raw_profit - fee_sum, double_epsilon);
     EXPECT_NEAR(res.fees_paid, fee_sum, double_epsilon);
-    EXPECT_EQ(res.opened_time.count(), 100);
+    EXPECT_EQ(res.opened_time().count(), 100);
 }
 
 // open long, flip to short, close
@@ -478,7 +478,7 @@ TEST_F(PositionManagerTest, LongFlipClosedWithProfit)
     const double fee_sum = 0.2 + 0.3 + 0.4;
     EXPECT_NEAR(res.pnl_with_fee, expected_raw_profit - fee_sum, double_epsilon);
     EXPECT_NEAR(res.fees_paid, fee_sum, double_epsilon);
-    EXPECT_EQ(res.opened_time.count(), 100);
+    EXPECT_EQ(res.opened_time().count(), 100);
 }
 
 // same for short
@@ -517,7 +517,7 @@ TEST_F(PositionManagerTest, ShortFlipClosedWithProfit)
     const double fee_sum = 0.2 + 0.3 + 0.4;
     EXPECT_NEAR(res.pnl_with_fee, expected_raw_profit - fee_sum, double_epsilon);
     EXPECT_NEAR(res.fees_paid, fee_sum, double_epsilon);
-    EXPECT_EQ(res.opened_time.count(), 100);
+    EXPECT_EQ(res.opened_time().count(), 100);
 }
 
 // open long, close with loss, fees subtracted, total loss is increased
@@ -546,7 +546,7 @@ TEST_F(PositionManagerTest, LongCloseWithLoss)
 
     EXPECT_EQ(res.pnl_with_fee, -1000 - 0.2 - 0.3);
     EXPECT_EQ(res.fees_paid, 0.2 + 0.3);
-    EXPECT_EQ(res.opened_time.count(), 100);
+    EXPECT_EQ(res.opened_time().count(), 100);
 }
 
 // same for short
@@ -575,7 +575,7 @@ TEST_F(PositionManagerTest, ShortCloseWithLoss)
 
     EXPECT_EQ(res.pnl_with_fee, -1000 - 0.2 - 0.3);
     EXPECT_EQ(res.fees_paid, 0.2 + 0.3);
-    EXPECT_EQ(res.opened_time.count(), 100);
+    EXPECT_EQ(res.opened_time().count(), 100);
 }
 
 // same as above, but with fractional price
@@ -607,7 +607,7 @@ TEST_F(PositionManagerTest, LongCloseWithLossFractionalPrice)
     const auto fees = 0.0549827 + 0.0549258;
     EXPECT_NEAR(res.pnl_with_fee, close_amount - open_amount - fees, double_epsilon);
     EXPECT_EQ(res.fees_paid, fees);
-    EXPECT_EQ(res.opened_time.count(), 100);
+    EXPECT_EQ(res.opened_time().count(), 100);
 }
 
 // two positions in a row, first long, then short
@@ -641,7 +641,7 @@ TEST_F(PositionManagerTest, ShortProfitThenLongLoss)
         const auto fees = 0.0549894 + 0.0548011;
         EXPECT_NEAR(res.pnl_with_fee, open_amount - close_amount - fees, double_epsilon);
         EXPECT_EQ(res.fees_paid, fees);
-        EXPECT_EQ(res.opened_time.count(), 100);
+        EXPECT_EQ(res.opened_time().count(), 100);
     }
 
     // Long with loss
@@ -672,7 +672,7 @@ TEST_F(PositionManagerTest, ShortProfitThenLongLoss)
                     close_amount - open_amount - fees,
                     double_epsilon);
         EXPECT_EQ(res.fees_paid, fees);
-        EXPECT_EQ(res.opened_time.count(), 100);
+        EXPECT_EQ(res.opened_time().count(), 100);
     }
 }
 

@@ -29,6 +29,7 @@ qt_add_executable(frontend
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
         chart_window.h chart_window.cpp chart_window.ui
+        PositionResultView.h PositionResultView.cpp PositionResultView.ui
 )
 
 target_include_directories(frontend PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

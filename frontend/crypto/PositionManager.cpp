@@ -32,7 +32,7 @@ std::optional<PositionResult> PositionManager::on_trade_received(const Trade & t
         Logger::logf<LogLevel::Status>("New opened position state: {}", pos);
         return std::nullopt;
     }
-    Logger::logf<LogLevel::Status>("Position has been closed completely");
+    Logger::logf<LogLevel::Status>("Position {} has been closed completely", pos.guid());
 
     if (!m_closed_position.has_value()) {
         Logger::log<LogLevel::Error>("ERROR: No closed position when opened vol == 0");
@@ -43,7 +43,9 @@ std::optional<PositionResult> PositionManager::on_trade_received(const Trade & t
     PositionResult res;
     res.pnl_with_fee = closed_pos.m_rpnl - pos.entry_fee();
     res.fees_paid += pos.entry_fee() + closed_pos.m_close_fee;
-    res.opened_time = trade.ts() - pos.open_ts();
+    res.open_ts = pos.open_ts();
+    res.close_ts = trade.ts();
+    res.guid = pos.guid();
 
     m_opened_position = {};
     m_closed_position = {};
@@ -52,11 +54,16 @@ std::optional<PositionResult> PositionManager::on_trade_received(const Trade & t
     return res;
 }
 
+std::chrono::milliseconds PositionResult::opened_time() const
+{
+    return (close_ts - open_ts);
+}
+
 std::ostream & operator<<(std::ostream & os, const PositionResult & res)
 {
     os << "PositionResult: "
        << "pnl_with_fee = " << res.pnl_with_fee
        << ", fees_paid = " << res.fees_paid
-       << ", opened_time = " << res.opened_time;
+       << ", opened_time = " << res.opened_time();
     return os;
 }

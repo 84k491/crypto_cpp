@@ -42,6 +42,7 @@ public:
     EventTimeseriesChannel<double> & price_channel();
     EventTimeseriesChannel<Candle> & candle_channel();
     EventTimeseriesChannel<double> & depo_channel();
+    EventTimeseriesChannel<PositionResult> & positions_channel();
     EventObjectChannel<StrategyResult> & strategy_result_channel();
     EventObjectChannel<WorkStatus> & status_channel();
     EventTimeseriesChannel<Tpsl> & tpsl_channel();
@@ -91,6 +92,7 @@ private:
     EventTimeseriesChannel<double> m_price_channel; // TODO do i need it?
     EventTimeseriesChannel<Candle> m_candle_channel;
     EventTimeseriesChannel<double> m_depo_channel;
+    EventTimeseriesChannel<PositionResult> m_positions_channel;
 
     const Symbol m_symbol;
     static constexpr double m_pos_currency_amount = 100.;

@@ -14,9 +14,13 @@ struct PositionResult
     friend std::ostream & operator<<(std::ostream & os, const PositionResult & res);
 
 public:
+    std::chrono::milliseconds opened_time() const;
+
+    xg::Guid guid;
     double fees_paid = 0.;
     double pnl_with_fee = 0.;
-    std::chrono::milliseconds opened_time = {};
+    std::chrono::milliseconds open_ts = {};
+    std::chrono::milliseconds close_ts = {};
 };
 std::ostream & operator<<(std::ostream & os, const PositionResult & res);
 

@@ -4,7 +4,8 @@
 #include "ScopeExit.h"
 
 OpenedPosition::OpenedPosition(const Trade & trade)
-    : m_single_trade_fee(trade.fee())
+    : m_guid(xg::newGuid())
+    , m_single_trade_fee(trade.fee())
     , m_open_ts(trade.ts())
 {
     on_trade(trade.price(), SignedVolume(trade.unsigned_volume(), trade.side()), trade.fee());
@@ -63,7 +64,7 @@ ProfitPriceLevels OpenedPosition::price_levels() const
     double no_loss_price = price_for_upnl(0.0);
     double fee_loss_price = price_for_upnl(-expected_total_fee());
 
-    return {.fee_profit_price=fee_profit_price, .no_loss_price=no_loss_price, .fee_loss_price=fee_loss_price};
+    return {.fee_profit_price = fee_profit_price, .no_loss_price = no_loss_price, .fee_loss_price = fee_loss_price};
 }
 
 std::ostream & operator<<(std::ostream & os, const OpenedPosition & pos)
@@ -73,7 +74,8 @@ std::ostream & operator<<(std::ostream & os, const OpenedPosition & pos)
        << ", open_ts = " << pos.open_ts()
        << ", entry_fee = " << pos.entry_fee()
        << ", opened_volume = " << pos.opened_volume().as_unsigned_and_side().first
-       << ", avg_entry_price = " << pos.m_avg_entry_price;
+       << ", avg_entry_price = " << pos.m_avg_entry_price
+       << ", guid = " << pos.m_guid;
     return os;
 }
 

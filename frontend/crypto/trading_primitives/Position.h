@@ -3,6 +3,8 @@
 #include "Trade.h"
 #include "Volume.h"
 
+#include <crossguid2/crossguid/guid.hpp>
+
 struct ProfitPriceLevels
 {
     double fee_profit_price;
@@ -48,10 +50,14 @@ public:
 
     std::optional<ClosedPosition> on_trade(double price, const SignedVolume & vol, double fee);
 
+    auto & guid() const { return m_guid; }
+
 private:
     double price_for_upnl(double required_upnl) const;
 
 private:
+    xg::Guid m_guid;
+
     SignedVolume m_absolute_volume;
     double m_avg_entry_price = {};
 
