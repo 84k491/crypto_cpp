@@ -34,7 +34,13 @@ class ChartWindow : public QWidget
     Q_OBJECT
 
 public:
-    ChartWindow(const std::shared_ptr<StrategyInstance> & strategy, QWidget * parent = nullptr);
+    ChartWindow(
+            std::string window_name,
+            const std::weak_ptr<StrategyInstance> & strategy,
+            std::chrono::milliseconds start_ts,
+            std::chrono::milliseconds end_ts,
+            bool render_depo,
+            QWidget * parent = nullptr);
     ~ChartWindow() override;
 
     MultiSeriesChart & get_or_create_chart(const std::string & chart_name);
@@ -49,9 +55,14 @@ private slots:
 
 private:
     void subscribe_to_strategy();
+    bool ts_in_range(std::chrono::milliseconds ts) const;
 
 private:
     static constexpr double height_factor = 0.7;
+
+    std::chrono::milliseconds m_start_ts;
+    std::chrono::milliseconds m_end_ts;
+    bool m_render_depo = false;
 
     Ui::ChartWindow * ui;
     QWidget * m_holder_widget = nullptr;

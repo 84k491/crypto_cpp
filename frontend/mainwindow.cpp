@@ -242,6 +242,7 @@ void MainWindow::subscribe_for_positions()
                 for (const auto & [_, position_result] : list) {
                     auto * view = new PositionResultView();
                     view->update(position_result);
+                    view->set_strategy_instance(m_strategy_instance);
                     lo->addWidget(view);
                 }
             },
@@ -413,7 +414,13 @@ bool MainWindowEventConsumer::push_to_queue_delayed(std::chrono::milliseconds, c
 
 void MainWindow::on_pb_charts_clicked()
 {
-    m_chart_window = new ChartWindow(m_strategy_instance);
+    m_chart_window = new ChartWindow(
+            "Whole run",
+            m_strategy_instance,
+            {},
+            {},
+            true,
+            nullptr);
     m_chart_window->setAttribute(Qt::WA_DeleteOnClose);
     connect(m_chart_window, &ChartWindow::destroyed, [this](auto) {
         m_chart_window = nullptr;

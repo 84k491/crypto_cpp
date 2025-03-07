@@ -193,6 +193,7 @@ void MultiSeriesChart::push_stop_loss(std::chrono::milliseconds ts, double stop_
 
 void MultiSeriesChart::set_title(const std::string &)
 {
+    // TODO implement
 }
 
 QCPGraph * MultiSeriesChart::get_graph_for_series(std::string_view series_name, bool is_scatter)
