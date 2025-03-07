@@ -1,5 +1,6 @@
 #pragma once
 
+#include "DateTimeConverter.h"
 #include <chrono>
 #include <cstddef>
 #include <optional>
@@ -18,11 +19,7 @@ public:
 
     void set_last_trade_date(std::chrono::milliseconds ts)
     {
-        // TODO this is copy from downloader, move it to util
-        const time_t t = std::chrono::duration_cast<std::chrono::seconds>(ts).count();
-        std::array<char, 30> s{};
-        std::strftime(s.data(), s.size(), "%Y-%m-%d", std::gmtime(&t));
-        last_trade_date = s.data();
+        last_trade_date = DateTimeConverter::date_time(ts);
     }
 
     double win_rate() const

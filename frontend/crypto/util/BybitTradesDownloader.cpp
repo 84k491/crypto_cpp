@@ -1,19 +1,12 @@
 #include "BybitTradesDownloader.h"
 
+#include "DateTimeConverter.h"
 #include "Logger.h"
 
 #include <filesystem>
 #include <list>
 
 namespace {
-
-std::string time_to_string(const std::chrono::milliseconds & tp)
-{
-    const time_t t = std::chrono::duration_cast<std::chrono::seconds>(tp).count();
-    std::array<char, 30> s{};
-    std::strftime(s.data(), s.size(), "%Y-%m-%d", std::gmtime(&t));
-    return {s.data()};
-}
 
 std::list<std::string> time_range_to_string_list(HistoricalMDRequestData timerange)
 {
@@ -22,7 +15,7 @@ std::list<std::string> time_range_to_string_list(HistoricalMDRequestData timeran
     auto current = timerange.start;
     auto end = timerange.end;
     while (end > current) {
-        res.push_back(time_to_string(current));
+        res.push_back(DateTimeConverter::date(current));
         current += std::chrono::hours(24);
     }
 
