@@ -13,7 +13,7 @@
 #include <string>
 #include <vector>
 
-ByBitMarketDataGateway::ByBitMarketDataGateway()
+ByBitMarketDataGateway::ByBitMarketDataGateway(bool start)
     : m_connection_watcher(*this)
     , m_event_loop(*this)
 {
@@ -23,6 +23,10 @@ ByBitMarketDataGateway::ByBitMarketDataGateway()
         return;
     }
     m_config = config_opt.value().market_data;
+
+    if (!start) {
+        return;
+    }
 
     m_last_server_time = get_server_time();
 

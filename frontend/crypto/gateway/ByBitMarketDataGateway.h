@@ -36,7 +36,7 @@ public:
     static constexpr std::chrono::minutes min_historical_interval = std::chrono::minutes{1};
     static auto get_taker_fee() { return taker_fee; }
 
-    ByBitMarketDataGateway();
+    ByBitMarketDataGateway(bool start = false);
 
     void push_async_request(HistoricalMDRequest && request) override;
     void push_async_request(LiveMDRequest && request) override;

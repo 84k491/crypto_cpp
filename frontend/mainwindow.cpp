@@ -164,7 +164,10 @@ void MainWindow::on_pb_run_clicked()
     m_strategy_instance.reset();
     auto & tr_gateway = [&]() -> ITradingGateway & {
         if (ui->cb_live->isChecked()) {
-            return m_trading_gateway;
+            if (!m_trading_gateway) {
+                m_trading_gateway = std::make_unique<ByBitTradingGateway>();
+            }
+            return *m_trading_gateway;
         }
         else {
             m_backtest_tr_gateway = std::make_unique<BacktestTradingGateway>();
