@@ -5,6 +5,7 @@
 #include "DebugEveryTickStrategy.h"
 #include "DoubleSmaStrategy.h"
 #include "Logger.h"
+#include "RatchetStrategy.h"
 #include "StrategyInterface.h"
 #include "CandleBollingerBandsStrategy.h"
 #include "RateOfChangeStrategy.h"
@@ -63,6 +64,10 @@ std::optional<std::shared_ptr<IStrategy>> StrategyFactory::build_strategy(
     }
     if (strategy_name == "DSMADiff") {
         std::shared_ptr<IStrategy> res = std::make_shared<DSMADiffStrategy>(config);
+        return res;
+    }
+    if (strategy_name == "Ratchet") {
+        std::shared_ptr<IStrategy> res = std::make_shared<RatchetStrategy>(config);
         return res;
     }
     Logger::logf<LogLevel::Error>("Unknown strategy name: {}", strategy_name);

@@ -1,0 +1,17 @@
+{
+    "strategy_name": "BollingerBands",
+    "parameters": [
+        {
+            "name": "timeframe_s",
+            "min_value": 60,
+            "step": 60,
+            "max_value": 600
+        },
+        {
+            "name": "retracement",
+            "min_value": 0.01,
+            "step": 0.001,
+            "max_value": 0.030
+        }
+    ]
+}
