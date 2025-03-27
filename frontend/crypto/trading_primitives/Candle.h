@@ -33,6 +33,7 @@ public:
     double close() const { return m_close; }
     double volume() const { return m_volume; }
     Side side() const { return m_close > m_open ? Side::buy() : Side::sell(); }
+    double price_diff() const { return m_close - m_open; }
 
     nlohmann::json to_json() const;
 
