@@ -2,7 +2,7 @@
 
 RelativeStrengthIndexStrategyConfig::RelativeStrengthIndexStrategyConfig(const JsonStrategyConfig & json)
 {
-    if (json.get().contains("std_dev")) {
+    if (json.get().contains("margin")) {
         m_margin = json.get()["margin"].get<unsigned>();
     }
     if (json.get().contains("interval")) {
@@ -35,8 +35,8 @@ std::optional<Signal> RelativeStrengthIndexStrategy::push_candle(const Candle & 
         return std::nullopt;
     }
 
-    const auto upper_trigger = 100 - m_config.m_margin;
-    const auto lower_trigger = m_config.m_margin;
+    const double upper_trigger = 100 - m_config.m_margin;
+    const double lower_trigger = m_config.m_margin;
 
     m_strategy_internal_data_channel.push(c.close_ts(), {"rsi", "upper", upper_trigger});
     m_strategy_internal_data_channel.push(c.close_ts(), {"rsi", "rsi", rsi.value()});
@@ -56,9 +56,14 @@ EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & RelativeS
     return m_strategy_internal_data_channel;
 }
 
+bool RelativeStrengthIndexStrategyConfig::is_valid() const
+{
+    return m_interval > 0 && m_margin > 0;
+}
+
 bool RelativeStrengthIndexStrategy::is_valid() const
 {
-    return RelativeStrengthIndexStrategyConfig::is_valid();
+    return m_config.is_valid();
 }
 
 std::optional<std::chrono::milliseconds> RelativeStrengthIndexStrategy::timeframe() const

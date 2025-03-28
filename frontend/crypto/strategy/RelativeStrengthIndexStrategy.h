@@ -9,7 +9,7 @@ class RelativeStrengthIndexStrategyConfig
 public:
     RelativeStrengthIndexStrategyConfig(const JsonStrategyConfig & json);
 
-    static bool is_valid() { return true; }
+    bool is_valid() const;
 
     JsonStrategyConfig to_json() const;
 
