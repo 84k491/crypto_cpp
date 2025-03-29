@@ -62,6 +62,7 @@ MainWindow::MainWindow(QWidget * parent)
     ui->cb_strategy->addItem("DSMADiff");
     ui->cb_strategy->addItem("Ratchet");
     ui->cb_strategy->addItem("RelativeStrengthIndex");
+    ui->cb_strategy->addItem("BBRSI");
     ui->cb_strategy->setCurrentText(saved_state.m_strategy_name.c_str());
     ui->cb_exit_strategy->addItem("TpslExit");
     ui->cb_exit_strategy->addItem("TrailingStop");

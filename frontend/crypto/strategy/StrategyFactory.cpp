@@ -1,5 +1,6 @@
 #include "StrategyFactory.h"
 
+#include "BBRSIStrategy.h"
 #include "BollingerBandsStrategy.h"
 #include "DSMADiffStrategy.h"
 #include "DebugEveryTickStrategy.h"
@@ -73,6 +74,10 @@ std::optional<std::shared_ptr<IStrategy>> StrategyFactory::build_strategy(
     }
     if (strategy_name == "RelativeStrengthIndex") {
         std::shared_ptr<IStrategy> res = std::make_shared<RelativeStrengthIndexStrategy>(config);
+        return res;
+    }
+    if (strategy_name == "BBRSI") {
+        std::shared_ptr<IStrategy> res = std::make_shared<BBRSIStrategy>(config);
         return res;
     }
     Logger::logf<LogLevel::Error>("Unknown strategy name: {}", strategy_name);

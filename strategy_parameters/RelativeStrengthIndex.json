@@ -1,0 +1,23 @@
+{
+    "strategy_name": "RelativeStrengthIndex",
+    "parameters": [
+        {
+            "name": "timeframe_s",
+            "min_value": 60,
+            "step": 60,
+            "max_value": 600
+        },
+        {
+            "name": "margin",
+            "min_value": 10,
+            "step": 5,
+            "max_value": 40
+        },
+        {
+            "name": "interval",
+            "min_value": 10,
+            "step": 5,
+            "max_value": 30
+        }
+    ]
+}
