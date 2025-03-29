@@ -32,6 +32,9 @@ std::optional<double> TimeWeightedMovingAverage::push_value(std::pair<std::chron
     if (m_data.empty()) {
         return {};
     }
+    if (timestamp.count() < m_data.back().timestamp.count()) {
+        return {};
+    }
 
     Data & prev_point = m_data.back();
     double weight = calc_weight(timestamp.count());
