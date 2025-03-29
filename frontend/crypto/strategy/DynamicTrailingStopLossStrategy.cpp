@@ -53,6 +53,7 @@ std::optional<std::string> DynamicTrailingStopLossStrategy::on_price_changed(
     // TODO doesn't count fees!
     const auto desired_price_distance = m_active_stop_loss->price_distance() * m_dynamic_config.no_loss_coef();
     const auto no_risk_trigger_price = m_last_pos_price_levels.no_loss_price + (desired_price_distance * side_sign);
+
     const auto price_distance_side_abs = [&](double current_price, double ref) {
         // positive if price is less than level for short
         const double pd_abs = (current_price - ref) * side_sign;
@@ -60,12 +61,6 @@ std::optional<std::string> DynamicTrailingStopLossStrategy::on_price_changed(
     };
 
     if (price_distance_side_abs(price, no_risk_trigger_price) < 0.) {
-        return std::nullopt;
-    }
-
-    const double current_stop_price = price - (m_active_stop_loss->price_distance() * side_sign); // TODO it's not trailing! Can go backwards!
-    if (price_distance_side_abs(current_stop_price, m_last_pos_price_levels.no_loss_price) >= 0.) {
-        // already triggered
         return std::nullopt;
     }
 
