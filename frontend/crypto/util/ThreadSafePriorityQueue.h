@@ -56,7 +56,7 @@ public:
         T value = std::move(queue.front());
         queue.pop();
         if (queue.empty()) {
-            m_queue_map.erase(m_queue_map.begin());
+            m_queue_map.erase(m_queue_map.begin()); // TODO double free here
         }
         return value;
     }
