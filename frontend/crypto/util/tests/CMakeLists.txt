@@ -37,3 +37,17 @@ target_link_libraries(candle_builder_test
 
 set(UNIT_TEST candle_builder_test)
 add_test(NAME ${UNIT_TEST} COMMAND ${UNIT_TEST})
+
+##############################
+add_executable(ordinary_least_squares_test
+    OrdinaryLeastSquaresTest.cpp
+    ../OrdinaryLeastSquares.cpp
+)
+
+target_link_libraries(ordinary_least_squares_test
+    ${GTEST_BOTH_LIBRARIES}
+)
+
+set(UNIT_TEST ordinary_least_squares_test)
+add_test(NAME ${UNIT_TEST} COMMAND ${UNIT_TEST})
+

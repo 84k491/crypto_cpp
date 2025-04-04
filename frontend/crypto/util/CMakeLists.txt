@@ -13,7 +13,7 @@ target_include_directories(util
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-target_link_libraries(util PRIVATE
+target_link_libraries(util PUBLIC
     trading_primitives
     nlohmann_json::nlohmann_json
     crossguid2
