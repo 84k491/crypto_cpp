@@ -33,6 +33,8 @@ public:
 
     void set_title(const std::string & title); // TODO implement
 
+    void override_depo_trend(std::pair<std::chrono::milliseconds, double> first, std::pair<std::chrono::milliseconds, double> last);
+
 private:
     void push_series_value_dont_replot(const std::string & series_name,
                                        std::chrono::milliseconds ts,

@@ -43,9 +43,9 @@ struct PriceRegressionFunction
 SimpleRegressionFunction solve(const std::vector<Point> & data);
 double deviation(const SimpleRegressionFunction & f, const std::vector<Point> & data);
 std::vector<Point> from_prices(
-        std::vector<std::pair<std::chrono::milliseconds, double>> & prices);
+        const std::vector<std::pair<std::chrono::milliseconds, double>> & prices);
 
 std::pair<PriceRegressionFunction, double> solve_prices(
-        std::vector<std::pair<std::chrono::milliseconds, double>> & prices);
+        const std::vector<std::pair<std::chrono::milliseconds, double>> & prices);
 
 } // namespace OLS

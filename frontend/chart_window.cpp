@@ -264,6 +264,18 @@ void ChartWindow::subscribe_to_strategy()
                 }
                 get_or_create_chart(m_depo_chart_name).push_series_value("depo", ts, depo);
             }));
+
+    const auto update_trend_callback = [this](const StrategyResult & str_res) {
+                auto & plot = get_or_create_chart(m_depo_chart_name);
+                plot.override_depo_trend(
+                        {str_res.first_depo_trend_ts, str_res.first_depo_trend_value},
+                        {str_res.last_depo_trend_ts, str_res.last_depo_trend_value});
+            };
+    const auto res = str_instance.strategy_result_channel().get();
+    update_trend_callback(res);
+    m_subscriptions.push_back(str_instance.strategy_result_channel().subscribe(
+            m_event_consumer,
+            update_trend_callback));
 }
 
 bool ChartWindowEventConsumer::push_to_queue(std::any value)

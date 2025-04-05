@@ -7,6 +7,9 @@ namespace OLS {
 SimpleRegressionFunction solve(const std::vector<Point> & d)
 {
     const unsigned n = d.size();
+    if (n < 2) {
+        return {};
+    }
 
     double sum_x = 0, sum_y = 0, sum_xy = 0, sum_xx = 0;
 
@@ -34,10 +37,10 @@ double deviation(const SimpleRegressionFunction & f, const std::vector<Point> & 
         const auto err = p.y - y_calc;
         dev += err * err;
     }
-    return sqrt(dev) / ((unsigned)data.size() - 1);
+    return sqrt(dev / ((unsigned)data.size()));
 }
 
-std::vector<Point> from_prices(std::vector<std::pair<std::chrono::milliseconds, double>> & prices)
+std::vector<Point> from_prices(const std::vector<std::pair<std::chrono::milliseconds, double>> & prices)
 {
     // must be in ascending order
 
@@ -55,7 +58,7 @@ std::vector<Point> from_prices(std::vector<std::pair<std::chrono::milliseconds, 
 }
 
 std::pair<PriceRegressionFunction, double> solve_prices(
-        std::vector<std::pair<std::chrono::milliseconds, double>> & prices)
+        const std::vector<std::pair<std::chrono::milliseconds, double>> & prices)
 {
     const auto points = from_prices(prices);
     const auto f = solve(points);

@@ -233,6 +233,8 @@ void MainWindow::render_result(StrategyResult result)
     ui->lb_win_rate->setText(QString::number(result.win_rate() * 100.));
     ui->lb_avg_profit_pos_time->setText(QString::number(result.avg_profit_pos_time));
     ui->lb_avg_loss_pos_time->setText(QString::number(result.avg_loss_pos_time));
+    ui->lb_trend_profit->setText(QString::number(result.last_depo_trend_value));
+    ui->lb_trend_deviation->setText(QString::number(result.depo_standard_deviation));
 }
 
 void MainWindow::subscribe_for_positions()

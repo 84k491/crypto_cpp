@@ -196,6 +196,20 @@ void MultiSeriesChart::set_title(const std::string &)
     // TODO implement
 }
 
+void MultiSeriesChart::override_depo_trend(
+        std::pair<std::chrono::milliseconds, double> first_point,
+        std::pair<std::chrono::milliseconds, double> last_point)
+{
+    QCPGraph * graph = get_graph_for_series("depo_trend", false);
+    QSharedPointer<QCPGraphDataContainer> c{new QCPGraphDataContainer};
+    QCPGraphData f{double(first_point.first.count()) / 1000., first_point.second};
+    QCPGraphData l{double(last_point.first.count()) / 1000., last_point.second};
+    c->add(f);
+    c->add(l);
+    graph->setData(c);
+    replot();
+}
+
 QCPGraph * MultiSeriesChart::get_graph_for_series(std::string_view series_name, bool is_scatter)
 {
     const auto & [it, inserted] = m_series_indexes.try_emplace(std::string(series_name), m_series_indexes.size());

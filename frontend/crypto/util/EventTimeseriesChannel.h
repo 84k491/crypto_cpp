@@ -11,7 +11,6 @@
 #include <functional>
 #include <list>
 #include <memory>
-#include <vector>
 
 template <typename ObjectT>
 class EventTimeseriesChannel;
@@ -61,6 +60,8 @@ public:
 
     // thread unsafe
     void set_capacity(std::optional<std::chrono::milliseconds> capacity) { m_capacity = capacity; }
+
+    std::list<std::pair<TimeT, ObjectT>> data_copy() { return m_data.lock().get(); }
 
     void unsubscribe(xg::Guid guid);
 

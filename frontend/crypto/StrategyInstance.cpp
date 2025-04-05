@@ -1,11 +1,11 @@
 #include "StrategyInstance.h"
 
-#include "BybitTradesDownloader.h"
 #include "DynamicTrailingStopLossStrategy.h"
 #include "EventLoop.h"
 #include "Events.h"
 #include "ITradingGateway.h"
 #include "Logger.h"
+#include "OrdinaryLeastSquares.h"
 #include "ScopeExit.h"
 #include "Signal.h"
 #include "TpslExitStrategy.h"
@@ -17,6 +17,7 @@
 #include <chrono>
 #include <future>
 #include <optional>
+#include <ranges>
 
 // TODO move it to a separate file
 class ExitStrategyFactory
@@ -223,9 +224,16 @@ void StrategyInstance::process_position_result(const PositionResult & new_result
 
         res.max_depo = std::max(res.max_depo, res.final_profit);
         res.min_depo = std::min(res.min_depo, res.final_profit);
+
     });
 
     m_depo_channel.push(ts, m_strategy_result.get().final_profit);
+
+    const auto depo_series_list = m_depo_channel.data_copy();
+    const auto depo_series = depo_series_list | std::ranges::to<std::vector>();
+    m_strategy_result.update([&](StrategyResult & res) {
+        res.set_trend_info(depo_series);
+    });
 }
 
 void StrategyInstance::set_channel_capacity(std::optional<std::chrono::milliseconds> capacity)

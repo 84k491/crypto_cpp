@@ -1,6 +1,7 @@
 #pragma once
 
 #include "DateTimeConverter.h"
+
 #include <chrono>
 #include <cstddef>
 #include <optional>
@@ -44,4 +45,11 @@ public:
 
     std::chrono::seconds longest_profit_trade_time = {};
     std::chrono::seconds longest_loss_trade_time = {};
+
+    void set_trend_info(const std::vector<std::pair<std::chrono::milliseconds, double>> & prices);
+    double last_depo_trend_value = 0.;
+    std::chrono::milliseconds last_depo_trend_ts;
+    double first_depo_trend_value = 0.;
+    std::chrono::milliseconds first_depo_trend_ts;
+    double depo_standard_deviation = 0.;
 };
