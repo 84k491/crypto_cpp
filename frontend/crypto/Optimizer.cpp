@@ -72,16 +72,22 @@ std::vector<JsonStrategyConfig> OptimizerParser::get_possible_configs(const Stra
     return ouput_jsons;
 }
 
+double best_profit_criteria(const StrategyResult & result)
+{
+    return result.final_profit;
+}
+
 std::optional<std::pair<JsonStrategyConfig, JsonStrategyConfig>> Optimizer::optimize()
 {
     Logger::log<LogLevel::Status>("Starting optimizer");
     OptimizerParser parser(m_optimizer_inputs);
 
-    const auto configs = parser.get_possible_configs();
+    const std::vector<std::pair<JsonStrategyConfig, JsonStrategyConfig>> configs = parser.get_possible_configs();
 
-    std::mutex mutex;
-    double max_profit = -std::numeric_limits<double>::max();
-    std::optional<decltype(configs)::value_type> best_config;
+    Guarded<OptimizerCollector> collector{
+            [](const auto & res) {
+                return best_profit_criteria(res);
+            }};
 
     Logger::log<LogLevel::Debug>("Logs will be suppressed during optimization"); // TODO push as event
     Logger::set_min_log_level(LogLevel::Warning);
@@ -117,15 +123,10 @@ std::optional<std::pair<JsonStrategyConfig, JsonStrategyConfig>> Optimizer::opti
             strategy_instance.set_channel_capacity(std::chrono::milliseconds{});
             strategy_instance.run_async();
             strategy_instance.finish_future().wait();
-            const auto profit = strategy_instance.strategy_result_channel().get().final_profit;
+            const auto result = strategy_instance.strategy_result_channel().get();
 
-            {
-                std::lock_guard lock(mutex);
-                if (max_profit < profit) {
-                    max_profit = profit;
-                    best_config = configs[i];
-                }
-            }
+            auto lref = collector.lock();
+            lref.get().push(configs[i], result);
             m_on_passed_check(output_iter.fetch_add(1), configs.size());
         }
     };
@@ -140,9 +141,24 @@ std::optional<std::pair<JsonStrategyConfig, JsonStrategyConfig>> Optimizer::opti
         t.join();
     }
 
-    if (!best_config.has_value()) {
-        return {};
-    }
     m_on_passed_check(configs.size(), configs.size());
-    return {{JsonStrategyConfig{best_config.value().first}, best_config.value().second}};
+    return collector.lock().get().get_best();
+}
+
+bool OptimizerCollector::push(
+        std::pair<JsonStrategyConfig, JsonStrategyConfig> strategy_config,
+        const StrategyResult & result)
+{
+    const auto score = m_criteria(result);
+    if (score < 0.) {
+        return false;
+    }
+
+    if (score <= m_best_score) {
+        return false;
+    }
+
+    m_best_score = score;
+    m_best = strategy_config;
+    return true;
 }

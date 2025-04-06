@@ -3,6 +3,7 @@
 #include "ByBitMarketDataGateway.h"
 #include "JsonStrategyConfig.h"
 #include "Logger.h"
+#include "StrategyResult.h"
 
 #include <nlohmann/json.hpp>
 
@@ -38,6 +39,30 @@ private:
     static std::vector<JsonStrategyConfig> get_possible_configs(const StrategyOptimizerInputs & strategy_optimizer_inputs);
 
     const OptimizerInputs m_inputs;
+};
+
+class OptimizerCollector
+{
+public:
+    // result -> score, negative score means drop
+    using Criteria = std::function<double(const StrategyResult &)>;
+
+    OptimizerCollector(Criteria criteria)
+        : m_criteria(std::move(criteria))
+    {
+    }
+
+    bool push(
+            std::pair<JsonStrategyConfig, JsonStrategyConfig> strategy_config,
+            const StrategyResult & result);
+
+    std::optional<std::pair<JsonStrategyConfig, JsonStrategyConfig>> get_best() const { return m_best; }
+
+private:
+    Criteria m_criteria;
+
+    double m_best_score = -1.;
+    std::optional<std::pair<JsonStrategyConfig, JsonStrategyConfig>> m_best;
 };
 
 class Optimizer
