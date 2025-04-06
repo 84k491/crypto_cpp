@@ -7,3 +7,6 @@
 [submodule "thirdparty/QCustomPlot-library"]
 	path = thirdparty/QCustomPlot-library
 	url = https://github.com/legerch/QCustomPlot-library.git
+[submodule "thirdparty/crossguid"]
+	path = thirdparty/crossguid
+	url = https://github.com/84k491/crossguid.git

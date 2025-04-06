@@ -9,7 +9,7 @@
 #include "Trade.h"
 #include "TrailingStopLoss.h"
 
-#include <crossguid2/crossguid/guid.hpp>
+#include <crossguid/guid.hpp>
 #include <map>
 #include <utility>
 

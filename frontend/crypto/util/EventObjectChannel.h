@@ -5,7 +5,7 @@
 #include "ISubsription.h"
 #include "Macros.h"
 
-#include <crossguid2/crossguid/guid.hpp>
+#include <crossguid/guid.hpp>
 #include <functional>
 #include <memory>
 #include <vector>

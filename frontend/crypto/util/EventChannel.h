@@ -5,7 +5,7 @@
 #include "Macros.h"
 #include "Guarded.h"
 
-#include <crossguid2/crossguid/guid.hpp>
+#include <crossguid/guid.hpp>
 #include <memory>
 #include <vector>
 

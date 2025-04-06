@@ -7,7 +7,7 @@
 #include "Macros.h"
 
 #include <chrono>
-#include <crossguid2/crossguid/guid.hpp>
+#include <crossguid/guid.hpp>
 #include <functional>
 #include <list>
 #include <memory>

@@ -37,7 +37,7 @@ target_link_libraries(frontend PRIVATE
     Qt${QT_VERSION_MAJOR}::Widgets
     qcustomplot
     nlohmann_json::nlohmann_json
-    crossguid2
+    crossguid
     crypto_local
     ta
     util

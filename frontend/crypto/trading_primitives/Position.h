@@ -3,7 +3,7 @@
 #include "Trade.h"
 #include "Volume.h"
 
-#include <crossguid2/crossguid/guid.hpp>
+#include <crossguid/guid.hpp>
 
 struct ProfitPriceLevels
 {

@@ -15,7 +15,7 @@ add_executable(event_loop_test
 
 target_link_libraries(event_loop_test
     ${GTEST_BOTH_LIBRARIES}
-    crossguid2
+    crossguid
     trading_primitives
     nlohmann_json
 )
@@ -30,7 +30,7 @@ add_executable(candle_builder_test
 
 target_link_libraries(candle_builder_test
     ${GTEST_BOTH_LIBRARIES}
-    crossguid2
+    crossguid
     trading_primitives
     nlohmann_json
 )

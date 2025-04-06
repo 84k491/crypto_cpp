@@ -8,7 +8,7 @@
 #include "Symbol.h"
 
 #include <chrono>
-#include <crossguid2/crossguid/guid.hpp>
+#include <crossguid/guid.hpp>
 #include <future>
 #include <string>
 #include <vector>

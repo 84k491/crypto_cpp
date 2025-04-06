@@ -3,7 +3,7 @@
 #include "EventChannel.h"
 #include "Events.h"
 
-#include <crossguid2/crossguid/guid.hpp>
+#include <crossguid/guid.hpp>
 
 struct OrderRequestEvent;
 struct TpslRequestEvent;
