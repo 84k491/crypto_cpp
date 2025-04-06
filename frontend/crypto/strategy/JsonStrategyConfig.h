@@ -35,3 +35,27 @@ public:
 private:
     nlohmann::json m_meta_info;
 };
+
+class DoubleJsonStrategyConfig
+{
+public:
+    DoubleJsonStrategyConfig(JsonStrategyConfig entry_config, JsonStrategyConfig exit_config)
+        : m_entry_config(std::move(entry_config))
+        , m_exit_config(std::move(exit_config))
+    {
+    }
+
+    DoubleJsonStrategyConfig(nlohmann::json double_config)
+        : DoubleJsonStrategyConfig(double_config["entry"], double_config["exit"])
+    {
+    }
+
+    nlohmann::json to_json() const
+    {
+        return {{"entry", m_entry_config.get()}, {"exit", m_exit_config.get()}};
+    }
+
+public:
+    JsonStrategyConfig m_entry_config;
+    JsonStrategyConfig m_exit_config;
+};

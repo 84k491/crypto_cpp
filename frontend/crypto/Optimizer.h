@@ -33,7 +33,7 @@ public:
     {
     }
 
-    std::vector<std::pair<JsonStrategyConfig, JsonStrategyConfig>> get_possible_configs();
+    std::vector<DoubleJsonStrategyConfig> get_possible_configs();
 
 private:
     static std::vector<JsonStrategyConfig> get_possible_configs(const StrategyOptimizerInputs & strategy_optimizer_inputs);
@@ -52,17 +52,15 @@ public:
     {
     }
 
-    bool push(
-            std::pair<JsonStrategyConfig, JsonStrategyConfig> strategy_config,
-            const StrategyResult & result);
+    bool push(DoubleJsonStrategyConfig strategy_config, const StrategyResult & result);
 
-    std::optional<std::pair<JsonStrategyConfig, JsonStrategyConfig>> get_best() const { return m_best; }
+    std::optional<DoubleJsonStrategyConfig> get_best() const { return m_best; }
 
 private:
     Criteria m_criteria;
 
     double m_best_score = -1.;
-    std::optional<std::pair<JsonStrategyConfig, JsonStrategyConfig>> m_best;
+    std::optional<DoubleJsonStrategyConfig> m_best;
 };
 
 class Optimizer
@@ -86,7 +84,7 @@ public:
     {
     }
 
-    [[nodiscard]] std::optional<std::pair<JsonStrategyConfig, JsonStrategyConfig>> optimize();
+    [[nodiscard]] std::optional<DoubleJsonStrategyConfig> optimize();
 
     void subscribe_for_passed_check(std::function<void(int, int)> && on_passed_checks)
     {

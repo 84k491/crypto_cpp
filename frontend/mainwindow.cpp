@@ -356,11 +356,11 @@ void MainWindow::on_pb_optimize_clicked()
 
         const auto best_config = optimizer.optimize();
         if (!best_config.has_value()) {
-            Logger::log<LogLevel::Error>("No best config");
+            Logger::log<LogLevel::Info>("No best config");
             return;
         }
-        emit signal_optimized_config(best_config.value().first, best_config.value().second);
-        Logger::logf<LogLevel::Info>("Best config: {}; {}", best_config.value().first, best_config.value().second);
+        emit signal_optimized_config(best_config.value().m_entry_config, best_config.value().m_exit_config);
+        Logger::logf<LogLevel::Info>("Best config: {}; {}", best_config.value().m_entry_config, best_config.value().m_exit_config);
     });
     t.detach();
 }
