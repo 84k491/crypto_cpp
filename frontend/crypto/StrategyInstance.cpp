@@ -224,13 +224,14 @@ void StrategyInstance::process_position_result(const PositionResult & new_result
 
         res.max_depo = std::max(res.max_depo, res.final_profit);
         res.min_depo = std::min(res.min_depo, res.final_profit);
-
     });
 
     m_depo_channel.push(ts, m_strategy_result.get().final_profit);
 
-    const auto depo_series_list = m_depo_channel.data_copy();
-    const auto depo_series = depo_series_list | std::ranges::to<std::vector>();
+    const std::list<std::pair<std::chrono::milliseconds, double>> depo_series_list = m_depo_channel.data_copy();
+    const std::vector<std::pair<std::chrono::milliseconds, double>> depo_series{
+            depo_series_list.begin(),
+            depo_series_list.end()};
     m_strategy_result.update([&](StrategyResult & res) {
         res.set_trend_info(depo_series);
     });

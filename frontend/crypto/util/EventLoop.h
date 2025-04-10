@@ -6,6 +6,8 @@
 #include <functional>
 #include <map>
 #include <variant>
+#include <type_traits>
+#include <thread>
 
 template <class... Ts>
 struct VariantMatcher : Ts...

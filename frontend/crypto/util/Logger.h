@@ -3,6 +3,8 @@
 #include "EventLoopSubscriber.h"
 #include "Events.h"
 
+#include <fmt/core.h>
+
 class Logger : public IEventInvoker<LogEvent>
 {
 public:
@@ -35,7 +37,7 @@ private:
         static_assert(
                 (std::is_same_v<Args, std::string> && ...),
                 "Here we accept only strings");
-        log<level>(std::vformat(fmt, std::make_format_args(args...)));
+        log<level>(fmt::vformat(fmt, fmt::make_format_args(args...)));
     }
 
     void invoke(const std::variant<LogEvent> & value) override;

@@ -2,7 +2,7 @@
 
 #include "LogLevel.h"
 
-#include <print>
+#include <fmt/chrono.h>
 
 Logger::Logger()
     : m_event_loop(*this)
@@ -30,10 +30,10 @@ void Logger::handle_event(const LogEvent & ev)
     if (ev.level < m_min_log_level) {
         return;
     }
-    const std::string str = std::format("[{}][{}]: {}",
+    const std::string str = fmt::format("[{}][{}]: {}",
                                         ev.ts,
                                         to_string(ev.level),
-                                        ev.log_str);
+                                        ev.log_str).c_str();
     std::cout << str << std::endl;
 }
 

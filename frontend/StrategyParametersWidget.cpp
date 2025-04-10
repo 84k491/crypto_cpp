@@ -1,6 +1,6 @@
 #include "StrategyParametersWidget.h"
 
-#include <print>
+#include <iostream>
 #include <qboxlayout.h>
 #include <qlabel.h>
 
@@ -66,7 +66,7 @@ void StrategyParametersWidget::setup_values(const JsonStrategyConfig & config)
     for (auto it = config.get().begin(); it != config.get().end(); ++it) {
         auto spinbox_it = m_strategy_parameters_spinboxes.find(it.key());
         if (spinbox_it == m_strategy_parameters_spinboxes.end()) {
-            std::println("ERROR: Could not find spinbox for {}", it.key());
+            std::cout << "ERROR: Could not find spinbox for " << it.key() << std::endl;
             continue;
         }
         m_strategy_parameters_spinboxes.at(it.key())->setValue(it.value().get<double>());

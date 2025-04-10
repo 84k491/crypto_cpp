@@ -3,6 +3,7 @@
 #include "restincurl.h"
 
 #include <future>
+#include <optional>
 
 class RestClient
 {

@@ -1,5 +1,7 @@
 #include "DateTimeConverter.h"
 
+#include <array>
+
 namespace DateTimeConverter {
 
 std::string date_time(std::chrono::milliseconds ts)

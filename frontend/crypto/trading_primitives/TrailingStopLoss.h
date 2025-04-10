@@ -3,6 +3,7 @@
 #include "Side.h"
 
 #include <utility>
+#include <optional>
 
 // used as TrailingStopLoss current value
 class StopLoss

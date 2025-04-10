@@ -8,8 +8,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include <print>
-
 namespace test {
 using namespace testing;
 

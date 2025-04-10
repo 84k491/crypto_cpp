@@ -16,8 +16,8 @@ const auto short_bar_color = QColor(255, 87, 51);
 
 std::map<std::string, QColor> line_series_colors = {
         {"price", QColor(0, 0, 0)},
-        {"upper_band", QColor::fromString("#e88d38")},
-        {"lower_band", QColor::fromString("#3463c2")},
+        {"upper_band", QColor(232, 141, 56)},
+        {"lower_band", QColor(52, 99, 194)},
         {"trend", QColor(140, 50, 80)},
 };
 

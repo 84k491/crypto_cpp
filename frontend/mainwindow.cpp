@@ -14,7 +14,6 @@
 
 #include <nlohmann/json.hpp>
 
-#include <qtypes.h>
 #include <thread>
 
 MainWindow::MainWindow(QWidget * parent)
