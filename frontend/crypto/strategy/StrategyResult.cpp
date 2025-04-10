@@ -28,10 +28,10 @@ nlohmann::json StrategyResult::to_json() const
             {"avg_loss_pos_time", avg_loss_pos_time},
             {"longest_profit_trade_time", longest_profit_trade_time.count()},
             {"longest_loss_trade_time", longest_loss_trade_time.count()},
-            {"first_depo_trend_value", first_depo_trend_value},
-            {"first_depo_trend_ts", first_depo_trend_ts.count()},
-            {"last_depo_trend_value", last_depo_trend_value},
-            {"last_depo_trend_ts", last_depo_trend_ts.count()},
+            {"depo_trend_coef", depo_trend_coef},
+            {"depo_trend_const", depo_trend_const},
+            {"first_position_closed_ts", first_position_closed_ts.count()},
+            {"last_position_closed_ts", last_position_closed_ts.count()},
     };
 }
 
@@ -44,8 +44,8 @@ void StrategyResult::set_trend_info(const std::vector<std::pair<std::chrono::mil
     const auto [reg, dev] = OLS::solve_prices(prices);
 
     depo_standard_deviation = dev;
-    last_depo_trend_value = reg(prices.back().first);
-    last_depo_trend_ts = prices.back().first;
-    first_depo_trend_value = reg(prices.front().first);
-    first_depo_trend_ts = prices.front().first;
+    depo_trend_coef = reg.k;
+    depo_trend_const = reg.c;
+    last_position_closed_ts = prices.back().first;
+    first_position_closed_ts = prices.front().first;
 }

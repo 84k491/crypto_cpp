@@ -5,6 +5,7 @@
 #include "JsonStrategyConfig.h"
 #include "Logger.h"
 #include "Optimizer.h"
+#include "OrdinaryLeastSquares.h"
 #include "PositionResultView.h"
 #include "StrategyInstance.h"
 #include "StrategyParametersWidget.h"
@@ -232,8 +233,10 @@ void MainWindow::render_result(StrategyResult result)
     ui->lb_win_rate->setText(QString::number(result.win_rate() * 100.));
     ui->lb_avg_profit_pos_time->setText(QString::number(result.avg_profit_pos_time));
     ui->lb_avg_loss_pos_time->setText(QString::number(result.avg_loss_pos_time));
-    ui->lb_trend_profit->setText(QString::number(result.last_depo_trend_value));
     ui->lb_trend_deviation->setText(QString::number(result.depo_standard_deviation));
+
+    OLS::PriceRegressionFunction depo_trend{result.depo_trend_coef, result.depo_trend_const};
+    ui->lb_trend_profit->setText(QString::number(depo_trend(result.last_position_closed_ts)));
 }
 
 void MainWindow::subscribe_for_positions()

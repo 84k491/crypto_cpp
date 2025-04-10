@@ -65,10 +65,12 @@ TEST_F(OLSTest, Converters)
             {std::chrono::milliseconds{1743796578'777}, 7},
             {std::chrono::milliseconds{1743796579'888}, 8},
     };
-    const auto expected = std::pair{std::chrono::milliseconds{1743796580'999}, 9};
+    const auto expected_zero = std::pair{std::chrono::milliseconds{1743796573'222}, 2};
+    const auto expected_fut = std::pair{std::chrono::milliseconds{1743796580'999}, 9};
 
     const auto points = OLS::from_prices(data);
     const auto f = OLS::solve(points);
     const auto cf = OLS::PriceRegressionFunction(f, data.front().first);
-    EXPECT_DOUBLE_EQ(cf(expected.first), expected.second);
+    EXPECT_DOUBLE_EQ(cf(expected_zero.first), expected_zero.second);
+    EXPECT_DOUBLE_EQ(cf(expected_fut.first), expected_fut.second);
 }

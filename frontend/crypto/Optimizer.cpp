@@ -3,6 +3,7 @@
 #include "BacktestTradingGateway.h"
 #include "JsonStrategyConfig.h"
 #include "LogLevel.h"
+#include "OrdinaryLeastSquares.h"
 #include "ScopeExit.h"
 #include "StrategyFactory.h"
 #include "StrategyInstance.h"
@@ -79,7 +80,8 @@ double best_profit_criteria(const StrategyResult & result)
 
 double min_deviation_criteria(const StrategyResult & result)
 {
-    if (result.last_depo_trend_value <= 0.) {
+    OLS::PriceRegressionFunction depo_trend{result.depo_trend_coef, result.depo_trend_const};
+    if (depo_trend(result.last_position_closed_ts) <= 0.) {
         return -1.;
     }
     if (result.depo_standard_deviation <= 0.) {

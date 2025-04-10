@@ -52,9 +52,9 @@ public:
     std::chrono::seconds longest_profit_trade_time = {};
     std::chrono::seconds longest_loss_trade_time = {};
 
-    double last_depo_trend_value = 0.;
-    std::chrono::milliseconds last_depo_trend_ts;
-    double first_depo_trend_value = 0.;
-    std::chrono::milliseconds first_depo_trend_ts;
+    double depo_trend_coef = 0.;
+    double depo_trend_const = 0.;
+    std::chrono::milliseconds first_position_closed_ts;
+    std::chrono::milliseconds last_position_closed_ts;
     double depo_standard_deviation = 0.;
 };

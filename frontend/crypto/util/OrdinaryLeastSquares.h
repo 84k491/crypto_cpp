@@ -22,22 +22,27 @@ struct Point
 
 struct PriceRegressionFunction
 {
-    PriceRegressionFunction(SimpleRegressionFunction f, std::chrono::milliseconds zero_ts)
-        : f(f)
-        , zero_ts(zero_ts)
+    static constexpr double milliseconds_in_day = 24. * 60. * 60. * 1000.;
+
+    PriceRegressionFunction(double k, double c)
+        : k(k)
+        , c(c)
     {
     }
 
-    static constexpr unsigned milliseconds_in_day = 24 * 60 * 60 * 1000;
+    PriceRegressionFunction(SimpleRegressionFunction f, std::chrono::milliseconds zero_ts)
+    {
+        k = f.k / milliseconds_in_day;
+        c = f.c - ((f.k * zero_ts.count()) / milliseconds_in_day);
+    }
 
     double operator()(std::chrono::milliseconds x) const
     {
-        const auto days_from_begin = double(x.count() - zero_ts.count()) / milliseconds_in_day;
-        return f(days_from_begin);
+        return (k * x.count()) + c;
     }
 
-    SimpleRegressionFunction f;
-    std::chrono::milliseconds zero_ts;
+    double k = 0.;
+    double c = 0.;
 };
 
 SimpleRegressionFunction solve(const std::vector<Point> & data);

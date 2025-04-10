@@ -1,7 +1,7 @@
 #include "chart_window.h"
 
 #include "Enums.h"
-#include "Logger.h"
+#include "OrdinaryLeastSquares.h"
 #include "ui_chart_window.h"
 
 ChartWindow::ChartWindow(
@@ -267,9 +267,10 @@ void ChartWindow::subscribe_to_strategy()
 
     const auto update_trend_callback = [this](const StrategyResult & str_res) {
                 auto & plot = get_or_create_chart(m_depo_chart_name);
+                OLS::PriceRegressionFunction depo_trend{str_res.depo_trend_coef, str_res.depo_trend_const};
                 plot.override_depo_trend(
-                        {str_res.first_depo_trend_ts, str_res.first_depo_trend_value},
-                        {str_res.last_depo_trend_ts, str_res.last_depo_trend_value});
+                        {str_res.first_position_closed_ts, depo_trend(str_res.first_position_closed_ts)},
+                        {str_res.last_position_closed_ts, depo_trend(str_res.last_position_closed_ts)});
             };
     const auto res = str_instance.strategy_result_channel().get();
     update_trend_callback(res);
