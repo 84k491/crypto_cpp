@@ -5,7 +5,6 @@
 #include "Events.h"
 #include "ITradingGateway.h"
 #include "Logger.h"
-#include "OrdinaryLeastSquares.h"
 #include "ScopeExit.h"
 #include "Signal.h"
 #include "TpslExitStrategy.h"
@@ -63,7 +62,6 @@ StrategyInstance::StrategyInstance(
     , m_position_manager(symbol)
     , m_exit_strategy(nullptr)
     , m_historical_md_request(historical_md_request)
-    , m_event_loop(*this)
 {
     // TODO build exit strategy outside
     const auto exit_strategy_opt = ExitStrategyFactory::build_exit_strategy(
@@ -106,6 +104,8 @@ StrategyInstance::StrategyInstance(
                                    }
                                }
                            });
+
+    register_invokers();
 }
 
 StrategyInstance::~StrategyInstance()
@@ -303,53 +303,88 @@ EventTimeseriesChannel<StopLoss> & StrategyInstance::trailing_stop_channel()
     return m_exit_strategy->trailing_stop_channel();
 }
 
-void StrategyInstance::invoke(const std::variant<STRATEGY_EVENTS> & var)
+void StrategyInstance::register_invokers()
 {
-    if (std::holds_alternative<HistoricalMDGeneratorEvent>(var) && m_stop_request_handled) {
+    m_subscriptions.push_back(m_event_loop.invoker().register_invoker<HistoricalMDGeneratorEvent>([&](const auto & response) {
         // can get history MD ev from an other strategy because of fan-out channels. // TODO
-        return;
-    }
+        if (m_stop_request_handled) { // TODO handle with guid
+            return;
+        }
+        handle_event(response);
+        after_every_event();
+    }));
 
-    std::visit(
-            VariantMatcher{
-                    [&](const HistoricalMDGeneratorEvent & response) {
+    m_subscriptions.push_back(
+            m_event_loop.invoker().register_invoker<HistoricalMDGeneratorLowMemEvent>(
+                    [&](const auto & response) {
                         handle_event(response);
-                    },
-                    [&](const HistoricalMDGeneratorLowMemEvent & response) {
+                        after_every_event();
+                    }));
+    m_subscriptions.push_back(
+            m_event_loop.invoker().register_invoker<HistoricalMDPriceEvent>(
+                    [&](const auto & response) {
                         handle_event(response);
-                    },
-                    [&](const HistoricalMDPriceEvent & response) {
+                        after_every_event();
+                    }));
+    m_subscriptions.push_back(
+            m_event_loop.invoker().register_invoker<MDPriceEvent>(
+                    [&](const auto & response) {
                         handle_event(response);
-                    },
-                    [&](const MDPriceEvent & response) {
+                        after_every_event();
+                    }));
+    m_subscriptions.push_back(
+            m_event_loop.invoker().register_invoker<OrderResponseEvent>(
+                    [&](const auto & response) {
                         handle_event(response);
-                    },
-                    [&](const OrderResponseEvent & response) {
-                        handle_event(response);
-                    },
-                    [&](const TradeEvent & r) {
+                        after_every_event();
+                    }));
+    m_subscriptions.push_back(
+            m_event_loop.invoker().register_invoker<TradeEvent>(
+                    [&](const auto & r) {
                         handle_event(r);
-                    },
-                    [&](const TpslResponseEvent & response) {
+                        after_every_event();
+                    }));
+    m_subscriptions.push_back(
+            m_event_loop.invoker().register_invoker<TpslResponseEvent>(
+                    [&](const auto & response) {
                         handle_event(response);
-                    },
-                    [&](const TpslUpdatedEvent & response) {
+                        after_every_event();
+                    }));
+    m_subscriptions.push_back(
+            m_event_loop.invoker().register_invoker<TpslUpdatedEvent>(
+                    [&](const auto & response) {
                         handle_event(response);
-                    },
-                    [&](const TrailingStopLossResponseEvent & response) {
+                        after_every_event();
+                    }));
+    m_subscriptions.push_back(
+            m_event_loop.invoker().register_invoker<TrailingStopLossResponseEvent>(
+                    [&](const auto & response) {
                         handle_event(response);
-                    },
-                    [&](const TrailingStopLossUpdatedEvent & response) {
+                        after_every_event();
+                    }));
+    m_subscriptions.push_back(
+            m_event_loop.invoker().register_invoker<TrailingStopLossUpdatedEvent>(
+                    [&](const auto & response) {
                         handle_event(response);
-                    },
-                    [&](const LambdaEvent & response) {
+                        after_every_event();
+                    }));
+    m_subscriptions.push_back(
+            m_event_loop.invoker().register_invoker<LambdaEvent>(
+                    [&](const auto & response) {
                         handle_event(response);
-                    },
-                    [&](const StrategyStopRequest & response) {
+                        after_every_event();
+                    }));
+    m_subscriptions.push_back(
+            m_event_loop.invoker().register_invoker<StrategyStopRequest>(
+                    [&](const auto & response) {
                         handle_event(response);
-                    }},
-            var);
+                        after_every_event();
+                    }));
+}
 
+// TODO maybe make it more elegant?
+void StrategyInstance::after_every_event()
+{
     if (ready_to_finish()) {
         m_status.push(m_status_on_stop);
         m_depo_channel.push(m_last_ts_and_price.first, m_strategy_result.get().final_profit);
@@ -635,7 +670,6 @@ void StrategyInstance::finish_if_needed_and_ready()
 {
     if (m_finish_promise.has_value() && m_stop_request_handled) {
         if (ready_to_finish()) {
-            m_subscriptions.clear();
             auto & promise = m_finish_promise.value();
             promise.set_value(); // TODO double set on stop
         }

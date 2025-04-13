@@ -5,7 +5,7 @@
 
 #include <fmt/core.h>
 
-class Logger : public IEventInvoker<LogEvent>
+class Logger
 {
 public:
     template <LogLevel level>
@@ -40,10 +40,10 @@ private:
         log<level>(fmt::vformat(fmt, fmt::make_format_args(args...)));
     }
 
-    void invoke(const std::variant<LogEvent> & value) override;
     void handle_event(const LogEvent & ev);
 
 private:
     EventLoopSubscriber<LogEvent> m_event_loop;
     LogLevel m_min_log_level = LogLevel::Debug;
+    std::shared_ptr<ISubscription> m_invoker_sub;
 };

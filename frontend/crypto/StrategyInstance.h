@@ -21,7 +21,7 @@
 #include <set>
 #include <variant>
 
-class StrategyInstance : public IEventInvoker<STRATEGY_EVENTS>
+class StrategyInstance
 {
 public:
     StrategyInstance(
@@ -33,7 +33,7 @@ public:
             IMarketDataGateway & md_gateway,
             ITradingGateway & tr_gateway);
 
-    ~StrategyInstance() override;
+    ~StrategyInstance();
 
     void set_channel_capacity(std::optional<std::chrono::milliseconds> capacity);
     EventTimeseriesChannel<Trade> & trade_channel();
@@ -53,7 +53,7 @@ public:
     [[nodiscard("wait in future")]] std::future<void> finish_future();
 
 private:
-    void invoke(const std::variant<STRATEGY_EVENTS> & value) override;
+    void register_invokers();
     void handle_event(const HistoricalMDGeneratorEvent & response);
     void handle_event(const HistoricalMDGeneratorLowMemEvent & response);
     void handle_event(const HistoricalMDPriceEvent & response);
@@ -66,6 +66,7 @@ private:
     void handle_event(const TrailingStopLossResponseEvent & response);
     void handle_event(const TrailingStopLossUpdatedEvent & response);
     static void handle_event(const LambdaEvent & response);
+    void after_every_event();
 
     void on_signal(const Signal & signal);
     void process_position_result(const PositionResult & new_result,
@@ -121,5 +122,5 @@ private:
     bool m_backtest_in_progress = false;
 
     EventLoopSubscriber<STRATEGY_EVENTS> m_event_loop;
-    std::list<std::shared_ptr<ISubsription>> m_subscriptions; // those must be destroyed before EvLoop
+    std::list<std::shared_ptr<ISubscription>> m_subscriptions;
 };

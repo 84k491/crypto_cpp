@@ -13,7 +13,7 @@ template <typename ObjectT>
 class TimeseriesChannel;
 
 template <typename ObjectT>
-class TimeseriesSubsription final : public ISubsription
+class TimeseriesSubsription final : public ISubscription
 {
     friend class TimeseriesChannel<ObjectT>;
 

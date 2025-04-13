@@ -1,7 +1,7 @@
 #pragma once
 
-class ISubsription
+class ISubscription
 {
 public:
-    virtual ~ISubsription() = default;
+    virtual ~ISubscription() = default;
 };

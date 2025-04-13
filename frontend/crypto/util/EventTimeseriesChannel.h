@@ -16,7 +16,7 @@ template <typename ObjectT>
 class EventTimeseriesChannel;
 
 template <typename ObjectT>
-class EventTimeseriesSubsription final : public ISubsription
+class EventTimeseriesSubsription final : public ISubscription
 {
     friend class EventTimeseriesChannel<ObjectT>;
 

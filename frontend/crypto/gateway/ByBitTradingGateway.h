@@ -15,7 +15,6 @@
 class ByBitTradingGateway final
     : public ITradingGateway
     , public IConnectionSupervisor
-    , private IEventInvoker<OrderRequestEvent, TpslRequestEvent, TrailingStopLossRequestEvent, PingCheckEvent>
 {
     static constexpr std::chrono::seconds ws_ping_interval = std::chrono::seconds(5);
 
@@ -36,7 +35,7 @@ public:
 private:
     bool check_consumers(const std::string & symbol);
 
-    void invoke(const std::variant<OrderRequestEvent, TpslRequestEvent, TrailingStopLossRequestEvent, PingCheckEvent> & value) override;
+    void register_invokers();
     void process_event(const OrderRequestEvent & order);
     void process_event(const TpslRequestEvent & tpsl);
     void process_event(const TrailingStopLossRequestEvent & tsl);
@@ -66,4 +65,6 @@ private:
     EventChannel<TpslUpdatedEvent> m_tpsl_updated_channel;
     EventChannel<TrailingStopLossResponseEvent> m_trailing_stop_response_channel;
     EventChannel<TrailingStopLossUpdatedEvent> m_trailing_stop_update_channel;
+
+    std::list<std::shared_ptr<ISubscription>> m_invoker_subs;
 };

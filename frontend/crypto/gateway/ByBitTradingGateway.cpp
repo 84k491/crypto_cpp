@@ -10,7 +10,6 @@
 
 ByBitTradingGateway::ByBitTradingGateway()
     : m_connection_watcher(*this)
-    , m_event_loop(*this)
 {
     const auto config_opt = GatewayConfigLoader::load();
     if (!config_opt) {
@@ -22,6 +21,8 @@ ByBitTradingGateway::ByBitTradingGateway()
     if (!reconnect_ws_client()) {
         Logger::log<LogLevel::Warning>("Failed to connect to ByBit trading");
     }
+
+    register_invokers();
 }
 
 void ByBitTradingGateway::on_order_response(const json & j)
@@ -90,16 +91,23 @@ void ByBitTradingGateway::push_trailing_stop_request(const TrailingStopLossReque
     m_event_loop.push_event(trailing_stop_ev);
 }
 
-void ByBitTradingGateway::invoke(const std::variant<OrderRequestEvent, TpslRequestEvent, TrailingStopLossRequestEvent, PingCheckEvent> & variant)
+void ByBitTradingGateway::register_invokers()
 {
-    std::visit(
-            VariantMatcher{
-                    [&](const OrderRequestEvent & order) { process_event(order); },
-                    [&](const TpslRequestEvent & tpsl) { process_event(tpsl); },
-                    [&](const TrailingStopLossRequestEvent & tpsl) { process_event(tpsl); },
-                    [&](const PingCheckEvent & ping) { process_event(ping); },
-            },
-            variant);
+    m_invoker_subs.push_back(
+            m_event_loop.invoker().register_invoker<OrderRequestEvent>(
+                    [&](const auto & r) { process_event(r); }));
+
+    m_invoker_subs.push_back(
+            m_event_loop.invoker().register_invoker<TpslRequestEvent>(
+                    [&](const auto & r) { process_event(r); }));
+
+    m_invoker_subs.push_back(
+            m_event_loop.invoker().register_invoker<TrailingStopLossRequestEvent>(
+                    [&](const auto & r) { process_event(r); }));
+
+    m_invoker_subs.push_back(
+            m_event_loop.invoker().register_invoker<PingCheckEvent>(
+                    [&](const auto & r) { process_event(r); }));
 }
 
 void ByBitTradingGateway::process_event(const OrderRequestEvent & req)
@@ -291,7 +299,7 @@ bool ByBitTradingGateway::reconnect_ws_client()
 {
     m_ws_client = std::make_shared<WebSocketClient>(
             m_config.ws_url,
-            std::make_optional(WsKeys{m_config.api_key, m_config.secret_key}),
+            std::make_optional(WsKeys{.m_api_key = m_config.api_key, .m_secret_key = m_config.secret_key}),
             [this](const json & j) { on_ws_message(j); },
             m_connection_watcher);
 

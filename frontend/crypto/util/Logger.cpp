@@ -5,24 +5,17 @@
 #include <fmt/chrono.h>
 
 Logger::Logger()
-    : m_event_loop(*this)
 {
+    m_invoker_sub = m_event_loop.invoker().register_invoker<LogEvent>(
+            [this](const auto & ev) {
+                handle_event(ev);
+            });
 }
 
 Logger & Logger::i()
 {
     static Logger l;
     return l;
-}
-
-void Logger::invoke(const std::variant<LogEvent> & var)
-{
-    std::visit(
-            VariantMatcher{
-                    [&](const LogEvent & ev) {
-                        handle_event(ev);
-                    }},
-            var);
 }
 
 void Logger::handle_event(const LogEvent & ev)
@@ -33,7 +26,8 @@ void Logger::handle_event(const LogEvent & ev)
     const std::string str = fmt::format("[{}][{}]: {}",
                                         ev.ts,
                                         to_string(ev.level),
-                                        ev.log_str).c_str();
+                                        ev.log_str)
+                                    .c_str();
     std::cout << str << std::endl;
 }
 

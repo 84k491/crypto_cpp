@@ -15,7 +15,6 @@
 
 ByBitMarketDataGateway::ByBitMarketDataGateway(bool start)
     : m_connection_watcher(*this)
-    , m_event_loop(*this)
 {
     const auto config_opt = GatewayConfigLoader::load();
     if (!config_opt) {
@@ -23,6 +22,8 @@ ByBitMarketDataGateway::ByBitMarketDataGateway(bool start)
         return;
     }
     m_config = config_opt.value().market_data;
+
+    register_invokers();
 
     if (!start) {
         return;
@@ -380,15 +381,19 @@ void ByBitMarketDataGateway::on_price_received(const nlohmann::json & json)
     }
 }
 
-void ByBitMarketDataGateway::invoke(const std::variant<HistoricalMDRequest, LiveMDRequest, PingCheckEvent> & request)
+void ByBitMarketDataGateway::register_invokers()
 {
-    std::visit(
-            VariantMatcher{
-                    [&](const HistoricalMDRequest & r) { handle_request(r); },
-                    [&](const LiveMDRequest & r) { handle_request(r); },
-                    [&](const PingCheckEvent & r) { handle_request(r); },
-            },
-            request);
+    m_invoker_subs.push_back(
+            m_event_loop.invoker().register_invoker<HistoricalMDRequest>(
+                    [&](const auto & r) { handle_request(r); }));
+
+    m_invoker_subs.push_back(
+            m_event_loop.invoker().register_invoker<LiveMDRequest>(
+                    [&](const auto & r) { handle_request(r); }));
+
+    m_invoker_subs.push_back(
+            m_event_loop.invoker().register_invoker<PingCheckEvent>(
+                    [&](const auto & r) { handle_request(r); }));
 }
 
 void ByBitMarketDataGateway::unsubscribe_from_live(xg::Guid guid)

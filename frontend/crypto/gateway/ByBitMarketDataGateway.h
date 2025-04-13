@@ -26,7 +26,6 @@ class WorkerThreadLoop;
 class ByBitMarketDataGateway final
     : public IMarketDataGateway
     , public IConnectionSupervisor
-    , private IEventInvoker<HistoricalMDRequest, LiveMDRequest, PingCheckEvent>
 {
 private:
     static constexpr double taker_fee = 0.00055; // 0.055%
@@ -52,7 +51,7 @@ public:
     std::vector<Symbol> get_symbols(const std::string & currency);
 
 private:
-    void invoke(const std::variant<HistoricalMDRequest, LiveMDRequest, PingCheckEvent> & value) override;
+    void register_invokers();
     void handle_request(const HistoricalMDRequest & request);
     void handle_request(const LiveMDRequest & request);
     void handle_request(const PingCheckEvent & event);
@@ -91,4 +90,5 @@ private:
     EventChannel<HistoricalMDGeneratorEvent> m_historical_prices_channel;
     EventChannel<HistoricalMDGeneratorLowMemEvent> m_historical_lowmem_channel;
     EventChannel<MDPriceEvent> m_live_prices_channel;
+    std::list<std::shared_ptr<ISubscription>> m_invoker_subs;
 };
