@@ -41,11 +41,20 @@ TpslExitStrategyConfig::TpslExitStrategyConfig(double risk, double risk_reward_r
 
 TpslExitStrategy::TpslExitStrategy(Symbol symbol,
                                    const JsonStrategyConfig & config,
+                                   EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
                                    ITradingGateway & gateway)
     : ExitStrategyBase(gateway)
     , m_config(config)
     , m_symbol(std::move(symbol))
 {
+    m_invoker_subs.push_back(
+            event_loop.invoker().register_invoker<TpslResponseEvent>([&](const auto & response) {
+                handle_event(response);
+            }));
+    m_invoker_subs.push_back(
+            event_loop.invoker().register_invoker<TpslUpdatedEvent>([&](const auto & response) {
+                handle_event(response);
+            }));
 }
 
 std::optional<std::string> TpslExitStrategy::on_price_changed(std::pair<std::chrono::milliseconds, double> ts_and_price)
@@ -113,38 +122,28 @@ bool TpslExitStrategyConfig::is_valid() const
     return limits_ok;
 }
 
-std::optional<std::pair<std::string, bool>> TpslExitStrategy::handle_event(const TpslResponseEvent & response)
+void TpslExitStrategy::handle_event(const TpslResponseEvent & response)
 {
     if (response.reject_reason.has_value()) {
         std::string err = "Rejected tpsl: " + response.reject_reason.value();
-        return {{err, true}};
+        on_error(err, true);
     }
 
     const size_t erased_cnt = m_pending_requests.erase(response.request_guid);
     if (erased_cnt == 0) {
         std::string err = "Unsolicited tpsl response";
-        return {{err, false}};
+        on_error(err, true);
     }
 
     m_tpsl_channel.push(m_last_ts_and_price.first, response.tpsl);
-    return std::nullopt;
 }
 
-[[nodiscard]] std::optional<std::pair<std::string, bool>>
-TpslExitStrategy::handle_event(const TpslUpdatedEvent &)
+void TpslExitStrategy::handle_event(const TpslUpdatedEvent &)
 {
     Logger::log<LogLevel::Debug>("TpslUpdatedEvent"); // TODO print it out
-    return std::nullopt;
 }
 
-std::optional<std::pair<std::string, bool>>
-TpslExitStrategy::handle_event(const TrailingStopLossResponseEvent &)
+void TpslExitStrategy::on_error(std::string err, bool do_panic)
 {
-    return {{"Trailing stop in tpsl", true}};
-}
-
-std::optional<std::pair<std::string, bool>>
-TpslExitStrategy::handle_event(const TrailingStopLossUpdatedEvent &)
-{
-    return {{"Trailing stop in tpsl", true}};
+    m_error_channel.push(std::make_pair(std::move(err), do_panic));
 }

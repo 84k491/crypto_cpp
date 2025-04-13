@@ -20,12 +20,21 @@ TrailigStopLossStrategyConfig::TrailigStopLossStrategyConfig(double risk)
 
 TrailigStopLossStrategy::TrailigStopLossStrategy(Symbol symbol,
                                                  JsonStrategyConfig config,
+                                                 EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
                                                  ITradingGateway & gateway)
 
     : ExitStrategyBase(gateway)
     , m_symbol(std::move(symbol))
     , m_config(config)
 {
+    m_invoker_subs.push_back(
+            event_loop.invoker().register_invoker<TrailingStopLossResponseEvent>([&](const auto & response) {
+                handle_event(response);
+            }));
+    m_invoker_subs.push_back(
+            event_loop.invoker().register_invoker<TrailingStopLossUpdatedEvent>([&](const auto & response) {
+                handle_event(response);
+            }));
 }
 
 std::optional<std::string> TrailigStopLossStrategy::on_price_changed(std::pair<std::chrono::milliseconds, double>)
@@ -74,44 +83,36 @@ void TrailigStopLossStrategy::send_trailing_stop(TrailingStopLoss trailing_stop)
     m_tr_gateway.push_trailing_stop_request(request);
 }
 
-std::optional<std::pair<std::string, bool>> TrailigStopLossStrategy::handle_event(const TpslResponseEvent &)
-{
-    return {{"TpslResponse in stop loss", true}};
-}
-
-std::optional<std::pair<std::string, bool>> TrailigStopLossStrategy::handle_event(const TpslUpdatedEvent &)
-{
-    return {{"TpslUpdate in stop loss", true}};
-}
-
-std::optional<std::pair<std::string, bool>> TrailigStopLossStrategy::handle_event(const TrailingStopLossResponseEvent & response)
+void TrailigStopLossStrategy::handle_event(const TrailingStopLossResponseEvent & response)
 {
     if (response.reject_reason.has_value()) {
         std::string err = "Rejected tpsl: " + response.reject_reason.value();
-        return {{err, true}};
+        on_error(err, false);
     }
 
     const size_t erased_cnt = m_pending_requests.erase(response.request_guid);
     if (erased_cnt == 0) {
         std::string err = "Unsolicited tpsl response";
-        return {{err, false}};
+        on_error(err, false);
     }
 
     m_active_stop_loss = response.trailing_stop_loss;
-
-    return std::nullopt;
 }
 
-std::optional<std::pair<std::string, bool>> TrailigStopLossStrategy::handle_event(const TrailingStopLossUpdatedEvent & ev)
+void TrailigStopLossStrategy::handle_event(const TrailingStopLossUpdatedEvent & ev)
 {
     // Logger::log<LogLevel::Debug>("Received TrailingStopLossUpdatedEvent"); // TODO print it out
     if (!ev.stop_loss.has_value()) {
         m_active_stop_loss.reset();
         Logger::log<LogLevel::Debug>("Trailing stop loss removed");
-        return {};
+        return;
     }
     const auto & trailing_stop_loss = ev.stop_loss.value();
 
     m_trailing_stop_channel.push(ev.timestamp, trailing_stop_loss);
-    return std::nullopt;
+}
+
+void TrailigStopLossStrategy::on_error(const std::string & err, bool do_panic)
+{
+    m_error_channel.push(std::make_pair(err, do_panic));
 }

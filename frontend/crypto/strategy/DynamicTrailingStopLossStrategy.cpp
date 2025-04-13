@@ -28,8 +28,9 @@ JsonStrategyConfig DynamicTrailigStopLossStrategyConfig::to_json() const
 
 DynamicTrailingStopLossStrategy::DynamicTrailingStopLossStrategy(Symbol symbol,
                                                                  JsonStrategyConfig config,
+                                                                 EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
                                                                  ITradingGateway & gateway)
-    : TrailigStopLossStrategy(symbol, config, gateway)
+    : TrailigStopLossStrategy(symbol, config, event_loop, gateway)
     , m_dynamic_config(config)
 {
 }

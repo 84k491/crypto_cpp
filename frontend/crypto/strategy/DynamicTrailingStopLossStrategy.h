@@ -22,8 +22,9 @@ class DynamicTrailingStopLossStrategy : public TrailigStopLossStrategy
 {
 public:
     DynamicTrailingStopLossStrategy(Symbol symbol,
-                            JsonStrategyConfig config,
-                            ITradingGateway & gateway);
+                                    JsonStrategyConfig config,
+                                    EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
+                                    ITradingGateway & gateway);
 
     [[nodiscard]] std::optional<std::string> on_price_changed(
             std::pair<std::chrono::milliseconds, double> ts_and_price) override;

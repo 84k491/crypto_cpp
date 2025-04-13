@@ -36,6 +36,7 @@ public:
     TpslExitStrategy(
             Symbol symbol,
             const JsonStrategyConfig & config,
+            EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
             ITradingGateway & gateway);
 
     [[nodiscard]] std::optional<std::string> on_price_changed(
@@ -44,21 +45,15 @@ public:
             const std::optional<OpenedPosition> & opened_position,
             const Trade & trade) override;
 
-    [[nodiscard]] std::optional<std::pair<std::string, bool>>
-    handle_event(const TpslResponseEvent & response) override;
 
-    [[nodiscard]] std::optional<std::pair<std::string, bool>>
-    handle_event(const TpslUpdatedEvent & response) override;
-
-    [[nodiscard]] std::optional<std::pair<std::string, bool>>
-    handle_event(const TrailingStopLossResponseEvent & response) override;
-
-    [[nodiscard]] std::optional<std::pair<std::string, bool>>
-    handle_event(const TrailingStopLossUpdatedEvent & response) override;
+    void handle_event(const TpslResponseEvent & response);
+    void handle_event(const TpslUpdatedEvent & response);
 
 private:
     Tpsl calc_tpsl(const Trade & trade);
     void send_tpsl(Tpsl tpsl);
+
+    void on_error(std::string, bool);
 
 private:
     TpslExitStrategyConfig m_config;

@@ -154,6 +154,8 @@ public:
 
 private:
     EventInvokerDispatcher<Args...> m_invoker_dispatcher;
+public:
     std::shared_ptr<EventLoop<Args...>> m_event_loop;
+private:
     std::map<std::string, std::list<std::shared_ptr<ISubscription>>> m_subscriptions; // those must be destroyed before EvLoop
 };

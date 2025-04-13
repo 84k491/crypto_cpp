@@ -60,11 +60,7 @@ private:
     void handle_event(const MDPriceEvent & response);
     void handle_event(const OrderResponseEvent & response);
     void handle_event(const TradeEvent & response);
-    void handle_event(const TpslResponseEvent & response);
-    void handle_event(const TpslUpdatedEvent & response);
     void handle_event(const StrategyStopRequest & response);
-    void handle_event(const TrailingStopLossResponseEvent & response);
-    void handle_event(const TrailingStopLossUpdatedEvent & response);
     static void handle_event(const LambdaEvent & response);
     void after_every_event();
 
@@ -122,5 +118,5 @@ private:
     bool m_backtest_in_progress = false;
 
     EventLoopSubscriber<STRATEGY_EVENTS> m_event_loop;
-    std::list<std::shared_ptr<ISubscription>> m_subscriptions;
+    std::list<std::shared_ptr<ISubscription>> m_invoker_subs;
 };

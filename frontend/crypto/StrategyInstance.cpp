@@ -26,18 +26,19 @@ public:
             const std::string & strategy_name,
             const JsonStrategyConfig & config,
             const Symbol & symbol,
+            EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
             ITradingGateway & gateway)
     {
         if (strategy_name == "TpslExit") {
-            std::shared_ptr<IExitStrategy> res = std::make_shared<TpslExitStrategy>(symbol, config, gateway);
+            std::shared_ptr<IExitStrategy> res = std::make_shared<TpslExitStrategy>(symbol, config, event_loop, gateway);
             return res;
         }
         if (strategy_name == "TrailingStop") {
-            std::shared_ptr<IExitStrategy> res = std::make_shared<TrailigStopLossStrategy>(symbol, config, gateway);
+            std::shared_ptr<IExitStrategy> res = std::make_shared<TrailigStopLossStrategy>(symbol, config, event_loop, gateway);
             return res;
         }
         if (strategy_name == "DynamicTrailingStop") {
-            std::shared_ptr<IExitStrategy> res = std::make_shared<DynamicTrailingStopLossStrategy>(symbol, config, gateway);
+            std::shared_ptr<IExitStrategy> res = std::make_shared<DynamicTrailingStopLossStrategy>(symbol, config, event_loop, gateway);
             return res;
         }
         Logger::logf<LogLevel::Error>("Unknown exit strategy name: {}", strategy_name);
@@ -68,6 +69,7 @@ StrategyInstance::StrategyInstance(
             exit_strategy_name,
             exit_strategy_config,
             symbol,
+            m_event_loop,
             tr_gateway);
     if (!exit_strategy_opt) {
         Logger::log<LogLevel::Error>("Can't build exit strategy");
@@ -75,6 +77,12 @@ StrategyInstance::StrategyInstance(
         return;
     }
     m_exit_strategy = *exit_strategy_opt;
+
+    m_event_loop.subscribe(m_exit_strategy->error_channel(), [this](const std::pair<std::string, bool> & err) {
+        const auto & [err_str, do_panic] = err;
+        Logger::log<LogLevel::Error>(std::string(err_str));
+        stop_async(do_panic);
+    });
 
     m_status.push(WorkStatus::Stopped);
 
@@ -305,7 +313,7 @@ EventTimeseriesChannel<StopLoss> & StrategyInstance::trailing_stop_channel()
 
 void StrategyInstance::register_invokers()
 {
-    m_subscriptions.push_back(m_event_loop.invoker().register_invoker<HistoricalMDGeneratorEvent>([&](const auto & response) {
+    m_invoker_subs.push_back(m_event_loop.invoker().register_invoker<HistoricalMDGeneratorEvent>([&](const auto & response) {
         // can get history MD ev from an other strategy because of fan-out channels. // TODO
         if (m_stop_request_handled) { // TODO handle with guid
             return;
@@ -314,67 +322,43 @@ void StrategyInstance::register_invokers()
         after_every_event();
     }));
 
-    m_subscriptions.push_back(
+    m_invoker_subs.push_back(
             m_event_loop.invoker().register_invoker<HistoricalMDGeneratorLowMemEvent>(
                     [&](const auto & response) {
                         handle_event(response);
                         after_every_event();
                     }));
-    m_subscriptions.push_back(
+    m_invoker_subs.push_back(
             m_event_loop.invoker().register_invoker<HistoricalMDPriceEvent>(
                     [&](const auto & response) {
                         handle_event(response);
                         after_every_event();
                     }));
-    m_subscriptions.push_back(
+    m_invoker_subs.push_back(
             m_event_loop.invoker().register_invoker<MDPriceEvent>(
                     [&](const auto & response) {
                         handle_event(response);
                         after_every_event();
                     }));
-    m_subscriptions.push_back(
+    m_invoker_subs.push_back(
             m_event_loop.invoker().register_invoker<OrderResponseEvent>(
                     [&](const auto & response) {
                         handle_event(response);
                         after_every_event();
                     }));
-    m_subscriptions.push_back(
+    m_invoker_subs.push_back(
             m_event_loop.invoker().register_invoker<TradeEvent>(
                     [&](const auto & r) {
                         handle_event(r);
                         after_every_event();
                     }));
-    m_subscriptions.push_back(
-            m_event_loop.invoker().register_invoker<TpslResponseEvent>(
-                    [&](const auto & response) {
-                        handle_event(response);
-                        after_every_event();
-                    }));
-    m_subscriptions.push_back(
-            m_event_loop.invoker().register_invoker<TpslUpdatedEvent>(
-                    [&](const auto & response) {
-                        handle_event(response);
-                        after_every_event();
-                    }));
-    m_subscriptions.push_back(
-            m_event_loop.invoker().register_invoker<TrailingStopLossResponseEvent>(
-                    [&](const auto & response) {
-                        handle_event(response);
-                        after_every_event();
-                    }));
-    m_subscriptions.push_back(
-            m_event_loop.invoker().register_invoker<TrailingStopLossUpdatedEvent>(
-                    [&](const auto & response) {
-                        handle_event(response);
-                        after_every_event();
-                    }));
-    m_subscriptions.push_back(
+    m_invoker_subs.push_back(
             m_event_loop.invoker().register_invoker<LambdaEvent>(
                     [&](const auto & response) {
                         handle_event(response);
                         after_every_event();
                     }));
-    m_subscriptions.push_back(
+    m_invoker_subs.push_back(
             m_event_loop.invoker().register_invoker<StrategyStopRequest>(
                     [&](const auto & response) {
                         handle_event(response);
@@ -552,28 +536,6 @@ void StrategyInstance::handle_event(const TradeEvent & response)
     }
 }
 
-void StrategyInstance::handle_event(const TpslResponseEvent & response)
-{
-    // TODO make an Error class
-    const auto err_pair_opt = m_exit_strategy->handle_event(response);
-
-    if (err_pair_opt.has_value()) {
-        const auto & [err, do_panic] = err_pair_opt.value();
-        Logger::log<LogLevel::Error>(std::string(err));
-        stop_async(do_panic);
-    }
-}
-
-void StrategyInstance::handle_event(const TpslUpdatedEvent & response)
-{
-    const auto err_pair_opt = m_exit_strategy->handle_event(response);
-    if (err_pair_opt.has_value()) {
-        const auto & [err, do_panic] = err_pair_opt.value();
-        Logger::log<LogLevel::Error>(std::string(err));
-        stop_async(do_panic);
-    }
-}
-
 void StrategyInstance::handle_event(const StrategyStopRequest &)
 {
     Logger::log<LogLevel::Status>("StrategyStopRequest");
@@ -680,20 +642,42 @@ void StrategyInstance::finish_if_needed_and_ready()
     }
 }
 
-void StrategyInstance::handle_event(const TrailingStopLossResponseEvent & response)
-{
-    if (const auto err = m_exit_strategy->handle_event(response); err.has_value()) {
-        const auto & [err_str, do_panic] = err.value();
-        Logger::log<LogLevel::Error>(std::string(err_str));
-        stop_async(do_panic);
-    }
-}
-
-void StrategyInstance::handle_event(const TrailingStopLossUpdatedEvent & response)
-{
-    if (const auto err = m_exit_strategy->handle_event(response); err.has_value()) {
-        const auto & [err_str, do_panic] = err.value();
-        Logger::log<LogLevel::Error>(std::string(err_str));
-        stop_async(do_panic);
-    }
-}
+// void StrategyInstance::handle_event(const TpslResponseEvent & response)
+// {
+//     // TODO make an Error class
+//     const auto err_pair_opt = m_exit_strategy->handle_event(response);
+//
+//     if (err_pair_opt.has_value()) {
+//         const auto & [err, do_panic] = err_pair_opt.value();
+//         Logger::log<LogLevel::Error>(std::string(err));
+//         stop_async(do_panic);
+//     }
+// }
+//
+// void StrategyInstance::handle_event(const TpslUpdatedEvent & response)
+// {
+//     const auto err_pair_opt = m_exit_strategy->handle_event(response);
+//     if (err_pair_opt.has_value()) {
+//         const auto & [err, do_panic] = err_pair_opt.value();
+//         Logger::log<LogLevel::Error>(std::string(err));
+//         stop_async(do_panic);
+//     }
+// }
+//
+// void StrategyInstance::handle_event(const TrailingStopLossResponseEvent & response)
+// {
+//     if (const auto err = m_exit_strategy->handle_event(response); err.has_value()) {
+//         const auto & [err_str, do_panic] = err.value();
+//         Logger::log<LogLevel::Error>(std::string(err_str));
+//         stop_async(do_panic);
+//     }
+// }
+//
+// void StrategyInstance::handle_event(const TrailingStopLossUpdatedEvent & response)
+// {
+//     if (const auto err = m_exit_strategy->handle_event(response); err.has_value()) {
+//         const auto & [err_str, do_panic] = err.value();
+//         Logger::log<LogLevel::Error>(std::string(err_str));
+//         stop_async(do_panic);
+//     }
+// }

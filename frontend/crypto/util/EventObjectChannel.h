@@ -43,7 +43,7 @@ private:
 };
 
 template <typename ObjectT>
-class EventObjectChannel // TODO rename it to channel
+class EventObjectChannel
 {
 public:
     EventObjectChannel() = default;

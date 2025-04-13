@@ -22,6 +22,7 @@ class TrailigStopLossStrategy : public ExitStrategyBase
 public:
     TrailigStopLossStrategy(Symbol symbol,
                             JsonStrategyConfig config,
+                            EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
                             ITradingGateway & gateway);
 
     ~TrailigStopLossStrategy() override = default;
@@ -32,21 +33,14 @@ public:
             const std::optional<OpenedPosition> & opened_position,
             const Trade & trade) override;
 
-    [[nodiscard]] std::optional<std::pair<std::string, bool>>
-    handle_event(const TpslResponseEvent & response) override;
-
-    [[nodiscard]] std::optional<std::pair<std::string, bool>>
-    handle_event(const TpslUpdatedEvent & response) override;
-
-    [[nodiscard]] std::optional<std::pair<std::string, bool>>
-    handle_event(const TrailingStopLossResponseEvent & response) override;
-
-    [[nodiscard]] std::optional<std::pair<std::string, bool>>
-    handle_event(const TrailingStopLossUpdatedEvent & response) override;
+    void handle_event(const TrailingStopLossResponseEvent & response);
+    void handle_event(const TrailingStopLossUpdatedEvent & response);
 
 protected:
     TrailingStopLoss calc_trailing_stop(const Trade & trade);
     void send_trailing_stop(TrailingStopLoss trailing_stop);
+
+    void on_error(const std::string&, bool);
 
 protected:
     Symbol m_symbol;

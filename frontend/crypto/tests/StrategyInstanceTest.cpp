@@ -7,6 +7,7 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <thread>
 
 namespace test {
 using namespace testing;
