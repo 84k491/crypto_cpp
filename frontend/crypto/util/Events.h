@@ -351,6 +351,21 @@ struct LogEvent : public OneWayEvent
     LogLevel level;
 };
 
+struct BarrierEvent : public OneWayEvent
+{
+    BarrierEvent()
+        : guid(xg::newGuid())
+    {
+    }
+
+    Priority priority() const override
+    {
+        return Priority::Low;
+    }
+
+    xg::Guid guid;
+};
+
 struct StrategyStopRequest : public OneWayEvent
 {
     Priority priority() const override
@@ -360,6 +375,7 @@ struct StrategyStopRequest : public OneWayEvent
 };
 
 #define STRATEGY_EVENTS LambdaEvent,                      \
+                        BarrierEvent,                     \
                         HistoricalMDGeneratorEvent,       \
                         HistoricalMDGeneratorLowMemEvent, \
                         HistoricalMDPriceEvent,           \

@@ -51,6 +51,7 @@ public:
     void run_async();
     void stop_async(bool panic = false);
     [[nodiscard("wait in future")]] std::future<void> finish_future();
+    void wait_event_barrier();
 
 private:
     void register_invokers();

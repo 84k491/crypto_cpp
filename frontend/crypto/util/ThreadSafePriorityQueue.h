@@ -18,7 +18,12 @@ template <typename T>
 class ThreadSafePriorityQueue
 {
 public:
-    ThreadSafePriorityQueue() = default;
+    ThreadSafePriorityQueue()
+    {
+        m_queue_map[Priority::High];
+        m_queue_map[Priority::Normal];
+        m_queue_map[Priority::Low];
+    }
 
     ~ThreadSafePriorityQueue()
     {
@@ -48,17 +53,27 @@ public:
     std::optional<T> wait_and_pop()
     {
         std::unique_lock<std::mutex> lock(m_mutex);
-        m_cv.wait(lock, [this] { return !m_queue_map.empty() || !m_keep_waiting; });
+        std::queue<T> * queue = nullptr;
+
+        m_cv.wait(lock, [this, &queue] {
+            if (!m_keep_waiting) {
+                return true;
+            }
+            for (auto & [p, q] : m_queue_map) {
+                if (!q.empty()) {
+                    queue = &q;
+                    return true;
+                }
+            }
+            return false;
+        });
+
         if (!m_keep_waiting) {
             return std::nullopt;
         }
 
-        auto & queue = m_queue_map.begin()->second;
-        T value = std::move(queue.front());
-        queue.pop();
-        if (queue.empty()) {
-            m_queue_map.erase(m_queue_map.begin()); // TODO double free here
-        }
+        T value = std::move(queue->front());
+        queue->pop();
         return value;
     }
 

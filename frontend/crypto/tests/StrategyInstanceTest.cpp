@@ -7,6 +7,7 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
 #include <thread>
 
 namespace test {
@@ -189,7 +190,6 @@ class MockEventConsumer : public IEventConsumer<LambdaEvent>
     }
 };
 
-// TODO don't use sleeps
 class StrategyInstanceTest : public Test
 {
 public:
@@ -269,14 +269,14 @@ TEST_F(StrategyInstanceTest, SubForLiveMarketData_GetPrice_GracefullStop)
     const double price = 10.1;
     MDPriceEvent ev{{ts, price, SignedVolume{0.}}};
     md_gateway.live_prices_channel().push(ev);
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    strategy_instance->wait_event_barrier();
     ASSERT_EQ(prices_received, 1);
 
     ASSERT_EQ(strategy_status, WorkStatus::Live);
     strategy_instance->stop_async();
     ASSERT_EQ(strategy_status, WorkStatus::Live);
     ASSERT_EQ(md_gateway.unsubscribed_count(), 1) << "Must unsubscribe on stop";
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    strategy_instance->wait_event_barrier();
     ASSERT_EQ(strategy_status, WorkStatus::Stopped);
     strategy_instance.reset();
     ASSERT_EQ(strategy_status, WorkStatus::Stopped);
@@ -316,7 +316,7 @@ TEST_F(StrategyInstanceTest, OpenAndClosePos_GetResult_DontCloseTwiceOnStop)
         const double price = 10.1;
         MDPriceEvent price_event{{price_ts, price, SignedVolume{0.}}};
         md_gateway.live_prices_channel().push(price_event);
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        strategy_instance->wait_event_barrier();
         ASSERT_EQ(prices_received, 1);
     }
 
@@ -354,7 +354,7 @@ TEST_F(StrategyInstanceTest, OpenAndClosePos_GetResult_DontCloseTwiceOnStop)
     ASSERT_EQ(result.trades_count, 0);
     tr_gateway.m_trade_channel.push(open_trade_event);
     tr_gateway.order_response_channel().push(order_response);
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    strategy_instance->wait_event_barrier();
     ASSERT_EQ(result.trades_count, 1);
     ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -366,7 +366,7 @@ TEST_F(StrategyInstanceTest, OpenAndClosePos_GetResult_DontCloseTwiceOnStop)
                 tpsl_req.guid,
                 tpsl_req.tpsl});
         // TODO here should be TpslUpdateEvent
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        strategy_instance->wait_event_barrier();
     }
 
     // closing position
@@ -381,14 +381,14 @@ TEST_F(StrategyInstanceTest, OpenAndClosePos_GetResult_DontCloseTwiceOnStop)
                 0.1};
         const auto close_trade_event = TradeEvent(close_trade);
         tr_gateway.m_trade_channel.push(close_trade_event);
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        strategy_instance->wait_event_barrier();
         ASSERT_EQ(result.trades_count, 2);
     }
     ASSERT_EQ(result.win_rate(), 1.) << "It must be a profit position";
     ASSERT_DOUBLE_EQ(result.final_profit, 99.79) << "It must be a profit position";
 
     strategy_instance->stop_async();
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    strategy_instance->wait_event_barrier();
     strategy_instance.reset();
     ASSERT_EQ(strategy_status, WorkStatus::Stopped);
     ASSERT_DOUBLE_EQ(result.final_profit, 99.79);
@@ -433,7 +433,7 @@ TEST_F(StrategyInstanceTest, OpenPositionWithTpsl_CloseOnGracefullStop)
         MDPriceEvent price_event{{price_ts, price, SignedVolume{0.}}};
         md_gateway.live_prices_channel().push(price_event);
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        strategy_instance->wait_event_barrier();
         ASSERT_EQ(prices_received, 1);
     }
 
@@ -468,7 +468,7 @@ TEST_F(StrategyInstanceTest, OpenPositionWithTpsl_CloseOnGracefullStop)
         ASSERT_EQ(result.trades_count, 0);
         tr_gateway.m_trade_channel.push(open_trade_event);
         tr_gateway.order_response_channel().push(order_response);
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        strategy_instance->wait_event_barrier();
         ASSERT_EQ(result.trades_count, 1);
     }
 
@@ -480,11 +480,11 @@ TEST_F(StrategyInstanceTest, OpenPositionWithTpsl_CloseOnGracefullStop)
                 tpsl_req.guid,
                 tpsl_req.tpsl});
         // TODO here should be TpslUpdateEvent
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        strategy_instance->wait_event_barrier();
     }
 
     strategy_instance->stop_async();
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    strategy_instance->wait_event_barrier();
     ASSERT_EQ(strategy_status, WorkStatus::Live) << "It won't stop right away";
     ASSERT_DOUBLE_EQ(result.final_profit, 0.);
     ASSERT_EQ(result.trades_count, 1) << "Closing trade is not happened yet";
@@ -511,7 +511,7 @@ TEST_F(StrategyInstanceTest, OpenPositionWithTpsl_CloseOnGracefullStop)
         ASSERT_EQ(result.trades_count, 1);
         tr_gateway.m_trade_channel.push(close_trade_event);
         tr_gateway.order_response_channel().push(order_response);
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        strategy_instance->wait_event_barrier();
         ASSERT_FALSE(tr_gateway.m_last_tpsl_request.has_value()) << "No tpsl on position close";
         ASSERT_EQ(result.trades_count, 2);
     }
@@ -551,7 +551,7 @@ TEST_F(StrategyInstanceTest, ManyPricesReceivedWhileOrderIsPending_NoAdditionalO
         const double price = 10.1;
         MDPriceEvent price_event{{price_ts, price, SignedVolume{0.}}};
         md_gateway.live_prices_channel().push(price_event);
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        strategy_instance->wait_event_barrier();
         ASSERT_EQ(prices_received, 1);
     }
 
@@ -565,7 +565,7 @@ TEST_F(StrategyInstanceTest, ManyPricesReceivedWhileOrderIsPending_NoAdditionalO
         const double price = 12.2;
         MDPriceEvent price_event{{price_ts, price, SignedVolume{0.}}};
         md_gateway.live_prices_channel().push(price_event);
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        strategy_instance->wait_event_barrier();
         ASSERT_EQ(prices_received, 2);
     }
 
@@ -577,6 +577,7 @@ TEST_F(StrategyInstanceTest, ManyPricesReceivedWhileOrderIsPending_NoAdditionalO
     ASSERT_EQ(possible_extra_order_req.order.price(), order_req.order.price());
 }
 
+// TODO use barrier instead of sleep here
 TEST_F(StrategyInstanceTest, EnterOrder_GetReject_Panic)
 {
     ASSERT_EQ(strategy_status, WorkStatus::Stopped);
@@ -615,6 +616,7 @@ TEST_F(StrategyInstanceTest, EnterOrder_GetReject_Panic)
     ASSERT_EQ(md_gateway.unsubscribed_count(), 1) << "Must unsubscribe on panic";
 }
 
+// TODO use barrier instead of sleep here
 TEST_F(StrategyInstanceTest, OpenPos_TpslReject_ClosePosAndPanic)
 {
     ASSERT_EQ(strategy_status, WorkStatus::Stopped);

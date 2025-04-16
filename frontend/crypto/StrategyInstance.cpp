@@ -11,6 +11,7 @@
 #include "TrailingStopStrategy.h"
 #include "Volume.h"
 #include "WorkStatus.h"
+#include "EventBarrier.h"
 
 #include <algorithm>
 #include <chrono>
@@ -640,6 +641,12 @@ void StrategyInstance::finish_if_needed_and_ready()
             return;
         }
     }
+}
+
+void StrategyInstance::wait_event_barrier()
+{
+    EventBarrier b{m_event_loop};
+    b.wait();
 }
 
 // void StrategyInstance::handle_event(const TpslResponseEvent & response)
