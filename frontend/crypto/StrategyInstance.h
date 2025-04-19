@@ -60,6 +60,7 @@ private:
     void handle_event(const MDPriceEvent & response);
     void handle_event(const OrderResponseEvent & response);
     void handle_event(const TradeEvent & response);
+    void handle_event(const StrategyStartRequest & ev);
     void handle_event(const StrategyStopRequest & response);
     static void handle_event(const LambdaEvent & response);
     void after_every_event();

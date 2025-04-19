@@ -250,6 +250,7 @@ TEST_F(StrategyInstanceTest, SubForLiveMarketData_GetPrice_GracefullStop)
 {
     ASSERT_EQ(strategy_status, WorkStatus::Stopped);
     strategy_instance->run_async();
+    strategy_instance->wait_event_barrier();
     ASSERT_EQ(md_gateway.live_requests_count(), 1);
     ASSERT_EQ(strategy_status, WorkStatus::Live);
 
@@ -296,6 +297,7 @@ TEST_F(StrategyInstanceTest, OpenAndClosePos_GetResult_DontCloseTwiceOnStop)
 {
     ASSERT_EQ(strategy_status, WorkStatus::Stopped);
     strategy_instance->run_async();
+    strategy_instance->wait_event_barrier();
     ASSERT_EQ(md_gateway.live_requests_count(), 1);
     ASSERT_EQ(strategy_status, WorkStatus::Live);
     const auto live_req = md_gateway.m_last_live_request.value();
@@ -412,6 +414,7 @@ TEST_F(StrategyInstanceTest, OpenPositionWithTpsl_CloseOnGracefullStop)
 {
     ASSERT_EQ(strategy_status, WorkStatus::Stopped);
     strategy_instance->run_async();
+    strategy_instance->wait_event_barrier();
     ASSERT_EQ(md_gateway.live_requests_count(), 1);
     ASSERT_EQ(strategy_status, WorkStatus::Live);
     const auto live_req = md_gateway.m_last_live_request.value();
@@ -530,6 +533,7 @@ TEST_F(StrategyInstanceTest, ManyPricesReceivedWhileOrderIsPending_NoAdditionalO
 {
     ASSERT_EQ(strategy_status, WorkStatus::Stopped);
     strategy_instance->run_async();
+    strategy_instance->wait_event_barrier();
     ASSERT_EQ(md_gateway.live_requests_count(), 1);
     ASSERT_EQ(strategy_status, WorkStatus::Live);
     const auto live_req = md_gateway.m_last_live_request.value();
@@ -581,6 +585,7 @@ TEST_F(StrategyInstanceTest, EnterOrder_GetReject_Panic)
 {
     ASSERT_EQ(strategy_status, WorkStatus::Stopped);
     strategy_instance->run_async();
+    strategy_instance->wait_event_barrier();
     ASSERT_EQ(md_gateway.live_requests_count(), 1);
     ASSERT_EQ(strategy_status, WorkStatus::Live);
 
@@ -618,6 +623,7 @@ TEST_F(StrategyInstanceTest, OpenPos_TpslReject_ClosePosAndPanic)
 {
     ASSERT_EQ(strategy_status, WorkStatus::Stopped);
     strategy_instance->run_async();
+    strategy_instance->wait_event_barrier();
     ASSERT_EQ(md_gateway.live_requests_count(), 1);
     ASSERT_EQ(strategy_status, WorkStatus::Live);
     const auto live_req = md_gateway.m_last_live_request.value();

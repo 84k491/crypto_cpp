@@ -1,6 +1,7 @@
 #include "StrategyInstance.h"
 
 #include "DynamicTrailingStopLossStrategy.h"
+#include "EventBarrier.h"
 #include "EventLoop.h"
 #include "Events.h"
 #include "ITradingGateway.h"
@@ -11,7 +12,6 @@
 #include "TrailingStopStrategy.h"
 #include "Volume.h"
 #include "WorkStatus.h"
-#include "EventBarrier.h"
 
 #include <algorithm>
 #include <chrono>
@@ -102,17 +102,19 @@ StrategyInstance::StrategyInstance(
         res.position_currency_amount = m_pos_currency_amount;
     });
 
-    m_event_loop.subscribe(m_md_gateway.status_channel(),
-                           [this](const WorkStatus & status) {
-                               if (status == WorkStatus::Stopped || status == WorkStatus::Panic) {
-                                   if (m_position_manager.opened() != nullptr) {
-                                       const bool success = close_position(m_last_ts_and_price.second, m_last_ts_and_price.first);
-                                       if (!success) {
-                                           std::cout << "ERROR: can't close a position on stop/crash" << std::endl;
+    if (!historical_md_request.has_value()) {
+        m_event_loop.subscribe(m_md_gateway.status_channel(),
+                               [this](const WorkStatus & status) {
+                                   if (status == WorkStatus::Stopped || status == WorkStatus::Panic) {
+                                       if (m_position_manager.opened() != nullptr) {
+                                           const bool success = close_position(m_last_ts_and_price.second, m_last_ts_and_price.first);
+                                           if (!success) {
+                                               std::cout << "ERROR: can't close a position on stop/crash" << std::endl;
+                                           }
                                        }
                                    }
-                               }
-                           });
+                               });
+    }
 
     register_invokers();
 }
@@ -124,21 +126,7 @@ StrategyInstance::~StrategyInstance()
 
 void StrategyInstance::run_async()
 {
-    if (m_historical_md_request.has_value()) {
-        m_status.push(WorkStatus::Backtesting);
-
-        HistoricalMDRequest historical_request(
-                m_symbol,
-                m_historical_md_request.value());
-        m_pending_requests.emplace(historical_request.guid);
-        m_md_gateway.push_async_request(std::move(historical_request));
-    }
-    else {
-        m_status.push(WorkStatus::Live);
-        LiveMDRequest live_request(m_symbol);
-        m_live_md_requests.emplace(live_request.guid);
-        m_md_gateway.push_async_request(std::move(live_request));
-    }
+    m_event_loop.push_event(StrategyStartRequest{});
 }
 
 void StrategyInstance::stop_async(bool panic)
@@ -156,7 +144,7 @@ void StrategyInstance::stop_async(bool panic)
 std::future<void> StrategyInstance::finish_future()
 {
     m_finish_promise = std::promise<void>();
-    if (ready_to_finish()) {
+    if (ready_to_finish()) { // TODO race. This calls from other thread and el thread
         m_finish_promise->set_value();
     }
     return m_finish_promise->get_future();
@@ -314,6 +302,11 @@ EventTimeseriesChannel<StopLoss> & StrategyInstance::trailing_stop_channel()
 
 void StrategyInstance::register_invokers()
 {
+    m_invoker_subs.push_back(m_event_loop.invoker().register_invoker<StrategyStartRequest>([&](const auto & ev) {
+        handle_event(ev);
+        after_every_event();
+    }));
+
     m_invoker_subs.push_back(m_event_loop.invoker().register_invoker<HistoricalMDGeneratorEvent>([&](const auto & response) {
         // can get history MD ev from an other strategy because of fan-out channels. // TODO
         if (m_stop_request_handled) { // TODO handle with guid
@@ -534,6 +527,25 @@ void StrategyInstance::handle_event(const TradeEvent & response)
     if (const auto err = m_exit_strategy->on_trade(pos, trade); err.has_value()) {
         // stop_async(true);
         Logger::log<LogLevel::Error>(std::string{err.value()});
+    }
+}
+
+void StrategyInstance::handle_event(const StrategyStartRequest &)
+{
+    if (m_historical_md_request.has_value()) {
+        m_status.push(WorkStatus::Backtesting);
+
+        HistoricalMDRequest historical_request(
+                m_symbol,
+                m_historical_md_request.value());
+        m_pending_requests.emplace(historical_request.guid);
+        m_md_gateway.push_async_request(std::move(historical_request));
+    }
+    else {
+        m_status.push(WorkStatus::Live);
+        LiveMDRequest live_request(m_symbol);
+        m_live_md_requests.emplace(live_request.guid);
+        m_md_gateway.push_async_request(std::move(live_request));
     }
 }
 

@@ -374,6 +374,10 @@ struct StrategyStopRequest : public OneWayEvent
     }
 };
 
+struct StrategyStartRequest : public OneWayEvent
+{
+};
+
 #define STRATEGY_EVENTS LambdaEvent,                      \
                         BarrierEvent,                     \
                         HistoricalMDGeneratorEvent,       \
@@ -386,4 +390,5 @@ struct StrategyStopRequest : public OneWayEvent
                         TpslUpdatedEvent,                 \
                         TrailingStopLossResponseEvent,    \
                         TrailingStopLossUpdatedEvent,     \
+                        StrategyStartRequest,             \
                         StrategyStopRequest
