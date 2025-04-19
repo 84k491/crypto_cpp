@@ -143,11 +143,7 @@ void StrategyInstance::stop_async(bool panic)
 
 std::future<void> StrategyInstance::finish_future()
 {
-    m_finish_promise = std::promise<void>();
-    if (ready_to_finish()) { // TODO race. This calls from other thread and el thread
-        m_finish_promise->set_value();
-    }
-    return m_finish_promise->get_future();
+    return m_finish_promise.get_future();
 }
 
 void StrategyInstance::on_signal(const Signal & signal)
@@ -307,14 +303,12 @@ void StrategyInstance::register_invokers()
         after_every_event();
     }));
 
-    m_invoker_subs.push_back(m_event_loop.invoker().register_invoker<HistoricalMDGeneratorEvent>([&](const auto & response) {
-        // can get history MD ev from an other strategy because of fan-out channels. // TODO
-        if (m_stop_request_handled) { // TODO handle with guid
-            return;
-        }
-        handle_event(response);
-        after_every_event();
-    }));
+    m_invoker_subs.push_back(
+            m_event_loop.invoker().register_invoker<HistoricalMDGeneratorEvent>([&](const auto & response) {
+                // can get history MD ev from an other strategy because of fan-out channels. // TODO
+                handle_event(response);
+                after_every_event();
+            }));
 
     m_invoker_subs.push_back(
             m_event_loop.invoker().register_invoker<HistoricalMDGeneratorLowMemEvent>(
@@ -373,6 +367,10 @@ void StrategyInstance::after_every_event()
 
 void StrategyInstance::handle_event(const HistoricalMDGeneratorEvent & response)
 {
+    if (m_historical_md_generator) {
+        return;
+    }
+
     const size_t erased_cnt = m_pending_requests.erase(response.request_guid());
     if (erased_cnt == 0) {
         Logger::logf<LogLevel::Debug>("unsolicited HistoricalMDPackEvent: {}, this->guid: {}", response.request_guid(), m_strategy_guid);
@@ -398,6 +396,10 @@ void StrategyInstance::handle_event(const HistoricalMDGeneratorEvent & response)
 
 void StrategyInstance::handle_event(const HistoricalMDGeneratorLowMemEvent & response)
 {
+    if (m_historical_md_lowmem_generator) {
+        return;
+    }
+
     const size_t erased_cnt = m_pending_requests.erase(response.request_guid());
     if (erased_cnt == 0) {
         Logger::logf<LogLevel::Debug>("unsolicited HistoricalMDPackEvent: {}, this->guid: {}", response.request_guid(), m_strategy_guid);
@@ -643,10 +645,10 @@ bool StrategyInstance::ready_to_finish() const
 
 void StrategyInstance::finish_if_needed_and_ready()
 {
-    if (m_finish_promise.has_value() && m_stop_request_handled) {
-        if (ready_to_finish()) {
-            auto & promise = m_finish_promise.value();
-            promise.set_value(); // TODO double set on stop
+    if (m_stop_request_handled) {
+        if (!m_stopped && ready_to_finish()) {
+            m_stopped = true;
+            m_finish_promise.set_value();
         }
         else {
             // std::cout << "Waiting for all criterias to be satisfied for finish" << std::endl;

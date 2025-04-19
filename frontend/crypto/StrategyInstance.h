@@ -112,7 +112,8 @@ private:
 
     bool m_stop_request_handled = false;
     WorkStatus m_status_on_stop = WorkStatus::Stopped;
-    std::optional<std::promise<void>> m_finish_promise;
+    bool m_stopped = false;
+    std::promise<void> m_finish_promise;
 
     std::optional<HistoricalMDGeneratorEvent> m_historical_md_generator;
     std::optional<HistoricalMDGeneratorLowMemEvent> m_historical_md_lowmem_generator;

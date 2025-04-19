@@ -137,6 +137,7 @@ std::optional<DoubleJsonStrategyConfig> Optimizer::optimize()
             tr_gateway.set_price_source(strategy_instance.price_channel());
             strategy_instance.set_channel_capacity(std::chrono::milliseconds{});
             strategy_instance.run_async();
+            strategy_instance.wait_event_barrier(); // use future to wait
             strategy_instance.finish_future().wait();
             const auto result = strategy_instance.strategy_result_channel().get();
 
