@@ -7,11 +7,12 @@
 #include <queue>
 #include <variant>
 
-enum class Priority
+enum class Priority : uint8_t
 {
     High = 0,
     Normal = 1,
     Low = 2,
+    Barrier = 3,
 };
 
 template <typename T>
@@ -23,6 +24,7 @@ public:
         m_queue_map[Priority::High];
         m_queue_map[Priority::Normal];
         m_queue_map[Priority::Low];
+        m_queue_map[Priority::Barrier];
     }
 
     ~ThreadSafePriorityQueue()

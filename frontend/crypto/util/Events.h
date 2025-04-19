@@ -360,7 +360,7 @@ struct BarrierEvent : public OneWayEvent
 
     Priority priority() const override
     {
-        return Priority::Low;
+        return Priority::Barrier;
     }
 
     xg::Guid guid;

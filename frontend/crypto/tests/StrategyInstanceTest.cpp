@@ -577,14 +577,12 @@ TEST_F(StrategyInstanceTest, ManyPricesReceivedWhileOrderIsPending_NoAdditionalO
     ASSERT_EQ(possible_extra_order_req.order.price(), order_req.order.price());
 }
 
-// TODO use barrier instead of sleep here
 TEST_F(StrategyInstanceTest, EnterOrder_GetReject_Panic)
 {
     ASSERT_EQ(strategy_status, WorkStatus::Stopped);
     strategy_instance->run_async();
     ASSERT_EQ(md_gateway.live_requests_count(), 1);
     ASSERT_EQ(strategy_status, WorkStatus::Live);
-    const auto live_req = md_gateway.m_last_live_request.value();
 
     strategy_ptr->signal_on_next_tick(Side::buy());
     {
@@ -592,7 +590,7 @@ TEST_F(StrategyInstanceTest, EnterOrder_GetReject_Panic)
         const double price = 10.1;
         MDPriceEvent price_event{{price_ts, price, SignedVolume{0.}}};
         md_gateway.live_prices_channel().push(price_event);
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        strategy_instance->wait_event_barrier();
     }
 
     StrategyResult result = strategy_instance->strategy_result_channel().get();
@@ -610,13 +608,12 @@ TEST_F(StrategyInstanceTest, EnterOrder_GetReject_Panic)
             order_req.order.guid(),
             "test_reject"};
     tr_gateway.order_response_channel().push(order_response);
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    strategy_instance->wait_event_barrier();
 
     ASSERT_EQ(strategy_status, WorkStatus::Panic);
     ASSERT_EQ(md_gateway.unsubscribed_count(), 1) << "Must unsubscribe on panic";
 }
 
-// TODO use barrier instead of sleep here
 TEST_F(StrategyInstanceTest, OpenPos_TpslReject_ClosePosAndPanic)
 {
     ASSERT_EQ(strategy_status, WorkStatus::Stopped);
@@ -631,7 +628,7 @@ TEST_F(StrategyInstanceTest, OpenPos_TpslReject_ClosePosAndPanic)
         const double price = 10.1;
         MDPriceEvent price_event{{price_ts, price, SignedVolume{0.}}};
         md_gateway.live_prices_channel().push(price_event);
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        strategy_instance->wait_event_barrier();
     }
 
     StrategyResult result = strategy_instance->strategy_result_channel().get();
@@ -667,7 +664,7 @@ TEST_F(StrategyInstanceTest, OpenPos_TpslReject_ClosePosAndPanic)
         ASSERT_EQ(result.trades_count, 0);
         tr_gateway.m_trade_channel.push(open_trade_event);
         tr_gateway.order_response_channel().push(order_response);
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        strategy_instance->wait_event_barrier();
         ASSERT_EQ(result.trades_count, 1);
     }
 
@@ -679,7 +676,7 @@ TEST_F(StrategyInstanceTest, OpenPos_TpslReject_ClosePosAndPanic)
                 tpsl_req.guid,
                 tpsl_req.tpsl,
                 "test_reject"});
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        strategy_instance->wait_event_barrier();
     }
 
     // There must be a close pos request on panic
@@ -707,7 +704,7 @@ TEST_F(StrategyInstanceTest, OpenPos_TpslReject_ClosePosAndPanic)
         ASSERT_EQ(result.trades_count, 1);
         tr_gateway.m_trade_channel.push(close_trade_event);
         tr_gateway.order_response_channel().push(order_response);
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        strategy_instance->wait_event_barrier();
         ASSERT_EQ(result.trades_count, 2);
     }
 

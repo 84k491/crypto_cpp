@@ -19,7 +19,6 @@
 #include <memory>
 #include <optional>
 #include <set>
-#include <variant>
 
 class StrategyInstance
 {
