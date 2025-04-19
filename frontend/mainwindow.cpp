@@ -412,7 +412,7 @@ bool MainWindowEventConsumer::push_to_queue(std::any value)
     return true;
 }
 
-void MainWindow::on_lambda(const std::function<void()> & lambda)
+void MainWindow::on_lambda(std::function<void()> lambda)
 {
     lambda();
 }

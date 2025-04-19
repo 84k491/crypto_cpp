@@ -37,6 +37,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} \
     -ggdb \
     -g3 \
     -O0 \
+    -fsanitize=thread \
     ")
     # -fsanitize=address \
 

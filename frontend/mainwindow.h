@@ -116,7 +116,7 @@ private slots:
     void subscribe_for_positions();
     void optimized_config_slot(const JsonStrategyConfig & entry_config, const JsonStrategyConfig & exit_config);
 
-    void on_lambda(const std::function<void()> & lambda);
+    void on_lambda(std::function<void()> lambda);
 
 signals:
     void signal_optimized_config(JsonStrategyConfig entry_config, JsonStrategyConfig exit_config);
