@@ -2,44 +2,12 @@
 
 #include "ByBitMarketDataGateway.h"
 #include "JsonStrategyConfig.h"
-#include "Logger.h"
+#include "ConfigGenerator.h"
 #include "StrategyResult.h"
 
 #include <nlohmann/json.hpp>
 
-#include <set>
 #include <utility>
-#include <vector>
-
-struct StrategyOptimizerInputs
-{
-    JsonStrategyMetaInfo meta;
-    JsonStrategyConfig current_config;
-    std::set<std::string> optimizable_parameters;
-};
-
-struct OptimizerInputs
-{
-    StrategyOptimizerInputs entry_strategy;
-    StrategyOptimizerInputs exit_strategy;
-};
-
-// TODO move to separate file and implement tests
-class OptimizerParser
-{
-public:
-    OptimizerParser(OptimizerInputs optimizer_inputs)
-        : m_inputs(std::move(optimizer_inputs))
-    {
-    }
-
-    std::vector<DoubleJsonStrategyConfig> get_possible_configs();
-
-private:
-    static std::vector<JsonStrategyConfig> get_possible_configs(const StrategyOptimizerInputs & strategy_optimizer_inputs);
-
-    const OptimizerInputs m_inputs;
-};
 
 class OptimizerCollector
 {

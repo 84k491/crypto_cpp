@@ -41,6 +41,7 @@ target_link_libraries(frontend PRIVATE
     ta
     util
     strategy
+    optimizer
     gateway
     trading_primitives
     network
