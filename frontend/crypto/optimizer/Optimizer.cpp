@@ -1,32 +1,36 @@
 #include "Optimizer.h"
 
 #include "BacktestTradingGateway.h"
+#include "Collector.h"
 #include "JsonStrategyConfig.h"
 #include "Logger.h"
-#include "OrdinaryLeastSquares.h"
 #include "ScopeExit.h"
 #include "StrategyFactory.h"
 #include "StrategyInstance.h"
 
 #include <vector>
 
-double best_profit_criteria(const StrategyResult & result)
+Optimizer::Optimizer(
+        ByBitMarketDataGateway & gateway,
+        Symbol symbol,
+        Timerange timerange,
+        std::string strategy_name,
+        std::string exit_strategy_name,
+        OptimizerInputs optimizer_data,
+        size_t threads)
+    : m_gateway(gateway)
+    , m_symbol(std::move(symbol))
+    , m_timerange(timerange)
+    , m_optimizer_inputs(std::move(optimizer_data))
+    , m_strategy_name(std::move(strategy_name))
+    , m_exit_strategy_name(std::move(exit_strategy_name))
+    , m_thread_count(threads)
 {
-    return result.final_profit;
 }
 
-double min_deviation_criteria(const StrategyResult & result)
+void Optimizer::subscribe_for_passed_check(std::function<void(int, int)> && on_passed_checks)
 {
-    OLS::PriceRegressionFunction depo_trend{result.depo_trend_coef, result.depo_trend_const};
-    if (depo_trend(result.last_position_closed_ts) <= 0.) {
-        return -1.;
-    }
-    if (result.depo_standard_deviation <= 0.) {
-        return -1.;
-    }
-
-    const double score = 1. / result.depo_standard_deviation;
-    return score;
+    m_on_passed_check = std::move(on_passed_checks);
 }
 
 std::optional<DoubleJsonStrategyConfig> Optimizer::optimize()
@@ -36,10 +40,7 @@ std::optional<DoubleJsonStrategyConfig> Optimizer::optimize()
 
     const std::vector<DoubleJsonStrategyConfig> configs = parser.get_possible_configs();
 
-    Guarded<OptimizerCollector> collector{
-            [](const auto & res) {
-                return min_deviation_criteria(res);
-            }};
+    Guarded<OptimizerCollector> collector{std::make_unique<MinDeviationCriteria>()};
 
     Logger::log<LogLevel::Debug>("Logs will be suppressed during optimization"); // TODO push as event
     Logger::set_min_log_level(LogLevel::Warning);
@@ -98,22 +99,4 @@ std::optional<DoubleJsonStrategyConfig> Optimizer::optimize()
 
     m_on_passed_check(configs.size(), configs.size());
     return collector.lock().get().get_best();
-}
-
-bool OptimizerCollector::push(
-        DoubleJsonStrategyConfig strategy_config,
-        const StrategyResult & result)
-{
-    const auto score = m_criteria(result);
-    if (score < 0.) {
-        return false;
-    }
-
-    if (score <= m_best_score) {
-        return false;
-    }
-
-    m_best_score = score;
-    m_best = std::move(strategy_config);
-    return true;
 }

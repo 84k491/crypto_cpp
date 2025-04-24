@@ -21,10 +21,7 @@ struct OptimizerInputs
 class OptimizerParser
 {
 public:
-    OptimizerParser(OptimizerInputs optimizer_inputs)
-        : m_inputs(std::move(optimizer_inputs))
-    {
-    }
+    OptimizerParser(OptimizerInputs optimizer_inputs);
 
     std::vector<DoubleJsonStrategyConfig> get_possible_configs();
 

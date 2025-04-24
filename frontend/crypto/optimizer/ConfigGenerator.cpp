@@ -1,5 +1,10 @@
 #include "ConfigGenerator.h"
 
+OptimizerParser::OptimizerParser(OptimizerInputs optimizer_inputs)
+    : m_inputs(std::move(optimizer_inputs))
+{
+}
+
 std::vector<DoubleJsonStrategyConfig> OptimizerParser::get_possible_configs()
 {
     const auto entry_configs = get_possible_configs(m_inputs.entry_strategy);
@@ -61,4 +66,3 @@ std::vector<JsonStrategyConfig> OptimizerParser::get_possible_configs(const Stra
 
     return ouput_jsons;
 }
-
