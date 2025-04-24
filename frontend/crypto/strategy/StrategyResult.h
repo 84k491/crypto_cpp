@@ -26,10 +26,16 @@ public:
 
     void set_trend_info(const std::vector<std::pair<std::chrono::milliseconds, double>> & prices);
 
+    double apr() const;
+
+    double trades_per_month() const;
+
     nlohmann::json to_json() const;
 
 public:
     double position_currency_amount = 0.;
+    std::chrono::milliseconds strategy_start_ts;
+
     double final_profit = 0.;
     size_t trades_count = 0;
     std::string last_trade_date;

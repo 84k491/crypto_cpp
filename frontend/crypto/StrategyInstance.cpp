@@ -441,8 +441,12 @@ void StrategyInstance::handle_event(const MDPriceEvent & response)
     m_last_ts_and_price = {public_trade.ts(), public_trade.price()};
     m_price_channel.push(public_trade.ts(), public_trade.price());
     if (!first_price_received) {
-        m_depo_channel.push(public_trade.ts(), 0.); // TODO move it to c-tor?
         first_price_received = true;
+
+        m_depo_channel.push(public_trade.ts(), 0.);
+        m_strategy_result.update([&](auto & res) {
+            res.strategy_start_ts = public_trade.ts();
+        });
     }
 
     const auto candles = m_candle_builder.push_trade(public_trade.price(), public_trade.volume(), public_trade.ts());

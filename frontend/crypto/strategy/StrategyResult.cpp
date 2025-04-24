@@ -1,4 +1,5 @@
 #include "StrategyResult.h"
+
 #include "OrdinaryLeastSquares.h"
 
 std::ostream & operator<<(std::ostream & out, const StrategyResult & result)
@@ -48,4 +49,31 @@ void StrategyResult::set_trend_info(const std::vector<std::pair<std::chrono::mil
     depo_trend_const = reg.c;
     last_position_closed_ts = prices.back().first;
     first_position_closed_ts = prices.front().first;
+}
+
+double StrategyResult::apr() const
+{
+    const auto next_year_ts = strategy_start_ts + std::chrono::years{1};
+    OLS::PriceRegressionFunction depo_trend{depo_trend_coef, depo_trend_const};
+
+    const double next_year_depo = depo_trend(next_year_ts) + position_currency_amount;
+
+    return 100. * (next_year_depo / position_currency_amount);
+}
+
+double StrategyResult::trades_per_month() const
+{
+    constexpr size_t ms_in_month = 2629800000;
+
+    if (last_position_closed_ts == std::chrono::milliseconds{}) {
+        return 0.;
+    }
+    if (last_position_closed_ts < strategy_start_ts) {
+        return 0.;
+    }
+
+    const auto delta_ms = last_position_closed_ts.count() - strategy_start_ts.count();
+    const auto delta_months = delta_ms / ms_in_month;
+
+    return double(trades_count) / delta_months;
 }
