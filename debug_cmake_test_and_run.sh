@@ -14,5 +14,5 @@ cmake .. -DCustomBuildType=Debug
 echo "Using $res_np threads"
 cmake --build . -j$res_np && ctest .
 
-# cd ..
-# ./build/frontend/frontend | tee output.txt
+cd ..
+./build/frontend/frontend | tee output.txt

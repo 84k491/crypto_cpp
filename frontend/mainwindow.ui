@@ -292,6 +292,24 @@
          </layout>
         </item>
         <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_27">
+          <item>
+           <widget class="QLabel" name="label_25">
+            <property name="text">
+             <string>APR:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="lb_apr">
+            <property name="text">
+             <string>0</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
          <layout class="QHBoxLayout" name="horizontalLayout_25">
           <item>
            <widget class="QLabel" name="label_23">
@@ -640,7 +658,7 @@
              <x>0</x>
              <y>0</y>
              <width>487</width>
-             <height>760</height>
+             <height>759</height>
             </rect>
            </property>
           </widget>

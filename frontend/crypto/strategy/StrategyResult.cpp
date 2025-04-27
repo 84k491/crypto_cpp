@@ -56,9 +56,9 @@ double StrategyResult::apr() const
     const auto next_year_ts = strategy_start_ts + std::chrono::years{1};
     OLS::PriceRegressionFunction depo_trend{depo_trend_coef, depo_trend_const};
 
-    const double next_year_depo = depo_trend(next_year_ts) + position_currency_amount;
+    const double next_year_profit = depo_trend(next_year_ts);
 
-    return 100. * (next_year_depo / position_currency_amount);
+    return 100. * (next_year_profit / position_currency_amount);
 }
 
 double StrategyResult::trades_per_month() const
