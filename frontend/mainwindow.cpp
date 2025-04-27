@@ -222,6 +222,7 @@ void MainWindow::render_result(StrategyResult result)
     ui->lb_final_profit->setText(QString::number(result.final_profit));
     ui->lb_apr->setText(QString::number(result.apr()));
     ui->lb_trades_count->setText(QString::number(result.trades_count));
+    ui->lb_trades_per_month->setText(QString::number(result.trades_per_month()));
     ui->lb_trade_date->setText(QString::fromStdString(result.last_trade_date));
     ui->lb_fees_paid->setText(QString::number(result.fees_paid));
     ui->lb_profit_per_trade->setText(QString::number(result.profit_per_trade()));

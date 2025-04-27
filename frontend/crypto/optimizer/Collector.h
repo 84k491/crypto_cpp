@@ -49,6 +49,23 @@ private:
     double m_min_apr = .0;
 };
 
+class TradesPerMonthFilter : public IOptimizerFilter
+{
+public:
+    TradesPerMonthFilter(double min_trades_per_month)
+        : m_min_trades_per_month(min_trades_per_month)
+    {
+    }
+
+    bool operator()(const StrategyResult & result) const override
+    {
+        return result.trades_per_month() >= m_min_trades_per_month;
+    }
+
+private:
+    double m_min_trades_per_month = .0;
+};
+
 class ConjunctiveFilterAggregation
 {
 public:

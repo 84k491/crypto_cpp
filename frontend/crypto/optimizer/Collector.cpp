@@ -45,6 +45,7 @@ OptimizerCollector::OptimizerCollector(std::string criteria_name, const std::vec
 
     for (const auto & filter : filters) {
         TRY_BUILD_FILTER(Apr);
+        TRY_BUILD_FILTER(TradesPerMonth);
     }
 
 #undef TRY_BUILD_FILTER

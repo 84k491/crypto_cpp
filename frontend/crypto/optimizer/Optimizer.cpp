@@ -43,8 +43,9 @@ std::optional<DoubleJsonStrategyConfig> Optimizer::optimize()
     Guarded<OptimizerCollector> collector{
             "MinDeviation",
             std::vector<OptimizerCollector::FilterParams>{
-                    {.filter_name = "Apr",
-                     .value = 5.}}};
+                    {.filter_name = "Apr", .value = 5.},
+                    {.filter_name = "TradesPerMonth", .value = 10.},
+            }};
 
     Logger::log<LogLevel::Debug>("Logs will be suppressed during optimization"); // TODO push as event
     Logger::set_min_log_level(LogLevel::Warning);

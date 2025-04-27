@@ -1,6 +1,7 @@
 #include "StrategyResult.h"
 
 #include "OrdinaryLeastSquares.h"
+#include "Logger.h"
 
 std::ostream & operator<<(std::ostream & out, const StrategyResult & result)
 {
@@ -72,8 +73,9 @@ double StrategyResult::trades_per_month() const
         return 0.;
     }
 
-    const auto delta_ms = last_position_closed_ts.count() - strategy_start_ts.count();
-    const auto delta_months = delta_ms / ms_in_month;
+    const double delta_ms = last_position_closed_ts.count() - strategy_start_ts.count();
+    const double delta_months = delta_ms / ms_in_month;
 
-    return double(trades_count) / delta_months;
+    const double res = double(trades_count) / double(delta_months);
+    return res;
 }
