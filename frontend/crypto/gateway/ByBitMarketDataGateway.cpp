@@ -337,9 +337,9 @@ void ByBitMarketDataGateway::push_async_request(LiveMDRequest && request)
 
 void ByBitMarketDataGateway::handle_request(const HistoricalMDRequest & request)
 {
-    const auto reader_ptr = BybitTradesDownloader::request_lowmem(request);
-    HistoricalMDGeneratorLowMemEvent ev(request.guid, reader_ptr);
-    m_historical_lowmem_channel.push(ev);
+    const auto reader_ptr = BybitTradesDownloader::request(request);
+    HistoricalMDGeneratorEvent ev(request.guid, reader_ptr);
+    m_historical_prices_channel.push(ev);
 }
 
 void ByBitMarketDataGateway::handle_request(const LiveMDRequest & request)
@@ -428,11 +428,6 @@ void ByBitMarketDataGateway::on_connection_verified()
 EventChannel<HistoricalMDGeneratorEvent> & ByBitMarketDataGateway::historical_prices_channel()
 {
     return m_historical_prices_channel;
-}
-
-EventChannel<HistoricalMDGeneratorLowMemEvent> & ByBitMarketDataGateway::historical_lowmem_channel()
-{
-    return m_historical_lowmem_channel;
 }
 
 EventChannel<MDPriceEvent> & ByBitMarketDataGateway::live_prices_channel() { return m_live_prices_channel; }

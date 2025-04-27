@@ -19,7 +19,6 @@
 
 #include <chrono>
 #include <functional>
-#include <unordered_map>
 #include <vector>
 
 class WorkerThreadLoop;
@@ -41,7 +40,6 @@ public:
     void push_async_request(LiveMDRequest && request) override;
 
     EventChannel<HistoricalMDGeneratorEvent> & historical_prices_channel() override;
-    EventChannel<HistoricalMDGeneratorLowMemEvent> & historical_lowmem_channel() override;
     EventChannel<MDPriceEvent> & live_prices_channel() override;
 
     void unsubscribe_from_live(xg::Guid guid) override;
@@ -88,7 +86,6 @@ private:
 
     EventLoopSubscriber<HistoricalMDRequest, LiveMDRequest, PingCheckEvent> m_event_loop;
     EventChannel<HistoricalMDGeneratorEvent> m_historical_prices_channel;
-    EventChannel<HistoricalMDGeneratorLowMemEvent> m_historical_lowmem_channel;
     EventChannel<MDPriceEvent> m_live_prices_channel;
     std::list<std::shared_ptr<ISubscription>> m_invoker_subs;
 };

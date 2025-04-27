@@ -31,99 +31,32 @@ struct MDPriceEvent : public OneWayEvent
 
 struct HistoricalMDPriceEvent : MDPriceEvent
 {
-    HistoricalMDPriceEvent(CsvPublicTrade _ts_and_price, bool lowmem)
+    HistoricalMDPriceEvent(CsvPublicTrade _ts_and_price)
         : MDPriceEvent(_ts_and_price)
-        , lowmem(lowmem)
     {
     }
-
-    bool lowmem; // TODO make it possible to use const here
-};
-
-class HistoricalMDGeneratorEvent : public OneWayEvent
-{
-    using PricePackPtr = std::shared_ptr<const std::vector<CsvPublicTrade>>;
-
-public:
-    HistoricalMDGeneratorEvent(xg::Guid guid, PricePackPtr ts_and_price_pack)
-        : m_request_guid(guid)
-        , m_pack(std::move(ts_and_price_pack))
-    {
-    }
-    HistoricalMDGeneratorEvent(const HistoricalMDGeneratorEvent & other)
-        : m_request_guid(other.m_request_guid)
-        , m_pack(other.m_pack)
-        , m_iter(other.m_iter)
-    {
-    }
-    HistoricalMDGeneratorEvent & operator=(const HistoricalMDGeneratorEvent & other)
-    {
-        if (this == &other) {
-            return *this;
-        }
-        m_request_guid = other.m_request_guid;
-        m_pack = other.m_pack;
-        m_iter = other.m_iter;
-        return *this;
-    }
-    HistoricalMDGeneratorEvent(HistoricalMDGeneratorEvent && other) noexcept
-        : m_request_guid(other.m_request_guid)
-        , m_pack(std::move(other.m_pack))
-        , m_iter(other.m_iter)
-    {
-    }
-
-    HistoricalMDGeneratorEvent & operator=(HistoricalMDGeneratorEvent && other) noexcept
-    {
-        if (this == &other) {
-            return *this;
-        }
-        m_request_guid = other.m_request_guid;
-        m_pack = std::move(other.m_pack);
-        m_iter = other.m_iter;
-        return *this;
-    }
-
-    std::optional<HistoricalMDPriceEvent> get_next()
-    {
-        const auto iter = m_iter++;
-        if (iter >= m_pack->size()) {
-            return std::nullopt;
-        }
-
-        return HistoricalMDPriceEvent{(*m_pack)[iter], false};
-    }
-
-    bool has_data() const { return m_pack && !m_pack->empty(); } // TODO useless
-    auto request_guid() const { return m_request_guid; }
-
-private:
-    xg::Guid m_request_guid;
-
-    PricePackPtr m_pack;
-    size_t m_iter = 0;
 };
 
 class SequentialMarketDataReader;
 
-class HistoricalMDGeneratorLowMemEvent : public OneWayEvent
+class HistoricalMDGeneratorEvent : public OneWayEvent
 {
     using PricePackPtr = std::shared_ptr<const std::vector<std::pair<std::chrono::milliseconds, double>>>;
 
 public:
-    HistoricalMDGeneratorLowMemEvent(xg::Guid guid, std::shared_ptr<SequentialMarketDataReader> reader)
+    HistoricalMDGeneratorEvent(xg::Guid guid, std::shared_ptr<SequentialMarketDataReader> reader)
         : m_request_guid(guid)
         , m_reader(std::move(reader))
     {
     }
 
-    HistoricalMDGeneratorLowMemEvent(const HistoricalMDGeneratorLowMemEvent & other)
+    HistoricalMDGeneratorEvent(const HistoricalMDGeneratorEvent & other)
         : m_request_guid(other.m_request_guid)
         , m_reader(other.m_reader)
     {
     }
 
-    HistoricalMDGeneratorLowMemEvent & operator=(const HistoricalMDGeneratorLowMemEvent & other)
+    HistoricalMDGeneratorEvent & operator=(const HistoricalMDGeneratorEvent & other)
     {
         if (this == &other) {
             return *this;
@@ -133,13 +66,13 @@ public:
         return *this;
     }
 
-    HistoricalMDGeneratorLowMemEvent(HistoricalMDGeneratorLowMemEvent && other) noexcept
+    HistoricalMDGeneratorEvent(HistoricalMDGeneratorEvent && other) noexcept
         : m_request_guid(other.m_request_guid)
         , m_reader(std::move(other.m_reader))
     {
     }
 
-    HistoricalMDGeneratorLowMemEvent & operator=(HistoricalMDGeneratorLowMemEvent && other) noexcept
+    HistoricalMDGeneratorEvent & operator=(HistoricalMDGeneratorEvent && other) noexcept
     {
         if (this == &other) {
             return *this;
@@ -177,18 +110,6 @@ std::ostream & operator<<(std::ostream & os, const HistoricalMDRequestData & dat
 struct HistoricalMDRequest : public OneWayEvent
 {
     HistoricalMDRequest(
-            const Symbol & symbol,
-            HistoricalMDRequestData data);
-
-    HistoricalMDRequestData data;
-    Symbol symbol;
-    bool lowmem = true;
-    xg::Guid guid;
-};
-
-struct HistoricalMDLowMemRequest : public OneWayEvent
-{
-    HistoricalMDLowMemRequest(
             const Symbol & symbol,
             HistoricalMDRequestData data);
 
@@ -378,17 +299,16 @@ struct StrategyStartRequest : public OneWayEvent
 {
 };
 
-#define STRATEGY_EVENTS LambdaEvent,                      \
-                        BarrierEvent,                     \
-                        HistoricalMDGeneratorEvent,       \
-                        HistoricalMDGeneratorLowMemEvent, \
-                        HistoricalMDPriceEvent,           \
-                        MDPriceEvent,                     \
-                        OrderResponseEvent,               \
-                        TradeEvent,                       \
-                        TpslResponseEvent,                \
-                        TpslUpdatedEvent,                 \
-                        TrailingStopLossResponseEvent,    \
-                        TrailingStopLossUpdatedEvent,     \
-                        StrategyStartRequest,             \
+#define STRATEGY_EVENTS LambdaEvent,                   \
+                        BarrierEvent,                  \
+                        HistoricalMDGeneratorEvent,    \
+                        HistoricalMDPriceEvent,        \
+                        MDPriceEvent,                  \
+                        OrderResponseEvent,            \
+                        TradeEvent,                    \
+                        TpslResponseEvent,             \
+                        TpslUpdatedEvent,              \
+                        TrailingStopLossResponseEvent, \
+                        TrailingStopLossUpdatedEvent,  \
+                        StrategyStartRequest,          \
                         StrategyStopRequest

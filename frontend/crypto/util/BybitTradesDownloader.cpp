@@ -184,23 +184,7 @@ std::list<std::string> BybitTradesDownloader::download(const HistoricalMDRequest
     return res;
 }
 
-// curl -XGET "https://public.bybit.com/trading/BTCUSDT/BTCUSDT2024-12-25.csv.gz"
-std::vector<CsvPublicTrade> BybitTradesDownloader::BybitTradesDownloader::request(const HistoricalMDRequest & req)
-{
-    std::vector<CsvPublicTrade> res;
-
-    const auto files = download(req);
-    SequentialMarketDataReader reader(files);
-
-    for (auto line = reader.get_next(); line.has_value(); line = reader.get_next()) {
-        res.push_back(line.value());
-    }
-
-    Logger::logf<LogLevel::Debug>("Got {} prices", res.size());
-    return res;
-}
-
-std::shared_ptr<SequentialMarketDataReader> BybitTradesDownloader::request_lowmem(const HistoricalMDRequest & req)
+std::shared_ptr<SequentialMarketDataReader> BybitTradesDownloader::request(const HistoricalMDRequest & req)
 {
     std::vector<std::pair<std::chrono::milliseconds, double>> res;
 

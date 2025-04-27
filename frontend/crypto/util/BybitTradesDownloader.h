@@ -37,8 +37,7 @@ class BybitTradesDownloader
 public:
     BybitTradesDownloader();
 
-    static std::vector<CsvPublicTrade> request(const HistoricalMDRequest & req);
-    static std::shared_ptr<SequentialMarketDataReader> request_lowmem(const HistoricalMDRequest & req);
+    static std::shared_ptr<SequentialMarketDataReader> request(const HistoricalMDRequest & req);
 
 private:
     static std::list<std::string> download(const HistoricalMDRequest & req);

@@ -88,7 +88,6 @@ StrategyInstance::StrategyInstance(
     m_status.push(WorkStatus::Stopped);
 
     m_event_loop.subscribe(m_md_gateway.historical_prices_channel());
-    m_event_loop.subscribe(m_md_gateway.historical_lowmem_channel());
     m_event_loop.subscribe(m_md_gateway.live_prices_channel());
 
     m_event_loop.subscribe(m_tr_gateway.order_response_channel());
@@ -304,14 +303,7 @@ void StrategyInstance::register_invokers()
     }));
 
     m_invoker_subs.push_back(
-            m_event_loop.invoker().register_invoker<HistoricalMDGeneratorEvent>([&](const auto & response) {
-                // can get history MD ev from an other strategy because of fan-out channels. // TODO
-                handle_event(response);
-                after_every_event();
-            }));
-
-    m_invoker_subs.push_back(
-            m_event_loop.invoker().register_invoker<HistoricalMDGeneratorLowMemEvent>(
+            m_event_loop.invoker().register_invoker<HistoricalMDGeneratorEvent>(
                     [&](const auto & response) {
                         handle_event(response);
                         after_every_event();
@@ -377,39 +369,10 @@ void StrategyInstance::handle_event(const HistoricalMDGeneratorEvent & response)
         return;
     }
 
-    if (!response.has_data()) {
-        Logger::logf<LogLevel::Error>("no data in HistoricalMDPackEvent: {}", response.request_guid());
-        stop_async(true);
-        return;
-    }
-
     m_historical_md_generator = response;
     const auto ev_opt = m_historical_md_generator->get_next();
     if (!ev_opt.has_value()) {
-        Logger::logf<LogLevel::Error>("no event in HistoricalMDPackEvent: {}", response.request_guid());
-        return;
-    }
-
-    m_backtest_in_progress = true;
-    m_event_loop.push_event(ev_opt.value());
-}
-
-void StrategyInstance::handle_event(const HistoricalMDGeneratorLowMemEvent & response)
-{
-    if (m_historical_md_lowmem_generator) {
-        return;
-    }
-
-    const size_t erased_cnt = m_pending_requests.erase(response.request_guid());
-    if (erased_cnt == 0) {
-        Logger::logf<LogLevel::Debug>("unsolicited HistoricalMDPackEvent: {}, this->guid: {}", response.request_guid(), m_strategy_guid);
-        return;
-    }
-
-    m_historical_md_lowmem_generator = response;
-    const auto ev_opt = m_historical_md_lowmem_generator->get_next();
-    if (!ev_opt.has_value()) {
-        Logger::logf<LogLevel::Error>("no event in HistoricalMDGeneratorLowMemEvent: {}", response.request_guid());
+        Logger::logf<LogLevel::Error>("no event in HistoricalMDGeneratorEvent: {}", response.request_guid());
         return;
     }
 
@@ -420,15 +383,10 @@ void StrategyInstance::handle_event(const HistoricalMDGeneratorLowMemEvent & res
 void StrategyInstance::handle_event(const HistoricalMDPriceEvent & response)
 {
     handle_event(static_cast<const MDPriceEvent &>(response));
-    auto ev_opt = response.lowmem ? m_historical_md_lowmem_generator->get_next() : m_historical_md_generator->get_next();
+    auto ev_opt = m_historical_md_generator->get_next();
     if (!ev_opt.has_value()) {
         m_event_loop.push_event(StrategyStopRequest{});
-        if (response.lowmem) {
-            m_historical_md_lowmem_generator.reset();
-        }
-        else {
-            m_historical_md_generator.reset();
-        }
+        m_historical_md_generator.reset();
         return;
     }
     const auto & ev = ev_opt.value();

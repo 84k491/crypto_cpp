@@ -27,11 +27,11 @@ std::ostream & operator<<(std::ostream & os, const HistoricalMDRequestData & dat
               << "start: " << data.start << ", end: " << data.end << "}";
 }
 
-std::optional<HistoricalMDPriceEvent> HistoricalMDGeneratorLowMemEvent::get_next()
+std::optional<HistoricalMDPriceEvent> HistoricalMDGeneratorEvent::get_next()
 {
     const auto price_opt = m_reader->get_next();
     if (!price_opt.has_value()) {
         return std::nullopt;
     }
-    return HistoricalMDPriceEvent{price_opt.value(), true};
+    return HistoricalMDPriceEvent{price_opt.value()};
 }
