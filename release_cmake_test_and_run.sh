@@ -3,8 +3,8 @@
 mkdir -p build
 cd build
 
-export CC="clang-19"
-export CXX="clang++-19"
+export CC="clang"
+export CXX="clang++"
 
 np=$(nproc)
 res_np=$(expr $np - "1")
