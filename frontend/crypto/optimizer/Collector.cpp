@@ -59,6 +59,10 @@ bool OptimizerCollector::push(
         return false;
     }
 
+    if (!m_filters(result)) {
+        return false;
+    }
+
     if (score <= m_best_score) {
         return false;
     }
