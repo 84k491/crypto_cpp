@@ -21,17 +21,20 @@ private:
 class DynamicTrailingStopLossStrategy : public TrailigStopLossStrategy
 {
 public:
-    DynamicTrailingStopLossStrategy(Symbol symbol,
-                                    JsonStrategyConfig config,
-                                    EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
-                                    ITradingGateway & gateway);
+    DynamicTrailingStopLossStrategy(
+            Symbol symbol,
+            JsonStrategyConfig config,
+            EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
+            ITradingGateway & gateway,
+            EventTimeseriesChannel<double> & price_channel,
+            EventObjectChannel<bool> & opened_pos_channel,
+            EventTimeseriesChannel<Trade> & trades_channel,
+            EventTimeseriesChannel<ProfitPriceLevels> & price_levels_channel
+);
 
-    [[nodiscard]] std::optional<std::string> on_price_changed(
+private:
+    void on_price_changed(
             std::pair<std::chrono::milliseconds, double> ts_and_price) override;
-
-    // TODO remove return(s)
-    std::optional<std::pair<std::string, bool>>
-    push_price_level(const ProfitPriceLevels &) override;
 
 private:
     ProfitPriceLevels m_last_pos_price_levels = {};

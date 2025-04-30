@@ -28,18 +28,44 @@ public:
             const JsonStrategyConfig & config,
             const Symbol & symbol,
             EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
-            ITradingGateway & gateway)
+            ITradingGateway & gateway,
+            EventTimeseriesChannel<double> & price_channel,
+            EventObjectChannel<bool> & opened_pos_channel,
+            EventTimeseriesChannel<Trade> & trades_channel,
+            EventTimeseriesChannel<ProfitPriceLevels> & price_levels_channel)
     {
         if (strategy_name == "TpslExit") {
-            std::shared_ptr<IExitStrategy> res = std::make_shared<TpslExitStrategy>(symbol, config, event_loop, gateway);
+            std::shared_ptr<IExitStrategy> res = std::make_shared<TpslExitStrategy>(
+                    symbol,
+                    config,
+                    event_loop,
+                    gateway,
+                    price_channel,
+                    opened_pos_channel,
+                    trades_channel);
             return res;
         }
         if (strategy_name == "TrailingStop") {
-            std::shared_ptr<IExitStrategy> res = std::make_shared<TrailigStopLossStrategy>(symbol, config, event_loop, gateway);
+            std::shared_ptr<IExitStrategy> res = std::make_shared<TrailigStopLossStrategy>(
+                    symbol,
+                    config,
+                    event_loop,
+                    gateway,
+                    price_channel,
+                    opened_pos_channel,
+                    trades_channel);
             return res;
         }
         if (strategy_name == "DynamicTrailingStop") {
-            std::shared_ptr<IExitStrategy> res = std::make_shared<DynamicTrailingStopLossStrategy>(symbol, config, event_loop, gateway);
+            std::shared_ptr<IExitStrategy> res = std::make_shared<DynamicTrailingStopLossStrategy>(
+                    symbol,
+                    config,
+                    event_loop,
+                    gateway,
+                    price_channel,
+                    opened_pos_channel,
+                    trades_channel,
+                    price_levels_channel);
             return res;
         }
         Logger::logf<LogLevel::Error>("Unknown exit strategy name: {}", strategy_name);
@@ -71,7 +97,11 @@ StrategyInstance::StrategyInstance(
             exit_strategy_config,
             symbol,
             m_event_loop,
-            tr_gateway);
+            tr_gateway,
+            m_price_channel,
+            m_opened_pos_channel,
+            m_trade_channel,
+            m_price_levels_channel);
     if (!exit_strategy_opt) {
         Logger::log<LogLevel::Error>("Can't build exit strategy");
         m_status.push(WorkStatus::Panic);
@@ -297,53 +327,24 @@ EventTimeseriesChannel<StopLoss> & StrategyInstance::trailing_stop_channel()
 
 void StrategyInstance::register_invokers()
 {
-    m_invoker_subs.push_back(m_event_loop.invoker().register_invoker<StrategyStartRequest>([&](const auto & ev) {
-        handle_event(ev);
-        after_every_event();
-    }));
+#define REGISTER(EVENT)                                     \
+    m_invoker_subs.push_back(                               \
+            m_event_loop.invoker().register_invoker<EVENT>( \
+                    [&](const auto & ev) {                  \
+                        handle_event(ev);                   \
+                        after_every_event();                \
+                    }));
 
-    m_invoker_subs.push_back(
-            m_event_loop.invoker().register_invoker<HistoricalMDGeneratorEvent>(
-                    [&](const auto & response) {
-                        handle_event(response);
-                        after_every_event();
-                    }));
-    m_invoker_subs.push_back(
-            m_event_loop.invoker().register_invoker<HistoricalMDPriceEvent>(
-                    [&](const auto & response) {
-                        handle_event(response);
-                        after_every_event();
-                    }));
-    m_invoker_subs.push_back(
-            m_event_loop.invoker().register_invoker<MDPriceEvent>(
-                    [&](const auto & response) {
-                        handle_event(response);
-                        after_every_event();
-                    }));
-    m_invoker_subs.push_back(
-            m_event_loop.invoker().register_invoker<OrderResponseEvent>(
-                    [&](const auto & response) {
-                        handle_event(response);
-                        after_every_event();
-                    }));
-    m_invoker_subs.push_back(
-            m_event_loop.invoker().register_invoker<TradeEvent>(
-                    [&](const auto & r) {
-                        handle_event(r);
-                        after_every_event();
-                    }));
-    m_invoker_subs.push_back(
-            m_event_loop.invoker().register_invoker<LambdaEvent>(
-                    [&](const auto & response) {
-                        handle_event(response);
-                        after_every_event();
-                    }));
-    m_invoker_subs.push_back(
-            m_event_loop.invoker().register_invoker<StrategyStopRequest>(
-                    [&](const auto & response) {
-                        handle_event(response);
-                        after_every_event();
-                    }));
+            REGISTER(StrategyStartRequest);
+            REGISTER(HistoricalMDGeneratorEvent);
+            REGISTER(HistoricalMDPriceEvent);
+            REGISTER(MDPriceEvent);
+            REGISTER(OrderResponseEvent);
+            REGISTER(TradeEvent);
+            REGISTER(LambdaEvent);
+            REGISTER(StrategyStopRequest);
+
+#undef REGISTER
 }
 
 // TODO maybe make it more elegant?
@@ -425,10 +426,6 @@ void StrategyInstance::handle_event(const MDPriceEvent & response)
             on_signal(signal_opt.value());
         }
     }
-
-    if (const auto err = m_exit_strategy->on_price_changed({public_trade.ts(), public_trade.price()})) {
-        Logger::logf<LogLevel::Error>("Exit strategy error on price update: {}", err.value());
-    }
 }
 
 void StrategyInstance::handle_event(const OrderResponseEvent & response)
@@ -464,11 +461,10 @@ void StrategyInstance::handle_event(const TradeEvent & response)
     Logger::logf<LogLevel::Debug>("Trade received: {}", trade);
     const auto res = m_position_manager.on_trade_received(response.trade);
 
-    m_trade_channel.push(trade.ts(), trade);
-
     if (res.has_value()) {
         process_position_result(res.value(), trade.ts());
     }
+
     m_strategy_result.update([&](StrategyResult & res) {
         res.trades_count++;
         res.set_last_trade_date(trade.ts());
@@ -485,13 +481,10 @@ void StrategyInstance::handle_event(const TradeEvent & response)
 
     if (pos.has_value()) {
         m_price_levels_channel.push(trade.ts(), pos->price_levels());
-        m_exit_strategy->push_price_level(pos->price_levels());
     }
+    m_opened_pos_channel.push(m_position_manager.opened());
 
-    if (const auto err = m_exit_strategy->on_trade(pos, trade); err.has_value()) {
-        // stop_async(true);
-        Logger::log<LogLevel::Error>(std::string{err.value()});
-    }
+    m_trade_channel.push(trade.ts(), trade);
 }
 
 void StrategyInstance::handle_event(const StrategyStartRequest &)

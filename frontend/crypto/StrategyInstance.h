@@ -82,6 +82,7 @@ private:
     ITradingGateway & m_tr_gateway;
     std::shared_ptr<IStrategy> m_strategy;
 
+    EventObjectChannel<bool> m_opened_pos_channel;
     EventObjectChannel<StrategyResult> m_strategy_result;
 
     EventTimeseriesChannel<ProfitPriceLevels> m_price_levels_channel;

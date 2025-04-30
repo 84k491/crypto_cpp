@@ -26,25 +26,43 @@ JsonStrategyConfig DynamicTrailigStopLossStrategyConfig::to_json() const
     return json;
 }
 
-DynamicTrailingStopLossStrategy::DynamicTrailingStopLossStrategy(Symbol symbol,
-                                                                 JsonStrategyConfig config,
-                                                                 EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
-                                                                 ITradingGateway & gateway)
-    : TrailigStopLossStrategy(symbol, config, event_loop, gateway)
+DynamicTrailingStopLossStrategy::DynamicTrailingStopLossStrategy(
+        Symbol symbol,
+        JsonStrategyConfig config,
+        EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
+        ITradingGateway & gateway,
+        EventTimeseriesChannel<double> & price_channel,
+        EventObjectChannel<bool> & opened_pos_channel,
+        EventTimeseriesChannel<Trade> & trades_channel,
+        EventTimeseriesChannel<ProfitPriceLevels> & price_levels_channel)
+    : TrailigStopLossStrategy(
+              symbol,
+              config,
+              event_loop,
+              gateway,
+              price_channel,
+              opened_pos_channel,
+              trades_channel)
     , m_dynamic_config(config)
 {
+    m_channel_subs.push_back(price_levels_channel.subscribe(
+            event_loop.m_event_loop,
+            [](auto) {},
+            [this](const auto &, const auto & price_levels) {
+                m_last_pos_price_levels = price_levels;
+            }));
 }
 
-std::optional<std::string> DynamicTrailingStopLossStrategy::on_price_changed(
+void DynamicTrailingStopLossStrategy::on_price_changed(
         std::pair<std::chrono::milliseconds, double> ts_and_price)
 {
     if (!m_active_stop_loss.has_value() || !m_pending_requests.empty()) {
         m_triggered_once = false;
-        return std::nullopt;
+        return;
     }
 
     if (m_triggered_once) {
-        return std::nullopt;
+        return;
     }
 
     const auto & [ts, price] = ts_and_price;
@@ -62,7 +80,7 @@ std::optional<std::string> DynamicTrailingStopLossStrategy::on_price_changed(
     };
 
     if (price_distance_side_abs(price, no_risk_trigger_price) < 0.) {
-        return std::nullopt;
+        return;
     }
 
     const auto new_trailing_stop = TrailingStopLoss{
@@ -73,13 +91,4 @@ std::optional<std::string> DynamicTrailingStopLossStrategy::on_price_changed(
     Logger::logf<LogLevel::Status>("Updating stop loss' price distance to {}", desired_price_distance);
     send_trailing_stop(new_trailing_stop);
     m_triggered_once = true;
-
-    return std::nullopt;
-}
-
-std::optional<std::pair<std::string, bool>>
-DynamicTrailingStopLossStrategy::push_price_level(const ProfitPriceLevels & l)
-{
-    m_last_pos_price_levels = l;
-    return std::nullopt;
 }

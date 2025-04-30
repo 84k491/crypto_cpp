@@ -39,10 +39,14 @@ TpslExitStrategyConfig::TpslExitStrategyConfig(double risk, double risk_reward_r
 {
 }
 
-TpslExitStrategy::TpslExitStrategy(Symbol symbol,
-                                   const JsonStrategyConfig & config,
-                                   EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
-                                   ITradingGateway & gateway)
+TpslExitStrategy::TpslExitStrategy(
+        Symbol symbol,
+        JsonStrategyConfig config,
+        EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
+        ITradingGateway & gateway,
+        EventTimeseriesChannel<double> & price_channel,
+        EventObjectChannel<bool> & opened_pos_channel,
+        EventTimeseriesChannel<Trade> & trades_channel)
     : ExitStrategyBase(gateway)
     , m_config(config)
     , m_symbol(std::move(symbol))
@@ -55,32 +59,41 @@ TpslExitStrategy::TpslExitStrategy(Symbol symbol,
             event_loop.invoker().register_invoker<TpslUpdatedEvent>([&](const auto & response) {
                 handle_event(response);
             }));
+
+    m_channel_subs.push_back(price_channel.subscribe(
+            event_loop.m_event_loop,
+            [](auto) {},
+            [this](const auto & ts, const double & price) {
+                m_last_ts_and_price = {ts, price};
+            }));
+
+    m_channel_subs.push_back(opened_pos_channel.subscribe(
+            event_loop.m_event_loop,
+            [this](const bool & v) { m_is_pos_opened = v; }));
+
+    m_channel_subs.push_back(trades_channel.subscribe(
+            event_loop.m_event_loop,
+            [](auto) {},
+            [this](const auto &, const auto & trade) {
+                on_trade(trade);
+            }));
 }
 
-std::optional<std::string> TpslExitStrategy::on_price_changed(std::pair<std::chrono::milliseconds, double> ts_and_price)
-{
-    m_last_ts_and_price = std::move(ts_and_price);
-    return std::nullopt;
-}
-
-std::optional<std::string> TpslExitStrategy::on_trade(const std::optional<OpenedPosition> & opened_position, const Trade & trade)
+void TpslExitStrategy::on_trade(const Trade & trade)
 {
     // TODO set active tpsl, not it's not set anywhere
-    if (m_opened_position.has_value() && m_active_tpsl.has_value()) {
+    if (m_is_pos_opened && m_active_tpsl.has_value()) {
         // position opened and tpsl is set already
         const std::string_view msg = "TpslExitStrategy: active tpsl already exists";
         Logger::log<LogLevel::Warning>(std::string(msg));
-        return std::string(msg);
+        return;
     }
 
-    m_opened_position = opened_position;
-
     // TODO handle a double trade case, add test
-    if (opened_position) {
+    if (m_is_pos_opened) {
         const auto tpsl = calc_tpsl(trade);
         send_tpsl(tpsl);
     }
-    return std::nullopt;
 }
 
 void TpslExitStrategy::send_tpsl(Tpsl tpsl)

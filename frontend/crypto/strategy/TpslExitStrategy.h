@@ -35,21 +35,19 @@ class TpslExitStrategy : public ExitStrategyBase
 public:
     TpslExitStrategy(
             Symbol symbol,
-            const JsonStrategyConfig & config,
+            JsonStrategyConfig config,
             EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
-            ITradingGateway & gateway);
+            ITradingGateway & gateway,
+            EventTimeseriesChannel<double> & price_channel,
+            EventObjectChannel<bool> & opened_pos_channel,
+            EventTimeseriesChannel<Trade> & trades_channel);
 
-    [[nodiscard]] std::optional<std::string> on_price_changed(
-            std::pair<std::chrono::milliseconds, double> ts_and_price) override;
-    [[nodiscard]] std::optional<std::string> on_trade(
-            const std::optional<OpenedPosition> & opened_position,
-            const Trade & trade) override;
-
+private:
+    void on_trade(const Trade & trade);
 
     void handle_event(const TpslResponseEvent & response);
     void handle_event(const TpslUpdatedEvent & response);
 
-private:
     Tpsl calc_tpsl(const Trade & trade);
     void send_tpsl(Tpsl tpsl);
 
@@ -59,6 +57,7 @@ private:
     TpslExitStrategyConfig m_config;
 
     std::pair<std::chrono::milliseconds, double> m_last_ts_and_price;
+    bool m_is_pos_opened = false;
 
     Symbol m_symbol;
     std::set<xg::Guid> m_pending_requests;

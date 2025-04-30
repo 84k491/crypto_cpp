@@ -23,29 +23,32 @@ public:
     TrailigStopLossStrategy(Symbol symbol,
                             JsonStrategyConfig config,
                             EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
-                            ITradingGateway & gateway);
+                            ITradingGateway & gateway,
+                            EventTimeseriesChannel<double> & price_channel,
+                            EventObjectChannel<bool> & opened_pos_channel,
+                            EventTimeseriesChannel<Trade> & trades_channel
+);
 
-    ~TrailigStopLossStrategy() override = default;
-
-    [[nodiscard]] std::optional<std::string> on_price_changed(
-            std::pair<std::chrono::milliseconds, double> ts_and_price) override;
-    [[nodiscard]] std::optional<std::string> on_trade(
-            const std::optional<OpenedPosition> & opened_position,
-            const Trade & trade) override;
-
+protected:
     void handle_event(const TrailingStopLossResponseEvent & response);
     void handle_event(const TrailingStopLossUpdatedEvent & response);
 
-protected:
+    virtual void on_price_changed(
+            std::pair<std::chrono::milliseconds, double> /* ts_and_price */) {}
+
+    void on_trade(const Trade & trade);
+
     TrailingStopLoss calc_trailing_stop(const Trade & trade);
     void send_trailing_stop(TrailingStopLoss trailing_stop);
 
-    void on_error(const std::string&, bool);
+    void on_error(const std::string &, bool);
 
 protected:
     Symbol m_symbol;
 
     std::set<xg::Guid> m_pending_requests;
+
+    bool m_is_pos_opened = false;
 
     std::optional<TrailingStopLoss> m_active_stop_loss;
 

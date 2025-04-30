@@ -21,7 +21,10 @@ TrailigStopLossStrategyConfig::TrailigStopLossStrategyConfig(double risk)
 TrailigStopLossStrategy::TrailigStopLossStrategy(Symbol symbol,
                                                  JsonStrategyConfig config,
                                                  EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
-                                                 ITradingGateway & gateway)
+                                                 ITradingGateway & gateway,
+                                                 EventTimeseriesChannel<double> & price_channel,
+                                                 EventObjectChannel<bool> & opened_pos_channel,
+                                                 EventTimeseriesChannel<Trade> & trades_channel)
 
     : ExitStrategyBase(gateway)
     , m_symbol(std::move(symbol))
@@ -35,29 +38,41 @@ TrailigStopLossStrategy::TrailigStopLossStrategy(Symbol symbol,
             event_loop.invoker().register_invoker<TrailingStopLossUpdatedEvent>([&](const auto & response) {
                 handle_event(response);
             }));
+
+    m_channel_subs.push_back(price_channel.subscribe(
+            event_loop.m_event_loop,
+            [](auto) {},
+            [this](const auto & ts, const double & price) {
+                on_price_changed({ts, price});
+            }));
+
+    m_channel_subs.push_back(opened_pos_channel.subscribe(
+            event_loop.m_event_loop,
+            [this](const bool & v) { m_is_pos_opened = v; }));
+
+    m_channel_subs.push_back(trades_channel.subscribe(
+            event_loop.m_event_loop,
+            [](auto) {},
+            [this](const auto &, const auto & trade) {
+                on_trade(trade);
+            }));
 }
 
-std::optional<std::string> TrailigStopLossStrategy::on_price_changed(std::pair<std::chrono::milliseconds, double>)
+void TrailigStopLossStrategy::on_trade(const Trade & trade)
 {
-    return std::nullopt;
-}
-
-std::optional<std::string> TrailigStopLossStrategy::on_trade(const std::optional<OpenedPosition> & opened_position, const Trade & trade)
-{
-    if (opened_position && (m_active_stop_loss.has_value() || !m_pending_requests.empty())) {
+    if (m_is_pos_opened && (m_active_stop_loss.has_value() || !m_pending_requests.empty())) {
         // position opened
         // stop loss is set already
         const std::string_view msg = "TrailigStopLossStrategy: active stop loss already exists or pending";
         Logger::log<LogLevel::Warning>(std::string(msg));
-        return std::string(msg);
+        return;
     }
 
     // TODO handle a double trade case, add test
-    if (opened_position) {
+    if (m_is_pos_opened) {
         const auto tsl = calc_trailing_stop(trade);
         send_trailing_stop(tsl);
     }
-    return std::nullopt;
 }
 
 TrailingStopLoss TrailigStopLossStrategy::calc_trailing_stop(const Trade & trade)
