@@ -1,14 +1,12 @@
 #include "StrategyInstance.h"
 
 #include "Events.h"
-#include "ScopeExit.h"
+#include "MockStrategy.h"
 #include "TpslExitStrategy.h"
 #include "Trade.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-
-#include <thread>
 
 namespace test {
 using namespace testing;
@@ -129,46 +127,6 @@ public:
     EventChannel<TrailingStopLossUpdatedEvent> m_tsl_updated_channel;
 };
 
-class MockStrategy : public IStrategy
-{
-public:
-    ~MockStrategy() override = default;
-
-    std::optional<Signal> push_price(std::pair<std::chrono::milliseconds, double> ts_and_price) override
-    {
-        ScopeExit se([&] { m_next_signal_side = std::nullopt; });
-        if (m_next_signal_side.has_value()) {
-            Signal result = {.side = *m_next_signal_side, .timestamp = ts_and_price.first, .price = ts_and_price.second};
-            return result;
-        }
-        return std::nullopt;
-    }
-    std::optional<Signal> push_candle(const Candle &) override { return {}; }
-
-    EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & strategy_internal_data_channel() override
-    {
-        return m_strategy_internal_data_channel;
-    }
-
-    bool is_valid() const override { return true; }
-
-    std::optional<std::chrono::milliseconds> timeframe() const override
-    {
-        return {};
-    }
-
-public:
-    void signal_on_next_tick(const Side & signal_side)
-    {
-        m_next_signal_side = signal_side;
-    }
-
-private:
-    EventTimeseriesChannel<std::tuple<std::string, std::string, double>> m_strategy_internal_data_channel;
-
-    std::optional<Side> m_next_signal_side;
-};
-
 class MockEventConsumer : public IEventConsumer<LambdaEvent>
 {
     bool push_to_queue(std::any value) override
@@ -191,7 +149,6 @@ public:
     StrategyInstanceTest()
         : event_consumer(std::make_shared<MockEventConsumer>())
         , m_symbol("BTCUSD")
-        , strategy_ptr(std::make_shared<MockStrategy>())
         , exit_strategy_config(0.1, 0.8)
         , strategy_instance(nullptr)
     {
@@ -202,11 +159,14 @@ public:
         strategy_instance = std::make_unique<StrategyInstance>(
                 m_symbol,
                 std::nullopt,
-                strategy_ptr,
+                "Mock",
+                JsonStrategyConfig{nlohmann::json{}},
                 "TpslExit",
                 exit_strategy_config.to_json(),
                 md_gateway,
                 tr_gateway);
+
+        strategy_ptr = std::dynamic_pointer_cast<MockStrategy>(strategy_instance->get_strategy());
 
         {
             strategy_status = strategy_instance->status_channel().get();
@@ -226,7 +186,7 @@ protected:
     MockMDGateway md_gateway;
     MockTradingGateway tr_gateway;
 
-    std::shared_ptr<MockStrategy> strategy_ptr = std::make_shared<MockStrategy>();
+    std::shared_ptr<MockStrategy> strategy_ptr;
     TpslExitStrategyConfig exit_strategy_config;
     std::unique_ptr<StrategyInstance> strategy_instance;
 

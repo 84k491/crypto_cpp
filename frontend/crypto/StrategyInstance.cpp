@@ -8,6 +8,7 @@
 #include "Logger.h"
 #include "ScopeExit.h"
 #include "Signal.h"
+#include "StrategyFactory.h"
 #include "TpslExitStrategy.h"
 #include "TrailingStopStrategy.h"
 #include "Volume.h"
@@ -73,25 +74,42 @@ public:
     }
 };
 
+namespace {
+std::optional<std::chrono::milliseconds> get_timeframe(const JsonStrategyConfig & conf)
+{
+    if (conf.get().contains("timeframe_s")) {
+        return std::chrono::seconds(conf.get()["timeframe_s"].get<int>());
+    }
+    return {};
+}
+} // namespace
+
 StrategyInstance::StrategyInstance(
         const Symbol & symbol,
         const std::optional<HistoricalMDRequestData> & historical_md_request,
-        const std::shared_ptr<IStrategy> & strategy_ptr,
+        const std::string & entry_strategy_name,
+        const JsonStrategyConfig & entry_strategy_config,
         const std::string & exit_strategy_name,
         const JsonStrategyConfig & exit_strategy_config,
         IMarketDataGateway & md_gateway,
         ITradingGateway & tr_gateway)
     : m_strategy_guid(xg::newGuid())
-    , m_candle_builder{strategy_ptr->timeframe().value_or(std::chrono::minutes{5})}
+    , m_candle_builder{get_timeframe(entry_strategy_config).value_or(std::chrono::minutes{5})}
     , m_md_gateway(md_gateway)
     , m_tr_gateway(tr_gateway)
-    , m_strategy(strategy_ptr)
     , m_symbol(symbol)
     , m_position_manager(symbol)
     , m_exit_strategy(nullptr)
     , m_historical_md_request(historical_md_request)
 {
-    // TODO build exit strategy outside
+    const auto strategy_ptr_opt = StrategyFactory::build_strategy(entry_strategy_name, entry_strategy_config);
+    if (!strategy_ptr_opt.has_value() || !strategy_ptr_opt.value() || !strategy_ptr_opt.value()->is_valid()) {
+        Logger::log<LogLevel::Error>("Failed to build entry strategy");
+        m_status.push(WorkStatus::Panic);
+        return;
+    }
+    m_strategy = strategy_ptr_opt.value();
+
     const auto exit_strategy_opt = ExitStrategyFactory::build_exit_strategy(
             exit_strategy_name,
             exit_strategy_config,
@@ -335,14 +353,14 @@ void StrategyInstance::register_invokers()
                         after_every_event();                \
                     }));
 
-            REGISTER(StrategyStartRequest);
-            REGISTER(HistoricalMDGeneratorEvent);
-            REGISTER(HistoricalMDPriceEvent);
-            REGISTER(MDPriceEvent);
-            REGISTER(OrderResponseEvent);
-            REGISTER(TradeEvent);
-            REGISTER(LambdaEvent);
-            REGISTER(StrategyStopRequest);
+    REGISTER(StrategyStartRequest);
+    REGISTER(HistoricalMDGeneratorEvent);
+    REGISTER(HistoricalMDPriceEvent);
+    REGISTER(MDPriceEvent);
+    REGISTER(OrderResponseEvent);
+    REGISTER(TradeEvent);
+    REGISTER(LambdaEvent);
+    REGISTER(StrategyStopRequest);
 
 #undef REGISTER
 }

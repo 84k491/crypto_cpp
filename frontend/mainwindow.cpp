@@ -134,11 +134,6 @@ void MainWindow::on_pb_run_clicked()
 
     const auto strategy_name = ui->cb_strategy->currentText().toStdString();
     const auto entry_config = ui->wt_entry_params->get_config();
-    const auto strategy_ptr_opt = StrategyFactory::build_strategy(strategy_name, entry_config);
-    if (!strategy_ptr_opt.has_value() || !strategy_ptr_opt.value() || !strategy_ptr_opt.value()->is_valid()) {
-        Logger::log<LogLevel::Error>("Failed to build strategy");
-        return;
-    }
 
     const auto md_request = [&]() {
         std::optional<HistoricalMDRequestData> req_data;
@@ -181,7 +176,8 @@ void MainWindow::on_pb_run_clicked()
     m_strategy_instance = std::make_shared<StrategyInstance>(
             symbol.value(),
             md_request,
-            strategy_ptr_opt.value(),
+            strategy_name,
+            entry_config,
             ui->cb_exit_strategy->currentText().toStdString(),
             ui->wt_exit_params->get_config(),
             m_gateway,

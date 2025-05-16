@@ -2,15 +2,16 @@
 
 #include "BBRSIStrategy.h"
 #include "BollingerBandsStrategy.h"
+#include "CandleBollingerBandsStrategy.h"
 #include "DSMADiffStrategy.h"
 #include "DebugEveryTickStrategy.h"
 #include "DoubleSmaStrategy.h"
 #include "Logger.h"
+#include "MockStrategy.h"
 #include "RatchetStrategy.h"
+#include "RateOfChangeStrategy.h"
 #include "RelativeStrengthIndexStrategy.h"
 #include "StrategyInterface.h"
-#include "CandleBollingerBandsStrategy.h"
-#include "RateOfChangeStrategy.h"
 
 #include <fstream>
 #include <optional>
@@ -18,8 +19,8 @@
 std::optional<JsonStrategyMetaInfo> StrategyFactory::get_meta_info(const std::string & strategy_name)
 {
     static constexpr std::string_view strategy_parameters_dir = "strategy_parameters/";
-    const auto name_to_filename = [&](const std::string &name) {
-        return name+ ".json";
+    const auto name_to_filename = [&](const std::string & name) {
+        return name + ".json";
     };
 
     std::string json_file_path = "./";
@@ -44,6 +45,10 @@ std::optional<std::shared_ptr<IStrategy>> StrategyFactory::build_strategy(
         const std::string & strategy_name,
         const JsonStrategyConfig & config)
 {
+    if (strategy_name == "Mock") {
+        std::shared_ptr<IStrategy> res = std::make_shared<MockStrategy>(/*no config*/);
+        return res;
+    }
     if (strategy_name == "DoubleSma") {
         std::shared_ptr<IStrategy> res = std::make_shared<DoubleSmaStrategy>(config);
         return res;

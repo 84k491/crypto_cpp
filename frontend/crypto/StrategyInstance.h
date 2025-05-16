@@ -26,7 +26,8 @@ public:
     StrategyInstance(
             const Symbol & symbol,
             const std::optional<HistoricalMDRequestData> & historical_md_request,
-            const std::shared_ptr<IStrategy> & strategy_ptr,
+            const std::string & entry_strategy_name,
+            const JsonStrategyConfig & entry_strategy_config,
             const std::string & exit_strategy_name,
             const JsonStrategyConfig & exit_strategy_config,
             IMarketDataGateway & md_gateway,
@@ -51,6 +52,9 @@ public:
     void stop_async(bool panic = false);
     [[nodiscard("wait in future")]] std::future<void> finish_future();
     void wait_event_barrier();
+
+    // for tests
+    std::shared_ptr<IStrategy> get_strategy() const { return m_strategy; }
 
 private:
     void register_invokers();

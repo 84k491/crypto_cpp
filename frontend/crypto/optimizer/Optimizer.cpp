@@ -61,10 +61,6 @@ std::optional<DoubleJsonStrategyConfig> Optimizer::optimize()
              i = input_iter.fetch_add(1)) {
 
             const auto & [entry_config, exit_config] = configs[i];
-            const auto strategy_opt = StrategyFactory::build_strategy(m_strategy_name, entry_config);
-            if (!strategy_opt.has_value() || !strategy_opt.value() || !strategy_opt.value()->is_valid()) {
-                continue;
-            }
 
             HistoricalMDRequestData md_request_data = {.start = m_timerange.start(), .end = m_timerange.end()};
 
@@ -72,7 +68,8 @@ std::optional<DoubleJsonStrategyConfig> Optimizer::optimize()
             StrategyInstance strategy_instance(
                     m_symbol,
                     md_request_data,
-                    strategy_opt.value(),
+                    m_strategy_name,
+                    entry_config,
                     m_exit_strategy_name,
                     exit_config,
                     m_gateway,
