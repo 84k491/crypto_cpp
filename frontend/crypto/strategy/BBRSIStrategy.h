@@ -25,16 +25,20 @@ struct BBRSIStrategyConfig
 class BBRSIStrategy : public IStrategy
 {
 public:
-    BBRSIStrategy(BBRSIStrategyConfig config);
-
-    std::optional<Signal> push_price(std::pair<std::chrono::milliseconds, double>) override { return {}; }
-    std::optional<Signal> push_candle(const Candle & c) override;
+    BBRSIStrategy(
+            BBRSIStrategyConfig config,
+            EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
+            EventTimeseriesChannel<Candle> & candle_channel);
 
     EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & strategy_internal_data_channel() override;
+    EventTimeseriesChannel<Signal> & signal_channel() override;
 
     bool is_valid() const override;
 
     std::optional<std::chrono::milliseconds> timeframe() const override;
+
+private:
+    std::optional<Signal> push_candle(const Candle & c);
 
 private:
     BBRSIStrategyConfig m_config;
@@ -48,4 +52,7 @@ private:
     unsigned m_rsi_bot_threshold = 0;
 
     EventTimeseriesChannel<std::tuple<std::string, std::string, double>> m_strategy_internal_data_channel;
+    EventTimeseriesChannel<Signal> m_signal_channel;
+
+    std::list<std::shared_ptr<ISubscription>> m_channel_subs;
 };

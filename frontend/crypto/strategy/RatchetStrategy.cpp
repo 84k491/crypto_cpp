@@ -1,5 +1,7 @@
 #include "RatchetStrategy.h"
 
+#include "EventLoopSubscriber.h"
+
 RatchetStrategyConfig::RatchetStrategyConfig(const JsonStrategyConfig & json)
 {
     if (json.get().contains("retracement")) {
@@ -23,10 +25,21 @@ JsonStrategyConfig RatchetStrategyConfig::to_json() const
     return json;
 }
 
-RatchetStrategy::RatchetStrategy(RatchetStrategyConfig config)
+RatchetStrategy::RatchetStrategy(
+        RatchetStrategyConfig config,
+        EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
+        EventTimeseriesChannel<Candle> & candle_channel)
     : m_config(config)
     , m_ratchet(config.m_retracement)
 {
+    m_channel_subs.push_back(candle_channel.subscribe(
+            event_loop.m_event_loop,
+            [](auto) {},
+            [this](const auto & ts, const Candle & candle) {
+                if (const auto signal_opt = push_candle(candle); signal_opt) {
+                    m_signal_channel.push(ts, signal_opt.value());
+                }
+            }));
 }
 
 bool RatchetStrategy::is_valid() const
@@ -55,4 +68,9 @@ std::optional<Signal> RatchetStrategy::push_candle(const Candle & c)
 EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & RatchetStrategy::strategy_internal_data_channel()
 {
     return m_strategy_internal_data_channel;
+}
+
+EventTimeseriesChannel<Signal> & RatchetStrategy::signal_channel()
+{
+    return m_signal_channel;
 }

@@ -43,46 +43,78 @@ std::optional<JsonStrategyMetaInfo> StrategyFactory::get_meta_info(const std::st
 
 std::optional<std::shared_ptr<IStrategy>> StrategyFactory::build_strategy(
         const std::string & strategy_name,
-        const JsonStrategyConfig & config)
+        const JsonStrategyConfig & config,
+        EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
+        EventTimeseriesChannel<double> & price_channel,
+        EventTimeseriesChannel<Candle> & candle_channel)
 {
     if (strategy_name == "Mock") {
-        std::shared_ptr<IStrategy> res = std::make_shared<MockStrategy>(/*no config*/);
+        std::shared_ptr<IStrategy> res = std::make_shared<MockStrategy>(
+                event_loop,
+                price_channel);
         return res;
     }
     if (strategy_name == "DoubleSma") {
-        std::shared_ptr<IStrategy> res = std::make_shared<DoubleSmaStrategy>(config);
+        std::shared_ptr<IStrategy> res = std::make_shared<DoubleSmaStrategy>(
+                config,
+                event_loop,
+                price_channel);
         return res;
     }
     if (strategy_name == "BollingerBands") {
-        std::shared_ptr<IStrategy> res = std::make_shared<BollingerBandsStrategy>(config);
+        std::shared_ptr<IStrategy> res = std::make_shared<BollingerBandsStrategy>(
+                config,
+                event_loop,
+                price_channel);
         return res;
     }
     if (strategy_name == "CandleBB") {
-        std::shared_ptr<IStrategy> res = std::make_shared<CandleBollingerBandsStrategy>(config);
+        std::shared_ptr<IStrategy> res = std::make_shared<CandleBollingerBandsStrategy>(
+                config,
+                event_loop,
+                candle_channel);
         return res;
     }
     if (strategy_name == "DebugEveryTick") {
-        std::shared_ptr<IStrategy> res = std::make_shared<DebugEveryTickStrategy>(config);
+        std::shared_ptr<IStrategy> res = std::make_shared<DebugEveryTickStrategy>(
+                config,
+                event_loop,
+                price_channel);
         return res;
     }
     if (strategy_name == "RateOfChange") {
-        std::shared_ptr<IStrategy> res = std::make_shared<RateOfChangeStrategy>(config);
+        std::shared_ptr<IStrategy> res = std::make_shared<RateOfChangeStrategy>(
+                config,
+                event_loop,
+                candle_channel);
         return res;
     }
     if (strategy_name == "DSMADiff") {
-        std::shared_ptr<IStrategy> res = std::make_shared<DSMADiffStrategy>(config);
+        std::shared_ptr<IStrategy> res = std::make_shared<DSMADiffStrategy>(
+                config,
+                event_loop,
+                price_channel);
         return res;
     }
     if (strategy_name == "Ratchet") {
-        std::shared_ptr<IStrategy> res = std::make_shared<RatchetStrategy>(config);
+        std::shared_ptr<IStrategy> res = std::make_shared<RatchetStrategy>(
+                config,
+                event_loop,
+                candle_channel);
         return res;
     }
     if (strategy_name == "RelativeStrengthIndex") {
-        std::shared_ptr<IStrategy> res = std::make_shared<RelativeStrengthIndexStrategy>(config);
+        std::shared_ptr<IStrategy> res = std::make_shared<RelativeStrengthIndexStrategy>(
+                config,
+                event_loop,
+                candle_channel);
         return res;
     }
     if (strategy_name == "BBRSI") {
-        std::shared_ptr<IStrategy> res = std::make_shared<BBRSIStrategy>(config);
+        std::shared_ptr<IStrategy> res = std::make_shared<BBRSIStrategy>(
+                config,
+                event_loop,
+                candle_channel);
         return res;
     }
     Logger::logf<LogLevel::Error>("Unknown strategy name: {}", strategy_name);

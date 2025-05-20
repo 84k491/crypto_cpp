@@ -1,5 +1,7 @@
 #include "RelativeStrengthIndexStrategy.h"
 
+#include "EventLoopSubscriber.h"
+
 RelativeStrengthIndexStrategyConfig::RelativeStrengthIndexStrategyConfig(const JsonStrategyConfig & json)
 {
     if (json.get().contains("margin")) {
@@ -22,10 +24,21 @@ JsonStrategyConfig RelativeStrengthIndexStrategyConfig::to_json() const
     return json;
 }
 
-RelativeStrengthIndexStrategy::RelativeStrengthIndexStrategy(const RelativeStrengthIndexStrategyConfig & config)
+RelativeStrengthIndexStrategy::RelativeStrengthIndexStrategy(
+        const RelativeStrengthIndexStrategyConfig & config,
+        EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
+        EventTimeseriesChannel<Candle> & candle_channel)
     : m_config(config)
     , m_rsi(config.m_interval)
 {
+    m_channel_subs.push_back(candle_channel.subscribe(
+            event_loop.m_event_loop,
+            [](auto) {},
+            [this](const auto & ts, const Candle & candle) {
+                if (const auto signal_opt = push_candle(candle); signal_opt) {
+                    m_signal_channel.push(ts, signal_opt.value());
+                }
+            }));
 }
 
 std::optional<Signal> RelativeStrengthIndexStrategy::push_candle(const Candle & c)
@@ -69,4 +82,9 @@ bool RelativeStrengthIndexStrategy::is_valid() const
 std::optional<std::chrono::milliseconds> RelativeStrengthIndexStrategy::timeframe() const
 {
     return m_config.m_timeframe;
+}
+
+EventTimeseriesChannel<Signal> & RelativeStrengthIndexStrategy::signal_channel() 
+{
+    return m_signal_channel;
 }

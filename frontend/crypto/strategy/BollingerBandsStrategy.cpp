@@ -1,6 +1,7 @@
 #include "BollingerBandsStrategy.h"
 
 #include "Enums.h"
+#include "EventLoopSubscriber.h"
 
 BollingerBandsStrategyConfig::BollingerBandsStrategyConfig(const JsonStrategyConfig & json)
 {
@@ -25,10 +26,21 @@ JsonStrategyConfig BollingerBandsStrategyConfig::to_json() const
     return json;
 }
 
-BollingerBandsStrategy::BollingerBandsStrategy(const BollingerBandsStrategyConfig & config)
+BollingerBandsStrategy::BollingerBandsStrategy(
+        const BollingerBandsStrategyConfig & config,
+        EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
+        EventTimeseriesChannel<double> & price_channel)
     : m_config(config)
     , m_bollinger_bands(config.m_interval, config.m_std_deviation_coefficient)
 {
+    m_channel_subs.push_back(price_channel.subscribe(
+            event_loop.m_event_loop,
+            [](auto) {},
+            [this](const auto & ts, const double & price) {
+                if (const auto signal_opt = push_price({ts, price}); signal_opt) {
+                    m_signal_channel.push(ts, signal_opt.value());
+                }
+            }));
 }
 
 bool BollingerBandsStrategy::is_valid() const
@@ -89,4 +101,9 @@ std::optional<Signal> BollingerBandsStrategy::push_price(std::pair<std::chrono::
 EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & BollingerBandsStrategy::strategy_internal_data_channel()
 {
     return m_strategy_internal_data_channel;
+}
+
+EventTimeseriesChannel<Signal> & BollingerBandsStrategy::signal_channel()
+{
+    return m_signal_channel;
 }

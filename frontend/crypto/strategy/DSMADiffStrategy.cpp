@@ -1,5 +1,7 @@
 #include "DSMADiffStrategy.h"
 
+#include "EventLoopSubscriber.h"
+
 DSMADiffStrategyConfig::DSMADiffStrategyConfig(const JsonStrategyConfig & json)
 {
     if (json.get().contains("slow_interval_m")) {
@@ -27,12 +29,23 @@ JsonStrategyConfig DSMADiffStrategyConfig::to_json() const
     return json;
 }
 
-DSMADiffStrategy::DSMADiffStrategy(const DSMADiffStrategyConfig & conf)
+DSMADiffStrategy::DSMADiffStrategy(
+        const DSMADiffStrategyConfig & conf,
+        EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
+        EventTimeseriesChannel<double> & price_channel)
     : m_config(conf)
     , m_slow_avg(conf.m_slow_interval)
     , m_fast_avg(conf.m_fast_interval)
     , m_diff_threshold(conf.m_diff_threshold_percent / 100.)
 {
+    m_channel_subs.push_back(price_channel.subscribe(
+            event_loop.m_event_loop,
+            [](auto) {},
+            [this](const auto & ts, const double & price) {
+                if (const auto signal_opt = push_price({ts, price}); signal_opt) {
+                    m_signal_channel.push(ts, signal_opt.value());
+                }
+            }));
 }
 
 std::optional<Signal> DSMADiffStrategy::push_price(std::pair<std::chrono::milliseconds, double> ts_and_price)
@@ -86,3 +99,7 @@ std::optional<std::chrono::milliseconds> DSMADiffStrategy::timeframe() const
     return {};
 }
 
+EventTimeseriesChannel<Signal> & DSMADiffStrategy::signal_channel()
+{
+    return m_signal_channel;
+}

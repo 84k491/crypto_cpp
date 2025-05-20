@@ -28,14 +28,19 @@ class DebugEveryTickStrategy final : public IStrategy
 public:
     using ConfigT = DebugEveryTickStrategyConfig;
 
-    DebugEveryTickStrategy(const DebugEveryTickStrategyConfig & conf);
+    DebugEveryTickStrategy(
+            const DebugEveryTickStrategyConfig & conf,
+            EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
+            EventTimeseriesChannel<double> & price_channel);
 
-    std::optional<Signal> push_price(std::pair<std::chrono::milliseconds, double> ts_and_price) override;
-    std::optional<Signal> push_candle(const Candle &) override { return {}; }
-
+    EventTimeseriesChannel<Signal> & signal_channel() override;
     EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & strategy_internal_data_channel() override;
+
     bool is_valid() const override;
     std::optional<std::chrono::milliseconds> timeframe() const override;
+
+private:
+    std::optional<Signal> push_price(std::pair<std::chrono::milliseconds, double> ts_and_price);
 
 private:
     const DebugEveryTickStrategyConfig m_config;
@@ -45,4 +50,7 @@ private:
     unsigned iteration = 0;
 
     EventTimeseriesChannel<std::tuple<std::string, std::string, double>> m_strategy_internal_data_channel;
+    EventTimeseriesChannel<Signal> m_signal_channel;
+
+    std::list<std::shared_ptr<ISubscription>> m_channel_subs;
 };

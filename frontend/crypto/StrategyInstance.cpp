@@ -102,13 +102,26 @@ StrategyInstance::StrategyInstance(
     , m_exit_strategy(nullptr)
     , m_historical_md_request(historical_md_request)
 {
-    const auto strategy_ptr_opt = StrategyFactory::build_strategy(entry_strategy_name, entry_strategy_config);
+    const auto strategy_ptr_opt = StrategyFactory::build_strategy(
+            entry_strategy_name,
+            entry_strategy_config,
+            m_event_loop,
+            m_price_channel,
+            m_candle_channel);
+
     if (!strategy_ptr_opt.has_value() || !strategy_ptr_opt.value() || !strategy_ptr_opt.value()->is_valid()) {
         Logger::log<LogLevel::Error>("Failed to build entry strategy");
         m_status.push(WorkStatus::Panic);
         return;
     }
     m_strategy = strategy_ptr_opt.value();
+    m_channel_subs.push_back(
+            m_strategy->signal_channel().subscribe(
+                    m_event_loop.m_event_loop,
+                    [](const auto &) {},
+                    [this](const auto &, const auto & signal) {
+                        on_signal(signal);
+                    }));
 
     const auto exit_strategy_opt = ExitStrategyFactory::build_exit_strategy(
             exit_strategy_name,
@@ -195,6 +208,10 @@ std::future<void> StrategyInstance::finish_future()
 
 void StrategyInstance::on_signal(const Signal & signal)
 {
+    if (m_position_manager.opened() != nullptr || !m_pending_orders.empty()) {
+        return;
+    }
+
     // closing if close or flip
     if ((m_position_manager.opened() != nullptr && signal.side != m_position_manager.opened()->side())) {
         if (m_position_manager.opened() != nullptr) {
@@ -427,22 +444,8 @@ void StrategyInstance::handle_event(const MDPriceEvent & response)
     }
 
     const auto candles = m_candle_builder.push_trade(public_trade.price(), public_trade.volume(), public_trade.ts());
-    std::optional<Signal> signal_opt;
     for (const auto & candle : candles) {
-        auto s = m_strategy->push_candle(candle);
-        if (s.has_value()) {
-            signal_opt = s.value();
-        }
         m_candle_channel.push(candle.ts(), candle);
-    }
-
-    if (!signal_opt) {
-        signal_opt = m_strategy->push_price({public_trade.ts(), public_trade.price()});
-    }
-    if (m_position_manager.opened() == nullptr && m_pending_orders.empty()) {
-        if (signal_opt.has_value()) {
-            on_signal(signal_opt.value());
-        }
     }
 }
 

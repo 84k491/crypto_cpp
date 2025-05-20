@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Candle.h"
 #include "JsonStrategyConfig.h"
 #include "StrategyInterface.h"
 
@@ -14,5 +15,8 @@ public:
             const std::string & strategy_name);
     static std::optional<std::shared_ptr<IStrategy>> build_strategy(
             const std::string & strategy_name,
-            const JsonStrategyConfig & config);
+            const JsonStrategyConfig & config,
+            EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
+            EventTimeseriesChannel<double> & price_channel,
+            EventTimeseriesChannel<Candle> & candle_channel);
 };

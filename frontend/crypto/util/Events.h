@@ -3,6 +3,7 @@
 #include "LogLevel.h"
 #include "MarketOrder.h"
 #include "Ohlc.h"
+#include "Signal.h"
 #include "Symbol.h"
 #include "ThreadSafePriorityQueue.h"
 #include "Tpsl.h"
@@ -240,6 +241,13 @@ struct TrailingStopLossRequestEvent : public OneWayEvent
     Symbol symbol;
     TrailingStopLoss trailing_stop_loss;
     xg::Guid guid;
+};
+
+struct SignalEvent : public OneWayEvent
+{
+    SignalEvent(Signal signal);
+
+    Signal signal;
 };
 
 using TimerEvent = OneWayEvent;

@@ -124,4 +124,6 @@ private:
 
     EventLoopSubscriber<STRATEGY_EVENTS> m_event_loop;
     std::list<std::shared_ptr<ISubscription>> m_invoker_subs;
+
+    std::list<std::shared_ptr<ISubscription>> m_channel_subs;
 };

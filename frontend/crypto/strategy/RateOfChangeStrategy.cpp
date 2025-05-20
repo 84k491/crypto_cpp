@@ -39,9 +39,20 @@ JsonStrategyConfig RateOfChangeStrategyConfig::to_json() const
     return json;
 }
 
-RateOfChangeStrategy::RateOfChangeStrategy(const RateOfChangeStrategyConfig & config)
+RateOfChangeStrategy::RateOfChangeStrategy(
+        const RateOfChangeStrategyConfig & config,
+        EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
+        EventTimeseriesChannel<Candle> & candle_channel)
     : m_config(config)
 {
+    m_channel_subs.push_back(candle_channel.subscribe(
+            event_loop.m_event_loop,
+            [](auto) {},
+            [this](const auto & ts, const Candle & candle) {
+                if (const auto signal_opt = push_candle(candle); signal_opt) {
+                    m_signal_channel.push(ts, signal_opt.value());
+                }
+            }));
 }
 
 bool RateOfChangeStrategy::is_valid() const
@@ -59,9 +70,9 @@ EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & RateOfCha
     return m_strategy_internal_data_channel;
 }
 
-std::optional<Signal> RateOfChangeStrategy::push_price(std::pair<std::chrono::milliseconds, double>)
+EventTimeseriesChannel<Signal> & RateOfChangeStrategy::signal_channel()
 {
-    return {};
+    return m_signal_channel;
 }
 
 int sign(int v)

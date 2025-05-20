@@ -1,5 +1,7 @@
 #include "CandleBollingerBandsStrategy.h"
 
+#include "EventLoopSubscriber.h"
+
 #include <algorithm>
 
 CandleBollingerBandsStrategyConfig::CandleBollingerBandsStrategyConfig(const JsonStrategyConfig & json)
@@ -35,10 +37,21 @@ JsonStrategyConfig CandleBollingerBandsStrategyConfig::to_json() const
     return json;
 }
 
-CandleBollingerBandsStrategy::CandleBollingerBandsStrategy(const CandleBollingerBandsStrategyConfig & config)
+CandleBollingerBandsStrategy::CandleBollingerBandsStrategy(
+        const CandleBollingerBandsStrategyConfig & config,
+        EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
+        EventTimeseriesChannel<Candle> & candle_channel)
     : m_config(config)
     , m_bollinger_bands(config.m_interval, config.m_std_deviation_coefficient)
 {
+    m_channel_subs.push_back(candle_channel.subscribe(
+            event_loop.m_event_loop,
+            [](auto) {},
+            [this](const auto & ts, const Candle & candle) {
+                if (const auto signal_opt = push_candle(candle); signal_opt) {
+                    m_signal_channel.push(ts, signal_opt.value());
+                }
+            }));
 }
 
 bool CandleBollingerBandsStrategy::is_valid() const
@@ -118,4 +131,9 @@ std::optional<Signal> CandleBollingerBandsStrategy::push_candle(const Candle & c
 EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & CandleBollingerBandsStrategy::strategy_internal_data_channel()
 {
     return m_strategy_internal_data_channel;
+}
+
+EventTimeseriesChannel<Signal> & CandleBollingerBandsStrategy::signal_channel()
+{
+    return m_signal_channel;
 }

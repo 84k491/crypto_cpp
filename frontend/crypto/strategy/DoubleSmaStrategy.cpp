@@ -1,5 +1,6 @@
 #include "DoubleSmaStrategy.h"
 
+#include "EventLoopSubscriber.h"
 #include "ScopeExit.h"
 
 DoubleSmaStrategyConfig::DoubleSmaStrategyConfig(const JsonStrategyConfig & json)
@@ -25,11 +26,22 @@ JsonStrategyConfig DoubleSmaStrategyConfig::to_json() const
     return json;
 }
 
-DoubleSmaStrategy::DoubleSmaStrategy(const DoubleSmaStrategyConfig & conf)
+DoubleSmaStrategy::DoubleSmaStrategy(
+        const DoubleSmaStrategyConfig & conf,
+        EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
+        EventTimeseriesChannel<double> & price_channel)
     : m_config(conf)
     , m_slow_avg(conf.m_slow_interval)
     , m_fast_avg(conf.m_fast_interval)
 {
+    m_channel_subs.push_back(price_channel.subscribe(
+            event_loop.m_event_loop,
+            [](auto) {},
+            [this](const auto & ts, const double & price) {
+                if (const auto signal_opt = push_price({ts, price}); signal_opt) {
+                    m_signal_channel.push(ts, signal_opt.value());
+                }
+            }));
 }
 
 std::optional<Signal> DoubleSmaStrategy::push_price(std::pair<std::chrono::milliseconds, double> ts_and_price)
@@ -81,4 +93,9 @@ std::optional<std::chrono::milliseconds> DoubleSmaStrategy::timeframe() const
 EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & DoubleSmaStrategy::strategy_internal_data_channel()
 {
     return m_strategy_internal_data_channel;
+}
+
+EventTimeseriesChannel<Signal> & DoubleSmaStrategy::signal_channel()
+{
+    return m_signal_channel;
 }

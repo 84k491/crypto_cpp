@@ -1,5 +1,7 @@
 #include "BBRSIStrategy.h"
 
+#include "EventLoopSubscriber.h"
+
 BBRSIStrategyConfig::BBRSIStrategyConfig(const JsonStrategyConfig & json)
 {
     if (json.get().contains("margin")) {
@@ -39,13 +41,24 @@ JsonStrategyConfig BBRSIStrategyConfig::to_json() const
     return json;
 }
 
-BBRSIStrategy::BBRSIStrategy(BBRSIStrategyConfig config)
+BBRSIStrategy::BBRSIStrategy(
+        BBRSIStrategyConfig config,
+        EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
+        EventTimeseriesChannel<Candle> & candle_channel)
     : m_config(config)
     , m_bollinger_bands(config.m_timeframe * config.m_bb_interval, config.m_std_deviation_coefficient)
     , m_rsi_top_threshold(100 - config.m_margin)
     , m_rsi(config.m_rsi_interval)
     , m_rsi_bot_threshold(config.m_margin)
 {
+    m_channel_subs.push_back(candle_channel.subscribe(
+            event_loop.m_event_loop,
+            [](auto) {},
+            [this](const auto & ts, const Candle & candle) {
+                if (const auto signal_opt = push_candle(candle); signal_opt) {
+                    m_signal_channel.push(ts, signal_opt.value());
+                }
+            }));
 }
 
 std::optional<Signal> BBRSIStrategy::push_candle(const Candle & candle)
@@ -123,12 +136,17 @@ EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & BBRSIStra
     return m_strategy_internal_data_channel;
 }
 
-bool BBRSIStrategy::is_valid() const 
+bool BBRSIStrategy::is_valid() const
 {
     return m_config.is_valid();
 }
 
-std::optional<std::chrono::milliseconds> BBRSIStrategy::timeframe() const 
+std::optional<std::chrono::milliseconds> BBRSIStrategy::timeframe() const
 {
     return m_config.m_timeframe;
+}
+
+EventTimeseriesChannel<Signal> & BBRSIStrategy::signal_channel()
+{
+    return m_signal_channel;
 }
