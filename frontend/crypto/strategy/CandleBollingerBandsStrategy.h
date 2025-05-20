@@ -4,7 +4,7 @@
 #include "Candle.h"
 #include "JsonStrategyConfig.h"
 #include "Signal.h"
-#include "StrategyInterface.h"
+#include "StrategyBase.h"
 
 #include <chrono>
 
@@ -23,7 +23,7 @@ public:
     double m_std_deviation_coefficient = 0.;
 };
 
-class CandleBollingerBandsStrategy : public IStrategy
+class CandleBollingerBandsStrategy : public StrategyBase
 {
     static constexpr std::chrono::milliseconds price_filter_interval = std::chrono::minutes(4);
 
@@ -33,9 +33,6 @@ public:
             const CandleBollingerBandsStrategyConfig & config,
             EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
             EventTimeseriesChannel<Candle> & candle_channel);
-
-    EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & strategy_internal_data_channel() override;
-    EventTimeseriesChannel<Signal> & signal_channel() override;
 
     bool is_valid() const override;
 
@@ -52,9 +49,4 @@ private:
     std::optional<Side> m_last_signal_side;
 
     int m_candles_above_price_trigger = 0;
-
-    EventTimeseriesChannel<std::tuple<std::string, std::string, double>> m_strategy_internal_data_channel;
-    EventTimeseriesChannel<Signal> m_signal_channel;
-
-    std::list<std::shared_ptr<ISubscription>> m_channel_subs;
 };

@@ -2,7 +2,7 @@
 
 #include "JsonStrategyConfig.h"
 #include "Signal.h"
-#include "StrategyInterface.h"
+#include "StrategyBase.h"
 
 #include <chrono>
 #include <optional>
@@ -21,7 +21,7 @@ public:
     std::chrono::milliseconds m_fast_interval = {};
 };
 
-class DebugEveryTickStrategy final : public IStrategy
+class DebugEveryTickStrategy final : public StrategyBase
 {
     static constexpr unsigned max_iter = 10;
 
@@ -33,11 +33,8 @@ public:
             EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
             EventTimeseriesChannel<double> & price_channel);
 
-    EventTimeseriesChannel<Signal> & signal_channel() override;
-    EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & strategy_internal_data_channel() override;
-
     bool is_valid() const override;
-    std::optional<std::chrono::milliseconds> timeframe() const override;
+    std::optional<std::chrono::milliseconds> timeframe() const override { return {}; }
 
 private:
     std::optional<Signal> push_price(std::pair<std::chrono::milliseconds, double> ts_and_price);
@@ -48,9 +45,4 @@ private:
     Side last_side = Side::sell();
 
     unsigned iteration = 0;
-
-    EventTimeseriesChannel<std::tuple<std::string, std::string, double>> m_strategy_internal_data_channel;
-    EventTimeseriesChannel<Signal> m_signal_channel;
-
-    std::list<std::shared_ptr<ISubscription>> m_channel_subs;
 };

@@ -127,13 +127,3 @@ std::optional<Signal> CandleBollingerBandsStrategy::push_candle(const Candle & c
     m_candles_above_price_trigger = 0;
     return std::nullopt;
 }
-
-EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & CandleBollingerBandsStrategy::strategy_internal_data_channel()
-{
-    return m_strategy_internal_data_channel;
-}
-
-EventTimeseriesChannel<Signal> & CandleBollingerBandsStrategy::signal_channel()
-{
-    return m_signal_channel;
-}

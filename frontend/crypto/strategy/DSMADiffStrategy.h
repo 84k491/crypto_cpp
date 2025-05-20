@@ -3,8 +3,7 @@
 #include "EventTimeseriesChannel.h"
 #include "JsonStrategyConfig.h"
 #include "Signal.h"
-#include "SimpleMovingAverage.h"
-#include "StrategyInterface.h"
+#include "StrategyBase.h"
 #include "TimeWeightedMovingAverage.h"
 
 class DSMADiffStrategyConfig
@@ -22,7 +21,7 @@ public:
     double m_diff_threshold_percent = {};
 };
 
-class DSMADiffStrategy final : public IStrategy
+class DSMADiffStrategy final : public StrategyBase
 {
 public:
     DSMADiffStrategy(
@@ -30,12 +29,9 @@ public:
             EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
             EventTimeseriesChannel<double> & price_channel);
 
-    EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & strategy_internal_data_channel() override;
-    EventTimeseriesChannel<Signal> & signal_channel() override;
-
     bool is_valid() const override;
 
-    std::optional<std::chrono::milliseconds> timeframe() const override;
+    std::optional<std::chrono::milliseconds> timeframe() const override { return {}; }
 
 private:
     std::optional<Signal> push_price(std::pair<std::chrono::milliseconds, double> ts_and_price);
@@ -46,9 +42,4 @@ private:
     TimeWeightedMovingAverage m_slow_avg;
     TimeWeightedMovingAverage m_fast_avg;
     double m_diff_threshold = {}; // coef, not percent
-
-    EventTimeseriesChannel<std::tuple<std::string, std::string, double>> m_strategy_internal_data_channel;
-    EventTimeseriesChannel<Signal> m_signal_channel;
-
-    std::list<std::shared_ptr<ISubscription>> m_channel_subs;
 };

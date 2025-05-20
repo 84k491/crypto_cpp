@@ -97,13 +97,3 @@ std::optional<Signal> BollingerBandsStrategy::push_price(std::pair<std::chrono::
 
     return std::nullopt;
 }
-
-EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & BollingerBandsStrategy::strategy_internal_data_channel()
-{
-    return m_strategy_internal_data_channel;
-}
-
-EventTimeseriesChannel<Signal> & BollingerBandsStrategy::signal_channel()
-{
-    return m_signal_channel;
-}

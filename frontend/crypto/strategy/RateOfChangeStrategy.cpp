@@ -65,16 +65,6 @@ std::optional<std::chrono::milliseconds> RateOfChangeStrategy::timeframe() const
     return m_config.m_timeframe;
 }
 
-EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & RateOfChangeStrategy::strategy_internal_data_channel()
-{
-    return m_strategy_internal_data_channel;
-}
-
-EventTimeseriesChannel<Signal> & RateOfChangeStrategy::signal_channel()
-{
-    return m_signal_channel;
-}
-
 int sign(int v)
 {
     if (v > 0) {

@@ -8,7 +8,6 @@
 class IStrategy
 {
 public:
-    IStrategy() = default;
     virtual ~IStrategy() = default;
 
     virtual EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & strategy_internal_data_channel() = 0;

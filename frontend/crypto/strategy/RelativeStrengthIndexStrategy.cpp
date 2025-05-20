@@ -64,11 +64,6 @@ std::optional<Signal> RelativeStrengthIndexStrategy::push_candle(const Candle & 
     return Signal{.side = side, .timestamp = c.close_ts(), .price = c.close()};
 }
 
-EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & RelativeStrengthIndexStrategy::strategy_internal_data_channel()
-{
-    return m_strategy_internal_data_channel;
-}
-
 bool RelativeStrengthIndexStrategyConfig::is_valid() const
 {
     return m_interval > 0 && m_margin > 0;
@@ -82,9 +77,4 @@ bool RelativeStrengthIndexStrategy::is_valid() const
 std::optional<std::chrono::milliseconds> RelativeStrengthIndexStrategy::timeframe() const
 {
     return m_config.m_timeframe;
-}
-
-EventTimeseriesChannel<Signal> & RelativeStrengthIndexStrategy::signal_channel() 
-{
-    return m_signal_channel;
 }

@@ -2,7 +2,7 @@
 
 #include "JsonStrategyConfig.h"
 #include "RelativeStrengthIndex.h"
-#include "StrategyInterface.h"
+#include "StrategyBase.h"
 
 class RelativeStrengthIndexStrategyConfig
 {
@@ -18,16 +18,13 @@ public:
     unsigned m_margin = 0;
 };
 
-class RelativeStrengthIndexStrategy : public IStrategy
+class RelativeStrengthIndexStrategy : public StrategyBase
 {
 public:
     RelativeStrengthIndexStrategy(
             const RelativeStrengthIndexStrategyConfig & config,
             EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
             EventTimeseriesChannel<Candle> & candle_channel);
-
-    EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & strategy_internal_data_channel() override;
-    EventTimeseriesChannel<Signal> & signal_channel() override;
 
     bool is_valid() const override;
 
@@ -39,8 +36,4 @@ private:
 private:
     RelativeStrengthIndexStrategyConfig m_config;
     RelativeStrengthIndex m_rsi;
-    EventTimeseriesChannel<std::tuple<std::string, std::string, double>> m_strategy_internal_data_channel;
-    EventTimeseriesChannel<Signal> m_signal_channel;
-
-    std::list<std::shared_ptr<ISubscription>> m_channel_subs;
 };

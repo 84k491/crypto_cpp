@@ -84,22 +84,7 @@ std::optional<Signal> DSMADiffStrategy::push_price(std::pair<std::chrono::millis
     return std::nullopt;
 }
 
-EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & DSMADiffStrategy::strategy_internal_data_channel()
-{
-    return m_strategy_internal_data_channel;
-}
-
 bool DSMADiffStrategy::is_valid() const
 {
     return m_config.is_valid();
-}
-
-std::optional<std::chrono::milliseconds> DSMADiffStrategy::timeframe() const
-{
-    return {};
-}
-
-EventTimeseriesChannel<Signal> & DSMADiffStrategy::signal_channel()
-{
-    return m_signal_channel;
 }

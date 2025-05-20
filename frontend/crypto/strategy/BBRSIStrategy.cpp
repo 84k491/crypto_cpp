@@ -131,11 +131,6 @@ std::optional<Signal> BBRSIStrategy::push_candle(const Candle & candle)
     return std::nullopt;
 }
 
-EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & BBRSIStrategy::strategy_internal_data_channel()
-{
-    return m_strategy_internal_data_channel;
-}
-
 bool BBRSIStrategy::is_valid() const
 {
     return m_config.is_valid();
@@ -144,9 +139,4 @@ bool BBRSIStrategy::is_valid() const
 std::optional<std::chrono::milliseconds> BBRSIStrategy::timeframe() const
 {
     return m_config.m_timeframe;
-}
-
-EventTimeseriesChannel<Signal> & BBRSIStrategy::signal_channel()
-{
-    return m_signal_channel;
 }

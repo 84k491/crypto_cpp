@@ -2,9 +2,9 @@
 
 #include "EventLoopSubscriber.h"
 #include "ScopeExit.h"
-#include "StrategyInterface.h"
+#include "StrategyBase.h"
 
-class MockStrategy : public IStrategy
+class MockStrategy : public StrategyBase
 {
 public:
     MockStrategy(
@@ -33,15 +33,6 @@ public:
         return std::nullopt;
     }
 
-    EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & strategy_internal_data_channel() override
-    {
-        return m_strategy_internal_data_channel;
-    }
-    EventTimeseriesChannel<Signal> & signal_channel() override
-    {
-        return m_signal_channel;
-    }
-
     bool is_valid() const override { return true; }
 
     std::optional<std::chrono::milliseconds> timeframe() const override
@@ -57,9 +48,4 @@ public:
 
 private:
     std::optional<Side> m_next_signal_side = Side::buy();
-
-    EventTimeseriesChannel<std::tuple<std::string, std::string, double>> m_strategy_internal_data_channel;
-    EventTimeseriesChannel<Signal> m_signal_channel;
-
-    std::list<std::shared_ptr<ISubscription>> m_channel_subs;
 };

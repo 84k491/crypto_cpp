@@ -64,13 +64,3 @@ std::optional<Signal> RatchetStrategy::push_candle(const Candle & c)
     const auto side = value < c.close() ? Side::buy() : Side::sell();
     return Signal{.side = side, .timestamp = c.close_ts(), .price = c.close()};
 }
-
-EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & RatchetStrategy::strategy_internal_data_channel()
-{
-    return m_strategy_internal_data_channel;
-}
-
-EventTimeseriesChannel<Signal> & RatchetStrategy::signal_channel()
-{
-    return m_signal_channel;
-}

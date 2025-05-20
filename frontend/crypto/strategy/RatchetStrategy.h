@@ -3,7 +3,7 @@
 #include "Candle.h"
 #include "JsonStrategyConfig.h"
 #include "Ratchet.h"
-#include "StrategyInterface.h"
+#include "StrategyBase.h"
 
 class RatchetStrategyConfig
 {
@@ -18,16 +18,13 @@ public:
     std::chrono::milliseconds m_timeframe;
 };
 
-class RatchetStrategy : public IStrategy
+class RatchetStrategy : public StrategyBase
 {
 public:
     RatchetStrategy(
             RatchetStrategyConfig config,
             EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
             EventTimeseriesChannel<Candle> & candle_channel);
-
-    EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & strategy_internal_data_channel() override;
-    EventTimeseriesChannel<Signal> & signal_channel() override;
 
     bool is_valid() const override;
 
@@ -38,12 +35,6 @@ private:
 
 private:
     RatchetStrategyConfig m_config;
-
-    EventTimeseriesChannel<std::tuple<std::string, std::string, double>> m_strategy_internal_data_channel;
-
-    EventTimeseriesChannel<Signal> m_signal_channel;
-
-    std::list<std::shared_ptr<ISubscription>> m_channel_subs;
 
     Ratchet m_ratchet;
 };

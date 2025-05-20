@@ -3,7 +3,7 @@
 #include "BollingerBands.h"
 #include "JsonStrategyConfig.h"
 #include "RelativeStrengthIndex.h"
-#include "StrategyInterface.h"
+#include "StrategyBase.h"
 
 #include <chrono>
 
@@ -22,16 +22,13 @@ struct BBRSIStrategyConfig
     unsigned m_margin = 0;
 };
 
-class BBRSIStrategy : public IStrategy
+class BBRSIStrategy : public StrategyBase
 {
 public:
     BBRSIStrategy(
             BBRSIStrategyConfig config,
             EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
             EventTimeseriesChannel<Candle> & candle_channel);
-
-    EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & strategy_internal_data_channel() override;
-    EventTimeseriesChannel<Signal> & signal_channel() override;
 
     bool is_valid() const override;
 
@@ -50,9 +47,4 @@ private:
     unsigned m_rsi_top_threshold = 100;
     RelativeStrengthIndex m_rsi;
     unsigned m_rsi_bot_threshold = 0;
-
-    EventTimeseriesChannel<std::tuple<std::string, std::string, double>> m_strategy_internal_data_channel;
-    EventTimeseriesChannel<Signal> m_signal_channel;
-
-    std::list<std::shared_ptr<ISubscription>> m_channel_subs;
 };

@@ -56,18 +56,3 @@ bool DebugEveryTickStrategy::is_valid() const
 {
     return DebugEveryTickStrategyConfig::is_valid();
 }
-
-std::optional<std::chrono::milliseconds> DebugEveryTickStrategy::timeframe() const
-{
-    return {};
-}
-
-EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & DebugEveryTickStrategy::strategy_internal_data_channel()
-{
-    return m_strategy_internal_data_channel;
-}
-
-EventTimeseriesChannel<Signal> & DebugEveryTickStrategy::signal_channel() 
-{
-    return m_signal_channel;
-}

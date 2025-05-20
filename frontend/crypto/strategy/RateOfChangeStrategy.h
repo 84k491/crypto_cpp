@@ -2,7 +2,7 @@
 
 #include "Candle.h"
 #include "JsonStrategyConfig.h"
-#include "StrategyInterface.h"
+#include "StrategyBase.h"
 
 class RateOfChangeStrategyConfig
 {
@@ -18,7 +18,7 @@ public:
     double m_signal_threshold = 0.;
 };
 
-class RateOfChangeStrategy : public IStrategy
+class RateOfChangeStrategy : public StrategyBase
 {
     static constexpr size_t s_roc_interval = 1;
 
@@ -27,9 +27,6 @@ public:
             const RateOfChangeStrategyConfig & config,
             EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
             EventTimeseriesChannel<Candle> & candle_channel);
-
-    EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & strategy_internal_data_channel() override;
-    EventTimeseriesChannel<Signal> & signal_channel() override;
 
     bool is_valid() const override;
 
@@ -43,9 +40,4 @@ private:
     int m_trigger_iter = 0;
 
     RateOfChangeStrategyConfig m_config;
-
-    EventTimeseriesChannel<std::tuple<std::string, std::string, double>> m_strategy_internal_data_channel;
-    EventTimeseriesChannel<Signal> m_signal_channel;
-
-    std::list<std::shared_ptr<ISubscription>> m_channel_subs;
 };

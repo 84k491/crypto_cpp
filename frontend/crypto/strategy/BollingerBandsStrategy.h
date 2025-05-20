@@ -3,7 +3,7 @@
 #include "BollingerBands.h"
 #include "JsonStrategyConfig.h"
 #include "Signal.h"
-#include "StrategyInterface.h"
+#include "StrategyBase.h"
 
 #include <chrono>
 
@@ -20,7 +20,7 @@ public:
     double m_std_deviation_coefficient = 0.;
 };
 
-class BollingerBandsStrategy : public IStrategy
+class BollingerBandsStrategy : public StrategyBase
 {
 public:
     using ConfigT = BollingerBandsStrategyConfig;
@@ -28,9 +28,6 @@ public:
             const BollingerBandsStrategyConfig & config,
             EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
             EventTimeseriesChannel<double> & price_channel);
-
-    EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & strategy_internal_data_channel() override;
-    EventTimeseriesChannel<Signal> & signal_channel() override;
 
     bool is_valid() const override;
 
@@ -45,9 +42,4 @@ private:
     BollingerBands m_bollinger_bands;
 
     std::optional<Side> m_last_signal_side;
-
-    EventTimeseriesChannel<std::tuple<std::string, std::string, double>> m_strategy_internal_data_channel;
-    EventTimeseriesChannel<Signal> m_signal_channel;
-
-    std::list<std::shared_ptr<ISubscription>> m_channel_subs;
 };
