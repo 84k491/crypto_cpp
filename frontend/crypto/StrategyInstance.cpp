@@ -148,15 +148,25 @@ StrategyInstance::StrategyInstance(
 
     m_status.push(WorkStatus::Stopped);
 
-    m_event_loop.subscribe(m_md_gateway.historical_prices_channel());
-    m_event_loop.subscribe(m_md_gateway.live_prices_channel());
+    m_event_loop.subscribe(
+            m_md_gateway.historical_prices_channel(),
+            [this](const HistoricalMDGeneratorEvent & e) { handle_event(e); });
+    m_event_loop.subscribe(
+            m_md_gateway.live_prices_channel(),
+            [this](const MDPriceEvent & e) { handle_event(e); });
 
-    m_event_loop.subscribe(m_tr_gateway.order_response_channel());
-    m_event_loop.subscribe(m_tr_gateway.trade_channel());
-    m_event_loop.subscribe(m_tr_gateway.tpsl_response_channel());
-    m_event_loop.subscribe(m_tr_gateway.tpsl_updated_channel());
-    m_event_loop.subscribe(m_tr_gateway.trailing_stop_response_channel());
-    m_event_loop.subscribe(m_tr_gateway.trailing_stop_update_channel());
+    m_event_loop.subscribe(
+            m_tr_gateway.order_response_channel(),
+            [this](const OrderResponseEvent & e) { handle_event(e); });
+    m_event_loop.subscribe(
+            m_tr_gateway.trade_channel(),
+            [this](const TradeEvent & e) { handle_event(e); });
+    m_event_loop.subscribe(
+            m_tr_gateway.tpsl_response_channel(),
+            [this](const TpslResponseEvent & e) { handle_event(e); });
+    m_event_loop.subscribe(
+            m_tr_gateway.trailing_stop_response_channel(),
+            [this](const TrailingStopLossResponseEvent & e) { handle_event(e); });
 
     m_strategy_result.update([&](StrategyResult & res) {
         res.position_currency_amount = m_pos_currency_amount;
@@ -371,11 +381,7 @@ void StrategyInstance::register_invokers()
                     }));
 
     REGISTER(StrategyStartRequest);
-    REGISTER(HistoricalMDGeneratorEvent);
     REGISTER(HistoricalMDPriceEvent);
-    REGISTER(MDPriceEvent);
-    REGISTER(OrderResponseEvent);
-    REGISTER(TradeEvent);
     REGISTER(LambdaEvent);
     REGISTER(StrategyStopRequest);
 

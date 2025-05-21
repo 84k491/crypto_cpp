@@ -25,7 +25,7 @@ public:
 
     bool order_acked = false;
 
-    EventLoopSubscriber<OrderResponseEvent, TradeEvent> m_loop;
+    EventLoopSubscriber<OrderResponseEvent, TradeEvent, LambdaEvent> m_loop;
     std::shared_ptr<ISubscription> m_invoker_sub;
 };
 
@@ -58,7 +58,9 @@ TEST_F(EventLoopTest, StrategyDestruction)
 {
     auto strategy = std::make_unique<MockStrategy>();
     MockGateway gateway;
-    strategy->m_loop.subscribe(gateway.m_order_response_channel);
+    strategy->m_loop.subscribe(
+            gateway.m_order_response_channel,
+            [](const OrderResponseEvent &) {});
 
     // strategy pushes order to gw
     gateway.m_loop.push_event(OrderRequestEvent{

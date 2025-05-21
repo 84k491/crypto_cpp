@@ -67,7 +67,7 @@ private:
     ObjectT m_data;
     std::vector<std::tuple< // TODO make it thread-safe
             xg::Guid,
-            std::function<void(const ObjectT &)>,
+            std::function<void(const ObjectT &)>, // TODO move it to subscription
             std::weak_ptr<EventObjectSubscription<ObjectT>>>>
             m_update_callbacks;
 };
