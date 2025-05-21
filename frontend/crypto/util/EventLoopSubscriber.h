@@ -131,9 +131,13 @@ public:
     }
 
     template <class EventChannelT, class UpdateCallbackT>
-    void subscribe(EventChannelT & channel, UpdateCallbackT && callback, const std::string & bucket_name = "")
+    void subscribe(
+            EventChannelT & channel,
+            UpdateCallbackT && callback,
+            Priority priority = Priority::Normal,
+            const std::string & bucket_name = "")
     {
-        const auto sub = channel.subscribe(m_event_loop, std::forward<UpdateCallbackT>(callback));
+        const auto sub = channel.subscribe(m_event_loop, std::forward<UpdateCallbackT>(callback), priority);
         m_subscriptions[bucket_name].push_back(sub);
     }
 
@@ -154,8 +158,10 @@ public:
 
 private:
     EventInvokerDispatcher<Args...> m_invoker_dispatcher;
+
 public:
     std::shared_ptr<EventLoop<Args...>> m_event_loop;
+
 private:
     std::map<std::string, std::list<std::shared_ptr<ISubscription>>> m_subscriptions; // those must be destroyed before EvLoop
 };

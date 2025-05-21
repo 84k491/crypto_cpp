@@ -1,19 +1,13 @@
 #pragma once
 
+#include "Priority.h"
+
 #include <condition_variable>
 #include <map>
 #include <mutex>
 #include <optional>
 #include <queue>
 #include <variant>
-
-enum class Priority : uint8_t
-{
-    High = 0,
-    Normal = 1,
-    Low = 2,
-    Barrier = 3,
-};
 
 template <typename T>
 class ThreadSafePriorityQueue

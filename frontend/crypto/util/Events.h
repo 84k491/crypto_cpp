@@ -255,12 +255,16 @@ using PingCheckEvent = TimerEvent;
 
 struct LambdaEvent : public OneWayEvent
 {
-    LambdaEvent(std::function<void()> func)
+    LambdaEvent(std::function<void()> func, Priority priority)
         : func(std::move(func))
+        , m_priority(priority)
     {
     }
 
+    Priority priority() const { return m_priority; }
+
     std::function<void()> func;
+    Priority m_priority;
     xg::Guid guid;
 };
 

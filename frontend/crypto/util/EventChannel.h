@@ -1,10 +1,10 @@
 #pragma once
 
 #include "EventLoop.h"
+#include "Events.h"
 #include "Guarded.h"
 #include "ISubsription.h"
 #include "Macros.h"
-#include "Events.h"
 
 #include <crossguid/guid.hpp>
 #include <memory>
@@ -22,10 +22,12 @@ public:
     EventSubscription(
             const std::shared_ptr<IEventConsumer<LambdaEvent>> & consumer,
             std::function<void(const EventT &)> callback,
+            Priority priority,
             EventChannel<EventT> & channel,
             xg::Guid guid)
         : m_consumer(consumer)
         , m_callback(callback)
+        , m_priority(priority)
         , m_channel(&channel)
         , m_guid(guid)
     {
@@ -41,6 +43,7 @@ public:
 private:
     std::weak_ptr<IEventConsumer<LambdaEvent>> m_consumer;
     std::function<void(const EventT &)> m_callback;
+    Priority m_priority;
     EventChannel<EventT> * m_channel;
     xg::Guid m_guid;
 };
@@ -58,7 +61,8 @@ public:
     [[nodiscard]] std::shared_ptr<EventSubscription<EventT>>
     subscribe(
             const std::shared_ptr<IEventConsumer<LambdaEvent>> & consumer,
-            std::function<void(const EventT &)> && update_callback);
+            std::function<void(const EventT &)> && update_callback,
+            Priority priority = Priority::Normal);
     void unsubscribe(xg::Guid guid);
 
 private:
@@ -76,7 +80,10 @@ void EventChannel<EventT>::push(const EventT & object)
     for (const auto & [uuid, wptr] : callbacks_lref.get()) {
         UNWRAP_CONTINUE(subscribtion, wptr.lock());
         UNWRAP_CONTINUE(consumer, subscribtion.m_consumer.lock());
-        consumer.push(LambdaEvent([cb = subscribtion.m_callback, object] { cb(object); }));
+        consumer.push(
+                LambdaEvent{
+                        [cb = subscribtion.m_callback, object] { cb(object); },
+                        subscribtion.m_priority});
     }
 }
 
@@ -84,10 +91,11 @@ template <typename EventT>
 std::shared_ptr<EventSubscription<EventT>>
 EventChannel<EventT>::subscribe(
         const std::shared_ptr<IEventConsumer<LambdaEvent>> & consumer,
-        std::function<void(const EventT &)> && update_callback)
+        std::function<void(const EventT &)> && update_callback,
+        Priority priority)
 {
     const auto guid = xg::newGuid();
-    auto sptr = std::make_shared<EventSubscription<EventT>>(consumer, update_callback, *this, guid);
+    auto sptr = std::make_shared<EventSubscription<EventT>>(consumer, update_callback, priority, *this, guid);
 
     auto callbacks_lref = m_update_callbacks.lock();
     callbacks_lref.get().push_back({guid, std::weak_ptr{sptr}});

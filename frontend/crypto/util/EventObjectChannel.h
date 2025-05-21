@@ -60,7 +60,8 @@ public:
     [[nodiscard]] std::shared_ptr<EventObjectSubscription<ObjectT>>
     subscribe(
             const std::shared_ptr<IEventConsumer<LambdaEvent>> & consumer,
-            std::function<void(const ObjectT &)> && update_callback);
+            std::function<void(const ObjectT &)> && update_callback,
+            Priority priority = Priority::Normal);
     void unsubscribe(xg::Guid guid);
 
 private:
@@ -80,7 +81,7 @@ void EventObjectChannel<ObjectT>::push(const ObjectT & object)
     for (const auto & [uuid, cb, wptr] : m_update_callbacks) {
         UNWRAP_CONTINUE(subscribtion, wptr.lock());
         UNWRAP_CONTINUE(consumer, subscribtion.m_consumer.lock());
-        consumer.push(LambdaEvent([cb, object] { cb(object); }));
+        consumer.push(LambdaEvent{[cb, object] { cb(object); }, Priority::Normal});
     }
 }
 
@@ -92,7 +93,7 @@ void EventObjectChannel<ObjectT>::update(std::function<void(ObjectT &)> && updat
     for (const auto & [uuid, cb, wptr] : m_update_callbacks) {
         UNWRAP_CONTINUE(subscribtion, wptr.lock());
         UNWRAP_CONTINUE(consumer, subscribtion.m_consumer.lock());
-        consumer.push(LambdaEvent([cb, object = m_data] { cb(object); }));
+        consumer.push(LambdaEvent([cb, object = m_data] { cb(object); }, Priority::Normal));
     }
 }
 
@@ -100,7 +101,8 @@ template <typename ObjectT>
 std::shared_ptr<EventObjectSubscription<ObjectT>>
 EventObjectChannel<ObjectT>::subscribe(
         const std::shared_ptr<IEventConsumer<LambdaEvent>> & consumer,
-        std::function<void(const ObjectT &)> && update_callback)
+        std::function<void(const ObjectT &)> && update_callback,
+        Priority) // TODO use priority?
 {
     const auto guid = xg::newGuid();
     auto sptr = std::make_shared<EventObjectSubscription<ObjectT>>(consumer, *this, guid);

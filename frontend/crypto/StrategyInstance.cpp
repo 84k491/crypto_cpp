@@ -150,10 +150,12 @@ StrategyInstance::StrategyInstance(
 
     m_event_loop.subscribe(
             m_md_gateway.historical_prices_channel(),
-            [this](const HistoricalMDGeneratorEvent & e) { handle_event(e); });
+            [this](const HistoricalMDGeneratorEvent & e) { handle_event(e); },
+            Priority::Low);
     m_event_loop.subscribe(
             m_md_gateway.live_prices_channel(),
-            [this](const MDPriceEvent & e) { handle_event(e); });
+            [this](const MDPriceEvent & e) { handle_event(e); },
+            Priority::Low);
 
     m_event_loop.subscribe(
             m_tr_gateway.order_response_channel(),

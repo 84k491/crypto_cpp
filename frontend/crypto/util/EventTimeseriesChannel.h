@@ -95,10 +95,11 @@ void EventTimeseriesChannel<ObjectT>::push(EventTimeseriesChannel::TimeT timesta
     for (const auto & el : callbacks_lref.get()) {
         UNWRAP_CONTINUE(subscribtion, el.wptr.lock());
         UNWRAP_CONTINUE(consumer, subscribtion.m_consumer.lock());
-        consumer.push(LambdaEvent(
+        consumer.push(LambdaEvent{
                 [el,
                  timestamp,
-                 object] { el.callback(timestamp, object); }));
+                 object] { el.callback(timestamp, object); },
+                Priority::Normal});
     }
 }
 
@@ -113,9 +114,10 @@ std::shared_ptr<EventTimeseriesSubsription<ObjectT>> EventTimeseriesChannel<Obje
 
     m_increment_callbacks.lock().get().emplace_back(guid, std::move(increment_callback), std::weak_ptr{sptr});
     auto data_lref = m_data.lock();
-    consumer->push(LambdaEvent(
+    consumer->push(LambdaEvent{
             [cb = std::move(snapshot_callback),
-             d = data_lref.get()] { cb(d); }));
+             d = data_lref.get()] { cb(d); },
+            Priority::Normal});
 
     return sptr;
 }
