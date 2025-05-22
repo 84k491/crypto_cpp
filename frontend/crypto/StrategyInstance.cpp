@@ -156,6 +156,17 @@ StrategyInstance::StrategyInstance(
             m_md_gateway.live_prices_channel(),
             [this](const MDPriceEvent & e) { handle_event(e); },
             Priority::Low);
+    m_event_loop.subscribe(
+            m_historical_md_channel,
+            [this](const HistoricalMDPriceEvent & e) { handle_event(e); },
+            Priority::Low);
+
+    m_event_loop.subscribe(
+            m_start_ev_channel,
+            [this](const StrategyStartRequest & e) { handle_event(e); });
+    m_event_loop.subscribe(
+            m_stop_ev_channel,
+            [this](const StrategyStopRequest & e) { handle_event(e); });
 
     m_event_loop.subscribe(
             m_tr_gateway.order_response_channel(),
@@ -198,7 +209,7 @@ StrategyInstance::~StrategyInstance()
 
 void StrategyInstance::run_async()
 {
-    m_event_loop.push_event(StrategyStartRequest{});
+    m_start_ev_channel.push({});
 }
 
 void StrategyInstance::stop_async(bool panic)
@@ -210,7 +221,7 @@ void StrategyInstance::stop_async(bool panic)
     if (panic) {
         m_status_on_stop = WorkStatus::Panic;
     }
-    m_event_loop.push_event(StrategyStopRequest{});
+    m_stop_ev_channel.push({});
 }
 
 std::future<void> StrategyInstance::finish_future()
@@ -382,10 +393,7 @@ void StrategyInstance::register_invokers()
                         after_every_event();                \
                     }));
 
-    REGISTER(StrategyStartRequest);
-    REGISTER(HistoricalMDPriceEvent);
     REGISTER(LambdaEvent);
-    REGISTER(StrategyStopRequest);
 
 #undef REGISTER
 }
@@ -421,7 +429,7 @@ void StrategyInstance::handle_event(const HistoricalMDGeneratorEvent & response)
     }
 
     m_backtest_in_progress = true;
-    m_event_loop.push_event(ev_opt.value());
+    m_historical_md_channel.push(ev_opt.value());
 }
 
 void StrategyInstance::handle_event(const HistoricalMDPriceEvent & response)
@@ -643,6 +651,6 @@ void StrategyInstance::finish_if_needed_and_ready()
 
 void StrategyInstance::wait_event_barrier()
 {
-    EventBarrier b{m_event_loop};
+    EventBarrier b{m_event_loop, m_barrier_channel};
     b.wait();
 }

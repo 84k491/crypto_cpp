@@ -7,16 +7,15 @@ template <class... Args>
 class EventBarrier
 {
 public:
-    EventBarrier(EventLoopSubscriber<Args...> & el)
+    EventBarrier(EventLoopSubscriber<Args...> & el, EventChannel<BarrierEvent> & ch)
         : m_future(m_promise.get_future())
     {
         BarrierEvent ev;
-        m_sub = el.invoker().template register_invoker<BarrierEvent>([this, guid = ev.guid](const auto & b_ev) {
+        m_sub = ch.subscribe(el.m_event_loop, [this, guid = ev.guid](const auto & b_ev) {
             if (guid == b_ev.guid) {
                 m_promise.set_value();
-            }
-        });
-        el.push_event(ev);
+            } }, Priority::Barrier);
+        ch.push(ev);
     }
 
     void wait()

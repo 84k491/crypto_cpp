@@ -122,7 +122,13 @@ private:
     std::optional<HistoricalMDGeneratorEvent> m_historical_md_generator;
     bool m_backtest_in_progress = false;
 
+    EventChannel<HistoricalMDPriceEvent> m_historical_md_channel;
+    EventChannel<StrategyStartRequest> m_start_ev_channel;
+    EventChannel<StrategyStopRequest> m_stop_ev_channel;
+    EventChannel<BarrierEvent> m_barrier_channel;
+
     EventLoopSubscriber<STRATEGY_EVENTS> m_event_loop;
+
     std::list<std::shared_ptr<ISubscription>> m_invoker_subs;
 
     std::list<std::shared_ptr<ISubscription>> m_channel_subs;
