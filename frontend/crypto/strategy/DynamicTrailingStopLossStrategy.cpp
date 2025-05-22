@@ -34,7 +34,9 @@ DynamicTrailingStopLossStrategy::DynamicTrailingStopLossStrategy(
         EventTimeseriesChannel<double> & price_channel,
         EventObjectChannel<bool> & opened_pos_channel,
         EventTimeseriesChannel<Trade> & trades_channel,
-        EventTimeseriesChannel<ProfitPriceLevels> & price_levels_channel)
+        EventTimeseriesChannel<ProfitPriceLevels> & price_levels_channel,
+        EventChannel<TrailingStopLossResponseEvent> & tsl_response_channel,
+        EventChannel<TrailingStopLossUpdatedEvent> & tsl_updated_channel)
     : TrailigStopLossStrategy(
               symbol,
               config,
@@ -42,7 +44,9 @@ DynamicTrailingStopLossStrategy::DynamicTrailingStopLossStrategy(
               gateway,
               price_channel,
               opened_pos_channel,
-              trades_channel)
+              trades_channel,
+              tsl_response_channel,
+              tsl_updated_channel)
     , m_dynamic_config(config)
 {
     m_channel_subs.push_back(price_levels_channel.subscribe(

@@ -34,13 +34,15 @@ class TpslExitStrategy : public ExitStrategyBase
 {
 public:
     TpslExitStrategy(
-            Symbol symbol,
-            JsonStrategyConfig config,
-            EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
-            ITradingGateway & gateway,
-            EventTimeseriesChannel<double> & price_channel,
-            EventObjectChannel<bool> & opened_pos_channel,
-            EventTimeseriesChannel<Trade> & trades_channel);
+        Symbol symbol,
+        JsonStrategyConfig config,
+        EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
+        ITradingGateway & gateway,
+        EventTimeseriesChannel<double> & price_channel,
+        EventObjectChannel<bool> & opened_pos_channel,
+        EventTimeseriesChannel<Trade> & trades_channel,
+        EventChannel<TpslResponseEvent> & tpsl_response_channel,
+        EventChannel<TpslUpdatedEvent> & tpsl_updated_channel);
 
 private:
     void on_trade(const Trade & trade);

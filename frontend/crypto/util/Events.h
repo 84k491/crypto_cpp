@@ -311,16 +311,4 @@ struct StrategyStartRequest : public OneWayEvent
 {
 };
 
-#define STRATEGY_EVENTS LambdaEvent,                   \
-                        BarrierEvent,                  \
-                        HistoricalMDGeneratorEvent,    \
-                        HistoricalMDPriceEvent,        \
-                        MDPriceEvent,                  \
-                        OrderResponseEvent,            \
-                        TradeEvent,                    \
-                        TpslResponseEvent,             \
-                        TpslUpdatedEvent,              \
-                        TrailingStopLossResponseEvent, \
-                        TrailingStopLossUpdatedEvent,  \
-                        StrategyStartRequest,          \
-                        StrategyStopRequest
+#define STRATEGY_EVENTS LambdaEvent // TODO remove

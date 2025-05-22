@@ -29,8 +29,9 @@ public:
             EventTimeseriesChannel<double> & price_channel,
             EventObjectChannel<bool> & opened_pos_channel,
             EventTimeseriesChannel<Trade> & trades_channel,
-            EventTimeseriesChannel<ProfitPriceLevels> & price_levels_channel
-);
+            EventTimeseriesChannel<ProfitPriceLevels> & price_levels_channel,
+            EventChannel<TrailingStopLossResponseEvent> & tsl_response_channel,
+            EventChannel<TrailingStopLossUpdatedEvent> & tsl_updated_channel);
 
 private:
     void on_price_changed(

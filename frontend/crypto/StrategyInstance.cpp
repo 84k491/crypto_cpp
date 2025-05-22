@@ -33,7 +33,11 @@ public:
             EventTimeseriesChannel<double> & price_channel,
             EventObjectChannel<bool> & opened_pos_channel,
             EventTimeseriesChannel<Trade> & trades_channel,
-            EventTimeseriesChannel<ProfitPriceLevels> & price_levels_channel)
+            EventTimeseriesChannel<ProfitPriceLevels> & price_levels_channel,
+            EventChannel<TpslResponseEvent> & tpsl_response_channel,
+            EventChannel<TpslUpdatedEvent> & tpsl_updated_channel,
+            EventChannel<TrailingStopLossResponseEvent> & tsl_response_channel,
+            EventChannel<TrailingStopLossUpdatedEvent> & tsl_updated_channel)
     {
         if (strategy_name == "TpslExit") {
             std::shared_ptr<IExitStrategy> res = std::make_shared<TpslExitStrategy>(
@@ -43,7 +47,9 @@ public:
                     gateway,
                     price_channel,
                     opened_pos_channel,
-                    trades_channel);
+                    trades_channel,
+                    tpsl_response_channel,
+                    tpsl_updated_channel);
             return res;
         }
         if (strategy_name == "TrailingStop") {
@@ -54,7 +60,9 @@ public:
                     gateway,
                     price_channel,
                     opened_pos_channel,
-                    trades_channel);
+                    trades_channel,
+                    tsl_response_channel,
+                    tsl_updated_channel);
             return res;
         }
         if (strategy_name == "DynamicTrailingStop") {
@@ -66,7 +74,9 @@ public:
                     price_channel,
                     opened_pos_channel,
                     trades_channel,
-                    price_levels_channel);
+                    price_levels_channel,
+                    tsl_response_channel,
+                    tsl_updated_channel);
             return res;
         }
         Logger::logf<LogLevel::Error>("Unknown exit strategy name: {}", strategy_name);
@@ -132,7 +142,11 @@ StrategyInstance::StrategyInstance(
             m_price_channel,
             m_opened_pos_channel,
             m_trade_channel,
-            m_price_levels_channel);
+            m_price_levels_channel,
+            m_tr_gateway.tpsl_response_channel(),
+            m_tr_gateway.tpsl_updated_channel(),
+            m_tr_gateway.trailing_stop_response_channel(),
+            m_tr_gateway.trailing_stop_update_channel());
     if (!exit_strategy_opt) {
         Logger::log<LogLevel::Error>("Can't build exit strategy");
         m_status.push(WorkStatus::Panic);
@@ -174,12 +188,6 @@ StrategyInstance::StrategyInstance(
     m_event_loop.subscribe(
             m_tr_gateway.trade_channel(),
             [this](const TradeEvent & e) { handle_event(e); });
-    m_event_loop.subscribe(
-            m_tr_gateway.tpsl_response_channel(),
-            [this](const TpslResponseEvent & e) { handle_event(e); });
-    m_event_loop.subscribe(
-            m_tr_gateway.trailing_stop_response_channel(),
-            [this](const TrailingStopLossResponseEvent & e) { handle_event(e); });
 
     m_strategy_result.update([&](StrategyResult & res) {
         res.position_currency_amount = m_pos_currency_amount;
@@ -437,12 +445,12 @@ void StrategyInstance::handle_event(const HistoricalMDPriceEvent & response)
     handle_event(static_cast<const MDPriceEvent &>(response));
     auto ev_opt = m_historical_md_generator->get_next();
     if (!ev_opt.has_value()) {
-        m_event_loop.push_event(StrategyStopRequest{});
+        m_stop_ev_channel.push({});
         m_historical_md_generator.reset();
         return;
     }
     const auto & ev = ev_opt.value();
-    m_event_loop.push_event(ev);
+    m_historical_md_channel.push(ev);
 }
 
 void StrategyInstance::handle_event(const MDPriceEvent & response)

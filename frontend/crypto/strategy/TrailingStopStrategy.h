@@ -20,14 +20,16 @@ private:
 class TrailigStopLossStrategy : public ExitStrategyBase
 {
 public:
-    TrailigStopLossStrategy(Symbol symbol,
-                            JsonStrategyConfig config,
-                            EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
-                            ITradingGateway & gateway,
-                            EventTimeseriesChannel<double> & price_channel,
-                            EventObjectChannel<bool> & opened_pos_channel,
-                            EventTimeseriesChannel<Trade> & trades_channel
-);
+    TrailigStopLossStrategy(
+            Symbol symbol,
+            JsonStrategyConfig config,
+            EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
+            ITradingGateway & gateway,
+            EventTimeseriesChannel<double> & price_channel,
+            EventObjectChannel<bool> & opened_pos_channel,
+            EventTimeseriesChannel<Trade> & trades_channel,
+            EventChannel<TrailingStopLossResponseEvent> & tsl_response_channel,
+            EventChannel<TrailingStopLossUpdatedEvent> & tsl_updated_channel);
 
 protected:
     void handle_event(const TrailingStopLossResponseEvent & response);

@@ -46,17 +46,21 @@ TpslExitStrategy::TpslExitStrategy(
         ITradingGateway & gateway,
         EventTimeseriesChannel<double> & price_channel,
         EventObjectChannel<bool> & opened_pos_channel,
-        EventTimeseriesChannel<Trade> & trades_channel)
+        EventTimeseriesChannel<Trade> & trades_channel,
+        EventChannel<TpslResponseEvent> & tpsl_response_channel,
+        EventChannel<TpslUpdatedEvent> & tpsl_updated_channel)
     : ExitStrategyBase(gateway)
     , m_config(config)
     , m_symbol(std::move(symbol))
 {
-    m_invoker_subs.push_back(
-            event_loop.invoker().register_invoker<TpslResponseEvent>([&](const auto & response) {
-                handle_event(response);
+    m_channel_subs.push_back(tpsl_updated_channel.subscribe(
+            event_loop.m_event_loop,
+            [this](const TpslUpdatedEvent & e) {
+                handle_event(e);
             }));
-    m_invoker_subs.push_back(
-            event_loop.invoker().register_invoker<TpslUpdatedEvent>([&](const auto & response) {
+    m_channel_subs.push_back(tpsl_response_channel.subscribe(
+            event_loop.m_event_loop,
+            [&](const TpslResponseEvent & response) {
                 handle_event(response);
             }));
 

@@ -18,26 +18,34 @@ TrailigStopLossStrategyConfig::TrailigStopLossStrategyConfig(double risk)
 {
 }
 
-TrailigStopLossStrategy::TrailigStopLossStrategy(Symbol symbol,
-                                                 JsonStrategyConfig config,
-                                                 EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
-                                                 ITradingGateway & gateway,
-                                                 EventTimeseriesChannel<double> & price_channel,
-                                                 EventObjectChannel<bool> & opened_pos_channel,
-                                                 EventTimeseriesChannel<Trade> & trades_channel)
+TrailigStopLossStrategy::TrailigStopLossStrategy(
+        Symbol symbol,
+        JsonStrategyConfig config,
+        EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
+        ITradingGateway & gateway,
+        EventTimeseriesChannel<double> & price_channel,
+        EventObjectChannel<bool> & opened_pos_channel,
+        EventTimeseriesChannel<Trade> & trades_channel,
+        EventChannel<TrailingStopLossResponseEvent> & tsl_response_channel,
+        EventChannel<TrailingStopLossUpdatedEvent> & tsl_updated_channel)
 
     : ExitStrategyBase(gateway)
     , m_symbol(std::move(symbol))
     , m_config(config)
 {
-    m_invoker_subs.push_back(
-            event_loop.invoker().register_invoker<TrailingStopLossResponseEvent>([&](const auto & response) {
-                handle_event(response);
-            }));
-    m_invoker_subs.push_back(
-            event_loop.invoker().register_invoker<TrailingStopLossUpdatedEvent>([&](const auto & response) {
-                handle_event(response);
-            }));
+    m_channel_subs.push_back(
+            tsl_response_channel.subscribe(
+                    event_loop.m_event_loop,
+                    [&](const TrailingStopLossResponseEvent & response) {
+                        handle_event(response);
+                    }));
+
+    m_channel_subs.push_back(
+            tsl_updated_channel.subscribe(
+                    event_loop.m_event_loop,
+                    [&](const TrailingStopLossUpdatedEvent & response) {
+                        handle_event(response);
+                    }));
 
     m_channel_subs.push_back(price_channel.subscribe(
             event_loop.m_event_loop,

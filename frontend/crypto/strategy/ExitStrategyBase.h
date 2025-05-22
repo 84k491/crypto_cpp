@@ -27,6 +27,5 @@ protected:
     EventTimeseriesChannel<StopLoss> m_trailing_stop_channel;
     EventObjectChannel<std::pair<std::string, bool>> m_error_channel;
 
-    std::list<std::shared_ptr<ISubscription>> m_invoker_subs;
     std::list<std::shared_ptr<ISubscription>> m_channel_subs;
 };
