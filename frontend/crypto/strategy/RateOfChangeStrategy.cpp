@@ -41,7 +41,7 @@ JsonStrategyConfig RateOfChangeStrategyConfig::to_json() const
 
 RateOfChangeStrategy::RateOfChangeStrategy(
         const RateOfChangeStrategyConfig & config,
-        EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
+        EventLoopSubscriber & event_loop,
         EventTimeseriesChannel<Candle> & candle_channel)
     : m_config(config)
 {

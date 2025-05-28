@@ -74,7 +74,7 @@ FileReader::FileReader(std::string filepath)
 // 7 - grossValue,
 // 8 - homeNotional,
 // 9 - foreignNotional
-std::optional<CsvPublicTrade> FileReader::get_next()
+std::optional<PublicTrade> FileReader::get_next()
 {
     if (!std::getline(ifs, last_line)) {
         return std::nullopt;
@@ -115,7 +115,7 @@ SequentialMarketDataReader::SequentialMarketDataReader(std::list<std::string> fi
 {
 }
 
-std::optional<CsvPublicTrade> SequentialMarketDataReader::get_next()
+std::optional<PublicTrade> SequentialMarketDataReader::get_next()
 {
     if (!m_public_trades.empty()) {
         auto res = m_public_trades.front();

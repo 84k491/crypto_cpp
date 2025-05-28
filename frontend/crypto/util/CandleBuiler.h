@@ -11,7 +11,7 @@ public:
     // builds candle only on a first trade of the next candle
     // so, there can be some empty candles if there are skipped candles in between
     // timestamps must be sorted in not-descending (>=) order
-    std::vector<Candle> push_trade(double price, SignedVolume volume, std::chrono::milliseconds timestamp);
+    std::vector<Candle> push_trade(double price, SignedVolume volume, std::chrono::milliseconds timestamp); // TODO use PublicTrade as arg
 
 private:
     const std::chrono::milliseconds m_timeframe = {};

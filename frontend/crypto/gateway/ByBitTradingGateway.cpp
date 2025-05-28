@@ -22,7 +22,7 @@ ByBitTradingGateway::ByBitTradingGateway()
         Logger::log<LogLevel::Warning>("Failed to connect to ByBit trading");
     }
 
-    register_invokers();
+    register_subs();
 }
 
 void ByBitTradingGateway::on_order_response(const json & j)
@@ -78,36 +78,36 @@ void ByBitTradingGateway::on_execution(const json & j)
 
 void ByBitTradingGateway::push_order_request(const OrderRequestEvent & order)
 {
-    m_event_loop.push_event(order);
+    m_order_req_channel.push(order);
 }
 
 void ByBitTradingGateway::push_tpsl_request(const TpslRequestEvent & tpsl_ev)
 {
-    m_event_loop.push_event(tpsl_ev);
+    m_tpsl_req_channel.push(tpsl_ev);
 }
 
 void ByBitTradingGateway::push_trailing_stop_request(const TrailingStopLossRequestEvent & trailing_stop_ev)
 {
-    m_event_loop.push_event(trailing_stop_ev);
+    m_tsl_req_channel.push(trailing_stop_ev);
 }
 
-void ByBitTradingGateway::register_invokers()
+void ByBitTradingGateway::register_subs()
 {
-    m_invoker_subs.push_back(
-            m_event_loop.invoker().register_invoker<OrderRequestEvent>(
-                    [&](const auto & r) { process_event(r); }));
+    m_event_loop.subscribe(
+            m_order_req_channel,
+            [this](const OrderRequestEvent & e) { process_event(e); });
 
-    m_invoker_subs.push_back(
-            m_event_loop.invoker().register_invoker<TpslRequestEvent>(
-                    [&](const auto & r) { process_event(r); }));
+    m_event_loop.subscribe(
+            m_tpsl_req_channel,
+            [this](const TpslRequestEvent & e) { process_event(e); });
 
-    m_invoker_subs.push_back(
-            m_event_loop.invoker().register_invoker<TrailingStopLossRequestEvent>(
-                    [&](const auto & r) { process_event(r); }));
+    m_event_loop.subscribe(
+            m_tsl_req_channel,
+            [this](const TrailingStopLossRequestEvent & e) { process_event(e); });
 
-    m_invoker_subs.push_back(
-            m_event_loop.invoker().register_invoker<PingCheckEvent>(
-                    [&](const auto & r) { process_event(r); }));
+    m_event_loop.subscribe(
+            m_ping_event_channel,
+            [this](const PingCheckEvent & e) { process_event(e); });
 }
 
 void ByBitTradingGateway::process_event(const OrderRequestEvent & req)
@@ -312,7 +312,7 @@ bool ByBitTradingGateway::reconnect_ws_client()
 
     auto weak_ptr = std::weak_ptr<IPingSender>(m_ws_client);
     m_connection_watcher.set_ping_sender(weak_ptr);
-    m_event_loop.push_delayed(ws_ping_interval, PingCheckEvent{});
+    m_ping_event_channel.push_delayed(PingCheckEvent{}, ws_ping_interval);
     return true;
 }
 
@@ -321,13 +321,13 @@ void ByBitTradingGateway::on_connection_lost()
     Logger::log<LogLevel::Warning>("Connection lost on trading, reconnecting...");
     if (!reconnect_ws_client()) {
         Logger::log<LogLevel::Warning>("Failed to connect to ByBit trading");
-        m_event_loop.push_delayed(std::chrono::seconds{30}, PingCheckEvent{});
+        m_ping_event_channel.push_delayed(PingCheckEvent{}, std::chrono::seconds{30});
     }
 }
 
 void ByBitTradingGateway::on_connection_verified()
 {
-    m_event_loop.push_delayed(ws_ping_interval, PingCheckEvent{});
+    m_ping_event_channel.push_delayed(PingCheckEvent{}, ws_ping_interval);
 }
 
 EventChannel<OrderResponseEvent> & ByBitTradingGateway::order_response_channel()

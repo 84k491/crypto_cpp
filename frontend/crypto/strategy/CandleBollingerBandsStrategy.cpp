@@ -39,7 +39,7 @@ JsonStrategyConfig CandleBollingerBandsStrategyConfig::to_json() const
 
 CandleBollingerBandsStrategy::CandleBollingerBandsStrategy(
         const CandleBollingerBandsStrategyConfig & config,
-        EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
+        EventLoopSubscriber & event_loop,
         EventTimeseriesChannel<Candle> & candle_channel)
     : m_config(config)
     , m_bollinger_bands(config.m_interval, config.m_std_deviation_coefficient)

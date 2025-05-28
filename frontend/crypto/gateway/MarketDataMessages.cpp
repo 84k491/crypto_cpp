@@ -4,7 +4,7 @@
 
 #include <ostream>
 
-void from_json(const nlohmann::json & j, PublicTrade & trade)
+void from_json(const nlohmann::json & j, ByBitPublicTrade & trade)
 {
     j.at("s").get_to(trade.symbol);
     trade.price = std::stod(j.at("p").get<std::string>());
@@ -15,7 +15,7 @@ void from_json(const nlohmann::json & j, PublicTrade & trade)
     trade.timestamp = std::chrono::milliseconds(timestamp);
 }
 
-std::ostream & operator<<(std::ostream & os, const PublicTrade & trade)
+std::ostream & operator<<(std::ostream & os, const ByBitPublicTrade & trade)
 {
     os << "PublicTrade\n"
        << "timestamp: " << trade.timestamp.count() << std::endl
@@ -26,7 +26,7 @@ std::ostream & operator<<(std::ostream & os, const PublicTrade & trade)
     return os;
 }
 
-void from_json(const nlohmann::json & j, PublicTradeList & trades)
+void from_json(const nlohmann::json & j, ByBitPublicTradeList & trades)
 {
     j.at("topic").get_to(trades.topic);
     j.at("type").get_to(trades.type);
@@ -34,13 +34,13 @@ void from_json(const nlohmann::json & j, PublicTradeList & trades)
     trades.timestamp = std::chrono::milliseconds(timestamp);
 
     for (const auto & item : j.at("data")) {
-        PublicTrade trade;
+        ByBitPublicTrade trade;
         item.get_to(trade);
         trades.trades.push_back(trade);
     }
 }
 
-std::ostream & operator<<(std::ostream & os, const PublicTradeList & trades)
+std::ostream & operator<<(std::ostream & os, const ByBitPublicTradeList & trades)
 {
     os << "PublicTradeList\n"
        << "topic: " << trades.topic << std::endl

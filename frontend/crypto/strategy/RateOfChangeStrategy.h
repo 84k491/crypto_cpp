@@ -25,7 +25,7 @@ class RateOfChangeStrategy : public StrategyBase
 public:
     RateOfChangeStrategy(
             const RateOfChangeStrategyConfig & config,
-            EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
+            EventLoopSubscriber & event_loop,
             EventTimeseriesChannel<Candle> & candle_channel);
 
     bool is_valid() const override;

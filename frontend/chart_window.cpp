@@ -279,14 +279,13 @@ void ChartWindow::subscribe_to_strategy()
             update_trend_callback));
 }
 
-bool ChartWindowEventConsumer::push_to_queue(std::any value)
+bool ChartWindowEventConsumer::push_to_queue(LambdaEvent value)
 {
-    auto & lambda_event = std::any_cast<LambdaEvent &>(value);
-    m_cw.signal_lambda(std::move(lambda_event.func));
+    m_cw.signal_lambda(std::move(value.func));
     return true;
 }
 
-bool ChartWindowEventConsumer::push_to_queue_delayed(std::chrono::milliseconds, const std::any)
+bool ChartWindowEventConsumer::push_to_queue_delayed(std::chrono::milliseconds, LambdaEvent)
 {
     throw std::runtime_error("Not implemented");
 }

@@ -21,7 +21,7 @@ class EventTimeseriesSubsription final : public ISubscription
     friend class EventTimeseriesChannel<ObjectT>;
 
 public:
-    EventTimeseriesSubsription(const std::shared_ptr<IEventConsumer<LambdaEvent>> & consumer,
+    EventTimeseriesSubsription(const std::shared_ptr<ILambdaAcceptor> & consumer,
                                EventTimeseriesChannel<ObjectT> & channel,
                                xg::Guid guid)
         : m_consumer(consumer)
@@ -38,7 +38,7 @@ public:
     }
 
 private:
-    std::weak_ptr<IEventConsumer<LambdaEvent>> m_consumer;
+    std::weak_ptr<ILambdaAcceptor> m_consumer;
     EventTimeseriesChannel<ObjectT> * m_channel;
     xg::Guid m_guid;
 };
@@ -54,7 +54,7 @@ public:
 
     void push(TimeT timestamp, const ObjectT & object);
     [[nodiscard]] std::shared_ptr<EventTimeseriesSubsription<ObjectT>> subscribe(
-            const std::shared_ptr<IEventConsumer<LambdaEvent>> & consumer,
+            const std::shared_ptr<ILambdaAcceptor> & consumer,
             std::function<void(const std::list<std::pair<TimeT, ObjectT>> &)> && snapshot_callback,
             std::function<void(TimeT, const ObjectT &)> && increment_callback);
 
@@ -105,7 +105,7 @@ void EventTimeseriesChannel<ObjectT>::push(EventTimeseriesChannel::TimeT timesta
 
 template <typename ObjectT>
 std::shared_ptr<EventTimeseriesSubsription<ObjectT>> EventTimeseriesChannel<ObjectT>::subscribe(
-        const std::shared_ptr<IEventConsumer<LambdaEvent>> & consumer,
+        const std::shared_ptr<ILambdaAcceptor> & consumer,
         std::function<void(const std::list<std::pair<TimeT, ObjectT>> &)> && snapshot_callback,
         std::function<void(TimeT, const ObjectT &)> && increment_callback)
 {

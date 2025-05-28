@@ -28,7 +28,7 @@ public:
 
     DoubleSmaStrategy(
             const DoubleSmaStrategyConfig & conf,
-            EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
+            EventLoopSubscriber & event_loop,
             EventTimeseriesChannel<double> & price_channel);
 
     bool is_valid() const override;

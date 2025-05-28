@@ -23,7 +23,7 @@ ByBitMarketDataGateway::ByBitMarketDataGateway(bool start)
     }
     m_config = config_opt.value().market_data;
 
-    register_invokers();
+    register_subs();
 
     if (!start) {
         return;
@@ -61,7 +61,7 @@ bool ByBitMarketDataGateway::reconnect_ws_client()
         }
     }
 
-    m_event_loop.push_delayed(ws_ping_interval, PingCheckEvent{});
+    m_ping_event_channel.push_delayed(PingCheckEvent{}, ws_ping_interval);
     return true;
 }
 
@@ -327,22 +327,22 @@ EventObjectChannel<WorkStatus> & ByBitMarketDataGateway::status_channel()
 
 void ByBitMarketDataGateway::push_async_request(HistoricalMDRequest && request)
 {
-    m_event_loop.push_event(request);
+    m_historical_md_req_channel.push(request);
 }
 
 void ByBitMarketDataGateway::push_async_request(LiveMDRequest && request)
 {
-    m_event_loop.push_event(request);
+    m_live_md_req_channel.push(request);
 }
 
-void ByBitMarketDataGateway::handle_request(const HistoricalMDRequest & request)
+void ByBitMarketDataGateway::handle_event(const HistoricalMDRequest & request)
 {
     const auto reader_ptr = BybitTradesDownloader::request(request);
     HistoricalMDGeneratorEvent ev(request.guid, reader_ptr);
     m_historical_prices_channel.push(ev);
 }
 
-void ByBitMarketDataGateway::handle_request(const LiveMDRequest & request)
+void ByBitMarketDataGateway::handle_event(const LiveMDRequest & request)
 {
     const LiveMDRequest & live_request = request;
     auto locked_ref = m_live_requests.lock();
@@ -360,7 +360,7 @@ void ByBitMarketDataGateway::handle_request(const LiveMDRequest & request)
     locked_ref.get().push_back(live_request);
 }
 
-void ByBitMarketDataGateway::handle_request(const PingCheckEvent & event)
+void ByBitMarketDataGateway::handle_event(const PingCheckEvent & event)
 {
     m_connection_watcher.handle_request(event);
 }
@@ -372,7 +372,7 @@ void ByBitMarketDataGateway::on_price_received(const nlohmann::json & json)
         Logger::log<LogLevel::Error>("no request on MD received");
     }
 
-    const auto trades_list = json.get<PublicTradeList>();
+    const auto trades_list = json.get<ByBitPublicTradeList>();
     for (const auto & trade : trades_list.trades) {
         OHLC ohlc = {.timestamp = trade.timestamp, .open = trade.price, .high = trade.price, .low = trade.price, .close = trade.price};
         // TODO pushing only close price is not quite correct
@@ -381,19 +381,19 @@ void ByBitMarketDataGateway::on_price_received(const nlohmann::json & json)
     }
 }
 
-void ByBitMarketDataGateway::register_invokers()
+void ByBitMarketDataGateway::register_subs()
 {
-    m_invoker_subs.push_back(
-            m_event_loop.invoker().register_invoker<HistoricalMDRequest>(
-                    [&](const auto & r) { handle_request(r); }));
+    m_event_loop.subscribe(
+            m_ping_event_channel,
+            [this](const PingCheckEvent & e) { handle_event(e); });
 
-    m_invoker_subs.push_back(
-            m_event_loop.invoker().register_invoker<LiveMDRequest>(
-                    [&](const auto & r) { handle_request(r); }));
+    m_event_loop.subscribe(
+            m_live_md_req_channel,
+            [this](const LiveMDRequest & e) { this->handle_event(e); });
 
-    m_invoker_subs.push_back(
-            m_event_loop.invoker().register_invoker<PingCheckEvent>(
-                    [&](const auto & r) { handle_request(r); }));
+    m_event_loop.subscribe(
+            m_historical_md_req_channel,
+            [this](const HistoricalMDRequest & e) { this->handle_event(e); });
 }
 
 void ByBitMarketDataGateway::unsubscribe_from_live(xg::Guid guid)
@@ -416,13 +416,13 @@ void ByBitMarketDataGateway::on_connection_lost()
     Logger::log<LogLevel::Warning>("Connection lost on market data, reconnecting...");
     if (!reconnect_ws_client()) {
         Logger::log<LogLevel::Warning>("Failed to connect to ByBit market data");
-        m_event_loop.push_delayed(std::chrono::seconds{30}, PingCheckEvent{});
+        m_ping_event_channel.push_delayed(PingCheckEvent{}, std::chrono::seconds{30});
     }
 }
 
 void ByBitMarketDataGateway::on_connection_verified()
 {
-    m_event_loop.push_delayed(ws_ping_interval, PingCheckEvent{});
+    m_ping_event_channel.push_delayed(PingCheckEvent{}, ws_ping_interval);
 }
 
 EventChannel<HistoricalMDGeneratorEvent> & ByBitMarketDataGateway::historical_prices_channel()

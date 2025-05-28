@@ -20,7 +20,7 @@ class EventObjectSubscription final : public ISubscription
 
 public:
     EventObjectSubscription(
-            const std::shared_ptr<IEventConsumer<LambdaEvent>> & consumer,
+            const std::shared_ptr<ILambdaAcceptor> & consumer,
             EventObjectChannel<ObjectT> & channel,
             xg::Guid guid)
         : m_consumer(consumer)
@@ -37,7 +37,7 @@ public:
     }
 
 private:
-    std::weak_ptr<IEventConsumer<LambdaEvent>> m_consumer;
+    std::weak_ptr<ILambdaAcceptor> m_consumer;
     EventObjectChannel<ObjectT> * m_channel; // TODO make it atomic
     xg::Guid m_guid;
 };
@@ -59,7 +59,7 @@ public:
 
     [[nodiscard]] std::shared_ptr<EventObjectSubscription<ObjectT>>
     subscribe(
-            const std::shared_ptr<IEventConsumer<LambdaEvent>> & consumer,
+            const std::shared_ptr<ILambdaAcceptor> & consumer,
             std::function<void(const ObjectT &)> && update_callback,
             Priority priority = Priority::Normal);
     void unsubscribe(xg::Guid guid);
@@ -100,7 +100,7 @@ void EventObjectChannel<ObjectT>::update(std::function<void(ObjectT &)> && updat
 template <typename ObjectT>
 std::shared_ptr<EventObjectSubscription<ObjectT>>
 EventObjectChannel<ObjectT>::subscribe(
-        const std::shared_ptr<IEventConsumer<LambdaEvent>> & consumer,
+        const std::shared_ptr<ILambdaAcceptor> & consumer,
         std::function<void(const ObjectT &)> && update_callback,
         Priority) // TODO use priority?
 {

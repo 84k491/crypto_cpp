@@ -28,7 +28,7 @@ public:
             const std::string & strategy_name,
             const JsonStrategyConfig & config,
             const Symbol & symbol,
-            EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
+            EventLoopSubscriber & event_loop,
             ITradingGateway & gateway,
             EventTimeseriesChannel<double> & price_channel,
             EventObjectChannel<bool> & opened_pos_channel,
@@ -164,30 +164,44 @@ StrategyInstance::StrategyInstance(
 
     m_event_loop.subscribe(
             m_md_gateway.historical_prices_channel(),
-            [this](const HistoricalMDGeneratorEvent & e) { handle_event(e); },
+            [this](const HistoricalMDGeneratorEvent & e) {
+                handle_event_generic(e);
+            },
             Priority::Low);
     m_event_loop.subscribe(
             m_md_gateway.live_prices_channel(),
-            [this](const MDPriceEvent & e) { handle_event(e); },
+            [this](const MDPriceEvent & e) {
+                handle_event_generic(e);
+            },
             Priority::Low);
     m_event_loop.subscribe(
             m_historical_md_channel,
-            [this](const HistoricalMDPriceEvent & e) { handle_event(e); },
+            [this](const HistoricalMDPriceEvent & e) {
+                handle_event_generic(e);
+            },
             Priority::Low);
 
     m_event_loop.subscribe(
             m_start_ev_channel,
-            [this](const StrategyStartRequest & e) { handle_event(e); });
+            [this](const StrategyStartRequest & e) {
+                handle_event_generic(e);
+            });
     m_event_loop.subscribe(
             m_stop_ev_channel,
-            [this](const StrategyStopRequest & e) { handle_event(e); });
+            [this](const StrategyStopRequest & e) {
+                handle_event_generic(e);
+            });
 
     m_event_loop.subscribe(
             m_tr_gateway.order_response_channel(),
-            [this](const OrderResponseEvent & e) { handle_event(e); });
+            [this](const OrderResponseEvent & e) {
+                handle_event_generic(e);
+            });
     m_event_loop.subscribe(
             m_tr_gateway.trade_channel(),
-            [this](const TradeEvent & e) { handle_event(e); });
+            [this](const TradeEvent & e) {
+                handle_event_generic(e);
+            });
 
     m_strategy_result.update([&](StrategyResult & res) {
         res.position_currency_amount = m_pos_currency_amount;
@@ -200,14 +214,12 @@ StrategyInstance::StrategyInstance(
                                        if (m_position_manager.opened() != nullptr) {
                                            const bool success = close_position(m_last_ts_and_price.second, m_last_ts_and_price.first);
                                            if (!success) {
-                                               std::cout << "ERROR: can't close a position on stop/crash" << std::endl;
+                                               Logger::logf<LogLevel::Error>("Can't close a position on stop/crash");
                                            }
                                        }
                                    }
                                });
     }
-
-    register_invokers();
 }
 
 StrategyInstance::~StrategyInstance()
@@ -391,21 +403,6 @@ EventTimeseriesChannel<StopLoss> & StrategyInstance::trailing_stop_channel()
     return m_exit_strategy->trailing_stop_channel();
 }
 
-void StrategyInstance::register_invokers()
-{
-#define REGISTER(EVENT)                                     \
-    m_invoker_subs.push_back(                               \
-            m_event_loop.invoker().register_invoker<EVENT>( \
-                    [&](const auto & ev) {                  \
-                        handle_event(ev);                   \
-                        after_every_event();                \
-                    }));
-
-    REGISTER(LambdaEvent);
-
-#undef REGISTER
-}
-
 // TODO maybe make it more elegant?
 void StrategyInstance::after_every_event()
 {
@@ -415,6 +412,13 @@ void StrategyInstance::after_every_event()
         // TODO unsub from TRGW?
     }
     finish_if_needed_and_ready();
+}
+
+template<class T>
+void StrategyInstance::handle_event_generic(const T& ev)
+{
+    handle_event(ev);
+    after_every_event();
 }
 
 void StrategyInstance::handle_event(const HistoricalMDGeneratorEvent & response)
@@ -566,11 +570,6 @@ void StrategyInstance::handle_event(const StrategyStopRequest &)
     m_backtest_in_progress = false;
     m_historical_md_generator.reset();
     m_stop_request_handled = true;
-}
-
-void StrategyInstance::handle_event(const LambdaEvent & response)
-{
-    response.func();
 }
 
 bool StrategyInstance::open_position(double price, SignedVolume target_absolute_volume, std::chrono::milliseconds ts)

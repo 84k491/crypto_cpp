@@ -1,15 +1,15 @@
 #include "Logger.h"
 
+#include "Events.h"
 #include "LogLevel.h"
 
 #include <fmt/chrono.h>
 
 Logger::Logger()
 {
-    m_invoker_sub = m_event_loop.invoker().register_invoker<LogEvent>(
-            [this](const auto & ev) {
-                handle_event(ev);
-            });
+    m_event_loop.subscribe(
+            m_log_channel,
+            [this](const LogEvent & e) { handle_event(e); });
 }
 
 Logger & Logger::i()
@@ -35,7 +35,7 @@ template <LogLevel level>
 void Logger::log(std::string && str)
 {
     LogEvent ev(level, std::move(str));
-    i().m_event_loop.push_event(std::move(ev));
+    i().m_log_channel.push(std::move(ev));
 }
 
 void Logger::set_min_log_level(LogLevel ll)

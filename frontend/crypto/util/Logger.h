@@ -1,5 +1,6 @@
 #pragma once
 
+#include "EventChannel.h"
 #include "EventLoopSubscriber.h"
 #include "Events.h"
 
@@ -43,7 +44,8 @@ private:
     void handle_event(const LogEvent & ev);
 
 private:
-    EventLoopSubscriber<LogEvent> m_event_loop;
+    EventChannel<LogEvent> m_log_channel;
+
+    EventLoopSubscriber m_event_loop;
     LogLevel m_min_log_level = LogLevel::Debug;
-    std::shared_ptr<ISubscription> m_invoker_sub;
 };

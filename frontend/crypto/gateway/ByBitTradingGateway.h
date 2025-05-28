@@ -2,15 +2,13 @@
 
 #include "ByBitTradingMessages.h"
 #include "ConnectionWatcher.h"
-#include "EventLoop.h"
 #include "EventChannel.h"
+#include "EventLoop.h"
 #include "Events.h"
 #include "GatewayConfig.h"
 #include "ITradingGateway.h"
 #include "RestClient.h"
 #include "WebSocketClient.h"
-
-#include <string>
 
 class ByBitTradingGateway final
     : public ITradingGateway
@@ -33,9 +31,7 @@ public:
     EventChannel<TrailingStopLossUpdatedEvent> & trailing_stop_update_channel() override;
 
 private:
-    bool check_consumers(const std::string & symbol);
-
-    void register_invokers();
+    void register_subs();
     void process_event(const OrderRequestEvent & order);
     void process_event(const TpslRequestEvent & tpsl);
     void process_event(const TrailingStopLossRequestEvent & tsl);
@@ -58,13 +54,17 @@ private:
     std::shared_ptr<WebSocketClient> m_ws_client;
     ConnectionWatcher m_connection_watcher;
 
-    EventLoopSubscriber<OrderRequestEvent, TpslRequestEvent, TrailingStopLossRequestEvent, PingCheckEvent> m_event_loop;
+    EventLoopSubscriber m_event_loop;
+
+    EventChannel<OrderRequestEvent> m_order_req_channel;
+    EventChannel<TpslRequestEvent> m_tpsl_req_channel;
+    EventChannel<TrailingStopLossRequestEvent> m_tsl_req_channel;
+    EventChannel<PingCheckEvent> m_ping_event_channel;
+
     EventChannel<OrderResponseEvent> m_order_response_channel;
     EventChannel<TradeEvent> m_trade_channel;
     EventChannel<TpslResponseEvent> m_tpsl_response_channel;
     EventChannel<TpslUpdatedEvent> m_tpsl_updated_channel;
     EventChannel<TrailingStopLossResponseEvent> m_trailing_stop_response_channel;
     EventChannel<TrailingStopLossUpdatedEvent> m_trailing_stop_update_channel;
-
-    std::list<std::shared_ptr<ISubscription>> m_invoker_subs;
 };

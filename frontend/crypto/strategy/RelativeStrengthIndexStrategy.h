@@ -23,7 +23,7 @@ class RelativeStrengthIndexStrategy : public StrategyBase
 public:
     RelativeStrengthIndexStrategy(
             const RelativeStrengthIndexStrategyConfig & config,
-            EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
+            EventLoopSubscriber & event_loop,
             EventTimeseriesChannel<Candle> & candle_channel);
 
     bool is_valid() const override;

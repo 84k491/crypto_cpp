@@ -127,16 +127,15 @@ public:
     EventChannel<TrailingStopLossUpdatedEvent> m_tsl_updated_channel;
 };
 
-class MockEventConsumer : public IEventConsumer<LambdaEvent>
+class MockEventConsumer : public ILambdaAcceptor
 {
-    bool push_to_queue(std::any value) override
+    bool push_to_queue(LambdaEvent value) override
     {
-        auto & lambda_event = std::any_cast<LambdaEvent &>(value);
-        lambda_event.func();
+        value.func();
         return true;
     }
 
-    bool push_to_queue_delayed(std::chrono::milliseconds, const std::any) override
+    bool push_to_queue_delayed(std::chrono::milliseconds, LambdaEvent) override
     {
         EXPECT_TRUE(false) << "Not implemented";
         throw std::runtime_error("Not implemented");

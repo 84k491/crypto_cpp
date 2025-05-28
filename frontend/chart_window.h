@@ -12,7 +12,7 @@ class ChartWindow;
 }
 
 class ChartWindow;
-class ChartWindowEventConsumer : public IEventConsumer<LambdaEvent>
+class ChartWindowEventConsumer : public ILambdaAcceptor
 {
 public:
     ChartWindowEventConsumer(ChartWindow & cw)
@@ -22,8 +22,8 @@ public:
 
 private:
     // IEventConsumer<LambdaEvent>
-    bool push_to_queue(std::any value) override;
-    bool push_to_queue_delayed(std::chrono::milliseconds delay, const std::any value) override;
+    bool push_to_queue(LambdaEvent value) override;
+    bool push_to_queue_delayed(std::chrono::milliseconds delay, LambdaEvent value) override;
 
 private:
     ChartWindow & m_cw;

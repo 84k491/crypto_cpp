@@ -42,7 +42,7 @@ TpslExitStrategyConfig::TpslExitStrategyConfig(double risk, double risk_reward_r
 TpslExitStrategy::TpslExitStrategy(
         Symbol symbol,
         JsonStrategyConfig config,
-        EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
+        EventLoopSubscriber & event_loop,
         ITradingGateway & gateway,
         EventTimeseriesChannel<double> & price_channel,
         EventObjectChannel<bool> & opened_pos_channel,

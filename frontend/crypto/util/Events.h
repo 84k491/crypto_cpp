@@ -22,17 +22,17 @@ struct OneWayEvent
 
 struct MDPriceEvent : public OneWayEvent
 {
-    MDPriceEvent(CsvPublicTrade _public_trade)
+    MDPriceEvent(PublicTrade _public_trade)
         : public_trade(_public_trade)
     {
     }
     Priority priority() const override { return Priority::Low; }
-    CsvPublicTrade public_trade;
+    PublicTrade public_trade;
 };
 
 struct HistoricalMDPriceEvent : MDPriceEvent
 {
-    HistoricalMDPriceEvent(CsvPublicTrade _ts_and_price)
+    HistoricalMDPriceEvent(PublicTrade _ts_and_price)
         : MDPriceEvent(_ts_and_price)
     {
     }

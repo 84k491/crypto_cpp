@@ -38,7 +38,7 @@ public:
         if (!m_keep_waiting) {
             return false;
         }
-        const auto priority = std::visit([](auto && v) -> Priority { return v.priority(); }, value);
+        const auto priority = value.priority();
         std::lock_guard lock(m_mutex);
         auto & queue = m_queue_map[priority];
         queue.push(value);

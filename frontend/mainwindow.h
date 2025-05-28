@@ -76,7 +76,7 @@ public:
 
 // TODO make template class QtEventConsumer
 class MainWindow;
-class MainWindowEventConsumer : public IEventConsumer<LambdaEvent>
+class MainWindowEventConsumer : public ILambdaAcceptor
 {
 public:
     MainWindowEventConsumer(MainWindow & mw)
@@ -86,8 +86,8 @@ public:
 
 private:
     // IEventConsumer<LambdaEvent>
-    bool push_to_queue(std::any value) override;
-    bool push_to_queue_delayed(std::chrono::milliseconds delay, const std::any value) override;
+    bool push_to_queue(LambdaEvent value) override;
+    bool push_to_queue_delayed(std::chrono::milliseconds delay, LambdaEvent value) override;
 
 private:
     MainWindow & m_mw;

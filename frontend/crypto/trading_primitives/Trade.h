@@ -43,10 +43,10 @@ private:
 };
 std::ostream & operator<<(std::ostream & os, const Trade & trade);
 
-class CsvPublicTrade
+class PublicTrade
 {
 public:
-    CsvPublicTrade(
+    PublicTrade(
             std::chrono::milliseconds ts,
             double price,
             SignedVolume volume)

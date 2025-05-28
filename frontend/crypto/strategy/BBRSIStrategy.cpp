@@ -43,7 +43,7 @@ JsonStrategyConfig BBRSIStrategyConfig::to_json() const
 
 BBRSIStrategy::BBRSIStrategy(
         BBRSIStrategyConfig config,
-        EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
+        EventLoopSubscriber & event_loop,
         EventTimeseriesChannel<Candle> & candle_channel)
     : m_config(config)
     , m_bollinger_bands(config.m_timeframe * config.m_bb_interval, config.m_std_deviation_coefficient)

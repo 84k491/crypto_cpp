@@ -154,14 +154,13 @@ void BacktestTradingGateway::push_trailing_stop_request(const TrailingStopLossRe
                                          m_last_ts});
 }
 
-bool BacktestEventConsumer::push_to_queue(const std::any value)
+bool BacktestEventConsumer::push_to_queue(LambdaEvent value)
 {
-    const auto & event = std::any_cast<LambdaEvent>(value);
-    event.func();
+    value.func();
     return true;
 }
 
-bool BacktestEventConsumer::push_to_queue_delayed(std::chrono::milliseconds, const std::any)
+bool BacktestEventConsumer::push_to_queue_delayed(std::chrono::milliseconds, LambdaEvent)
 {
     throw std::runtime_error("Not implemented");
 }

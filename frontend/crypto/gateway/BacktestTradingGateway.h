@@ -8,11 +8,10 @@
 
 #include <optional>
 
-class BacktestEventConsumer : public IEventConsumer<LambdaEvent>
+class BacktestEventConsumer : public ILambdaAcceptor
 {
-    // IEventConsumer<LambdaEvent>
-    bool push_to_queue(const std::any value) override;
-    bool push_to_queue_delayed(std::chrono::milliseconds delay, const std::any value) override;
+    bool push_to_queue(LambdaEvent value) override;
+    bool push_to_queue_delayed(std::chrono::milliseconds delay, LambdaEvent value) override;
 };
 
 class BacktestTrailingStopLoss

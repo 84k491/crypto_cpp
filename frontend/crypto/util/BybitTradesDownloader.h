@@ -10,7 +10,7 @@ class FileReader
 public:
     FileReader(std::string filepath);
 
-    std::optional<CsvPublicTrade> get_next();
+    std::optional<PublicTrade> get_next();
 
 private:
     std::ifstream ifs;
@@ -22,11 +22,11 @@ class SequentialMarketDataReader
 public:
     SequentialMarketDataReader(std::list<std::string> files);
 
-    std::optional<CsvPublicTrade> get_next();
+    std::optional<PublicTrade> get_next();
 
 private:
     std::list<std::string> m_files;
-    std::list<CsvPublicTrade> m_public_trades;
+    std::list<PublicTrade> m_public_trades;
 };
 
 class BybitTradesDownloader

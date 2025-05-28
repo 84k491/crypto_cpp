@@ -57,7 +57,9 @@ public:
     std::shared_ptr<IStrategy> get_strategy() const { return m_strategy; }
 
 private:
-    void register_invokers();
+    template<class T>
+    void handle_event_generic(const T& ev);
+
     void handle_event(const HistoricalMDGeneratorEvent & response);
     void handle_event(const HistoricalMDPriceEvent & response);
     void handle_event(const MDPriceEvent & response);
@@ -65,7 +67,6 @@ private:
     void handle_event(const TradeEvent & response);
     void handle_event(const StrategyStartRequest & ev);
     void handle_event(const StrategyStopRequest & response);
-    static void handle_event(const LambdaEvent & response);
     void after_every_event();
 
     void on_signal(const Signal & signal);
@@ -91,7 +92,7 @@ private:
 
     EventTimeseriesChannel<ProfitPriceLevels> m_price_levels_channel;
     EventTimeseriesChannel<Trade> m_trade_channel;
-    EventTimeseriesChannel<double> m_price_channel; // TODO do i need it?
+    EventTimeseriesChannel<double> m_price_channel;
     EventTimeseriesChannel<Candle> m_candle_channel;
     EventTimeseriesChannel<double> m_depo_channel;
     EventTimeseriesChannel<PositionResult> m_positions_channel;
@@ -127,9 +128,7 @@ private:
     EventChannel<StrategyStopRequest> m_stop_ev_channel;
     EventChannel<BarrierEvent> m_barrier_channel;
 
-    EventLoopSubscriber<STRATEGY_EVENTS> m_event_loop;
-
-    std::list<std::shared_ptr<ISubscription>> m_invoker_subs;
+    EventLoopSubscriber m_event_loop;
 
     std::list<std::shared_ptr<ISubscription>> m_channel_subs;
 };

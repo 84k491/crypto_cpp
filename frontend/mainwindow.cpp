@@ -403,10 +403,9 @@ void MainWindow::on_cb_exit_strategy_currentTextChanged(const QString &)
     }
 }
 
-bool MainWindowEventConsumer::push_to_queue(std::any value)
+bool MainWindowEventConsumer::push_to_queue(LambdaEvent value)
 {
-    auto & lambda_event = std::any_cast<LambdaEvent &>(value);
-    m_mw.signal_lambda(std::move(lambda_event.func));
+    m_mw.signal_lambda(std::move(value.func));
     return true;
 }
 
@@ -415,7 +414,7 @@ void MainWindow::on_lambda(std::function<void()> lambda)
     lambda();
 }
 
-bool MainWindowEventConsumer::push_to_queue_delayed(std::chrono::milliseconds, const std::any)
+bool MainWindowEventConsumer::push_to_queue_delayed(std::chrono::milliseconds, LambdaEvent)
 {
     throw std::runtime_error("Not implemented");
 }

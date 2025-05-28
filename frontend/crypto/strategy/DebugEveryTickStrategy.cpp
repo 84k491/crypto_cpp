@@ -25,7 +25,7 @@ JsonStrategyConfig DebugEveryTickStrategyConfig::to_json() const
 
 DebugEveryTickStrategy::DebugEveryTickStrategy(
         const DebugEveryTickStrategyConfig & conf,
-        EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
+        EventLoopSubscriber & event_loop,
         EventTimeseriesChannel<double> & price_channel)
     : m_config(conf)
 {

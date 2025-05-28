@@ -28,7 +28,7 @@ JsonStrategyConfig DoubleSmaStrategyConfig::to_json() const
 
 DoubleSmaStrategy::DoubleSmaStrategy(
         const DoubleSmaStrategyConfig & conf,
-        EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
+        EventLoopSubscriber & event_loop,
         EventTimeseriesChannel<double> & price_channel)
     : m_config(conf)
     , m_slow_avg(conf.m_slow_interval)

@@ -49,10 +49,10 @@ public:
     std::vector<Symbol> get_symbols(const std::string & currency);
 
 private:
-    void register_invokers();
-    void handle_request(const HistoricalMDRequest & request);
-    void handle_request(const LiveMDRequest & request);
-    void handle_request(const PingCheckEvent & event);
+    void register_subs();
+    void handle_event(const HistoricalMDRequest & request);
+    void handle_event(const LiveMDRequest & request);
+    void handle_event(const PingCheckEvent & event);
 
     void on_price_received(const nlohmann::json & json);
 
@@ -84,8 +84,14 @@ private:
     std::shared_ptr<WebSocketClient> m_ws_client;
     ConnectionWatcher m_connection_watcher;
 
-    EventLoopSubscriber<HistoricalMDRequest, LiveMDRequest, PingCheckEvent> m_event_loop;
+    EventLoopSubscriber m_event_loop;
+
+    EventChannel<HistoricalMDRequest> m_historical_md_req_channel;
+    EventChannel<LiveMDRequest> m_live_md_req_channel;
+    EventChannel<PingCheckEvent> m_ping_event_channel;
+
     EventChannel<HistoricalMDGeneratorEvent> m_historical_prices_channel;
     EventChannel<MDPriceEvent> m_live_prices_channel;
-    std::list<std::shared_ptr<ISubscription>> m_invoker_subs;
+
+    std::list<std::shared_ptr<ISubscription>> m_channel_subs;
 };

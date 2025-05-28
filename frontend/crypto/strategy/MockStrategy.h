@@ -8,7 +8,7 @@ class MockStrategy : public StrategyBase
 {
 public:
     MockStrategy(
-            EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
+            EventLoopSubscriber & event_loop,
             EventTimeseriesChannel<double> & price_channel)
     {
         m_channel_subs.push_back(price_channel.subscribe(

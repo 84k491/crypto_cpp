@@ -1,12 +1,10 @@
 #pragma once
 
+#include "Events.h"
 #include "ThreadSafePriorityQueue.h"
 
-#include <any>
 #include <functional>
 #include <map>
-#include <variant>
-#include <type_traits>
 #include <thread>
 
 template <class... Ts>
@@ -15,56 +13,25 @@ struct VariantMatcher : Ts...
     using Ts::operator()...;
 };
 
-template <class... Args>
-class IEventInvoker
+class ILambdaAcceptor
 {
 public:
-    virtual ~IEventInvoker() = default;
+    virtual ~ILambdaAcceptor() = default;
 
-    virtual void invoke(const std::variant<Args...> & value) = 0;
-};
-
-template <class EventT>
-class IEventConsumer
-{
-    static_assert(std::is_polymorphic_v<EventT>, "Event type must be polymorphic to use typeid");
-
-public:
-    virtual ~IEventConsumer() = default;
-
-    bool push(const EventT value)
+    bool push(const LambdaEvent value)
     {
         return push_to_queue(std::move(value));
     }
 
-    bool push_delayed(std::chrono::milliseconds delay, const EventT value)
+    bool push_delayed(std::chrono::milliseconds delay, const LambdaEvent value)
     {
         return push_to_queue_delayed(delay, std::move(value));
     };
 
 private:
-    // TODO remove constness
-    virtual bool push_to_queue(const std::any value) = 0;
-    virtual bool push_to_queue_delayed(std::chrono::milliseconds delay, const std::any value) = 0;
+    virtual bool push_to_queue(LambdaEvent value) = 0;
+    virtual bool push_to_queue_delayed(std::chrono::milliseconds delay, LambdaEvent value) = 0;
 };
-
-template <class... Args>
-auto any_to_variant_cast(std::any a) -> std::variant<Args...>
-{
-    if (!a.has_value()) {
-        throw std::bad_any_cast();
-    }
-
-    std::optional<std::variant<Args...>> v = std::nullopt;
-
-    bool found = ((a.type() == typeid(Args) && (v = std::any_cast<Args>(std::move(a)), true)) || ...);
-
-    if (!found) {
-        throw std::bad_any_cast{};
-    }
-
-    return std::move(*v);
-}
 
 class Scheduler
 {
@@ -139,22 +106,19 @@ private:
     std::thread m_thread;
 };
 
-template <class... Args>
 class EventLoopSubscriber;
 
-template <class... Args>
-class EventLoop : public std::enable_shared_from_this<EventLoop<Args...>>
-    , public IEventConsumer<Args>...
+class EventLoop : public std::enable_shared_from_this<EventLoop>
+    , public ILambdaAcceptor
 {
-    EventLoop(IEventInvoker<Args...> * invoker)
-        : m_invoker(invoker)
+    EventLoop()
     {
         m_thread = std::thread([this] { run(); });
     }
 
-    static auto create(IEventInvoker<Args...> * invoker)
+    static auto create()
     {
-        return std::shared_ptr<EventLoop<Args...>>(new EventLoop<Args...>(invoker));
+        return std::shared_ptr<EventLoop>(new EventLoop());
     }
 
 public:
@@ -170,19 +134,18 @@ public:
     }
 
     template <class T>
-    IEventConsumer<T> & as_consumer()
+    ILambdaAcceptor & as_consumer()
     {
-        return static_cast<IEventConsumer<T> &>(*this);
+        return static_cast<ILambdaAcceptor &>(*this);
     }
 
 protected:
-    bool push_to_queue(std::any value) override
+    bool push_to_queue(LambdaEvent value) override
     {
-        auto var = any_to_variant_cast<Args...>(value);
-        return m_queue.push(std::move(var));
+        return m_queue.push(std::move(value));
     }
 
-    bool push_to_queue_delayed(std::chrono::milliseconds delay, const std::any value) override
+    bool push_to_queue_delayed(std::chrono::milliseconds delay, LambdaEvent value) override
     {
         Scheduler::i().delay(
                 delay,
@@ -195,11 +158,7 @@ protected:
     }
 
 private:
-    friend class EventLoopSubscriber<Args...>;
-    void reset_invoker()
-    {
-        m_invoker.store(nullptr);
-    }
+    friend class EventLoopSubscriber;
 
     void run()
     {
@@ -209,18 +168,11 @@ private:
                 return;
             }
 
-            if (auto * p = m_invoker.load()) {
-                p->invoke(opt.value());
-            }
-            else {
-                return;
-            }
+            opt.value().func();
         }
     }
 
 private:
-    std::atomic<IEventInvoker<Args...> *> m_invoker;
-
-    ThreadSafePriorityQueue<std::variant<Args...>> m_queue{};
+    ThreadSafePriorityQueue<LambdaEvent> m_queue{};
     std::thread m_thread;
 };

@@ -20,7 +20,7 @@ class EventSubscription final : public ISubscription
 
 public:
     EventSubscription(
-            const std::shared_ptr<IEventConsumer<LambdaEvent>> & consumer,
+            const std::shared_ptr<ILambdaAcceptor> & consumer,
             std::function<void(const EventT &)> callback,
             Priority priority,
             EventChannel<EventT> & channel,
@@ -41,7 +41,7 @@ public:
     }
 
 private:
-    std::weak_ptr<IEventConsumer<LambdaEvent>> m_consumer;
+    std::weak_ptr<ILambdaAcceptor> m_consumer;
     std::function<void(const EventT &)> m_callback;
     Priority m_priority;
     EventChannel<EventT> * m_channel;
@@ -57,10 +57,11 @@ public:
     ~EventChannel();
 
     void push(const EventT & object);
+    void push_delayed(const EventT & object, std::chrono::milliseconds delay);
 
     [[nodiscard]] std::shared_ptr<EventSubscription<EventT>>
     subscribe(
-            const std::shared_ptr<IEventConsumer<LambdaEvent>> & consumer,
+            const std::shared_ptr<ILambdaAcceptor> & consumer,
             std::function<void(const EventT &)> && update_callback,
             Priority priority = Priority::Normal);
     void unsubscribe(xg::Guid guid);
@@ -88,9 +89,25 @@ void EventChannel<EventT>::push(const EventT & object)
 }
 
 template <typename EventT>
+void EventChannel<EventT>::push_delayed(const EventT & object, std::chrono::milliseconds delay)
+{
+    // TODO erase if nullptr
+    auto callbacks_lref = m_update_callbacks.lock();
+    for (const auto & [uuid, wptr] : callbacks_lref.get()) {
+        UNWRAP_CONTINUE(subscribtion, wptr.lock());
+        UNWRAP_CONTINUE(consumer, subscribtion.m_consumer.lock());
+        consumer.push_delayed(
+                delay,
+                LambdaEvent{
+                        [cb = subscribtion.m_callback, object] { cb(object); },
+                        subscribtion.m_priority});
+    }
+}
+
+template <typename EventT>
 std::shared_ptr<EventSubscription<EventT>>
 EventChannel<EventT>::subscribe(
-        const std::shared_ptr<IEventConsumer<LambdaEvent>> & consumer,
+        const std::shared_ptr<ILambdaAcceptor> & consumer,
         std::function<void(const EventT &)> && update_callback,
         Priority priority)
 {

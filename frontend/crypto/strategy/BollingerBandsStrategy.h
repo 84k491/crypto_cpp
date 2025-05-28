@@ -26,7 +26,7 @@ public:
     using ConfigT = BollingerBandsStrategyConfig;
     BollingerBandsStrategy(
             const BollingerBandsStrategyConfig & config,
-            EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
+            EventLoopSubscriber & event_loop,
             EventTimeseriesChannel<double> & price_channel);
 
     bool is_valid() const override;

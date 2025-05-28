@@ -28,7 +28,7 @@ JsonStrategyConfig BollingerBandsStrategyConfig::to_json() const
 
 BollingerBandsStrategy::BollingerBandsStrategy(
         const BollingerBandsStrategyConfig & config,
-        EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
+        EventLoopSubscriber & event_loop,
         EventTimeseriesChannel<double> & price_channel)
     : m_config(config)
     , m_bollinger_bands(config.m_interval, config.m_std_deviation_coefficient)

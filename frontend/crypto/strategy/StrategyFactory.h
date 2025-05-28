@@ -16,7 +16,7 @@ public:
     static std::optional<std::shared_ptr<IStrategy>> build_strategy(
             const std::string & strategy_name,
             const JsonStrategyConfig & config,
-            EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
+            EventLoopSubscriber & event_loop,
             EventTimeseriesChannel<double> & price_channel,
             EventTimeseriesChannel<Candle> & candle_channel);
 };

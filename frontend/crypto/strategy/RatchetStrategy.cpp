@@ -27,7 +27,7 @@ JsonStrategyConfig RatchetStrategyConfig::to_json() const
 
 RatchetStrategy::RatchetStrategy(
         RatchetStrategyConfig config,
-        EventLoopSubscriber<STRATEGY_EVENTS> & event_loop,
+        EventLoopSubscriber & event_loop,
         EventTimeseriesChannel<Candle> & candle_channel)
     : m_config(config)
     , m_ratchet(config.m_retracement)
