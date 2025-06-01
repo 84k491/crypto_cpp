@@ -19,48 +19,44 @@ TrailigStopLossStrategyConfig::TrailigStopLossStrategyConfig(double risk)
 }
 
 TrailigStopLossStrategy::TrailigStopLossStrategy(
-        Symbol symbol,
-        JsonStrategyConfig config,
-        EventLoopSubscriber & event_loop,
-        ITradingGateway & gateway,
-        EventTimeseriesChannel<double> & price_channel,
-        EventObjectChannel<bool> & opened_pos_channel,
-        EventTimeseriesChannel<Trade> & trades_channel,
-        EventChannel<TrailingStopLossResponseEvent> & tsl_response_channel,
-        EventChannel<TrailingStopLossUpdatedEvent> & tsl_updated_channel)
+            Symbol symbol,
+            JsonStrategyConfig config,
+            EventLoopSubscriber & event_loop,
+            ITradingGateway & gateway,
+            StrategyChannelsRefs channels)
 
     : ExitStrategyBase(gateway)
     , m_symbol(std::move(symbol))
     , m_config(config)
 {
     m_channel_subs.push_back(
-            tsl_response_channel.subscribe(
+            channels.tsl_response_channel.subscribe(
                     event_loop.m_event_loop,
                     [&](const TrailingStopLossResponseEvent & response) {
                         handle_event(response);
                     }));
 
     m_channel_subs.push_back(
-            tsl_updated_channel.subscribe(
+            channels.tsl_updated_channel.subscribe(
                     event_loop.m_event_loop,
                     [&](const TrailingStopLossUpdatedEvent & response) {
                         handle_event(response);
                     }));
 
-    m_channel_subs.push_back(price_channel.subscribe(
+    m_channel_subs.push_back(channels.price_channel.subscribe(
             event_loop.m_event_loop,
-            [](auto) {},
+            [](const auto &) {},
             [this](const auto & ts, const double & price) {
                 on_price_changed({ts, price});
             }));
 
-    m_channel_subs.push_back(opened_pos_channel.subscribe(
+    m_channel_subs.push_back(channels.opened_pos_channel.subscribe(
             event_loop.m_event_loop,
             [this](const bool & v) { m_is_pos_opened = v; }));
 
-    m_channel_subs.push_back(trades_channel.subscribe(
+    m_channel_subs.push_back(channels.trades_channel.subscribe(
             event_loop.m_event_loop,
-            [](auto) {},
+            [](const auto &) {},
             [this](const auto &, const auto & trade) {
                 on_trade(trade);
             }));

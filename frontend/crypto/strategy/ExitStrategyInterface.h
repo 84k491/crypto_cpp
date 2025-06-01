@@ -2,10 +2,7 @@
 
 #include "EventTimeseriesChannel.h"
 #include "EventObjectChannel.h"
-#include "Position.h"
-#include "Trade.h"
 
-#include <chrono>
 #include <utility>
 
 class IExitStrategy

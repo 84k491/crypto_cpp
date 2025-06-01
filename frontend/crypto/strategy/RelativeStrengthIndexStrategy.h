@@ -3,6 +3,7 @@
 #include "JsonStrategyConfig.h"
 #include "RelativeStrengthIndex.h"
 #include "StrategyBase.h"
+#include "StrategyChannels.h"
 
 class RelativeStrengthIndexStrategyConfig
 {
@@ -24,7 +25,7 @@ public:
     RelativeStrengthIndexStrategy(
             const RelativeStrengthIndexStrategyConfig & config,
             EventLoopSubscriber & event_loop,
-            EventTimeseriesChannel<Candle> & candle_channel);
+            StrategyChannelsRefs channels);
 
     bool is_valid() const override;
 

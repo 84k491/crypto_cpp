@@ -4,6 +4,7 @@
 #include "JsonStrategyConfig.h"
 #include "Ratchet.h"
 #include "StrategyBase.h"
+#include "StrategyChannels.h"
 
 class RatchetStrategyConfig
 {
@@ -24,7 +25,7 @@ public:
     RatchetStrategy(
             RatchetStrategyConfig config,
             EventLoopSubscriber & event_loop,
-            EventTimeseriesChannel<Candle> & candle_channel);
+            StrategyChannelsRefs channels);
 
     bool is_valid() const override;
 

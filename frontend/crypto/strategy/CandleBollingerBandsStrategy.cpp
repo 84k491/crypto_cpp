@@ -40,13 +40,13 @@ JsonStrategyConfig CandleBollingerBandsStrategyConfig::to_json() const
 CandleBollingerBandsStrategy::CandleBollingerBandsStrategy(
         const CandleBollingerBandsStrategyConfig & config,
         EventLoopSubscriber & event_loop,
-        EventTimeseriesChannel<Candle> & candle_channel)
+        StrategyChannelsRefs channels)
     : m_config(config)
     , m_bollinger_bands(config.m_interval, config.m_std_deviation_coefficient)
 {
-    m_channel_subs.push_back(candle_channel.subscribe(
+    m_channel_subs.push_back(channels.candle_channel.subscribe(
             event_loop.m_event_loop,
-            [](auto) {},
+            [](const auto &) {},
             [this](const auto & ts, const Candle & candle) {
                 if (const auto signal_opt = push_candle(candle); signal_opt) {
                     m_signal_channel.push(ts, signal_opt.value());

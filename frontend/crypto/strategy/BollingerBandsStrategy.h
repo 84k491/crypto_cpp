@@ -4,6 +4,7 @@
 #include "JsonStrategyConfig.h"
 #include "Signal.h"
 #include "StrategyBase.h"
+#include "StrategyChannels.h"
 
 #include <chrono>
 
@@ -27,7 +28,7 @@ public:
     BollingerBandsStrategy(
             const BollingerBandsStrategyConfig & config,
             EventLoopSubscriber & event_loop,
-            EventTimeseriesChannel<double> & price_channel);
+            StrategyChannelsRefs channels);
 
     bool is_valid() const override;
 

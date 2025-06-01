@@ -3,6 +3,7 @@
 #include "JsonStrategyConfig.h"
 #include "Signal.h"
 #include "StrategyBase.h"
+#include "StrategyChannels.h"
 
 #include <chrono>
 #include <optional>
@@ -31,7 +32,7 @@ public:
     DebugEveryTickStrategy(
             const DebugEveryTickStrategyConfig & conf,
             EventLoopSubscriber & event_loop,
-            EventTimeseriesChannel<double> & price_channel);
+            StrategyChannelsRefs channels);
 
     bool is_valid() const override;
     std::optional<std::chrono::milliseconds> timeframe() const override { return {}; }

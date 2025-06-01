@@ -27,13 +27,13 @@ JsonStrategyConfig RelativeStrengthIndexStrategyConfig::to_json() const
 RelativeStrengthIndexStrategy::RelativeStrengthIndexStrategy(
         const RelativeStrengthIndexStrategyConfig & config,
         EventLoopSubscriber & event_loop,
-        EventTimeseriesChannel<Candle> & candle_channel)
+        StrategyChannelsRefs channels)
     : m_config(config)
     , m_rsi(config.m_interval)
 {
-    m_channel_subs.push_back(candle_channel.subscribe(
+    m_channel_subs.push_back(channels.candle_channel.subscribe(
             event_loop.m_event_loop,
-            [](auto) {},
+            [](const auto &) {},
             [this](const auto & ts, const Candle & candle) {
                 if (const auto signal_opt = push_candle(candle); signal_opt) {
                     m_signal_channel.push(ts, signal_opt.value());

@@ -2,6 +2,7 @@
 
 #include "ExitStrategyBase.h"
 #include "JsonStrategyConfig.h"
+#include "StrategyChannels.h"
 
 #include <set>
 
@@ -25,11 +26,7 @@ public:
             JsonStrategyConfig config,
             EventLoopSubscriber & event_loop,
             ITradingGateway & gateway,
-            EventTimeseriesChannel<double> & price_channel,
-            EventObjectChannel<bool> & opened_pos_channel,
-            EventTimeseriesChannel<Trade> & trades_channel,
-            EventChannel<TrailingStopLossResponseEvent> & tsl_response_channel,
-            EventChannel<TrailingStopLossUpdatedEvent> & tsl_updated_channel);
+            StrategyChannelsRefs channels);
 
 protected:
     void handle_event(const TrailingStopLossResponseEvent & response);

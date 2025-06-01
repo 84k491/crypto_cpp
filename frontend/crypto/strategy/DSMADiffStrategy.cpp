@@ -32,15 +32,15 @@ JsonStrategyConfig DSMADiffStrategyConfig::to_json() const
 DSMADiffStrategy::DSMADiffStrategy(
         const DSMADiffStrategyConfig & conf,
         EventLoopSubscriber & event_loop,
-        EventTimeseriesChannel<double> & price_channel)
+        StrategyChannelsRefs channels)
     : m_config(conf)
     , m_slow_avg(conf.m_slow_interval)
     , m_fast_avg(conf.m_fast_interval)
     , m_diff_threshold(conf.m_diff_threshold_percent / 100.)
 {
-    m_channel_subs.push_back(price_channel.subscribe(
+    m_channel_subs.push_back(channels.price_channel.subscribe(
             event_loop.m_event_loop,
-            [](auto) {},
+            [](const auto &) {},
             [this](const auto & ts, const double & price) {
                 if (const auto signal_opt = push_price({ts, price}); signal_opt) {
                     m_signal_channel.push(ts, signal_opt.value());

@@ -2,6 +2,7 @@
 
 #include "Candle.h"
 #include "JsonStrategyConfig.h"
+#include "StrategyChannels.h"
 #include "StrategyInterface.h"
 
 #include <memory>
@@ -17,6 +18,5 @@ public:
             const std::string & strategy_name,
             const JsonStrategyConfig & config,
             EventLoopSubscriber & event_loop,
-            EventTimeseriesChannel<double> & price_channel,
-            EventTimeseriesChannel<Candle> & candle_channel);
+            StrategyChannelsRefs channels);
 };

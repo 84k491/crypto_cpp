@@ -44,40 +44,36 @@ TpslExitStrategy::TpslExitStrategy(
         JsonStrategyConfig config,
         EventLoopSubscriber & event_loop,
         ITradingGateway & gateway,
-        EventTimeseriesChannel<double> & price_channel,
-        EventObjectChannel<bool> & opened_pos_channel,
-        EventTimeseriesChannel<Trade> & trades_channel,
-        EventChannel<TpslResponseEvent> & tpsl_response_channel,
-        EventChannel<TpslUpdatedEvent> & tpsl_updated_channel)
+        StrategyChannelsRefs channels)
     : ExitStrategyBase(gateway)
     , m_config(config)
     , m_symbol(std::move(symbol))
 {
-    m_channel_subs.push_back(tpsl_updated_channel.subscribe(
+    m_channel_subs.push_back(channels.tpsl_updated_channel.subscribe(
             event_loop.m_event_loop,
             [this](const TpslUpdatedEvent & e) {
                 handle_event(e);
             }));
-    m_channel_subs.push_back(tpsl_response_channel.subscribe(
+    m_channel_subs.push_back(channels.tpsl_response_channel.subscribe(
             event_loop.m_event_loop,
             [&](const TpslResponseEvent & response) {
                 handle_event(response);
             }));
 
-    m_channel_subs.push_back(price_channel.subscribe(
+    m_channel_subs.push_back(channels.price_channel.subscribe(
             event_loop.m_event_loop,
-            [](auto) {},
+            [](const auto &) {},
             [this](const auto & ts, const double & price) {
                 m_last_ts_and_price = {ts, price};
             }));
 
-    m_channel_subs.push_back(opened_pos_channel.subscribe(
+    m_channel_subs.push_back(channels.opened_pos_channel.subscribe(
             event_loop.m_event_loop,
             [this](const bool & v) { m_is_pos_opened = v; }));
 
-    m_channel_subs.push_back(trades_channel.subscribe(
+    m_channel_subs.push_back(channels.trades_channel.subscribe(
             event_loop.m_event_loop,
-            [](auto) {},
+            [](const auto &) {},
             [this](const auto &, const auto & trade) {
                 on_trade(trade);
             }));

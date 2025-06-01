@@ -3,6 +3,7 @@
 #include "Candle.h"
 #include "JsonStrategyConfig.h"
 #include "StrategyBase.h"
+#include "StrategyChannels.h"
 
 class RateOfChangeStrategyConfig
 {
@@ -26,7 +27,7 @@ public:
     RateOfChangeStrategy(
             const RateOfChangeStrategyConfig & config,
             EventLoopSubscriber & event_loop,
-            EventTimeseriesChannel<Candle> & candle_channel);
+            StrategyChannelsRefs channels);
 
     bool is_valid() const override;
 

@@ -44,16 +44,16 @@ JsonStrategyConfig BBRSIStrategyConfig::to_json() const
 BBRSIStrategy::BBRSIStrategy(
         BBRSIStrategyConfig config,
         EventLoopSubscriber & event_loop,
-        EventTimeseriesChannel<Candle> & candle_channel)
+        StrategyChannelsRefs channels)
     : m_config(config)
     , m_bollinger_bands(config.m_timeframe * config.m_bb_interval, config.m_std_deviation_coefficient)
     , m_rsi_top_threshold(100 - config.m_margin)
     , m_rsi(config.m_rsi_interval)
     , m_rsi_bot_threshold(config.m_margin)
 {
-    m_channel_subs.push_back(candle_channel.subscribe(
+    m_channel_subs.push_back(channels.candle_channel.subscribe(
             event_loop.m_event_loop,
-            [](auto) {},
+            [](const auto &) {},
             [this](const auto & ts, const Candle & candle) {
                 if (const auto signal_opt = push_candle(candle); signal_opt) {
                     m_signal_channel.push(ts, signal_opt.value());

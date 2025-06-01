@@ -31,27 +31,18 @@ DynamicTrailingStopLossStrategy::DynamicTrailingStopLossStrategy(
         JsonStrategyConfig config,
         EventLoopSubscriber & event_loop,
         ITradingGateway & gateway,
-        EventTimeseriesChannel<double> & price_channel,
-        EventObjectChannel<bool> & opened_pos_channel,
-        EventTimeseriesChannel<Trade> & trades_channel,
-        EventTimeseriesChannel<ProfitPriceLevels> & price_levels_channel,
-        EventChannel<TrailingStopLossResponseEvent> & tsl_response_channel,
-        EventChannel<TrailingStopLossUpdatedEvent> & tsl_updated_channel)
+        StrategyChannelsRefs channels)
     : TrailigStopLossStrategy(
               symbol,
               config,
               event_loop,
               gateway,
-              price_channel,
-              opened_pos_channel,
-              trades_channel,
-              tsl_response_channel,
-              tsl_updated_channel)
+              channels)
     , m_dynamic_config(config)
 {
-    m_channel_subs.push_back(price_levels_channel.subscribe(
+    m_channel_subs.push_back(channels.price_levels_channel.subscribe(
             event_loop.m_event_loop,
-            [](auto) {},
+            [](const auto &) {},
             [this](const auto &, const auto & price_levels) {
                 m_last_pos_price_levels = price_levels;
             }));

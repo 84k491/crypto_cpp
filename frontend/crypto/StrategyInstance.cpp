@@ -30,14 +30,7 @@ public:
             const Symbol & symbol,
             EventLoopSubscriber & event_loop,
             ITradingGateway & gateway,
-            EventTimeseriesChannel<double> & price_channel,
-            EventObjectChannel<bool> & opened_pos_channel,
-            EventTimeseriesChannel<Trade> & trades_channel,
-            EventTimeseriesChannel<ProfitPriceLevels> & price_levels_channel,
-            EventChannel<TpslResponseEvent> & tpsl_response_channel,
-            EventChannel<TpslUpdatedEvent> & tpsl_updated_channel,
-            EventChannel<TrailingStopLossResponseEvent> & tsl_response_channel,
-            EventChannel<TrailingStopLossUpdatedEvent> & tsl_updated_channel)
+            StrategyChannelsRefs channels)
     {
         if (strategy_name == "TpslExit") {
             std::shared_ptr<IExitStrategy> res = std::make_shared<TpslExitStrategy>(
@@ -45,11 +38,7 @@ public:
                     config,
                     event_loop,
                     gateway,
-                    price_channel,
-                    opened_pos_channel,
-                    trades_channel,
-                    tpsl_response_channel,
-                    tpsl_updated_channel);
+                    channels);
             return res;
         }
         if (strategy_name == "TrailingStop") {
@@ -58,11 +47,7 @@ public:
                     config,
                     event_loop,
                     gateway,
-                    price_channel,
-                    opened_pos_channel,
-                    trades_channel,
-                    tsl_response_channel,
-                    tsl_updated_channel);
+                    channels);
             return res;
         }
         if (strategy_name == "DynamicTrailingStop") {
@@ -71,12 +56,7 @@ public:
                     config,
                     event_loop,
                     gateway,
-                    price_channel,
-                    opened_pos_channel,
-                    trades_channel,
-                    price_levels_channel,
-                    tsl_response_channel,
-                    tsl_updated_channel);
+                    channels);
             return res;
         }
         Logger::logf<LogLevel::Error>("Unknown exit strategy name: {}", strategy_name);
@@ -107,6 +87,16 @@ StrategyInstance::StrategyInstance(
     , m_candle_builder{get_timeframe(entry_strategy_config).value_or(std::chrono::minutes{5})}
     , m_md_gateway(md_gateway)
     , m_tr_gateway(tr_gateway)
+    , m_strategy_channels(
+              m_price_channel,
+              m_candle_channel,
+              m_opened_pos_channel,
+              m_trade_channel,
+              m_price_levels_channel,
+              tr_gateway.tpsl_response_channel(),
+              tr_gateway.tpsl_updated_channel(),
+              tr_gateway.trailing_stop_response_channel(),
+              tr_gateway.trailing_stop_update_channel())
     , m_symbol(symbol)
     , m_position_manager(symbol)
     , m_exit_strategy(nullptr)
@@ -116,8 +106,7 @@ StrategyInstance::StrategyInstance(
             entry_strategy_name,
             entry_strategy_config,
             m_event_loop,
-            m_price_channel,
-            m_candle_channel);
+            m_strategy_channels);
 
     if (!strategy_ptr_opt.has_value() || !strategy_ptr_opt.value() || !strategy_ptr_opt.value()->is_valid()) {
         Logger::log<LogLevel::Error>("Failed to build entry strategy");
@@ -139,14 +128,7 @@ StrategyInstance::StrategyInstance(
             symbol,
             m_event_loop,
             tr_gateway,
-            m_price_channel,
-            m_opened_pos_channel,
-            m_trade_channel,
-            m_price_levels_channel,
-            m_tr_gateway.tpsl_response_channel(),
-            m_tr_gateway.tpsl_updated_channel(),
-            m_tr_gateway.trailing_stop_response_channel(),
-            m_tr_gateway.trailing_stop_update_channel());
+            m_strategy_channels);
     if (!exit_strategy_opt) {
         Logger::log<LogLevel::Error>("Can't build exit strategy");
         m_status.push(WorkStatus::Panic);
@@ -414,8 +396,8 @@ void StrategyInstance::after_every_event()
     finish_if_needed_and_ready();
 }
 
-template<class T>
-void StrategyInstance::handle_event_generic(const T& ev)
+template <class T>
+void StrategyInstance::handle_event_generic(const T & ev)
 {
     handle_event(ev);
     after_every_event();

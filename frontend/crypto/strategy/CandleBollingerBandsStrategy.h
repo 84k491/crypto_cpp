@@ -5,6 +5,7 @@
 #include "JsonStrategyConfig.h"
 #include "Signal.h"
 #include "StrategyBase.h"
+#include "StrategyChannels.h"
 
 #include <chrono>
 
@@ -32,7 +33,7 @@ public:
     CandleBollingerBandsStrategy(
             const CandleBollingerBandsStrategyConfig & config,
             EventLoopSubscriber & event_loop,
-            EventTimeseriesChannel<Candle> & candle_channel);
+            StrategyChannelsRefs channels);
 
     bool is_valid() const override;
 

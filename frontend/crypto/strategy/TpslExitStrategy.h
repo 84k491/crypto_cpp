@@ -4,6 +4,7 @@
 #include "ExitStrategyBase.h"
 #include "JsonStrategyConfig.h"
 #include "Position.h"
+#include "StrategyChannels.h"
 #include "Tpsl.h"
 
 #include <set>
@@ -34,15 +35,11 @@ class TpslExitStrategy : public ExitStrategyBase
 {
 public:
     TpslExitStrategy(
-        Symbol symbol,
-        JsonStrategyConfig config,
-        EventLoopSubscriber & event_loop,
-        ITradingGateway & gateway,
-        EventTimeseriesChannel<double> & price_channel,
-        EventObjectChannel<bool> & opened_pos_channel,
-        EventTimeseriesChannel<Trade> & trades_channel,
-        EventChannel<TpslResponseEvent> & tpsl_response_channel,
-        EventChannel<TpslUpdatedEvent> & tpsl_updated_channel);
+            Symbol symbol,
+            JsonStrategyConfig config,
+            EventLoopSubscriber & event_loop,
+            ITradingGateway & gateway,
+            StrategyChannelsRefs channels);
 
 private:
     void on_trade(const Trade & trade);

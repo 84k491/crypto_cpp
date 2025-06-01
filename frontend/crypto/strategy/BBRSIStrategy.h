@@ -4,6 +4,7 @@
 #include "JsonStrategyConfig.h"
 #include "RelativeStrengthIndex.h"
 #include "StrategyBase.h"
+#include "StrategyChannels.h"
 
 #include <chrono>
 
@@ -28,7 +29,7 @@ public:
     BBRSIStrategy(
             BBRSIStrategyConfig config,
             EventLoopSubscriber & event_loop,
-            EventTimeseriesChannel<Candle> & candle_channel);
+            StrategyChannelsRefs channels);
 
     bool is_valid() const override;
 

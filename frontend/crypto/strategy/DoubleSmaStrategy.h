@@ -4,6 +4,7 @@
 #include "Signal.h"
 #include "SimpleMovingAverage.h"
 #include "StrategyBase.h"
+#include "StrategyChannels.h"
 
 #include <chrono>
 #include <optional>
@@ -29,7 +30,7 @@ public:
     DoubleSmaStrategy(
             const DoubleSmaStrategyConfig & conf,
             EventLoopSubscriber & event_loop,
-            EventTimeseriesChannel<double> & price_channel);
+            StrategyChannelsRefs channels);
 
     bool is_valid() const override;
 

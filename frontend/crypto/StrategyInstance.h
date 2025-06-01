@@ -10,6 +10,7 @@
 #include "JsonStrategyConfig.h"
 #include "PositionManager.h"
 #include "Signal.h"
+#include "StrategyChannels.h"
 #include "StrategyInterface.h"
 #include "StrategyResult.h"
 #include "WorkStatus.h"
@@ -96,6 +97,8 @@ private:
     EventTimeseriesChannel<Candle> m_candle_channel;
     EventTimeseriesChannel<double> m_depo_channel;
     EventTimeseriesChannel<PositionResult> m_positions_channel;
+
+    StrategyChannelsRefs m_strategy_channels;
 
     const Symbol m_symbol;
     static constexpr double m_pos_currency_amount = 100.;

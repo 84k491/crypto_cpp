@@ -4,6 +4,7 @@
 #include "JsonStrategyConfig.h"
 #include "Signal.h"
 #include "StrategyBase.h"
+#include "StrategyChannels.h"
 #include "TimeWeightedMovingAverage.h"
 
 class DSMADiffStrategyConfig
@@ -27,7 +28,7 @@ public:
     DSMADiffStrategy(
             const DSMADiffStrategyConfig & conf,
             EventLoopSubscriber & event_loop,
-            EventTimeseriesChannel<double> & price_channel);
+            StrategyChannelsRefs channels);
 
     bool is_valid() const override;
 
