@@ -25,14 +25,15 @@ public:
     RatchetStrategy(
             RatchetStrategyConfig config,
             EventLoopSubscriber & event_loop,
-            StrategyChannelsRefs channels);
+            StrategyChannelsRefs channels,
+            OrderManager & orders);
 
     bool is_valid() const override;
 
     std::optional<std::chrono::milliseconds> timeframe() const override;
 
 private:
-    std::optional<Signal> push_candle(const Candle &);
+    void push_candle(const Candle &);
 
 private:
     RatchetStrategyConfig m_config;

@@ -2,6 +2,7 @@
 
 #include "EventLoopSubscriber.h"
 #include "ScopeExit.h"
+#include "StrategyBase.h"
 
 DoubleSmaStrategyConfig::DoubleSmaStrategyConfig(const JsonStrategyConfig & json)
 {
@@ -29,8 +30,10 @@ JsonStrategyConfig DoubleSmaStrategyConfig::to_json() const
 DoubleSmaStrategy::DoubleSmaStrategy(
         const DoubleSmaStrategyConfig & conf,
         EventLoopSubscriber & event_loop,
-        StrategyChannelsRefs channels)
-    : m_config(conf)
+        StrategyChannelsRefs channels,
+        OrderManager & orders)
+    : StrategyBase(orders)
+    , m_config(conf)
     , m_slow_avg(conf.m_slow_interval)
     , m_fast_avg(conf.m_fast_interval)
 {
@@ -38,25 +41,23 @@ DoubleSmaStrategy::DoubleSmaStrategy(
             event_loop.m_event_loop,
             [](const auto &) {},
             [this](const auto & ts, const double & price) {
-                if (const auto signal_opt = push_price({ts, price}); signal_opt) {
-                    m_signal_channel.push(ts, signal_opt.value());
-                }
+                push_price({ts, price});
             }));
 }
 
-std::optional<Signal> DoubleSmaStrategy::push_price(std::pair<std::chrono::milliseconds, double> ts_and_price)
+void DoubleSmaStrategy::push_price(std::pair<std::chrono::milliseconds, double> ts_and_price)
 {
     const auto fast_avg = m_fast_avg.push_value(ts_and_price);
     const auto slow_avg = m_slow_avg.push_value(ts_and_price);
 
     if (!fast_avg.has_value()) {
-        return std::nullopt;
+        return;
     }
     const auto current_average_fast = fast_avg.value();
     m_strategy_internal_data_channel.push(ts_and_price.first, {"prices", "fast_avg_history", current_average_fast});
 
     if (!slow_avg.has_value()) {
-        return std::nullopt;
+        return;
     }
     const auto current_average_slow = slow_avg.value();
     m_strategy_internal_data_channel.push(ts_and_price.first, {"prices", "slow_avg_history", current_average_slow});
@@ -67,17 +68,17 @@ std::optional<Signal> DoubleSmaStrategy::push_price(std::pair<std::chrono::milli
     });
 
     if (!m_prev_slow_avg.has_value() || !m_prev_fast_avg.has_value()) {
-        return std::nullopt;
+        return;
     }
 
     const auto current_slow_above_fast = current_average_slow > current_average_fast;
     const auto prev_slow_above_fast = m_prev_slow_avg.value() > m_prev_fast_avg.value();
     if (current_slow_above_fast == prev_slow_above_fast) {
-        return std::nullopt;
+        return;
     }
 
     const auto side = current_slow_above_fast ? Side::sell() : Side::buy();
-    return Signal{.side = side, .timestamp = ts_and_price.first, .price = ts_and_price.second};
+    try_send_order(side, ts_and_price.second, ts_and_price.first, {});
 }
 
 bool DoubleSmaStrategy::is_valid() const

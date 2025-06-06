@@ -27,14 +27,15 @@ public:
     RateOfChangeStrategy(
             const RateOfChangeStrategyConfig & config,
             EventLoopSubscriber & event_loop,
-            StrategyChannelsRefs channels);
+            StrategyChannelsRefs channels,
+            OrderManager & orders);
 
     bool is_valid() const override;
 
     std::optional<std::chrono::milliseconds> timeframe() const override;
 
 private:
-    std::optional<Signal> push_candle(const Candle &);
+    void push_candle(const Candle &);
 
 private:
     std::list<double> m_prev_closing_prices;

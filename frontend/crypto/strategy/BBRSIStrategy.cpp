@@ -1,6 +1,7 @@
 #include "BBRSIStrategy.h"
 
 #include "EventLoopSubscriber.h"
+#include "Macros.h"
 
 BBRSIStrategyConfig::BBRSIStrategyConfig(const JsonStrategyConfig & json)
 {
@@ -44,8 +45,10 @@ JsonStrategyConfig BBRSIStrategyConfig::to_json() const
 BBRSIStrategy::BBRSIStrategy(
         BBRSIStrategyConfig config,
         EventLoopSubscriber & event_loop,
-        StrategyChannelsRefs channels)
-    : m_config(config)
+        StrategyChannelsRefs channels,
+        OrderManager & orders)
+    : StrategyBase(orders)
+    , m_config(config)
     , m_bollinger_bands(config.m_timeframe * config.m_bb_interval, config.m_std_deviation_coefficient)
     , m_rsi_top_threshold(100 - config.m_margin)
     , m_rsi(config.m_rsi_interval)
@@ -54,29 +57,26 @@ BBRSIStrategy::BBRSIStrategy(
     m_channel_subs.push_back(channels.candle_channel.subscribe(
             event_loop.m_event_loop,
             [](const auto &) {},
-            [this](const auto & ts, const Candle & candle) {
-                if (const auto signal_opt = push_candle(candle); signal_opt) {
-                    m_signal_channel.push(ts, signal_opt.value());
-                }
+            [this](const auto &, const Candle & candle) {
+                push_candle(candle);
             }));
 }
 
-std::optional<Signal> BBRSIStrategy::push_candle(const Candle & candle)
+void BBRSIStrategy::push_candle(const Candle & candle)
 {
     const auto ts = candle.close_ts();
     const auto price = candle.close();
 
     const auto rsi = m_rsi.push_candle(candle);
 
-    const auto bb_res_opt = m_bollinger_bands.push_value({ts, price});
-    UNWRAP_RET(bb_res, std::nullopt);
+    UNWRAP_RET_VOID(bb_res, m_bollinger_bands.push_value({ts, price}));
 
     m_strategy_internal_data_channel.push(ts, {"prices", "upper_band", bb_res.m_upper_band});
     m_strategy_internal_data_channel.push(ts, {"prices", "trend", bb_res.m_trend});
     m_strategy_internal_data_channel.push(ts, {"prices", "lower_band", bb_res.m_lower_band});
 
     if (!rsi.has_value()) {
-        return std::nullopt;
+        return;
     }
 
     m_strategy_internal_data_channel.push(ts, {"rsi", "upper", m_rsi_top_threshold});
@@ -99,36 +99,34 @@ std::optional<Signal> BBRSIStrategy::push_candle(const Candle & candle)
             break;
         }
         }
-        return std::nullopt;
+        return;
     }
 
     if (price > bb_res.m_upper_band && candle.side() == SideEnum::Buy) {
         m_price_in_trigger_zone_bb = true;
-        return std::nullopt;
+        return;
     }
     if (price < bb_res.m_lower_band && candle.side() == SideEnum::Sell) {
         m_price_in_trigger_zone_bb = true;
-        return std::nullopt;
+        return;
     }
 
     if (!m_price_in_trigger_zone_bb) {
         // it's not a trend reverse
-        return std::nullopt;
+        return;
     }
     m_price_in_trigger_zone_bb = false;
 
     if (bb_res.m_trend < price && rsi.value() > m_rsi_top_threshold && candle.side() == SideEnum::Sell) {
-        const auto signal = Signal{.side = Side::sell(), .timestamp = ts, .price = price};
-        m_last_signal_side = signal.side;
-        return signal;
+        try_send_order(Side::sell(), price, ts, {});
+        m_last_signal_side = Side::sell();
+        return;
     }
     if (bb_res.m_trend > price && rsi.value() < m_rsi_bot_threshold && candle.side() == SideEnum::Buy) {
-        const auto signal = Signal{.side = Side::buy(), .timestamp = ts, .price = price};
-        m_last_signal_side = signal.side;
-        return signal;
+        try_send_order(Side::buy(), price, ts, {});
+        m_last_signal_side = Side::buy();
+        return;
     }
-
-    return std::nullopt;
 }
 
 bool BBRSIStrategy::is_valid() const

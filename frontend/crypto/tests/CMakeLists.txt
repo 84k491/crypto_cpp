@@ -28,6 +28,7 @@ add_executable(strategy_instance_test
 target_link_libraries(strategy_instance_test
     ${GTEST_BOTH_LIBRARIES}
     trading_primitives
+    trading_engine
     util
     gateway
     nlohmann_json

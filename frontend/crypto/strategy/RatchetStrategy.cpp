@@ -28,17 +28,17 @@ JsonStrategyConfig RatchetStrategyConfig::to_json() const
 RatchetStrategy::RatchetStrategy(
         RatchetStrategyConfig config,
         EventLoopSubscriber & event_loop,
-        StrategyChannelsRefs channels)
-    : m_config(config)
+        StrategyChannelsRefs channels,
+        OrderManager & orders)
+    : StrategyBase(orders)
+    , m_config(config)
     , m_ratchet(config.m_retracement)
 {
     m_channel_subs.push_back(channels.candle_channel.subscribe(
             event_loop.m_event_loop,
             [](const auto &) {},
-            [this](const auto & ts, const Candle & candle) {
-                if (const auto signal_opt = push_candle(candle); signal_opt) {
-                    m_signal_channel.push(ts, signal_opt.value());
-                }
+            [this](const auto &, const Candle & candle) {
+                push_candle(candle);
             }));
 }
 
@@ -52,15 +52,15 @@ std::optional<std::chrono::milliseconds> RatchetStrategy::timeframe() const
     return m_config.m_timeframe;
 }
 
-std::optional<Signal> RatchetStrategy::push_candle(const Candle & c)
+void RatchetStrategy::push_candle(const Candle & c)
 {
     const auto [value, flip] = m_ratchet.push_price_for_value(c.close());
     m_strategy_internal_data_channel.push(c.close_ts(), {"prices", "ratchet", value});
 
     if (!flip) {
-        return {};
+        return;
     }
 
     const auto side = value < c.close() ? Side::buy() : Side::sell();
-    return Signal{.side = side, .timestamp = c.close_ts(), .price = c.close()};
+    try_send_order(side, c.close(), c.close_ts(), {});
 }

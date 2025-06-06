@@ -30,14 +30,15 @@ public:
     DoubleSmaStrategy(
             const DoubleSmaStrategyConfig & conf,
             EventLoopSubscriber & event_loop,
-            StrategyChannelsRefs channels);
+            StrategyChannelsRefs channels,
+            OrderManager & orders);
 
     bool is_valid() const override;
 
     std::optional<std::chrono::milliseconds> timeframe() const override { return {}; }
 
 private:
-    std::optional<Signal> push_price(std::pair<std::chrono::milliseconds, double> ts_and_price);
+    void push_price(std::pair<std::chrono::milliseconds, double> ts_and_price);
 
 private:
     const DoubleSmaStrategyConfig m_config;

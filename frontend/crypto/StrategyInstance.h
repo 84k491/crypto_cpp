@@ -8,8 +8,8 @@
 #include "IMarketDataGateway.h"
 #include "ITradingGateway.h"
 #include "JsonStrategyConfig.h"
+#include "OrderManager.h"
 #include "PositionManager.h"
-#include "Signal.h"
 #include "StrategyChannels.h"
 #include "StrategyInterface.h"
 #include "StrategyResult.h"
@@ -70,11 +70,9 @@ private:
     void handle_event(const StrategyStopRequest & response);
     void after_every_event();
 
-    void on_signal(const Signal & signal);
     void process_position_result(const PositionResult & new_result,
                                  std::chrono::milliseconds ts);
 
-    bool open_position(double price, SignedVolume target_absolute_volume, std::chrono::milliseconds ts);
     bool close_position(double price, std::chrono::milliseconds ts);
 
     bool ready_to_finish() const;
@@ -132,6 +130,8 @@ private:
     EventChannel<BarrierEvent> m_barrier_channel;
 
     EventLoopSubscriber m_event_loop;
+
+    OrderManager m_orders;
 
     std::list<std::shared_ptr<ISubscription>> m_channel_subs;
 };

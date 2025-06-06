@@ -2,6 +2,7 @@
 
 #include "Enums.h"
 #include "EventLoopSubscriber.h"
+#include "StrategyBase.h"
 
 BollingerBandsStrategyConfig::BollingerBandsStrategyConfig(const JsonStrategyConfig & json)
 {
@@ -29,17 +30,17 @@ JsonStrategyConfig BollingerBandsStrategyConfig::to_json() const
 BollingerBandsStrategy::BollingerBandsStrategy(
         const BollingerBandsStrategyConfig & config,
         EventLoopSubscriber & event_loop,
-        StrategyChannelsRefs channels)
-    : m_config(config)
+        StrategyChannelsRefs channels,
+        OrderManager & orders)
+    : StrategyBase(orders)
+    , m_config(config)
     , m_bollinger_bands(config.m_interval, config.m_std_deviation_coefficient)
 {
     m_channel_subs.push_back(channels.price_channel.subscribe(
             event_loop.m_event_loop,
             [](const auto &) {},
             [this](const auto & ts, const double & price) {
-                if (const auto signal_opt = push_price({ts, price}); signal_opt) {
-                    m_signal_channel.push(ts, signal_opt.value());
-                }
+                push_price({ts, price});
             }));
 }
 
@@ -53,12 +54,13 @@ std::optional<std::chrono::milliseconds> BollingerBandsStrategy::timeframe() con
     return {};
 }
 
-std::optional<Signal> BollingerBandsStrategy::push_price(std::pair<std::chrono::milliseconds, double> ts_and_price)
+void BollingerBandsStrategy::push_price(std::pair<std::chrono::milliseconds, double> ts_and_price)
 {
     const auto bb_res_opt = m_bollinger_bands.push_value(ts_and_price);
     if (!bb_res_opt.has_value()) {
-        return std::nullopt;
+        return;
     }
+
     const auto & bb_res = bb_res_opt.value();
     const auto & [ts, price] = ts_and_price;
     m_strategy_internal_data_channel.push(ts, {"prices", "upper_band", bb_res.m_upper_band});
@@ -81,19 +83,16 @@ std::optional<Signal> BollingerBandsStrategy::push_price(std::pair<std::chrono::
             break;
         }
         }
-        return std::nullopt;
+        return;
     }
 
     if (price > bb_res.m_upper_band) {
-        const auto signal = Signal{.side = Side::sell(), .timestamp = ts, .price = ts_and_price.second};
-        m_last_signal_side = signal.side;
-        return signal;
-    }
-    if (price < bb_res.m_lower_band) {
-        const auto signal = Signal{.side = Side::buy(), .timestamp = ts, .price = ts_and_price.second};
-        m_last_signal_side = signal.side;
-        return signal;
+        try_send_order(Side::sell(), ts_and_price.second, ts, {});
+        m_last_signal_side = Side::sell();
     }
 
-    return std::nullopt;
+    if (price < bb_res.m_lower_band) {
+        try_send_order(Side::buy(), ts_and_price.second, ts, {});
+        m_last_signal_side = Side::buy();
+    }
 }

@@ -1,6 +1,7 @@
 #include "RelativeStrengthIndexStrategy.h"
 
 #include "EventLoopSubscriber.h"
+#include "StrategyBase.h"
 
 RelativeStrengthIndexStrategyConfig::RelativeStrengthIndexStrategyConfig(const JsonStrategyConfig & json)
 {
@@ -27,25 +28,25 @@ JsonStrategyConfig RelativeStrengthIndexStrategyConfig::to_json() const
 RelativeStrengthIndexStrategy::RelativeStrengthIndexStrategy(
         const RelativeStrengthIndexStrategyConfig & config,
         EventLoopSubscriber & event_loop,
-        StrategyChannelsRefs channels)
-    : m_config(config)
+        StrategyChannelsRefs channels,
+        OrderManager & orders)
+    : StrategyBase(orders)
+    , m_config(config)
     , m_rsi(config.m_interval)
 {
     m_channel_subs.push_back(channels.candle_channel.subscribe(
             event_loop.m_event_loop,
             [](const auto &) {},
-            [this](const auto & ts, const Candle & candle) {
-                if (const auto signal_opt = push_candle(candle); signal_opt) {
-                    m_signal_channel.push(ts, signal_opt.value());
-                }
+            [this](const auto &, const Candle & candle) {
+                push_candle(candle);
             }));
 }
 
-std::optional<Signal> RelativeStrengthIndexStrategy::push_candle(const Candle & c)
+void RelativeStrengthIndexStrategy::push_candle(const Candle & c)
 {
     const auto rsi = m_rsi.push_candle(c);
     if (!rsi.has_value()) {
-        return std::nullopt;
+        return;
     }
 
     const double upper_trigger = 100 - m_config.m_margin;
@@ -56,12 +57,12 @@ std::optional<Signal> RelativeStrengthIndexStrategy::push_candle(const Candle & 
     m_strategy_internal_data_channel.push(c.close_ts(), {"rsi", "lower", lower_trigger});
 
     if (upper_trigger > rsi && rsi > lower_trigger) {
-        return std::nullopt;
+        return;
     }
 
     const auto side = rsi.value() > upper_trigger ? Side::buy() : Side::sell();
 
-    return Signal{.side = side, .timestamp = c.close_ts(), .price = c.close()};
+    try_send_order(side, c.close(), c.close_ts(), {});
 }
 
 bool RelativeStrengthIndexStrategyConfig::is_valid() const

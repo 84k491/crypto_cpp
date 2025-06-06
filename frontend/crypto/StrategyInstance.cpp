@@ -7,7 +7,6 @@
 #include "ITradingGateway.h"
 #include "Logger.h"
 #include "ScopeExit.h"
-#include "Signal.h"
 #include "StrategyFactory.h"
 #include "TpslExitStrategy.h"
 #include "TrailingStopStrategy.h"
@@ -101,12 +100,14 @@ StrategyInstance::StrategyInstance(
     , m_position_manager(symbol)
     , m_exit_strategy(nullptr)
     , m_historical_md_request(historical_md_request)
+    , m_orders(symbol, m_event_loop, tr_gateway)
 {
     const auto strategy_ptr_opt = StrategyFactory::build_strategy(
             entry_strategy_name,
             entry_strategy_config,
             m_event_loop,
-            m_strategy_channels);
+            m_strategy_channels,
+            m_orders);
 
     if (!strategy_ptr_opt.has_value() || !strategy_ptr_opt.value() || !strategy_ptr_opt.value()->is_valid()) {
         Logger::log<LogLevel::Error>("Failed to build entry strategy");
@@ -114,13 +115,6 @@ StrategyInstance::StrategyInstance(
         return;
     }
     m_strategy = strategy_ptr_opt.value();
-    m_channel_subs.push_back(
-            m_strategy->signal_channel().subscribe(
-                    m_event_loop.m_event_loop,
-                    [](const auto &) {},
-                    [this](const auto &, const auto & signal) {
-                        on_signal(signal);
-                    }));
 
     const auto exit_strategy_opt = ExitStrategyFactory::build_exit_strategy(
             exit_strategy_name,
@@ -229,39 +223,6 @@ void StrategyInstance::stop_async(bool panic)
 std::future<void> StrategyInstance::finish_future()
 {
     return m_finish_promise.get_future();
-}
-
-void StrategyInstance::on_signal(const Signal & signal)
-{
-    if (m_position_manager.opened() != nullptr || !m_pending_orders.empty()) {
-        return;
-    }
-
-    // closing if close or flip
-    if ((m_position_manager.opened() != nullptr && signal.side != m_position_manager.opened()->side())) {
-        if (m_position_manager.opened() != nullptr) {
-            const bool success = close_position(signal.price, signal.timestamp);
-            if (!success) {
-                Logger::log<LogLevel::Error>("Failed to close a position");
-            }
-        }
-    }
-
-    // opening for open or second part of flip
-    const auto default_pos_size_opt = UnsignedVolume::from(m_pos_currency_amount / signal.price);
-    if (!default_pos_size_opt.has_value()) {
-        Logger::log<LogLevel::Error>("can't get proper default position size");
-        return;
-    }
-    const bool success = open_position(signal.price,
-                                       SignedVolume(
-                                               default_pos_size_opt.value(),
-                                               signal.side),
-                                       signal.timestamp);
-    if (!success) {
-        Logger::log<LogLevel::Error>("Failed to open position");
-        return;
-    }
 }
 
 void StrategyInstance::process_position_result(const PositionResult & new_result, std::chrono::milliseconds ts)
@@ -552,40 +513,6 @@ void StrategyInstance::handle_event(const StrategyStopRequest &)
     m_backtest_in_progress = false;
     m_historical_md_generator.reset();
     m_stop_request_handled = true;
-}
-
-bool StrategyInstance::open_position(double price, SignedVolume target_absolute_volume, std::chrono::milliseconds ts)
-{
-    const std::optional<SignedVolume> adjusted_target_volume_opt = m_symbol.get_qty_floored(target_absolute_volume);
-    if (!adjusted_target_volume_opt.has_value()) {
-        Logger::logf<LogLevel::Error>(
-                "ERROR can't get proper volume on open_or_move, target_absolute_volume = {}, qty_step = {}",
-                target_absolute_volume.value(),
-                m_symbol.lot_size_filter.qty_step);
-        return false;
-    }
-    const SignedVolume adjusted_target_volume = adjusted_target_volume_opt.value();
-
-    if (0. == adjusted_target_volume.value()) {
-        Logger::log<LogLevel::Error>("closing on open_or_move");
-        return false;
-    }
-
-    if (m_position_manager.opened() != nullptr) {
-        Logger::log<LogLevel::Error>("opening already opened position");
-        return false;
-    }
-
-    const auto order = MarketOrder{
-            m_symbol.symbol_name,
-            price,
-            adjusted_target_volume,
-            ts};
-
-    OrderRequestEvent or_event{order};
-    m_pending_orders.emplace(order.guid(), order);
-    m_tr_gateway.push_order_request(or_event);
-    return true;
 }
 
 bool StrategyInstance::close_position(double price, std::chrono::milliseconds ts)

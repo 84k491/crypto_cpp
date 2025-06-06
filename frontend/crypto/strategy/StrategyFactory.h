@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Candle.h"
 #include "JsonStrategyConfig.h"
+#include "OrderManager.h"
 #include "StrategyChannels.h"
 #include "StrategyInterface.h"
 
@@ -18,5 +18,6 @@ public:
             const std::string & strategy_name,
             const JsonStrategyConfig & config,
             EventLoopSubscriber & event_loop,
-            StrategyChannelsRefs channels);
+            StrategyChannelsRefs channels,
+            OrderManager & orders);
 };

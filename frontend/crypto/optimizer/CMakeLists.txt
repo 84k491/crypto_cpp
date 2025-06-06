@@ -16,5 +16,6 @@ target_link_libraries(optimizer PRIVATE
     util
     gateway
     strategy
+    trading_engine
     network
 )

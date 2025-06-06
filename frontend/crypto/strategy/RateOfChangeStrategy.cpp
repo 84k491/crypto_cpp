@@ -1,6 +1,7 @@
 #include "RateOfChangeStrategy.h"
 
 #include "Logger.h"
+#include "StrategyBase.h"
 
 RateOfChangeStrategyConfig::RateOfChangeStrategyConfig(const JsonStrategyConfig & json)
 {
@@ -40,16 +41,16 @@ JsonStrategyConfig RateOfChangeStrategyConfig::to_json() const
 RateOfChangeStrategy::RateOfChangeStrategy(
         const RateOfChangeStrategyConfig & config,
         EventLoopSubscriber & event_loop,
-        StrategyChannelsRefs channels)
-    : m_config(config)
+        StrategyChannelsRefs channels,
+        OrderManager & orders)
+    : StrategyBase(orders)
+    , m_config(config)
 {
     m_channel_subs.push_back(channels.candle_channel.subscribe(
             event_loop.m_event_loop,
             [](const auto &) {},
-            [this](const auto & ts, const Candle & candle) {
-                if (const auto signal_opt = push_candle(candle); signal_opt) {
-                    m_signal_channel.push(ts, signal_opt.value());
-                }
+            [this](const auto &, const Candle & candle) {
+                push_candle(candle);
             }));
 }
 
@@ -76,7 +77,7 @@ int sign(int v)
     }
 }
 
-std::optional<Signal> RateOfChangeStrategy::push_candle(const Candle & c)
+void RateOfChangeStrategy::push_candle(const Candle & c)
 {
     const auto close_ts = c.close_ts();
 
@@ -115,14 +116,13 @@ std::optional<Signal> RateOfChangeStrategy::push_candle(const Candle & c)
     }
 
     if (m_trigger_iter < m_config.m_trigger_interval) {
-        return std::nullopt;
+        return;
     }
 
     if (roc > m_config.m_signal_threshold) {
-        const auto signal = Signal{.side = Side::buy(), .timestamp = close_ts, .price = c.close()};
-        return signal;
+        try_send_order(Side::buy(), c.close(), close_ts, {});
+        return;
     }
 
-    const auto signal = Signal{.side = Side::sell(), .timestamp = close_ts, .price = c.close()};
-    return signal;
+    try_send_order(Side::sell(), c.close(), close_ts, {});
 }

@@ -45,75 +45,86 @@ std::optional<std::shared_ptr<IStrategy>> StrategyFactory::build_strategy(
         const std::string & strategy_name,
         const JsonStrategyConfig & config,
         EventLoopSubscriber & event_loop,
-        StrategyChannelsRefs channels)
+        StrategyChannelsRefs channels,
+        OrderManager & orders)
 {
     if (strategy_name == "Mock") {
         std::shared_ptr<IStrategy> res = std::make_shared<MockStrategy>(
                 event_loop,
-                channels);
+                channels,
+                orders);
         return res;
     }
     if (strategy_name == "DoubleSma") {
         std::shared_ptr<IStrategy> res = std::make_shared<DoubleSmaStrategy>(
                 config,
                 event_loop,
-                channels);
+                channels,
+                orders);
         return res;
     }
     if (strategy_name == "BollingerBands") {
         std::shared_ptr<IStrategy> res = std::make_shared<BollingerBandsStrategy>(
                 config,
                 event_loop,
-                channels);
+                channels,
+                orders);
         return res;
     }
     if (strategy_name == "CandleBB") {
         std::shared_ptr<IStrategy> res = std::make_shared<CandleBollingerBandsStrategy>(
                 config,
                 event_loop,
-                channels);
+                channels,
+                orders);
         return res;
     }
     if (strategy_name == "DebugEveryTick") {
         std::shared_ptr<IStrategy> res = std::make_shared<DebugEveryTickStrategy>(
                 config,
                 event_loop,
-                channels);
+                channels,
+                orders);
         return res;
     }
     if (strategy_name == "RateOfChange") {
         std::shared_ptr<IStrategy> res = std::make_shared<RateOfChangeStrategy>(
                 config,
                 event_loop,
-                channels);
+                channels,
+                orders);
         return res;
     }
     if (strategy_name == "DSMADiff") {
         std::shared_ptr<IStrategy> res = std::make_shared<DSMADiffStrategy>(
                 config,
                 event_loop,
-                channels);
+                channels,
+                orders);
         return res;
     }
     if (strategy_name == "Ratchet") {
         std::shared_ptr<IStrategy> res = std::make_shared<RatchetStrategy>(
                 config,
                 event_loop,
-                channels);
+                channels,
+                orders);
         return res;
     }
     if (strategy_name == "RelativeStrengthIndex") {
         std::shared_ptr<IStrategy> res = std::make_shared<RelativeStrengthIndexStrategy>(
                 config,
                 event_loop,
-                channels);
+                channels,
+                orders);
         return res;
     }
     if (strategy_name == "BBRSI") {
         std::shared_ptr<IStrategy> res = std::make_shared<BBRSIStrategy>(
                 config,
                 event_loop,
-                channels);
+                channels,
+                orders);
         return res;
     }
     Logger::logf<LogLevel::Error>("Unknown strategy name: {}", strategy_name);

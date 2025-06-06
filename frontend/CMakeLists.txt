@@ -44,6 +44,7 @@ target_link_libraries(frontend PRIVATE
     optimizer
     gateway
     trading_primitives
+    trading_engine
     network
 )
 

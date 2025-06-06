@@ -1,6 +1,7 @@
 #include "DebugEveryTickStrategy.h"
 
 #include "EventLoopSubscriber.h"
+#include "StrategyBase.h"
 
 DebugEveryTickStrategyConfig::DebugEveryTickStrategyConfig(const JsonStrategyConfig &)
 {
@@ -26,30 +27,30 @@ JsonStrategyConfig DebugEveryTickStrategyConfig::to_json() const
 DebugEveryTickStrategy::DebugEveryTickStrategy(
         const DebugEveryTickStrategyConfig & conf,
         EventLoopSubscriber & event_loop,
-        StrategyChannelsRefs channels)
-    : m_config(conf)
+        StrategyChannelsRefs channels,
+        OrderManager & orders)
+    : StrategyBase(orders)
+    , m_config(conf)
 {
     m_channel_subs.push_back(channels.price_channel.subscribe(
             event_loop.m_event_loop,
             [](const auto &) {},
             [this](const auto & ts, const double & price) {
-                if (const auto signal_opt = push_price({ts, price}); signal_opt) {
-                    m_signal_channel.push(ts, signal_opt.value());
-                }
+                push_price({ts, price});
             }));
 }
 
-std::optional<Signal> DebugEveryTickStrategy::push_price(std::pair<std::chrono::milliseconds, double> ts_and_price)
+void DebugEveryTickStrategy::push_price(std::pair<std::chrono::milliseconds, double> ts_and_price)
 {
     iteration = (iteration + 1) % max_iter;
     if (iteration != 0) {
-        return std::nullopt;
+        return;
     }
 
     const auto side = last_side.opposite();
     last_side = side;
 
-    return Signal{.side = side, .timestamp = ts_and_price.first, .price = ts_and_price.second};
+    try_send_order(side, ts_and_price.second, ts_and_price.first, {});
 }
 
 bool DebugEveryTickStrategy::is_valid() const
