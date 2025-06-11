@@ -6,6 +6,7 @@ include_directories(
     ${GMOCK_INCLUDE_DIRS}
     ..
 )
+
 ####################################################################################################
 add_executable(position_manager_test
     PositionManagerTest.cpp
@@ -19,6 +20,7 @@ target_link_libraries(position_manager_test
 )
 set(UNIT_TEST position_manager_test)
 add_test(NAME ${UNIT_TEST} COMMAND ${UNIT_TEST})
+
 ####################################################################################################
 add_executable(strategy_instance_test
     StrategyInstanceTest.cpp
@@ -35,4 +37,19 @@ target_link_libraries(strategy_instance_test
     strategy
 )
 set(UNIT_TEST strategy_instance_test)
+add_test(NAME ${UNIT_TEST} COMMAND ${UNIT_TEST})
+
+####################################################################################################
+add_executable(backtest_trading_gateway_test
+    BacktestTradingGatewayTest.cpp
+)
+target_link_libraries(backtest_trading_gateway_test
+    ${GTEST_BOTH_LIBRARIES}
+    trading_primitives
+    trading_engine
+    util
+    gateway
+    nlohmann_json
+)
+set(UNIT_TEST backtest_trading_gateway_test) # TODO remove it?
 add_test(NAME ${UNIT_TEST} COMMAND ${UNIT_TEST})

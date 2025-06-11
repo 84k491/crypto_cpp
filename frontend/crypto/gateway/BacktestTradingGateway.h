@@ -3,7 +3,6 @@
 #include "EventTimeseriesChannel.h"
 #include "Events.h"
 #include "ITradingGateway.h"
-#include "Ohlc.h"
 #include "Volume.h"
 
 #include <optional>
