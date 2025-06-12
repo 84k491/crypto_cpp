@@ -38,50 +38,89 @@ protected:
     BacktestTradingGateway trgw;
 
     std::shared_ptr<MockEventLoop> el;
-    std::list<std::shared_ptr<ISubscription>> subs;
 };
 
-using std::literals::operator""ms;
-
-TEST_F(BacktestTradingGatewayTest, MarketOrder)
+// push some price
+// open pos
+// push some more prices
+// close pos
+TEST_F(BacktestTradingGatewayTest, MarketOrderOpenClosePos)
 {
     trgw.set_price_source(price_source_ch);
-    price_source_ch.push(1ms, 100.);
+    price_source_ch.push(std::chrono::milliseconds{1}, 100.);
 
-    MarketOrder mo{
-            "TSTUSDT",
-            111.,
-            UnsignedVolume::from(1.).value(),
-            Side::buy(),
-            1ms,
-    };
+    {
+        MarketOrder mo{
+                "TSTUSDT",
+                111.,
+                UnsignedVolume::from(1.).value(),
+                Side::buy(),
+                std::chrono::milliseconds{1},
+        };
 
-    bool order_responded = false;
-    subs.push_back(trgw.order_response_channel().subscribe(
-            el,
-            [&](const OrderResponseEvent & r) {
-                order_responded = true;
-                EXPECT_EQ(r.request_guid, mo.guid());
-                EXPECT_FALSE(r.reject_reason.has_value());
-                EXPECT_FALSE(r.retry);
-            }));
+        bool order_responded = false;
+        auto order_sub = trgw.order_response_channel().subscribe(
+                el,
+                [&](const OrderResponseEvent & r) {
+                    order_responded = true;
+                    EXPECT_EQ(r.request_guid, mo.guid());
+                    EXPECT_FALSE(r.reject_reason.has_value());
+                    EXPECT_FALSE(r.retry);
+                });
 
-    bool trade_responded = false;
-    subs.push_back(trgw.trade_channel().subscribe(
-            el,
-            [&](const TradeEvent & r) {
-                trade_responded = true;
-                EXPECT_EQ(r.trade.price(), 100.);
-                EXPECT_TRUE(r.trade.fee() > 0.);
-            }));
+        bool trade_responded = false;
+        auto trade_sub = trgw.trade_channel().subscribe(
+                el,
+                [&](const TradeEvent & r) {
+                    trade_responded = true;
+                    EXPECT_EQ(r.trade.price(), 100.);
+                    EXPECT_TRUE(r.trade.fee() > 0.);
+                });
 
-    OrderRequestEvent ev{mo};
-    trgw.push_order_request(ev);
+        OrderRequestEvent ev{mo};
+        trgw.push_order_request(ev);
 
-    EXPECT_TRUE(order_responded);
-    EXPECT_TRUE(trade_responded);
+        EXPECT_TRUE(order_responded);
+        EXPECT_TRUE(trade_responded);
+    }
 
-    // TODO add some prices and make a new order
+    price_source_ch.push(std::chrono::milliseconds{10}, 111.);
+    price_source_ch.push(std::chrono::milliseconds{20}, 222.);
+
+    {
+        MarketOrder mo{
+                "TSTUSDT",
+                11.,
+                UnsignedVolume::from(1.).value(),
+                Side::sell(),
+                std::chrono::milliseconds{20},
+        };
+
+        bool order_responded = false;
+        auto order_sub = trgw.order_response_channel().subscribe(
+                el,
+                [&](const OrderResponseEvent & r) {
+                    order_responded = true;
+                    EXPECT_EQ(r.request_guid, mo.guid());
+                    EXPECT_FALSE(r.reject_reason.has_value());
+                    EXPECT_FALSE(r.retry);
+                });
+
+        bool trade_responded = false;
+        auto trade_sub = trgw.trade_channel().subscribe(
+                el,
+                [&](const TradeEvent & r) {
+                    trade_responded = true;
+                    EXPECT_EQ(r.trade.price(), 222.);
+                    EXPECT_TRUE(r.trade.fee() > 0.);
+                });
+
+        OrderRequestEvent ev{mo};
+        trgw.push_order_request(ev);
+
+        EXPECT_TRUE(order_responded);
+        EXPECT_TRUE(trade_responded);
+    }
 }
 
 } // namespace test
