@@ -110,8 +110,9 @@ std::optional<TpslUpdatedEvent> OrderResponseResult::on_tpsl_update(const std::a
 {
     const auto & response = updates[0];
 
-    // TODO handle deactivation and validate
-    return TpslUpdatedEvent(response.symbol, true);
+    // TODO validate
+    const bool set_up = response.cancelType == "UNKNOWN";
+    return TpslUpdatedEvent(response.symbol, set_up);
 }
 
 std::optional<TrailingStopLossUpdatedEvent> OrderResponseResult::on_trailing_stop_update(const ByBitMessages::OrderResponse & response)
