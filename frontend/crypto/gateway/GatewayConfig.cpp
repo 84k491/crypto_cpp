@@ -52,7 +52,7 @@ std::optional<GatewayConfig> GatewayConfigLoader::load()
     namespace fs = std::filesystem;
 
     const auto env_value = std::getenv(s_config_env_var.data());
-    if (!env_value) {
+    if (env_value == nullptr) {
         Logger::logf<LogLevel::Warning>("Environment variable {} is not set", s_config_env_var);
         return {};
     }

@@ -12,7 +12,7 @@ res_np=$(expr $np - "1")
 
 cmake .. -DCustomBuildType=Asan
 echo "Using $res_np threads"
-cmake --build . -j$res_np && ctest .
+cmake --build . -j$res_np && ctest --exclude-regex "LIVE" .
 
 cd ..
 export LSAN_OPTIONS=suppressions=suppressions.txt

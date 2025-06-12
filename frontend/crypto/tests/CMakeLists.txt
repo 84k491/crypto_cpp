@@ -53,3 +53,19 @@ target_link_libraries(backtest_trading_gateway_test
 )
 set(UNIT_TEST backtest_trading_gateway_test) # TODO remove it?
 add_test(NAME ${UNIT_TEST} COMMAND ${UNIT_TEST})
+
+####################################################################################################
+add_executable(bybit_trading_gateway_LIVE_test
+    BybitTradingGatewayLiveTest.cpp
+)
+target_link_libraries(bybit_trading_gateway_LIVE_test
+    ${GTEST_BOTH_LIBRARIES}
+    trading_primitives
+    trading_engine
+    util
+    gateway
+    network
+    nlohmann_json
+)
+set(UNIT_TEST bybit_trading_gateway_LIVE_test)
+add_test(NAME ${UNIT_TEST} COMMAND ${UNIT_TEST})
