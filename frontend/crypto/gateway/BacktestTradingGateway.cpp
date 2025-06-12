@@ -132,8 +132,21 @@ void BacktestTradingGateway::push_order_request(const OrderRequestEvent & req)
 
 void BacktestTradingGateway::push_tpsl_request(const TpslRequestEvent & tpsl_ev)
 {
+    if (!m_pos_volume || m_pos_volume->value() == 0) {
+        TpslResponseEvent resp_ev(
+                tpsl_ev.symbol.symbol_name,
+                tpsl_ev.guid,
+                tpsl_ev.tpsl,
+                "No position on TPSL request");
+        m_tpsl_response_channel.push(resp_ev);
+        return;
+    }
+
     m_tpsl = tpsl_ev;
-    TpslResponseEvent resp_ev(m_tpsl.value().symbol.symbol_name, m_tpsl.value().guid, tpsl_ev.tpsl);
+    TpslResponseEvent resp_ev(
+            m_tpsl.value().symbol.symbol_name,
+            m_tpsl.value().guid,
+            tpsl_ev.tpsl);
     m_tpsl_response_channel.push(resp_ev);
 }
 

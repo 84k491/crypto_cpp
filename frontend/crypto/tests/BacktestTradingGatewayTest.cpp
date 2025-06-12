@@ -123,4 +123,166 @@ TEST_F(BacktestTradingGatewayTest, MarketOrderOpenClosePos)
     }
 }
 
+TEST_F(BacktestTradingGatewayTest, TpslRejectIfNoPos)
+{
+    trgw.set_price_source(price_source_ch);
+    price_source_ch.push(std::chrono::milliseconds{1}, 100.);
+
+    bool tpsl_ack_responded = false;
+    auto tpsl_ack_sub = trgw.tpsl_response_channel().subscribe(
+            el,
+            [&](const TpslResponseEvent & ev) {
+                tpsl_ack_responded = true;
+                EXPECT_TRUE(ev.reject_reason.has_value());
+    });
+
+    Tpsl tpsl{.take_profit_price = 130., .stop_loss_price = 10.};
+    Symbol test_symbol{.symbol_name = "TSTUSDT", .lot_size_filter = {.min_qty = 0.1, .max_qty = 10., .qty_step = 0.1}};
+    TpslRequestEvent ev{test_symbol, tpsl};
+    trgw.push_tpsl_request(ev);
+
+    EXPECT_TRUE(tpsl_ack_responded);
+}
+
+TEST_F(BacktestTradingGatewayTest, TpslTriggerTp)
+{
+    trgw.set_price_source(price_source_ch);
+    price_source_ch.push(std::chrono::milliseconds{1}, 100.);
+
+    // open pos
+    {
+        MarketOrder mo{
+                "TSTUSDT",
+                111.,
+                UnsignedVolume::from(1.).value(),
+                Side::buy(),
+                std::chrono::milliseconds{1},
+        };
+
+        OrderRequestEvent ev{mo};
+        trgw.push_order_request(ev);
+    }
+
+    bool tpsl_ack_responded = false;
+    auto tpsl_ack_sub = trgw.tpsl_response_channel().subscribe(
+            el,
+            [&](const TpslResponseEvent & ev) {
+                tpsl_ack_responded = true;
+                EXPECT_FALSE(ev.reject_reason.has_value());
+    });
+
+    // bool tpsl_upd_responded = false;
+    constexpr int tp_price = 120;
+    // TODO impement in BacktestTradingGateway
+    // auto tpsl_upd_sub = trgw.tpsl_updated_channel().subscribe(
+    //         el,
+    //         [&](const TpslUpdatedEvent & ev) {
+    //             tpsl_upd_responded = true;
+    //             EXPECT_FALSE(ev.set_up);
+    //     });
+
+    bool tp_trade_responded = false;
+    auto tp_trade_sub = trgw.trade_channel().subscribe(
+            el,
+            [&](const TradeEvent & ev) {
+                tp_trade_responded = true;
+                EXPECT_EQ(ev.trade.price(), tp_price);
+        });
+
+    Tpsl tpsl{.take_profit_price = tp_price, .stop_loss_price = 50.};
+    Symbol test_symbol{.symbol_name = "TSTUSDT", .lot_size_filter = {.min_qty = 0.1, .max_qty = 10., .qty_step = 0.1}};
+    TpslRequestEvent ev{test_symbol, tpsl};
+    trgw.push_tpsl_request(ev);
+
+    EXPECT_TRUE(tpsl_ack_responded);
+    // EXPECT_FALSE(tpsl_upd_responded);
+    EXPECT_FALSE(tp_trade_responded);
+
+    // triggering TP
+    price_source_ch.push(std::chrono::milliseconds{2}, 130.);
+
+    // EXPECT_TRUE(tpsl_upd_responded); // TODO ^^^
+    EXPECT_TRUE(tp_trade_responded);
+}
+
+TEST_F(BacktestTradingGatewayTest, TpslTriggerSl)
+{
+    trgw.set_price_source(price_source_ch);
+    price_source_ch.push(std::chrono::milliseconds{1}, 100.);
+
+    // open pos
+    {
+        MarketOrder mo{
+                "TSTUSDT",
+                111.,
+                UnsignedVolume::from(1.).value(),
+                Side::buy(),
+                std::chrono::milliseconds{1},
+        };
+
+        OrderRequestEvent ev{mo};
+        trgw.push_order_request(ev);
+    }
+
+    bool tpsl_ack_responded = false;
+    auto tpsl_ack_sub = trgw.tpsl_response_channel().subscribe(
+            el,
+            [&](const TpslResponseEvent & ev) {
+                tpsl_ack_responded = true;
+                EXPECT_FALSE(ev.reject_reason.has_value());
+    });
+
+    bool tpsl_upd_responded = false;
+    constexpr int sl_price = 120;
+    // TODO impement in BacktestTradingGateway
+    // auto tpsl_upd_sub = trgw.tpsl_updated_channel().subscribe(
+    //         el,
+    //         [&](const TpslUpdatedEvent & ev) {
+    //             tpsl_upd_responded = true;
+    //             EXPECT_FALSE(ev.set_up);
+    //     });
+
+    bool tp_trade_responded = false;
+    auto tp_trade_sub = trgw.trade_channel().subscribe(
+            el,
+            [&](const TradeEvent & ev) {
+                tp_trade_responded = true;
+                EXPECT_EQ(ev.trade.price(), sl_price);
+        });
+
+    Tpsl tpsl{.take_profit_price = 130., .stop_loss_price = sl_price};
+    Symbol test_symbol{.symbol_name = "TSTUSDT", .lot_size_filter = {.min_qty = 0.1, .max_qty = 10., .qty_step = 0.1}};
+    TpslRequestEvent ev{test_symbol, tpsl};
+    trgw.push_tpsl_request(ev);
+
+    EXPECT_TRUE(tpsl_ack_responded);
+    // EXPECT_FALSE(tpsl_upd_responded);
+    EXPECT_FALSE(tp_trade_responded);
+
+    // triggering SL
+    price_source_ch.push(std::chrono::milliseconds{2}, 40.);
+
+    // EXPECT_TRUE(tpsl_upd_responded); // TODO ^^^
+    EXPECT_TRUE(tp_trade_responded);
+}
+
+TEST_F(BacktestTradingGatewayTest, TpslRejectIfAlreadySet)
+{
+}
+
+TEST_F(BacktestTradingGatewayTest, TpslRemoveOnClosePos)
+{
+}
+
+// TEST_F(BacktestTradingGatewayTest, TrailingStopRejectIfNoPos)
+// {
+// }
+// TEST_F(BacktestTradingGatewayTest, TrailingStopPullUpAndTrigger)
+// {
+// }
+//
+// TEST_F(BacktestTradingGatewayTest, TrailingStopRemoveOnClosePos)
+// {
+// }
+
 } // namespace test
