@@ -279,4 +279,40 @@ TEST_F(BybitTradingGatewayLiveTest, CloseWithTpsl)
     // TODO check opened pos
 }
 
+TEST_F(BybitTradingGatewayLiveTest, TpslRejectIfNoPos)
+{
+    // TODO check opened pos
+
+    ByBitTradingGateway trgw;
+    std::condition_variable tpsl_resp_cv;
+    std::condition_variable tpsl_upd_cv;
+
+    std::optional<TpslResponseEvent> tpsl_response;
+    std::shared_ptr<ISubscription> tpsl_r_sub = trgw.tpsl_response_channel().subscribe(
+            el,
+            [&](const TpslResponseEvent & ev) {
+                std::lock_guard<std::mutex> lock(mutex);
+                tpsl_response = ev;
+
+                tpsl_resp_cv.notify_all();
+            });
+
+    Tpsl tpsl{.take_profit_price = 110'000, .stop_loss_price = 105'000};
+    TpslRequestEvent tpsl_req_ev{
+            Symbol{.symbol_name = "BTCUSDT", .lot_size_filter = {}},
+            tpsl};
+    trgw.push_tpsl_request(tpsl_req_ev);
+
+    {
+        std::unique_lock<std::mutex> lock(mutex);
+        tpsl_resp_cv.wait_for(
+                lock,
+                std::chrono::seconds(10),
+                [&] { return tpsl_response.has_value(); });
+        ASSERT_TRUE(tpsl_response.has_value());
+    }
+
+    EXPECT_EQ(tpsl_response->reject_reason, "can not set tp/sl/ts for zero position");
+}
+
 } // namespace test

@@ -133,7 +133,7 @@ TEST_F(BacktestTradingGatewayTest, TpslRejectIfNoPos)
             el,
             [&](const TpslResponseEvent & ev) {
                 tpsl_ack_responded = true;
-                EXPECT_TRUE(ev.reject_reason.has_value());
+                EXPECT_EQ(ev.reject_reason, "can not set tp/sl/ts for zero position");
             });
 
     Tpsl tpsl{.take_profit_price = 130., .stop_loss_price = 10.};
@@ -141,7 +141,7 @@ TEST_F(BacktestTradingGatewayTest, TpslRejectIfNoPos)
     TpslRequestEvent ev{test_symbol, tpsl};
     trgw.push_tpsl_request(ev);
 
-    EXPECT_TRUE(tpsl_ack_responded);
+    ASSERT_TRUE(tpsl_ack_responded);
 }
 
 TEST_F(BacktestTradingGatewayTest, TpslTriggerTp)

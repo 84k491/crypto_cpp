@@ -139,7 +139,7 @@ void BacktestTradingGateway::push_tpsl_request(const TpslRequestEvent & tpsl_ev)
                 tpsl_ev.symbol.symbol_name,
                 tpsl_ev.guid,
                 tpsl_ev.tpsl,
-                "No position on TPSL request");
+                "can not set tp/sl/ts for zero position");
         m_tpsl_response_channel.push(resp_ev);
         return;
     }
