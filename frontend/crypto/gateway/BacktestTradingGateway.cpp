@@ -97,6 +97,8 @@ std::optional<Trade> BacktestTradingGateway::try_trade_tpsl(std::chrono::millise
             opposite_side,
             (pos_volume.value() * last_price) * taker_fee_rate,
     };
+    TpslUpdatedEvent tpsl_updated_ev(m_symbol, false);
+    m_tpsl_updated_channel.push(tpsl_updated_ev);
     return trade;
 }
 
@@ -148,6 +150,8 @@ void BacktestTradingGateway::push_tpsl_request(const TpslRequestEvent & tpsl_ev)
             m_tpsl.value().guid,
             tpsl_ev.tpsl);
     m_tpsl_response_channel.push(resp_ev);
+    TpslUpdatedEvent tpsl_updated_ev(tpsl_ev.symbol.symbol_name, true);
+    m_tpsl_updated_channel.push(tpsl_updated_ev);
 }
 
 void BacktestTradingGateway::push_trailing_stop_request(const TrailingStopLossRequestEvent & trailing_stop_ev)

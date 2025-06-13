@@ -134,7 +134,7 @@ TEST_F(BacktestTradingGatewayTest, TpslRejectIfNoPos)
             [&](const TpslResponseEvent & ev) {
                 tpsl_ack_responded = true;
                 EXPECT_TRUE(ev.reject_reason.has_value());
-    });
+            });
 
     Tpsl tpsl{.take_profit_price = 130., .stop_loss_price = 10.};
     Symbol test_symbol{.symbol_name = "TSTUSDT", .lot_size_filter = {.min_qty = 0.1, .max_qty = 10., .qty_step = 0.1}};
@@ -169,17 +169,15 @@ TEST_F(BacktestTradingGatewayTest, TpslTriggerTp)
             [&](const TpslResponseEvent & ev) {
                 tpsl_ack_responded = true;
                 EXPECT_FALSE(ev.reject_reason.has_value());
-    });
+            });
 
-    // bool tpsl_upd_responded = false;
+    std::optional<TpslUpdatedEvent> tpsl_upd_response;
     constexpr int tp_price = 120;
-    // TODO impement in BacktestTradingGateway
-    // auto tpsl_upd_sub = trgw.tpsl_updated_channel().subscribe(
-    //         el,
-    //         [&](const TpslUpdatedEvent & ev) {
-    //             tpsl_upd_responded = true;
-    //             EXPECT_FALSE(ev.set_up);
-    //     });
+    auto tpsl_upd_sub = trgw.tpsl_updated_channel().subscribe(
+            el,
+            [&](const TpslUpdatedEvent & ev) {
+                tpsl_upd_response = ev;
+            });
 
     bool tp_trade_responded = false;
     auto tp_trade_sub = trgw.trade_channel().subscribe(
@@ -187,7 +185,7 @@ TEST_F(BacktestTradingGatewayTest, TpslTriggerTp)
             [&](const TradeEvent & ev) {
                 tp_trade_responded = true;
                 EXPECT_EQ(ev.trade.price(), tp_price);
-        });
+            });
 
     Tpsl tpsl{.take_profit_price = tp_price, .stop_loss_price = 50.};
     Symbol test_symbol{.symbol_name = "TSTUSDT", .lot_size_filter = {.min_qty = 0.1, .max_qty = 10., .qty_step = 0.1}};
@@ -195,13 +193,16 @@ TEST_F(BacktestTradingGatewayTest, TpslTriggerTp)
     trgw.push_tpsl_request(ev);
 
     EXPECT_TRUE(tpsl_ack_responded);
-    // EXPECT_FALSE(tpsl_upd_responded);
+    ASSERT_TRUE(tpsl_upd_response.has_value());
+    EXPECT_TRUE(tpsl_upd_response->set_up);
     EXPECT_FALSE(tp_trade_responded);
+    tpsl_upd_response = {};
 
     // triggering TP
     price_source_ch.push(std::chrono::milliseconds{2}, 130.);
 
-    // EXPECT_TRUE(tpsl_upd_responded); // TODO ^^^
+    ASSERT_TRUE(tpsl_upd_response.has_value());
+    EXPECT_FALSE(tpsl_upd_response->set_up);
     EXPECT_TRUE(tp_trade_responded);
 }
 
@@ -230,17 +231,15 @@ TEST_F(BacktestTradingGatewayTest, TpslTriggerSl)
             [&](const TpslResponseEvent & ev) {
                 tpsl_ack_responded = true;
                 EXPECT_FALSE(ev.reject_reason.has_value());
-    });
+            });
 
-    bool tpsl_upd_responded = false;
+    std::optional<TpslUpdatedEvent> tpsl_upd_response;
     constexpr int sl_price = 120;
-    // TODO impement in BacktestTradingGateway
-    // auto tpsl_upd_sub = trgw.tpsl_updated_channel().subscribe(
-    //         el,
-    //         [&](const TpslUpdatedEvent & ev) {
-    //             tpsl_upd_responded = true;
-    //             EXPECT_FALSE(ev.set_up);
-    //     });
+    auto tpsl_upd_sub = trgw.tpsl_updated_channel().subscribe(
+            el,
+            [&](const TpslUpdatedEvent & ev) {
+                tpsl_upd_response = ev;
+        });
 
     bool tp_trade_responded = false;
     auto tp_trade_sub = trgw.trade_channel().subscribe(
@@ -248,7 +247,7 @@ TEST_F(BacktestTradingGatewayTest, TpslTriggerSl)
             [&](const TradeEvent & ev) {
                 tp_trade_responded = true;
                 EXPECT_EQ(ev.trade.price(), sl_price);
-        });
+            });
 
     Tpsl tpsl{.take_profit_price = 130., .stop_loss_price = sl_price};
     Symbol test_symbol{.symbol_name = "TSTUSDT", .lot_size_filter = {.min_qty = 0.1, .max_qty = 10., .qty_step = 0.1}};
@@ -256,13 +255,16 @@ TEST_F(BacktestTradingGatewayTest, TpslTriggerSl)
     trgw.push_tpsl_request(ev);
 
     EXPECT_TRUE(tpsl_ack_responded);
-    // EXPECT_FALSE(tpsl_upd_responded);
+    ASSERT_TRUE(tpsl_upd_response);
+    EXPECT_TRUE(tpsl_upd_response->set_up);
     EXPECT_FALSE(tp_trade_responded);
+    tpsl_upd_response = {};
 
     // triggering SL
     price_source_ch.push(std::chrono::milliseconds{2}, 40.);
 
-    // EXPECT_TRUE(tpsl_upd_responded); // TODO ^^^
+    EXPECT_TRUE(tpsl_upd_response);
+    EXPECT_FALSE(tpsl_upd_response->set_up);
     EXPECT_TRUE(tp_trade_responded);
 }
 

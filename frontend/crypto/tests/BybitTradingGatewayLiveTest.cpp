@@ -76,7 +76,7 @@ TEST_F(BybitTradingGatewayLiveTest, OpenAndClosePos)
                 std::chrono::seconds(10),
                 [&order_response] { return order_response.has_value(); });
         ASSERT_TRUE(order_response.has_value());
-       EXPECT_FALSE(order_response->reject_reason.has_value());
+        EXPECT_FALSE(order_response->reject_reason.has_value());
     }
 
     {
@@ -205,9 +205,8 @@ TEST_F(BybitTradingGatewayLiveTest, CloseWithTpsl)
     const auto entry_price = trade_response->trade.price();
     Tpsl tpsl{.take_profit_price = entry_price + 500, .stop_loss_price = entry_price - 500};
     TpslRequestEvent tpsl_req_ev{
-        Symbol{"BTCUSDT", {}},
-        tpsl
-    };
+            Symbol{.symbol_name = "BTCUSDT", .lot_size_filter = {}},
+            tpsl};
     trgw.push_tpsl_request(tpsl_req_ev);
 
     order_response = {};
