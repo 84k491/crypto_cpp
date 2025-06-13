@@ -129,6 +129,11 @@ void BacktestTradingGateway::push_order_request(const OrderRequestEvent & req)
 
     *m_pos_volume += SignedVolume(volume, order.side());
 
+    if (m_pos_volume->value() == 0 && m_tpsl.has_value()) {
+        TpslUpdatedEvent tpsl_updated_ev(m_symbol, false);
+        m_tpsl_updated_channel.push(tpsl_updated_ev);
+    }
+
     m_trade_channel.push(TradeEvent(std::move(trade)));
 }
 
