@@ -5,6 +5,7 @@
 #include <utility>
 #include <optional>
 
+// TODO use StopLoss from ConditionalOrders.h
 // used as TrailingStopLoss current value
 class StopLoss
 {

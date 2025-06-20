@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ConditionalOrders.h"
 #include "EventTimeseriesChannel.h"
 #include "Events.h"
 #include "ITradingGateway.h"
@@ -41,6 +42,10 @@ public:
     void push_order_request(const OrderRequestEvent & order) override;
     void push_tpsl_request(const TpslRequestEvent & tpsl_ev) override;
     void push_trailing_stop_request(const TrailingStopLossRequestEvent & trailing_stop_ev) override;
+    void push_stop_loss_request(const StopLossMarketOrder & order);
+    void push_take_profit_request(const TakeProfitMarketOrder & order);
+    void cancel_stop_loss_request(const StopLossMarketOrder & order);
+    void cancel_take_profit_request(const TakeProfitMarketOrder & order);
 
     EventChannel<OrderResponseEvent> & order_response_channel() override;
     EventChannel<TradeEvent> & trade_channel() override;
@@ -48,9 +53,13 @@ public:
     EventChannel<TpslUpdatedEvent> & tpsl_updated_channel() override;
     EventChannel<TrailingStopLossResponseEvent> & trailing_stop_response_channel() override;
     EventChannel<TrailingStopLossUpdatedEvent> & trailing_stop_update_channel() override;
+    EventChannel<StopLossUpdatedEvent> & stop_loss_update_channel();
+    EventChannel<TakeProfitUpdatedEvent> & take_profit_update_channel();
 
 private:
+    void on_new_price(std::chrono::milliseconds ts, const double & price);
     std::optional<Trade> try_trade_tpsl(std::chrono::milliseconds ts, double price);
+    void try_trigger_conditionals(std::chrono::milliseconds ts, double price);
 
 private:
     std::shared_ptr<BacktestEventConsumer> m_event_consumer;
@@ -70,4 +79,9 @@ private:
     EventChannel<TpslUpdatedEvent> m_tpsl_updated_channel;
     EventChannel<TrailingStopLossResponseEvent> m_trailing_stop_response_channel;
     EventChannel<TrailingStopLossUpdatedEvent> m_trailing_stop_update_channel;
+    EventChannel<StopLossUpdatedEvent> m_stop_loss_update_channel;
+    EventChannel<TakeProfitUpdatedEvent> m_take_profit_update_channel;
+
+    std::list<StopLossMarketOrder> m_stop_losses;
+    std::list<TakeProfitMarketOrder> m_take_profits;
 };

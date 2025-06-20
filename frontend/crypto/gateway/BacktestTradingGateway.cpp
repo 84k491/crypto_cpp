@@ -19,36 +19,45 @@ void BacktestTradingGateway::set_price_source(EventTimeseriesChannel<double> & c
             m_event_consumer,
             [](auto &) {},
             [this](std::chrono::milliseconds ts, const double & price) {
-                m_last_price = price;
-                m_last_ts = ts;
-                if (m_tpsl.has_value()) {
-                    const auto tpsl_trade = try_trade_tpsl(ts, price);
-                    if (tpsl_trade.has_value()) {
-                        m_trade_channel.push(TradeEvent(tpsl_trade.value()));
-                        *m_pos_volume = SignedVolume();
-                        m_tpsl.reset();
-                    }
-                }
-                if (m_trailing_stop.has_value()) {
-                    const auto trade_or_sl = m_trailing_stop->on_price_updated(ts, price);
-                    if (trade_or_sl.has_value()) {
-                        std::visit(
-                                VariantMatcher{
-                                        [&](const Trade & trade) {
-                                            m_trade_channel.push(TradeEvent(trade));
-                                            m_trailing_stop_update_channel.push(
-                                                    TrailingStopLossUpdatedEvent(trade.symbol_name(), {}, ts));
-                                            m_trailing_stop.reset();
-                                            *m_pos_volume = SignedVolume();
-                                        },
-                                        [&](const StopLoss & sl) {
-                                            m_trailing_stop_update_channel.push(
-                                                    TrailingStopLossUpdatedEvent(sl.symbol_name(), sl, ts));
-                                        }},
-                                *trade_or_sl);
-                    }
-                }
+                on_new_price(ts, price);
             });
+}
+
+void BacktestTradingGateway::on_new_price(std::chrono::milliseconds ts, const double & price)
+{
+    m_last_price = price;
+    m_last_ts = ts;
+
+    if (m_tpsl.has_value()) {
+        const auto tpsl_trade = try_trade_tpsl(ts, price);
+        if (tpsl_trade.has_value()) {
+            m_trade_channel.push(TradeEvent(tpsl_trade.value()));
+            *m_pos_volume = SignedVolume();
+            m_tpsl.reset();
+        }
+    }
+
+    if (m_trailing_stop.has_value()) {
+        const auto trade_or_sl = m_trailing_stop->on_price_updated(ts, price);
+        if (trade_or_sl.has_value()) {
+            std::visit(
+                    VariantMatcher{
+                            [&](const Trade & trade) {
+                                m_trade_channel.push(TradeEvent(trade));
+                                m_trailing_stop_update_channel.push(
+                                        TrailingStopLossUpdatedEvent(trade.symbol_name(), {}, ts));
+                                m_trailing_stop.reset();
+                                *m_pos_volume = SignedVolume();
+                            },
+                            [&](const StopLoss & sl) {
+                                m_trailing_stop_update_channel.push(
+                                        TrailingStopLossUpdatedEvent(sl.symbol_name(), sl, ts));
+                            }},
+                    *trade_or_sl);
+        }
+    }
+
+    try_trigger_conditionals(ts, price);
 }
 
 std::optional<Trade> BacktestTradingGateway::try_trade_tpsl(std::chrono::milliseconds ts, double price)
@@ -100,6 +109,56 @@ std::optional<Trade> BacktestTradingGateway::try_trade_tpsl(std::chrono::millise
     TpslUpdatedEvent tpsl_updated_ev(m_symbol, false);
     m_tpsl_updated_channel.push(tpsl_updated_ev);
     return trade;
+}
+
+void BacktestTradingGateway::try_trigger_conditionals(std::chrono::milliseconds ts, double price)
+{
+    const auto trigger = [&](const ConditionalMarketOrder & o, bool take_profit) {
+        // TODO modify position
+        Trade trade{
+                ts,
+                m_symbol,
+                o.trigger_price(),
+                o.order().volume(),
+                o.order().side(),
+                (o.order().volume().value() * price) * taker_fee_rate,
+        };
+        m_trade_channel.push(std::move(trade));
+        if (take_profit) {
+            m_take_profit_update_channel.push({o.guid(), false});
+        }
+        else {
+            m_stop_loss_update_channel.push({o.guid(), false});
+        }
+    };
+
+    for (auto it = m_stop_losses.begin(), end = m_stop_losses.end(); it != end; ++it) {
+        const auto & o = *it;
+
+        if (price <= o.trigger_price() && o.order().side() == Side::sell()) {
+            trigger(o, false);
+            it = m_stop_losses.erase(it);
+        }
+
+        if (price >= o.trigger_price() && o.order().side() == Side::buy()) {
+            trigger(o, false);
+            it = m_stop_losses.erase(it);
+        }
+    }
+
+    for (auto it = m_take_profits.begin(), end = m_take_profits.end(); it != end; ++it) {
+        const auto & o = *it;
+
+        if (price >= o.trigger_price() && o.order().side() == Side::sell()) {
+            trigger(o, true);
+            it = m_take_profits.erase(it);
+        }
+
+        if (price <= o.trigger_price() && o.order().side() == Side::buy()) {
+            trigger(o, true);
+            it = m_take_profits.erase(it);
+        }
+    }
 }
 
 void BacktestTradingGateway::push_order_request(const OrderRequestEvent & req)
@@ -174,6 +233,18 @@ void BacktestTradingGateway::push_trailing_stop_request(const TrailingStopLossRe
     m_trailing_stop_update_channel.push({m_symbol,
                                          m_trailing_stop->stop_loss(),
                                          m_last_ts});
+}
+
+void BacktestTradingGateway::push_stop_loss_request(const StopLossMarketOrder & order)
+{
+    m_stop_losses.push_back(order);
+    m_stop_loss_update_channel.push({order.guid(), true});
+}
+
+void BacktestTradingGateway::push_take_profit_request(const TakeProfitMarketOrder & order)
+{
+    m_take_profits.push_back(order);
+    m_take_profit_update_channel.push({order.guid(), true});
 }
 
 bool BacktestEventConsumer::push_to_queue(LambdaEvent value)
@@ -265,4 +336,14 @@ EventChannel<TrailingStopLossResponseEvent> & BacktestTradingGateway::trailing_s
 EventChannel<TrailingStopLossUpdatedEvent> & BacktestTradingGateway::trailing_stop_update_channel()
 {
     return m_trailing_stop_update_channel;
+}
+
+EventChannel<StopLossUpdatedEvent> & BacktestTradingGateway::stop_loss_update_channel()
+{
+    return m_stop_loss_update_channel;
+}
+
+EventChannel<TakeProfitUpdatedEvent> & BacktestTradingGateway::take_profit_update_channel()
+{
+    return m_take_profit_update_channel;
 }

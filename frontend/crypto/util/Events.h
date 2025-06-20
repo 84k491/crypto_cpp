@@ -186,6 +186,21 @@ struct TpslUpdatedEvent : public OneWayEvent
     bool set_up = false;
 };
 
+struct ConditionalOrderUpdateEvent
+{
+    ConditionalOrderUpdateEvent(xg::Guid guid, bool active)
+        : guid(guid)
+        , active(active)
+    {
+    }
+
+    xg::Guid guid;
+    bool active = false;
+};
+
+using StopLossUpdatedEvent = ConditionalOrderUpdateEvent;
+using TakeProfitUpdatedEvent = ConditionalOrderUpdateEvent;
+
 struct TpslRequestEvent : public OneWayEvent
 {
     TpslRequestEvent(

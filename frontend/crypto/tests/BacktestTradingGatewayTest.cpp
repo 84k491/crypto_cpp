@@ -322,15 +322,214 @@ TEST_F(BacktestTradingGatewayTest, TpslRemoveOnClosePos)
     EXPECT_FALSE(tpsl_upd_response->set_up);
 }
 
+TEST_F(BacktestTradingGatewayTest, StopLossSellTriggerLater)
+{
+    trgw.set_price_source(price_source_ch);
+    price_source_ch.push(std::chrono::milliseconds{1}, 100.);
+
+    std::optional<StopLossUpdatedEvent> sl_updated_response;
+    auto sl_updated_sub = trgw.stop_loss_update_channel().subscribe(
+            el, [&sl_updated_response](const StopLossUpdatedEvent ev) {
+                sl_updated_response = ev;
+            });
+
+    std::optional<TradeEvent> trade_msg;
+    auto trade_sub = trgw.trade_channel().subscribe(
+            el, [&](const TradeEvent & ev) {
+                trade_msg = ev;
+            });
+
+    {
+        StopLossMarketOrder sl{
+                "TSTUSDT",
+                90.,
+                UnsignedVolume::from(1.).value(),
+                Side::sell(),
+                std::chrono::milliseconds{1},
+        };
+
+        trgw.push_stop_loss_request(sl);
+    }
+
+    ASSERT_TRUE(sl_updated_response.has_value());
+    ASSERT_TRUE(sl_updated_response->active);
+    sl_updated_response.reset();
+    ASSERT_FALSE(trade_msg.has_value());
+
+    // this must not trigger sell stop loss
+    price_source_ch.push(std::chrono::milliseconds{20}, 222.);
+
+    ASSERT_FALSE(sl_updated_response.has_value());
+    ASSERT_FALSE(trade_msg.has_value());
+
+    // exact price, must trigger
+    price_source_ch.push(std::chrono::milliseconds{30}, 90.);
+
+    ASSERT_TRUE(sl_updated_response.has_value());
+    ASSERT_FALSE(sl_updated_response->active);
+    ASSERT_TRUE(trade_msg.has_value());
+
+    // TODO check position
+}
+
+TEST_F(BacktestTradingGatewayTest, StopLossBuyTriggerLater)
+{
+    trgw.set_price_source(price_source_ch);
+    price_source_ch.push(std::chrono::milliseconds{1}, 90.);
+
+    std::optional<StopLossUpdatedEvent> sl_updated_response;
+    auto sl_updated_sub = trgw.stop_loss_update_channel().subscribe(
+            el, [&sl_updated_response](const StopLossUpdatedEvent ev) {
+                sl_updated_response = ev;
+            });
+
+    std::optional<TradeEvent> trade_msg;
+    auto trade_sub = trgw.trade_channel().subscribe(
+            el, [&](const TradeEvent & ev) {
+                trade_msg = ev;
+            });
+
+    {
+        StopLossMarketOrder sl{
+                "TSTUSDT",
+                100.,
+                UnsignedVolume::from(1.).value(),
+                Side::buy(),
+                std::chrono::milliseconds{1},
+        };
+
+        trgw.push_stop_loss_request(sl);
+    }
+
+    ASSERT_TRUE(sl_updated_response.has_value());
+    ASSERT_TRUE(sl_updated_response->active);
+    sl_updated_response.reset();
+    ASSERT_FALSE(trade_msg.has_value());
+
+    // this must not trigger sell stop loss
+    price_source_ch.push(std::chrono::milliseconds{20}, 88.);
+
+    ASSERT_FALSE(sl_updated_response.has_value());
+    ASSERT_FALSE(trade_msg.has_value());
+
+    // exact price, must trigger
+    price_source_ch.push(std::chrono::milliseconds{30}, 100.);
+
+    ASSERT_TRUE(sl_updated_response.has_value());
+    ASSERT_FALSE(sl_updated_response->active);
+    ASSERT_TRUE(trade_msg.has_value());
+
+    // TODO check pos
+}
+
+// TODO
+// TEST_F(BacktestTradingGatewayTest, StopLossCancel)
+// TEST_F(BacktestTradingGatewayTest, StopLossTriggerImmediately)
+// same for take profit
+
+TEST_F(BacktestTradingGatewayTest, TakeProfitSellTriggerLater)
+{
+    trgw.set_price_source(price_source_ch);
+    price_source_ch.push(std::chrono::milliseconds{1}, 100.);
+
+    std::optional<TakeProfitUpdatedEvent> sl_updated_response;
+    auto sl_updated_sub = trgw.take_profit_update_channel().subscribe(
+            el, [&sl_updated_response](const TakeProfitUpdatedEvent ev) {
+                sl_updated_response = ev;
+            });
+
+    std::optional<TradeEvent> trade_msg;
+    auto trade_sub = trgw.trade_channel().subscribe(
+            el, [&](const TradeEvent & ev) {
+                trade_msg = ev;
+            });
+
+    {
+        TakeProfitMarketOrder tp{
+                "TSTUSDT",
+                110.,
+                UnsignedVolume::from(1.).value(),
+                Side::sell(),
+                std::chrono::milliseconds{1},
+        };
+
+        trgw.push_take_profit_request(tp);
+    }
+
+    ASSERT_TRUE(sl_updated_response.has_value());
+    ASSERT_TRUE(sl_updated_response->active);
+    sl_updated_response.reset();
+    ASSERT_FALSE(trade_msg.has_value());
+
+    // this must not trigger sell stop loss
+    price_source_ch.push(std::chrono::milliseconds{20}, 90.);
+
+    ASSERT_FALSE(sl_updated_response.has_value());
+    ASSERT_FALSE(trade_msg.has_value());
+
+    // exact price, must trigger
+    price_source_ch.push(std::chrono::milliseconds{30}, 110.);
+
+    ASSERT_TRUE(sl_updated_response.has_value());
+    ASSERT_FALSE(sl_updated_response->active);
+    ASSERT_TRUE(trade_msg.has_value());
+
+    // TODO check position
+}
+
+TEST_F(BacktestTradingGatewayTest, TakeProfitBuyTriggerLater)
+{
+    trgw.set_price_source(price_source_ch);
+    price_source_ch.push(std::chrono::milliseconds{1}, 100.);
+
+    std::optional<TakeProfitUpdatedEvent> sl_updated_response;
+    auto sl_updated_sub = trgw.take_profit_update_channel().subscribe(
+            el, [&sl_updated_response](const TakeProfitUpdatedEvent ev) {
+                sl_updated_response = ev;
+            });
+
+    std::optional<TradeEvent> trade_msg;
+    auto trade_sub = trgw.trade_channel().subscribe(
+            el, [&](const TradeEvent & ev) {
+                trade_msg = ev;
+            });
+
+    {
+        TakeProfitMarketOrder tp{
+                "TSTUSDT",
+                90.,
+                UnsignedVolume::from(1.).value(),
+                Side::buy(),
+                std::chrono::milliseconds{1},
+        };
+
+        trgw.push_take_profit_request(tp);
+    }
+
+    ASSERT_TRUE(sl_updated_response.has_value());
+    ASSERT_TRUE(sl_updated_response->active);
+    sl_updated_response.reset();
+    ASSERT_FALSE(trade_msg.has_value());
+
+    // this must not trigger sell stop loss
+    price_source_ch.push(std::chrono::milliseconds{20}, 110.);
+
+    ASSERT_FALSE(sl_updated_response.has_value());
+    ASSERT_FALSE(trade_msg.has_value());
+
+    // exact price, must trigger
+    price_source_ch.push(std::chrono::milliseconds{30}, 90.);
+
+    ASSERT_TRUE(sl_updated_response.has_value());
+    ASSERT_FALSE(sl_updated_response->active);
+    ASSERT_TRUE(trade_msg.has_value());
+
+    // TODO check position
+}
+
+// TODO
 // TEST_F(BacktestTradingGatewayTest, TrailingStopRejectIfNoPos)
-// {
-// }
 // TEST_F(BacktestTradingGatewayTest, TrailingStopPullUpAndTrigger)
-// {
-// }
-//
 // TEST_F(BacktestTradingGatewayTest, TrailingStopRemoveOnClosePos)
-// {
-// }
 
 } // namespace test
