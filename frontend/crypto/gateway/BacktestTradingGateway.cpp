@@ -114,7 +114,7 @@ std::optional<Trade> BacktestTradingGateway::try_trade_tpsl(std::chrono::millise
 void BacktestTradingGateway::try_trigger_conditionals(std::chrono::milliseconds ts, double price)
 {
     const auto trigger = [&](const ConditionalMarketOrder & o, bool take_profit) {
-        // TODO modify position
+        *m_pos_volume += SignedVolume{o.order().volume().value() * o.order().side().sign()};
         Trade trade{
                 ts,
                 m_symbol,
@@ -239,12 +239,16 @@ void BacktestTradingGateway::push_stop_loss_request(const StopLossMarketOrder & 
 {
     m_stop_losses.push_back(order);
     m_stop_loss_update_channel.push({order.guid(), true});
+
+    try_trigger_conditionals(order.order().signal_ts(), m_last_price);
 }
 
 void BacktestTradingGateway::push_take_profit_request(const TakeProfitMarketOrder & order)
 {
     m_take_profits.push_back(order);
     m_take_profit_update_channel.push({order.guid(), true});
+
+    try_trigger_conditionals(order.order().signal_ts(), m_last_price);
 }
 
 bool BacktestEventConsumer::push_to_queue(LambdaEvent value)
@@ -346,4 +350,31 @@ EventChannel<StopLossUpdatedEvent> & BacktestTradingGateway::stop_loss_update_ch
 EventChannel<TakeProfitUpdatedEvent> & BacktestTradingGateway::take_profit_update_channel()
 {
     return m_take_profit_update_channel;
+}
+
+SignedVolume BacktestTradingGateway::pos_volume() const
+{
+    return m_pos_volume ? *m_pos_volume : SignedVolume{};
+}
+
+void BacktestTradingGateway::cancel_stop_loss_request(xg::Guid guid)
+{
+    for (auto it = m_stop_losses.begin(), end = m_stop_losses.end(); it != end; ++it) {
+        if (it->guid() == guid) {
+            m_stop_losses.erase(it);
+            m_stop_loss_update_channel.push({guid, false});
+            return;
+        }
+    };
+}
+
+void BacktestTradingGateway::cancel_take_profit_request(xg::Guid guid)
+{
+    for (auto it = m_take_profits.begin(), end = m_take_profits.end(); it != end; ++it) {
+        if (it->guid() == guid) {
+            m_take_profits.erase(it);
+            m_take_profit_update_channel.push({guid, false});
+            return;
+        }
+    };
 }

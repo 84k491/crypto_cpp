@@ -2,6 +2,7 @@
 
 #include "EventLoop.h"
 #include "EventTimeseriesChannel.h"
+#include "crossguid/guid.hpp"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -82,6 +83,8 @@ TEST_F(BacktestTradingGatewayTest, MarketOrderOpenClosePos)
 
         EXPECT_TRUE(order_responded);
         EXPECT_TRUE(trade_responded);
+
+        ASSERT_EQ(trgw.pos_volume().value(), 1);
     }
 
     price_source_ch.push(std::chrono::milliseconds{10}, 111.);
@@ -120,6 +123,7 @@ TEST_F(BacktestTradingGatewayTest, MarketOrderOpenClosePos)
 
         EXPECT_TRUE(order_responded);
         EXPECT_TRUE(trade_responded);
+        ASSERT_EQ(trgw.pos_volume().value(), 0);
     }
 }
 
@@ -139,9 +143,14 @@ TEST_F(BacktestTradingGatewayTest, TpslRejectIfNoPos)
     Tpsl tpsl{.take_profit_price = 130., .stop_loss_price = 10.};
     Symbol test_symbol{.symbol_name = "TSTUSDT", .lot_size_filter = {.min_qty = 0.1, .max_qty = 10., .qty_step = 0.1}};
     TpslRequestEvent ev{test_symbol, tpsl};
+
+    ASSERT_EQ(trgw.pos_volume().value(), 0);
+
     trgw.push_tpsl_request(ev);
 
     ASSERT_TRUE(tpsl_ack_responded);
+
+    ASSERT_EQ(trgw.pos_volume().value(), 0);
 }
 
 TEST_F(BacktestTradingGatewayTest, TpslTriggerTp)
@@ -162,6 +171,7 @@ TEST_F(BacktestTradingGatewayTest, TpslTriggerTp)
         OrderRequestEvent ev{mo};
         trgw.push_order_request(ev);
     }
+    ASSERT_EQ(trgw.pos_volume().value(), 1);
 
     bool tpsl_ack_responded = false;
     auto tpsl_ack_sub = trgw.tpsl_response_channel().subscribe(
@@ -204,6 +214,8 @@ TEST_F(BacktestTradingGatewayTest, TpslTriggerTp)
     ASSERT_TRUE(tpsl_upd_response.has_value());
     EXPECT_FALSE(tpsl_upd_response->set_up);
     EXPECT_TRUE(tp_trade_responded);
+
+    ASSERT_EQ(trgw.pos_volume().value(), 0);
 }
 
 TEST_F(BacktestTradingGatewayTest, TpslTriggerSl)
@@ -224,6 +236,7 @@ TEST_F(BacktestTradingGatewayTest, TpslTriggerSl)
         OrderRequestEvent ev{mo};
         trgw.push_order_request(ev);
     }
+    ASSERT_EQ(trgw.pos_volume().value(), 1);
 
     bool tpsl_ack_responded = false;
     auto tpsl_ack_sub = trgw.tpsl_response_channel().subscribe(
@@ -263,6 +276,7 @@ TEST_F(BacktestTradingGatewayTest, TpslTriggerSl)
     // triggering SL
     price_source_ch.push(std::chrono::milliseconds{2}, 40.);
 
+    ASSERT_EQ(trgw.pos_volume().value(), 0);
     EXPECT_TRUE(tpsl_upd_response);
     EXPECT_FALSE(tpsl_upd_response->set_up);
     EXPECT_TRUE(tp_trade_responded);
@@ -284,6 +298,7 @@ TEST_F(BacktestTradingGatewayTest, TpslRemoveOnClosePos)
 
         OrderRequestEvent ev{mo};
         trgw.push_order_request(ev);
+        ASSERT_EQ(trgw.pos_volume().value(), 1);
     }
 
     price_source_ch.push(std::chrono::milliseconds{20}, 222.);
@@ -316,10 +331,12 @@ TEST_F(BacktestTradingGatewayTest, TpslRemoveOnClosePos)
 
         OrderRequestEvent or_ev{mo};
         trgw.push_order_request(or_ev);
+        ASSERT_EQ(trgw.pos_volume().value(), 0);
     }
 
     ASSERT_TRUE(tpsl_upd_response);
     EXPECT_FALSE(tpsl_upd_response->set_up);
+    ASSERT_EQ(trgw.pos_volume().value(), 0);
 }
 
 TEST_F(BacktestTradingGatewayTest, StopLossSellTriggerLater)
@@ -349,6 +366,7 @@ TEST_F(BacktestTradingGatewayTest, StopLossSellTriggerLater)
         };
 
         trgw.push_stop_loss_request(sl);
+        ASSERT_EQ(trgw.pos_volume().value(), 0);
     }
 
     ASSERT_TRUE(sl_updated_response.has_value());
@@ -359,17 +377,18 @@ TEST_F(BacktestTradingGatewayTest, StopLossSellTriggerLater)
     // this must not trigger sell stop loss
     price_source_ch.push(std::chrono::milliseconds{20}, 222.);
 
+    ASSERT_EQ(trgw.pos_volume().value(), 0);
     ASSERT_FALSE(sl_updated_response.has_value());
     ASSERT_FALSE(trade_msg.has_value());
 
-    // exact price, must trigger
+    // exact price, must trigger and open pos
     price_source_ch.push(std::chrono::milliseconds{30}, 90.);
 
     ASSERT_TRUE(sl_updated_response.has_value());
     ASSERT_FALSE(sl_updated_response->active);
     ASSERT_TRUE(trade_msg.has_value());
 
-    // TODO check position
+    ASSERT_EQ(trgw.pos_volume().value(), -1);
 }
 
 TEST_F(BacktestTradingGatewayTest, StopLossBuyTriggerLater)
@@ -401,6 +420,7 @@ TEST_F(BacktestTradingGatewayTest, StopLossBuyTriggerLater)
         trgw.push_stop_loss_request(sl);
     }
 
+    ASSERT_EQ(trgw.pos_volume().value(), 0);
     ASSERT_TRUE(sl_updated_response.has_value());
     ASSERT_TRUE(sl_updated_response->active);
     sl_updated_response.reset();
@@ -419,13 +439,8 @@ TEST_F(BacktestTradingGatewayTest, StopLossBuyTriggerLater)
     ASSERT_FALSE(sl_updated_response->active);
     ASSERT_TRUE(trade_msg.has_value());
 
-    // TODO check pos
+    ASSERT_EQ(trgw.pos_volume().value(), 1);
 }
-
-// TODO
-// TEST_F(BacktestTradingGatewayTest, StopLossCancel)
-// TEST_F(BacktestTradingGatewayTest, StopLossTriggerImmediately)
-// same for take profit
 
 TEST_F(BacktestTradingGatewayTest, TakeProfitSellTriggerLater)
 {
@@ -456,6 +471,7 @@ TEST_F(BacktestTradingGatewayTest, TakeProfitSellTriggerLater)
         trgw.push_take_profit_request(tp);
     }
 
+    ASSERT_EQ(trgw.pos_volume().value(), 0);
     ASSERT_TRUE(sl_updated_response.has_value());
     ASSERT_TRUE(sl_updated_response->active);
     sl_updated_response.reset();
@@ -464,6 +480,7 @@ TEST_F(BacktestTradingGatewayTest, TakeProfitSellTriggerLater)
     // this must not trigger sell stop loss
     price_source_ch.push(std::chrono::milliseconds{20}, 90.);
 
+    ASSERT_EQ(trgw.pos_volume().value(), 0);
     ASSERT_FALSE(sl_updated_response.has_value());
     ASSERT_FALSE(trade_msg.has_value());
 
@@ -474,7 +491,7 @@ TEST_F(BacktestTradingGatewayTest, TakeProfitSellTriggerLater)
     ASSERT_FALSE(sl_updated_response->active);
     ASSERT_TRUE(trade_msg.has_value());
 
-    // TODO check position
+    ASSERT_EQ(trgw.pos_volume().value(), -1);
 }
 
 TEST_F(BacktestTradingGatewayTest, TakeProfitBuyTriggerLater)
@@ -506,6 +523,7 @@ TEST_F(BacktestTradingGatewayTest, TakeProfitBuyTriggerLater)
         trgw.push_take_profit_request(tp);
     }
 
+    ASSERT_EQ(trgw.pos_volume().value(), 0);
     ASSERT_TRUE(sl_updated_response.has_value());
     ASSERT_TRUE(sl_updated_response->active);
     sl_updated_response.reset();
@@ -514,6 +532,7 @@ TEST_F(BacktestTradingGatewayTest, TakeProfitBuyTriggerLater)
     // this must not trigger sell stop loss
     price_source_ch.push(std::chrono::milliseconds{20}, 110.);
 
+    ASSERT_EQ(trgw.pos_volume().value(), 0);
     ASSERT_FALSE(sl_updated_response.has_value());
     ASSERT_FALSE(trade_msg.has_value());
 
@@ -524,7 +543,252 @@ TEST_F(BacktestTradingGatewayTest, TakeProfitBuyTriggerLater)
     ASSERT_FALSE(sl_updated_response->active);
     ASSERT_TRUE(trade_msg.has_value());
 
-    // TODO check position
+    ASSERT_EQ(trgw.pos_volume().value(), 1);
+}
+
+TEST_F(BacktestTradingGatewayTest, StopLossCancel)
+{
+    trgw.set_price_source(price_source_ch);
+    price_source_ch.push(std::chrono::milliseconds{1}, 100.);
+
+    std::optional<StopLossUpdatedEvent> sl_updated_response;
+    auto sl_updated_sub = trgw.stop_loss_update_channel().subscribe(
+            el, [&sl_updated_response](const StopLossUpdatedEvent ev) {
+                sl_updated_response = ev;
+            });
+
+    xg::Guid guid;
+    {
+        StopLossMarketOrder sl{
+                "TSTUSDT",
+                90.,
+                UnsignedVolume::from(1.).value(),
+                Side::sell(),
+                std::chrono::milliseconds{1},
+        };
+
+        guid = sl.guid();
+        trgw.push_stop_loss_request(sl);
+        ASSERT_EQ(trgw.pos_volume().value(), 0);
+    }
+
+    ASSERT_TRUE(sl_updated_response.has_value());
+    ASSERT_TRUE(sl_updated_response->active);
+    sl_updated_response.reset();
+
+    // this must not trigger sell stop loss
+    price_source_ch.push(std::chrono::milliseconds{20}, 222.);
+
+    {
+        trgw.cancel_stop_loss_request(guid);
+    }
+
+    ASSERT_EQ(trgw.pos_volume().value(), 0);
+    ASSERT_TRUE(sl_updated_response.has_value());
+    ASSERT_FALSE(sl_updated_response->active);
+    sl_updated_response.reset();
+
+    // exact price, must trigger and open pos
+    price_source_ch.push(std::chrono::milliseconds{30}, 90.);
+
+    ASSERT_FALSE(sl_updated_response.has_value());
+
+    ASSERT_EQ(trgw.pos_volume().value(), 0);
+}
+
+TEST_F(BacktestTradingGatewayTest, TakeProfitCancel)
+{
+    trgw.set_price_source(price_source_ch);
+    price_source_ch.push(std::chrono::milliseconds{1}, 100.);
+
+    std::optional<TakeProfitUpdatedEvent> sl_updated_response;
+    auto sl_updated_sub = trgw.take_profit_update_channel().subscribe(
+            el, [&sl_updated_response](const TakeProfitUpdatedEvent ev) {
+                sl_updated_response = ev;
+            });
+
+    xg::Guid guid;
+    {
+        TakeProfitMarketOrder tp{
+                "TSTUSDT",
+                110.,
+                UnsignedVolume::from(1.).value(),
+                Side::sell(),
+                std::chrono::milliseconds{1},
+        };
+
+        guid= tp.guid();
+        trgw.push_take_profit_request(tp);
+    }
+
+    ASSERT_EQ(trgw.pos_volume().value(), 0);
+    ASSERT_TRUE(sl_updated_response.has_value());
+    ASSERT_TRUE(sl_updated_response->active);
+    sl_updated_response.reset();
+
+    // this must not trigger sell stop loss
+    price_source_ch.push(std::chrono::milliseconds{20}, 90.);
+
+    // cancel
+    {
+        trgw.cancel_take_profit_request(guid);
+    }
+
+    ASSERT_EQ(trgw.pos_volume().value(), 0);
+    ASSERT_TRUE(sl_updated_response.has_value());
+    ASSERT_FALSE(sl_updated_response->active);
+    sl_updated_response.reset();
+
+    // exact price, must trigger
+    price_source_ch.push(std::chrono::milliseconds{30}, 110.);
+
+    ASSERT_FALSE(sl_updated_response.has_value());
+
+    ASSERT_EQ(trgw.pos_volume().value(), 0);
+}
+
+TEST_F(BacktestTradingGatewayTest, StopLossSellTriggerImmediately)
+{
+    trgw.set_price_source(price_source_ch);
+    price_source_ch.push(std::chrono::milliseconds{1}, 89.);
+
+    std::optional<StopLossUpdatedEvent> sl_updated_response;
+    auto sl_updated_sub = trgw.stop_loss_update_channel().subscribe(
+            el, [&sl_updated_response](const StopLossUpdatedEvent ev) {
+                sl_updated_response = ev;
+            });
+
+    std::optional<TradeEvent> trade_msg;
+    auto trade_sub = trgw.trade_channel().subscribe(
+            el, [&](const TradeEvent & ev) {
+                trade_msg = ev;
+            });
+
+    {
+        StopLossMarketOrder sl{
+                "TSTUSDT",
+                90.,
+                UnsignedVolume::from(1.).value(),
+                Side::sell(),
+                std::chrono::milliseconds{1},
+        };
+
+        trgw.push_stop_loss_request(sl);
+    }
+
+    ASSERT_TRUE(sl_updated_response.has_value());
+    ASSERT_FALSE(sl_updated_response->active);
+    ASSERT_TRUE(trade_msg.has_value());
+
+    ASSERT_EQ(trgw.pos_volume().value(), -1);
+}
+
+TEST_F(BacktestTradingGatewayTest, StopLossBuyTriggerImmediately)
+{
+    trgw.set_price_source(price_source_ch);
+    price_source_ch.push(std::chrono::milliseconds{1}, 111.);
+
+    std::optional<StopLossUpdatedEvent> sl_updated_response;
+    auto sl_updated_sub = trgw.stop_loss_update_channel().subscribe(
+            el, [&sl_updated_response](const StopLossUpdatedEvent ev) {
+                sl_updated_response = ev;
+            });
+
+    std::optional<TradeEvent> trade_msg;
+    auto trade_sub = trgw.trade_channel().subscribe(
+            el, [&](const TradeEvent & ev) {
+                trade_msg = ev;
+            });
+
+    {
+        StopLossMarketOrder sl{
+                "TSTUSDT",
+                100.,
+                UnsignedVolume::from(1.).value(),
+                Side::buy(),
+                std::chrono::milliseconds{1},
+        };
+
+        trgw.push_stop_loss_request(sl);
+    }
+
+    ASSERT_TRUE(sl_updated_response.has_value());
+    ASSERT_FALSE(sl_updated_response->active);
+    ASSERT_TRUE(trade_msg.has_value());
+
+    ASSERT_EQ(trgw.pos_volume().value(), 1);
+}
+
+TEST_F(BacktestTradingGatewayTest, TakeProfitSellTriggerImmediately)
+{
+    trgw.set_price_source(price_source_ch);
+    price_source_ch.push(std::chrono::milliseconds{1}, 100.);
+
+    std::optional<TakeProfitUpdatedEvent> tp_updated_response;
+    auto tp_updated_sub = trgw.take_profit_update_channel().subscribe(
+            el, [&tp_updated_response](const TakeProfitUpdatedEvent ev) {
+                tp_updated_response = ev;
+            });
+
+    std::optional<TradeEvent> trade_msg;
+    auto trade_sub = trgw.trade_channel().subscribe(
+            el, [&](const TradeEvent & ev) {
+                trade_msg = ev;
+            });
+
+    {
+        TakeProfitMarketOrder tp{
+                "TSTUSDT",
+                99.,
+                UnsignedVolume::from(1.).value(),
+                Side::sell(),
+                std::chrono::milliseconds{1},
+        };
+
+        trgw.push_take_profit_request(tp);
+    }
+
+    ASSERT_TRUE(tp_updated_response.has_value());
+    ASSERT_FALSE(tp_updated_response->active);
+    ASSERT_TRUE(trade_msg.has_value());
+
+    ASSERT_EQ(trgw.pos_volume().value(), -1);
+}
+
+TEST_F(BacktestTradingGatewayTest, TakeProfitBuyTriggerImmediately)
+{
+    trgw.set_price_source(price_source_ch);
+    price_source_ch.push(std::chrono::milliseconds{1}, 99.);
+
+    std::optional<TakeProfitUpdatedEvent> tp_updated_response;
+    auto tp_updated_sub = trgw.take_profit_update_channel().subscribe(
+            el, [&tp_updated_response](const TakeProfitUpdatedEvent ev) {
+                tp_updated_response = ev;
+            });
+
+    std::optional<TradeEvent> trade_msg;
+    auto trade_sub = trgw.trade_channel().subscribe(
+            el, [&](const TradeEvent & ev) {
+                trade_msg = ev;
+            });
+
+    {
+        TakeProfitMarketOrder tp{
+                "TSTUSDT",
+                100.,
+                UnsignedVolume::from(1.).value(),
+                Side::buy(),
+                std::chrono::milliseconds{1},
+        };
+
+        trgw.push_take_profit_request(tp);
+    }
+
+    ASSERT_TRUE(tp_updated_response.has_value());
+    ASSERT_FALSE(tp_updated_response->active);
+    ASSERT_TRUE(trade_msg.has_value());
+
+    ASSERT_EQ(trgw.pos_volume().value(), 1);
 }
 
 // TODO

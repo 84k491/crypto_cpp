@@ -44,8 +44,8 @@ public:
     void push_trailing_stop_request(const TrailingStopLossRequestEvent & trailing_stop_ev) override;
     void push_stop_loss_request(const StopLossMarketOrder & order);
     void push_take_profit_request(const TakeProfitMarketOrder & order);
-    void cancel_stop_loss_request(const StopLossMarketOrder & order);
-    void cancel_take_profit_request(const TakeProfitMarketOrder & order);
+    void cancel_stop_loss_request(xg::Guid guid);
+    void cancel_take_profit_request(xg::Guid guid);
 
     EventChannel<OrderResponseEvent> & order_response_channel() override;
     EventChannel<TradeEvent> & trade_channel() override;
@@ -55,6 +55,8 @@ public:
     EventChannel<TrailingStopLossUpdatedEvent> & trailing_stop_update_channel() override;
     EventChannel<StopLossUpdatedEvent> & stop_loss_update_channel();
     EventChannel<TakeProfitUpdatedEvent> & take_profit_update_channel();
+
+    SignedVolume pos_volume() const;
 
 private:
     void on_new_price(std::chrono::milliseconds ts, const double & price);

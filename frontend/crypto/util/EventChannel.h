@@ -104,6 +104,7 @@ void EventChannel<EventT>::push_delayed(const EventT & object, std::chrono::mill
     }
 }
 
+// TODO callback's argument type can be different from channel's EventT. Make a static assert to weld them
 template <typename EventT>
 std::shared_ptr<EventSubscription<EventT>>
 EventChannel<EventT>::subscribe(
