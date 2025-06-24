@@ -2,7 +2,6 @@
 
 #include "BollingerBands.h"
 #include "JsonStrategyConfig.h"
-#include "Signal.h"
 #include "StrategyBase.h"
 #include "StrategyChannels.h"
 

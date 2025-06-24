@@ -20,7 +20,7 @@ OrderManager::OrderManager(
             });
 }
 
-void OrderManager::send_market_order(double price, SignedVolume vol, std::chrono::milliseconds ts, OrderCallback && on_response)
+std::variant<SignedVolume, std::string> OrderManager::adjusted_volume(SignedVolume vol)
 {
     const std::optional<SignedVolume> adjusted_target_volume_opt = m_symbol.get_qty_floored(vol);
     if (!adjusted_target_volume_opt.has_value()) {
@@ -28,21 +28,30 @@ void OrderManager::send_market_order(double price, SignedVolume vol, std::chrono
                 "ERROR can't get proper volume on open_or_move, target_absolute_volume = {}, qty_step = {}",
                 vol.value(),
                 m_symbol.lot_size_filter.qty_step);
-        Logger::logf<LogLevel::Error>(er);
-        m_error_channel.push(er);
+        return {er};
     }
     const SignedVolume adjusted_target_volume = adjusted_target_volume_opt.value();
 
     if (0. == adjusted_target_volume.value()) {
         const std::string er = "Zero volume on market order send";
-        Logger::logf<LogLevel::Error>(er);
-        m_error_channel.push(er);
+        return {er};
     }
+
+    return {adjusted_target_volume};
+}
+
+void OrderManager::send_market_order(double price, SignedVolume vol, std::chrono::milliseconds ts, OrderCallback && on_response)
+{
+    const auto adj_vol_var = adjusted_volume(vol);
+    if (std::holds_alternative<std::string>(adj_vol_var)) {
+        m_error_channel.push(std::get<std::string>(adj_vol_var));
+    }
+    const auto adj_vol = std::get<SignedVolume>(adj_vol_var);
 
     const auto order = MarketOrder{
             m_symbol.symbol_name,
             price,
-            adjusted_target_volume,
+            adj_vol,
             ts};
 
     OrderRequestEvent or_event{order};
@@ -52,6 +61,43 @@ void OrderManager::send_market_order(double price, SignedVolume vol, std::chrono
                            std::move(on_response)));
     m_tr_gateway.push_order_request(or_event);
 }
+
+void OrderManager::send_take_profit(double price, SignedVolume vol, std::chrono::milliseconds ts, TakeProfitCallback && on_response)
+{
+    const auto adj_vol_var = adjusted_volume(vol);
+    if (std::holds_alternative<std::string>(adj_vol_var)) {
+        m_error_channel.push(std::get<std::string>(adj_vol_var));
+    }
+    const auto adj_vol = std::get<SignedVolume>(adj_vol_var);
+
+    const auto [v, s] = adj_vol.as_unsigned_and_side();
+    TakeProfitMarketOrder tpmo{
+            m_symbol.symbol_name,
+            price,
+            v,
+            s,
+            ts};
+
+    m_pending_tp.emplace(
+            tpmo.guid(),
+            std::make_pair(tpmo, on_response));
+
+    // m_tr_gateway.push_take_profit_request(tpmo); // TODO
+}
+
+void OrderManager::on_take_profit_response(const TakeProfitUpdatedEvent & r)
+{
+    const auto it = m_pending_tp.find(r.guid);
+    if (it == m_pending_tp.end()) {
+        Logger::logf<LogLevel::Error>("Can't find tp on response: {}, active: {}", r.guid, r.active);
+        return;
+    }
+    const auto & [tp, callback] = it->second;
+
+    callback(tp, r.active);
+}
+
+void on_stop_loss_reposnse(const StopLossUpdatedEvent & r);
 
 void OrderManager::on_order_response(const OrderResponseEvent & response)
 {
