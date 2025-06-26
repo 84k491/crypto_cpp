@@ -27,6 +27,8 @@ public:
 
     void send_take_profit(double price, SignedVolume vol, std::chrono::milliseconds ts, TakeProfitCallback && on_response);
     void send_stop_loss(double price, SignedVolume vol, std::chrono::milliseconds ts, StopLossCallback && on_response);
+    void cancel_take_profit(xg::Guid);
+    void cancel_stop_loss(xg::Guid);
 
 private:
     std::variant<SignedVolume, std::string> adjusted_volume(SignedVolume vol);

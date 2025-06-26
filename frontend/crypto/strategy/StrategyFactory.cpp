@@ -1,6 +1,7 @@
 #include "StrategyFactory.h"
 
 #include "BBRSIStrategy.h"
+#include "GridStrategy.h"
 #include "BollingerBandsStrategy.h"
 #include "CandleBollingerBandsStrategy.h"
 #include "DSMADiffStrategy.h"
@@ -121,6 +122,14 @@ std::optional<std::shared_ptr<IStrategy>> StrategyFactory::build_strategy(
     }
     if (strategy_name == "BBRSI") {
         std::shared_ptr<IStrategy> res = std::make_shared<BBRSIStrategy>(
+                config,
+                event_loop,
+                channels,
+                orders);
+        return res;
+    }
+    if (strategy_name == "Grid") {
+        std::shared_ptr<IStrategy> res = std::make_shared<GridStrategy>(
                 config,
                 event_loop,
                 channels,

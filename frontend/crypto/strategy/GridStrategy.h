@@ -2,15 +2,24 @@
 
 #include "ConditionalOrders.h"
 #include "EventLoopSubscriber.h"
-#include "Events.h"
+#include "JsonStrategyConfig.h"
 #include "OrderManager.h"
 #include "StrategyBase.h"
 #include "StrategyChannels.h"
 #include "TimeWeightedMovingAverage.h"
 
-class GridStrategyConfig
+struct GridStrategyConfig
 {
-public:
+    GridStrategyConfig(JsonStrategyConfig);
+
+    bool is_valid() const;
+
+    JsonStrategyConfig to_json() const;
+
+    std::chrono::milliseconds m_timeframe = {};
+    std::chrono::milliseconds m_interval = {};
+    unsigned m_levels_per_side = 0;
+    double m_price_radius_perc = 0.;
 };
 
 class GridStrategy : public StrategyBase
@@ -33,13 +42,13 @@ private:
     void on_take_profit_accepted(const TakeProfitMarketOrder & tp);
     void on_stop_loss_accepted(const StopLossMarketOrder & sl);
 
-    void on_take_profit_traded(TakeProfitUpdatedEvent ev);
-    void on_stop_loss_traded(StopLossUpdatedEvent ev);
+    void on_take_profit_traded(TakeProfitMarketOrder ev);
+    void on_stop_loss_traded(StopLossMarketOrder ev);
 
 private:
-    struct Orders
+    struct Level
     {
-        int level = 0;
+        int level_num = 0;
         SignedVolume volume;
         std::optional<TakeProfitMarketOrder> tp;
         std::optional<StopLossMarketOrder> sl;
@@ -48,9 +57,11 @@ private:
 private:
     GridStrategyConfig m_config;
 
+    OrderManager & m_orders;
+
     TimeWeightedMovingAverage m_trend;
     double m_last_trend_value = 0.;
 
-    std::map<int, Orders> m_orders_by_levels;
+    std::map<int, Level> m_orders_by_levels;
     // std::map<> m_
 };
