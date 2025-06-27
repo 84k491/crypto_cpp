@@ -2,6 +2,7 @@
 
 #include "Side.h"
 
+#include <cmath>
 #include <optional>
 #include <ostream>
 #include <utility>
@@ -60,6 +61,16 @@ public:
     bool operator<(const UnsignedVolume & other) const
     {
         return m_value < other.m_value;
+    }
+
+    bool operator==(const UnsignedVolume & other) const
+    {
+        return std::fabs(this->value() - other.value()) <= std::numeric_limits<double>::epsilon();
+    }
+
+    bool operator<=(const UnsignedVolume & other) const
+    {
+        return *this == other || *this < other;
     }
 
     std::optional<UnsignedVolume> operator-(const UnsignedVolume & other) const

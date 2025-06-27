@@ -11,6 +11,15 @@ class MarketOrder
     friend std::ostream & operator<<(std::ostream & os, const MarketOrder & order);
 
 public:
+    enum class Status
+    {
+        Pending,
+        // PartiallyFilled,
+        Filled,
+        Rejected,
+    };
+
+    // TODO remove one of the c-tors
     MarketOrder(
             std::string symbol,
             double price,
@@ -40,7 +49,7 @@ public:
     {
     }
 
-    std::string side_str() const // TODO remove this method
+    std::string side_str() const // TODO remove this method, just print side
     {
         return m_side.to_string();
     }
@@ -53,12 +62,24 @@ public:
     auto signal_ts() const { return m_signal_ts; }
     auto guid() const { return m_guid; }
 
+    auto reject_reason() { return m_reject_reason; }
+    void set_reject_reason(const std::string & r) { m_reject_reason = r; }
+
+    Status status() const;
+
+    void on_trade(UnsignedVolume v, double p);
+
 private:
     xg::Guid m_guid;
     std::string m_symbol;
-    UnsignedVolume m_volume;
+    UnsignedVolume m_target_volume; // eventually -> active(always 0) + filled
+    UnsignedVolume m_filled_volume;
+    UnsignedVolume m_volume; // TODO remove
+
     Side m_side = Side::buy();
     double m_price = 0.;
     std::chrono::milliseconds m_signal_ts = {};
+
+    std::string m_reject_reason;
 };
 std::ostream & operator<<(std::ostream & os, const MarketOrder & order);

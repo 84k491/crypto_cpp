@@ -22,6 +22,10 @@ public:
     void push_order_request(const OrderRequestEvent & order) override;
     void push_tpsl_request(const TpslRequestEvent & tpsl_ev) override;
     void push_trailing_stop_request(const TrailingStopLossRequestEvent & trailing_stop_ev) override;
+    void push_take_profit_request(const TakeProfitMarketOrder &) override;
+    void push_stop_loss_request(const StopLossMarketOrder &) override;
+    void cancel_stop_loss_request(xg::Guid guid) override;
+    void cancel_take_profit_request(xg::Guid guid) override;
 
     EventChannel<OrderResponseEvent> & order_response_channel() override;
     EventChannel<TradeEvent> & trade_channel() override;

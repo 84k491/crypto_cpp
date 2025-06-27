@@ -37,15 +37,21 @@ public:
 
 private:
     void push_price(std::chrono::milliseconds ts, double price);
-    void on_order_accepted(const MarketOrder & order, int price_level);
 
-    void on_take_profit_accepted(const TakeProfitMarketOrder & tp);
-    void on_stop_loss_accepted(const StopLossMarketOrder & sl);
+    void on_order_traded(const MarketOrder & order, int price_level);
 
-    void on_take_profit_traded(TakeProfitMarketOrder ev);
-    void on_stop_loss_traded(StopLossMarketOrder ev);
+    void on_take_profit_active(const TakeProfitMarketOrder & tp);
+    void on_stop_loss_active(const StopLossMarketOrder & sl);
 
-private:
+    void on_take_profit_inactive(TakeProfitMarketOrder ev);
+    void on_stop_loss_inactive(StopLossMarketOrder ev);
+
+    struct TpSlPrices{
+        double take_profit_price = 0;
+        double stop_loss_price = 0;
+    };
+    TpSlPrices calc_tp_sl_prices(double ref_price) const;
+
     struct Level
     {
         int level_num = 0;
@@ -53,6 +59,8 @@ private:
         std::optional<TakeProfitMarketOrder> tp;
         std::optional<StopLossMarketOrder> sl;
     };
+
+    Level * find_level(xg::Guid);
 
 private:
     GridStrategyConfig m_config;
@@ -63,5 +71,4 @@ private:
     double m_last_trend_value = 0.;
 
     std::map<int, Level> m_orders_by_levels;
-    // std::map<> m_
 };

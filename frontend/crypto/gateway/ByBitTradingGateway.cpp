@@ -91,6 +91,26 @@ void ByBitTradingGateway::push_trailing_stop_request(const TrailingStopLossReque
     m_tsl_req_channel.push(trailing_stop_ev);
 }
 
+void ByBitTradingGateway::push_take_profit_request(const TakeProfitMarketOrder &)
+{
+    throw std::runtime_error{"not implemented"};
+}
+
+void ByBitTradingGateway::push_stop_loss_request(const StopLossMarketOrder &)
+{
+    throw std::runtime_error{"not implemented"};
+}
+
+void ByBitTradingGateway::cancel_stop_loss_request(xg::Guid)
+{
+    throw std::runtime_error{"not implemented"};
+}
+
+void ByBitTradingGateway::cancel_take_profit_request(xg::Guid)
+{
+    throw std::runtime_error{"not implemented"};
+}
+
 void ByBitTradingGateway::register_subs()
 {
     m_event_loop.subscribe(

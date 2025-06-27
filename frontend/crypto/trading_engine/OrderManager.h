@@ -43,6 +43,7 @@ private:
 
     std::map<xg::Guid, std::pair<MarketOrder, OrderCallback>> m_pending_orders;
     std::map<xg::Guid, std::pair<TakeProfitMarketOrder, TakeProfitCallback>> m_pending_tp;
+    std::map<xg::Guid, std::pair<StopLossMarketOrder, StopLossCallback>> m_pending_sl;
 
     EventLoopSubscriber & m_event_loop;
     EventChannel<std::string> m_error_channel;

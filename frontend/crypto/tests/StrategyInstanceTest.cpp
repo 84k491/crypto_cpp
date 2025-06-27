@@ -82,6 +82,26 @@ public:
         m_last_tpsl_request = tpsl_ev;
     }
 
+    void push_take_profit_request(const TakeProfitMarketOrder &) override
+    {
+        throw std::runtime_error{"not implemented"};
+    }
+
+    void push_stop_loss_request(const StopLossMarketOrder &) override
+    {
+        throw std::runtime_error{"not implemented"};
+    }
+
+    void cancel_stop_loss_request(xg::Guid) override
+    {
+        throw std::runtime_error{"not implemented"};
+    }
+
+    void cancel_take_profit_request(xg::Guid) override
+    {
+        throw std::runtime_error{"not implemented"};
+    }
+
     void push_trailing_stop_request(const TrailingStopLossRequestEvent &) override
     {
         // not implemented

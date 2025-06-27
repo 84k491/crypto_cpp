@@ -82,7 +82,40 @@ void OrderManager::send_take_profit(double price, SignedVolume vol, std::chrono:
             tpmo.guid(),
             std::make_pair(tpmo, on_response));
 
-    // m_tr_gateway.push_take_profit_request(tpmo); // TODO
+    m_tr_gateway.push_take_profit_request(tpmo);
+}
+
+void OrderManager::send_stop_loss(double price, SignedVolume vol, std::chrono::milliseconds ts, StopLossCallback && on_response)
+{
+    const auto adj_vol_var = adjusted_volume(vol);
+    if (std::holds_alternative<std::string>(adj_vol_var)) {
+        m_error_channel.push(std::get<std::string>(adj_vol_var));
+    }
+    const auto adj_vol = std::get<SignedVolume>(adj_vol_var);
+
+    const auto [v, s] = adj_vol.as_unsigned_and_side();
+    StopLossMarketOrder slmo{
+            m_symbol.symbol_name,
+            price,
+            v,
+            s,
+            ts};
+
+    m_pending_sl.emplace(
+            slmo.guid(),
+            std::make_pair(slmo, on_response));
+
+    m_tr_gateway.push_stop_loss_request(slmo);
+}
+
+void OrderManager::cancel_take_profit(xg::Guid guid)
+{
+    m_tr_gateway.cancel_take_profit_request(guid);
+}
+
+void OrderManager::cancel_stop_loss(xg::Guid guid)
+{
+    m_tr_gateway.cancel_stop_loss_request(guid);
 }
 
 void OrderManager::on_take_profit_response(const TakeProfitUpdatedEvent & r)

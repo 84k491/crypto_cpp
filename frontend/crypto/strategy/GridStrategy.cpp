@@ -102,16 +102,14 @@ void GridStrategy::push_price(std::chrono::milliseconds ts, double price)
             Level{price_level, SignedVolume{m_pos_currency_amount}, std::nullopt, std::nullopt});
     send_order(side, price, ts, [&](const MarketOrder & mo, bool active) {
         if (!active) {
-            Logger::log<LogLevel::Error>("Market order reject");
-            // TODO panic?
-            return;
+            on_order_traded(mo, price_level);
         }
 
-        on_order_accepted(mo, price_level);
+        // TODO handle reject
     });
 }
 
-void GridStrategy::on_order_accepted(const MarketOrder & order, int price_level)
+void GridStrategy::on_order_traded(const MarketOrder & order, int price_level)
 {
     const auto it = m_orders_by_levels.find(price_level);
     if (it == m_orders_by_levels.end()) {
@@ -129,95 +127,107 @@ void GridStrategy::on_order_accepted(const MarketOrder & order, int price_level)
         return;
     }
 
-    // auto vol = SignedVolume{order.volume().value(), order.side().opposite()};
-    auto vol = SignedVolume{0.};
-    const auto tp_price = 0.; // TODO calculate ?
+    const auto [tp_price, sl_price] = calc_tp_sl_prices(order.price()); // TODO use trade price
+    auto vol = SignedVolume{order.volume(), order.side().opposite()};
     m_orders.send_take_profit(
             tp_price,
             vol,
             order.signal_ts(),
             [&](const TakeProfitMarketOrder & tp, bool active) {
                 if (active) {
-                    on_take_profit_accepted(tp);
+                    on_take_profit_active(tp);
                     return;
                 }
 
-                on_take_profit_traded(tp);
+                on_take_profit_inactive(tp);
                 // TODO handle reject
             });
 
-    const auto sl_price = 0.; // TODO calculate ?
     m_orders.send_stop_loss(
             sl_price,
             vol,
             order.signal_ts(),
             [&](const StopLossMarketOrder & sl, bool active) {
                 if (active) {
-                    on_stop_loss_accepted(sl);
+                    on_stop_loss_active(sl);
                     return;
                 }
 
-                on_stop_loss_traded(sl);
+                on_stop_loss_inactive(sl);
                 // TODO handle reject
             });
 }
 
-void GridStrategy::on_take_profit_traded(TakeProfitMarketOrder order)
+GridStrategy::Level * GridStrategy::find_level(xg::Guid guid)
 {
-    std::map<int, GridStrategy::Level>::iterator lvl_it = m_orders_by_levels.end();
     for (auto it = m_orders_by_levels.begin(), end = m_orders_by_levels.end(); it != end; ++it) {
-        const auto & [l, orders] = *it;
-        if (!orders.tp.has_value()) {
-            continue;
-        }
-        const auto & tp = orders.tp.value();
+        auto & [l, orders] = *it;
+        auto & [_, vol, tp, sl] = orders;
 
-        if (tp.guid() != order.guid()) {
-            continue;
+        if (tp.has_value() && tp->guid() == guid) {
+            return &orders;
         }
 
-        lvl_it = it;
-        break;
+        if (sl.has_value() && sl->guid() == guid) {
+            return &orders;
+        }
     }
-    const auto & [lvl, orders] = *lvl_it;
-    const auto & [_, vol, _tp, sl] = orders;
 
-    // TODO close vol, cancel sl
-    const auto price = 0.;                // TODO
-    const std::chrono::milliseconds ts{}; // TODO add in event
-
-    // closing volume
-    send_order(vol.as_unsigned_and_side().second, price, ts, {});
-
-    m_orders.cancel_stop_loss(sl->guid());
+    return nullptr;
 }
 
-void GridStrategy::on_stop_loss_traded(StopLossMarketOrder order)
+void GridStrategy::on_take_profit_active(const TakeProfitMarketOrder & tp)
 {
-    std::map<int, GridStrategy::Level>::iterator lvl_it = m_orders_by_levels.end();
-    for (auto it = m_orders_by_levels.begin(), end = m_orders_by_levels.end(); it != end; ++it) {
-        const auto & [l, orders] = *it;
-        if (!orders.sl.has_value()) {
-            continue;
-        }
-        const auto & sl = orders.sl.value();
-
-        if (sl.guid() != order.guid()) {
-            continue;
-        }
-
-        lvl_it = it;
-        break;
+    auto * level = find_level(tp.guid());
+    if (!level) {
+        Logger::logf<LogLevel::Error>("Can't find level for accepted tp: {}", tp.guid());
+        return;
     }
-    const auto & [lvl, orders] = *lvl_it;
-    const auto & [_, vol, tp, _sl] = orders;
 
-    // TODO close vol, cancel sl
-    const auto price = 0.;                // TODO
-    const std::chrono::milliseconds ts{}; // TODO add in event
+    level->tp = tp;
+}
 
-    // closing volume
-    send_order(vol.as_unsigned_and_side().second, price, ts, {});
+void GridStrategy::on_stop_loss_active(const StopLossMarketOrder & sl)
+{
+    auto * level = find_level(sl.guid());
+    if (!level) {
+        Logger::logf<LogLevel::Error>("Can't find level for accepted sl: {}", sl.guid());
+        return;
+    }
 
-    m_orders.cancel_take_profit(tp->guid());
+    level->sl = sl;
+
+    m_orders_by_levels.erase(level->level_num);
+}
+
+void GridStrategy::on_take_profit_inactive(TakeProfitMarketOrder order)
+{
+    const auto * level = find_level(order.guid());
+    if (!level) {
+        Logger::logf<LogLevel::Error>("Can't find level for tp: {}", order.guid());
+        return;
+    }
+
+    m_orders.cancel_stop_loss(level->sl->guid());
+
+    m_orders_by_levels.erase(level->level_num);
+}
+
+void GridStrategy::on_stop_loss_inactive(StopLossMarketOrder order)
+{
+    const auto * level = find_level(order.guid());
+    if (!level) {
+        Logger::logf<LogLevel::Error>("Can't find level for sl: {}", order.guid());
+        return;
+    }
+
+    m_orders.cancel_take_profit(level->sl->guid());
+
+    // TODO vol must be closed, remove the whole level
+}
+
+GridStrategy::TpSlPrices GridStrategy::calc_tp_sl_prices(double ref_price) const
+{
+    // TODO
+    return {0., 0.};
 }
