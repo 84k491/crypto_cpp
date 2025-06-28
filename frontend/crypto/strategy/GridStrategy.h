@@ -16,10 +16,12 @@ struct GridStrategyConfig
 
     JsonStrategyConfig to_json() const;
 
+    double get_one_level_width(double ref_price) const;
+
     std::chrono::milliseconds m_timeframe = {};
     std::chrono::milliseconds m_interval = {};
     unsigned m_levels_per_side = 0;
-    double m_price_radius_perc = 0.;
+    double m_price_radius_perc = 0.; // to the end of the last level
 };
 
 class GridStrategy : public StrategyBase
@@ -43,14 +45,15 @@ private:
     void on_take_profit_active(const TakeProfitMarketOrder & tp);
     void on_stop_loss_active(const StopLossMarketOrder & sl);
 
-    void on_take_profit_inactive(TakeProfitMarketOrder ev);
-    void on_stop_loss_inactive(StopLossMarketOrder ev);
+    void on_take_profit_inactive(const TakeProfitMarketOrder & ev);
+    void on_stop_loss_inactive(const StopLossMarketOrder & ev);
 
-    struct TpSlPrices{
+    struct TpSlPrices
+    {
         double take_profit_price = 0;
         double stop_loss_price = 0;
     };
-    TpSlPrices calc_tp_sl_prices(double ref_price) const;
+    TpSlPrices calc_tp_sl_prices(double order_price, Side side) const;
 
     struct Level
     {
@@ -60,7 +63,9 @@ private:
         std::optional<StopLossMarketOrder> sl;
     };
 
-    Level * find_level(xg::Guid);
+    Level * find_level(xg::Guid order_guid);
+    int get_level_number(double price)    const;
+    double get_price_from_level_number(int level_num)    const;
 
 private:
     GridStrategyConfig m_config;

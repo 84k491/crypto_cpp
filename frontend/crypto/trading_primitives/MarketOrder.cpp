@@ -6,11 +6,12 @@ std::ostream & operator<<(std::ostream & os, const MarketOrder & order)
     return os;
 }
 
-void MarketOrder::on_trade(UnsignedVolume v, double p)
+void MarketOrder::on_trade(UnsignedVolume vol, double price, double fee)
 {
-    m_filled_volume += v;
+    m_filled_volume += vol;
     // TODO it must be an 'average trade price'
-    m_price = p;
+    m_price = price;
+    m_fee += fee;
 }
 
 MarketOrder::Status MarketOrder::status() const

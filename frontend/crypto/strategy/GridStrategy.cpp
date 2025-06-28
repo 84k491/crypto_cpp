@@ -20,6 +20,12 @@ GridStrategyConfig::GridStrategyConfig(JsonStrategyConfig json)
     }
 }
 
+double GridStrategyConfig::get_one_level_width(double ref_price) const
+{
+    const auto price_rad = m_price_radius_perc * ref_price;
+    return price_rad / m_levels_per_side;
+}
+
 bool GridStrategyConfig::is_valid() const
 {
     return m_levels_per_side > 0;
@@ -74,10 +80,15 @@ std::optional<std::chrono::milliseconds> GridStrategy::timeframe() const
 //   -1 lvl
 // ------------------------ -2 * width
 //   ...
-int get_price_level_number(double ref, double price, double lvl_width)
+int GridStrategy::get_level_number(double price) const
 {
-    const double diff = price - ref;
-    return diff / lvl_width;
+    const double diff = price - m_last_trend_value;
+    return (int)std::lround(diff / m_config.get_one_level_width(m_last_trend_value));
+}
+
+double GridStrategy::get_price_from_level_number(int level_num) const
+{
+    return m_last_trend_value + (level_num * m_config.get_one_level_width(m_last_trend_value));
 }
 
 void GridStrategy::push_price(std::chrono::milliseconds ts, double price)
@@ -87,8 +98,7 @@ void GridStrategy::push_price(std::chrono::milliseconds ts, double price)
         m_last_trend_value = v;
     }
 
-    constexpr double lvl_width = 10; // TODO
-    const auto price_level = get_price_level_number(m_last_trend_value, price, lvl_width);
+    const auto price_level = get_level_number(price);
 
     // TODO handle 'over 2 levels' scenario
 
@@ -99,7 +109,11 @@ void GridStrategy::push_price(std::chrono::milliseconds ts, double price)
     const Side side = price_level > 0 ? Side::sell() : Side::buy();
     m_orders_by_levels.emplace(
             price_level,
-            Level{price_level, SignedVolume{m_pos_currency_amount}, std::nullopt, std::nullopt});
+            Level{
+                    .level_num = price_level,
+                    .volume = SignedVolume{m_pos_currency_amount},
+                    .tp = std::nullopt,
+                    .sl = std::nullopt});
     send_order(side, price, ts, [&](const MarketOrder & mo, bool active) {
         if (!active) {
             on_order_traded(mo, price_level);
@@ -127,7 +141,7 @@ void GridStrategy::on_order_traded(const MarketOrder & order, int price_level)
         return;
     }
 
-    const auto [tp_price, sl_price] = calc_tp_sl_prices(order.price()); // TODO use trade price
+    const auto [tp_price, sl_price] = calc_tp_sl_prices(order.price(), order.side()); // TODO use trade price
     auto vol = SignedVolume{order.volume(), order.side().opposite()};
     m_orders.send_take_profit(
             tp_price,
@@ -158,17 +172,17 @@ void GridStrategy::on_order_traded(const MarketOrder & order, int price_level)
             });
 }
 
-GridStrategy::Level * GridStrategy::find_level(xg::Guid guid)
+GridStrategy::Level * GridStrategy::find_level(xg::Guid order_guid)
 {
     for (auto it = m_orders_by_levels.begin(), end = m_orders_by_levels.end(); it != end; ++it) {
         auto & [l, orders] = *it;
         auto & [_, vol, tp, sl] = orders;
 
-        if (tp.has_value() && tp->guid() == guid) {
+        if (tp.has_value() && tp->guid() == order_guid) {
             return &orders;
         }
 
-        if (sl.has_value() && sl->guid() == guid) {
+        if (sl.has_value() && sl->guid() == order_guid) {
             return &orders;
         }
     }
@@ -179,7 +193,7 @@ GridStrategy::Level * GridStrategy::find_level(xg::Guid guid)
 void GridStrategy::on_take_profit_active(const TakeProfitMarketOrder & tp)
 {
     auto * level = find_level(tp.guid());
-    if (!level) {
+    if (level == nullptr) {
         Logger::logf<LogLevel::Error>("Can't find level for accepted tp: {}", tp.guid());
         return;
     }
@@ -190,7 +204,7 @@ void GridStrategy::on_take_profit_active(const TakeProfitMarketOrder & tp)
 void GridStrategy::on_stop_loss_active(const StopLossMarketOrder & sl)
 {
     auto * level = find_level(sl.guid());
-    if (!level) {
+    if (level == nullptr) {
         Logger::logf<LogLevel::Error>("Can't find level for accepted sl: {}", sl.guid());
         return;
     }
@@ -200,10 +214,10 @@ void GridStrategy::on_stop_loss_active(const StopLossMarketOrder & sl)
     m_orders_by_levels.erase(level->level_num);
 }
 
-void GridStrategy::on_take_profit_inactive(TakeProfitMarketOrder order)
+void GridStrategy::on_take_profit_inactive(const TakeProfitMarketOrder & order)
 {
     const auto * level = find_level(order.guid());
-    if (!level) {
+    if (level == nullptr) {
         Logger::logf<LogLevel::Error>("Can't find level for tp: {}", order.guid());
         return;
     }
@@ -213,21 +227,27 @@ void GridStrategy::on_take_profit_inactive(TakeProfitMarketOrder order)
     m_orders_by_levels.erase(level->level_num);
 }
 
-void GridStrategy::on_stop_loss_inactive(StopLossMarketOrder order)
+void GridStrategy::on_stop_loss_inactive(const StopLossMarketOrder & order)
 {
     const auto * level = find_level(order.guid());
-    if (!level) {
+    if (level == nullptr) {
         Logger::logf<LogLevel::Error>("Can't find level for sl: {}", order.guid());
         return;
     }
 
     m_orders.cancel_take_profit(level->sl->guid());
 
-    // TODO vol must be closed, remove the whole level
+    m_orders_by_levels.erase(level->level_num);
 }
 
-GridStrategy::TpSlPrices GridStrategy::calc_tp_sl_prices(double ref_price) const
+GridStrategy::TpSlPrices GridStrategy::calc_tp_sl_prices(double order_price, Side side) const
 {
-    // TODO
-    return {0., 0.};
+    const auto current_level = get_level_number(order_price);
+    const auto tp_level = current_level + side.sign();
+    const auto tp_price = get_price_from_level_number(tp_level);
+
+    // top of the last level
+    const auto sl_price = (m_config.m_levels_per_side + 1) * (-1 * side.sign()) * m_config.get_one_level_width(m_last_trend_value);
+
+    return {.take_profit_price = tp_price, .stop_loss_price = sl_price};
 }

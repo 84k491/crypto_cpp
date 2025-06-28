@@ -11,7 +11,7 @@ class MarketOrder
     friend std::ostream & operator<<(std::ostream & os, const MarketOrder & order);
 
 public:
-    enum class Status
+    enum class Status : uint8_t
     {
         Pending,
         // PartiallyFilled,
@@ -67,7 +67,7 @@ public:
 
     Status status() const;
 
-    void on_trade(UnsignedVolume v, double p);
+    void on_trade(UnsignedVolume vol, double price, double fee);
 
 private:
     xg::Guid m_guid;
@@ -75,6 +75,7 @@ private:
     UnsignedVolume m_target_volume; // eventually -> active(always 0) + filled
     UnsignedVolume m_filled_volume;
     UnsignedVolume m_volume; // TODO remove
+    double m_fee = 0;
 
     Side m_side = Side::buy();
     double m_price = 0.;
