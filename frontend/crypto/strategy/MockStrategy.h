@@ -29,7 +29,7 @@ public:
         ScopeExit se([&] { m_next_signal_side = std::nullopt; });
 
         if (m_next_signal_side.has_value()) {
-            try_send_order(*m_next_signal_side, ts_and_price.second, ts_and_price.first, [](const auto &, bool) {});
+            try_send_order(*m_next_signal_side, ts_and_price.second, ts_and_price.first);
         }
     }
 

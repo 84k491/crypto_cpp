@@ -87,12 +87,12 @@ void BollingerBandsStrategy::push_price(std::pair<std::chrono::milliseconds, dou
     }
 
     if (price > bb_res.m_upper_band) {
-        try_send_order(Side::sell(), ts_and_price.second, ts, {});
+        try_send_order(Side::sell(), ts_and_price.second, ts);
         m_last_signal_side = Side::sell();
     }
 
     if (price < bb_res.m_lower_band) {
-        try_send_order(Side::buy(), ts_and_price.second, ts, {});
+        try_send_order(Side::buy(), ts_and_price.second, ts);
         m_last_signal_side = Side::buy();
     }
 }

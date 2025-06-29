@@ -78,7 +78,7 @@ void DoubleSmaStrategy::push_price(std::pair<std::chrono::milliseconds, double> 
     }
 
     const auto side = current_slow_above_fast ? Side::sell() : Side::buy();
-    try_send_order(side, ts_and_price.second, ts_and_price.first, {});
+    try_send_order(side, ts_and_price.second, ts_and_price.first);
 }
 
 bool DoubleSmaStrategy::is_valid() const

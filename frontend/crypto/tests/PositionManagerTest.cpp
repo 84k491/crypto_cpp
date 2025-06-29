@@ -29,6 +29,7 @@ TEST_F(PositionManagerTest, OpenLongDontClose)
 
     Trade open_trade(std::chrono::milliseconds(1234567),
                      m_symbol.symbol_name,
+                     {},
                      1000.,
                      UnsignedVolume::from(10.).value(),
                      Side::buy(),
@@ -53,6 +54,7 @@ TEST_F(PositionManagerTest, OpenShortDontClose)
 
     Trade open_trade(std::chrono::milliseconds(1234567),
                      m_symbol.symbol_name,
+                     {},
                      1000.,
                      UnsignedVolume::from(10.).value(),
                      Side::sell(),
@@ -79,6 +81,7 @@ TEST_F(PositionManagerTest, LongCloseRawProfitBiggerThanFee)
 
     Trade open_trade(std::chrono::milliseconds(123),
                      m_symbol.symbol_name,
+                     {},
                      1000.,
                      UnsignedVolume::from(10.).value(),
                      Side::buy(),
@@ -87,6 +90,7 @@ TEST_F(PositionManagerTest, LongCloseRawProfitBiggerThanFee)
 
     Trade close_trade(std::chrono::milliseconds(223),
                       m_symbol.symbol_name,
+                      {},
                       1500.,
                       UnsignedVolume::from(10.).value(),
                       Side::sell(),
@@ -110,6 +114,7 @@ TEST_F(PositionManagerTest, ShortCloseRawProfitBiggerThanFee)
 
     Trade open_trade(std::chrono::milliseconds(123),
                      m_symbol.symbol_name,
+                     {},
                      1500.,
                      UnsignedVolume::from(10.).value(),
                      Side::sell(),
@@ -118,6 +123,7 @@ TEST_F(PositionManagerTest, ShortCloseRawProfitBiggerThanFee)
 
     Trade close_trade(std::chrono::milliseconds(223),
                       m_symbol.symbol_name,
+                      {},
                       1000.,
                       UnsignedVolume::from(10.).value(),
                       Side::buy(),
@@ -142,6 +148,7 @@ TEST_F(PositionManagerTest, LongCloseRawProfitLessThanFee)
 
     Trade open_trade(std::chrono::milliseconds(123),
                      m_symbol.symbol_name,
+                     {},
                      10.,
                      UnsignedVolume::from(1.).value(),
                      Side::buy(),
@@ -150,6 +157,7 @@ TEST_F(PositionManagerTest, LongCloseRawProfitLessThanFee)
 
     Trade close_trade(std::chrono::milliseconds(223),
                       m_symbol.symbol_name,
+                      {},
                       10.4,
                       UnsignedVolume::from(1.).value(),
                       Side::sell(),
@@ -174,6 +182,7 @@ TEST_F(PositionManagerTest, ShortCloseRawProfitLessThanFee)
 
     Trade open_trade(std::chrono::milliseconds(123),
                      m_symbol.symbol_name,
+                     {},
                      10,
                      UnsignedVolume::from(1.).value(),
                      Side::sell(),
@@ -182,6 +191,7 @@ TEST_F(PositionManagerTest, ShortCloseRawProfitLessThanFee)
 
     Trade close_trade(std::chrono::milliseconds(223),
                       m_symbol.symbol_name,
+                      {},
                       9.6,
                       UnsignedVolume::from(1.).value(),
                       Side::buy(),
@@ -206,6 +216,7 @@ TEST_F(PositionManagerTest, LongCloseSamePrice)
 
     Trade open_trade(std::chrono::milliseconds(123),
                      m_symbol.symbol_name,
+                     {},
                      10.,
                      UnsignedVolume::from(1.).value(),
                      Side::buy(),
@@ -214,6 +225,7 @@ TEST_F(PositionManagerTest, LongCloseSamePrice)
 
     Trade close_trade(std::chrono::milliseconds(223),
                       m_symbol.symbol_name,
+                      {},
                       10.,
                       UnsignedVolume::from(1.).value(),
                       Side::sell(),
@@ -238,6 +250,7 @@ TEST_F(PositionManagerTest, ShortCloseSamePrice)
 
     Trade open_trade(std::chrono::milliseconds(123),
                      m_symbol.symbol_name,
+                     {},
                      10.,
                      UnsignedVolume::from(1.).value(),
                      Side::sell(),
@@ -246,6 +259,7 @@ TEST_F(PositionManagerTest, ShortCloseSamePrice)
 
     Trade close_trade(std::chrono::milliseconds(223),
                       m_symbol.symbol_name,
+                      {},
                       10.,
                       UnsignedVolume::from(1.).value(),
                       Side::buy(),
@@ -268,12 +282,14 @@ TEST_F(PositionManagerTest, LongOpenedWithTwoTradesProfit)
 
     Trade open_trade1{std::chrono::milliseconds(123),
                       m_symbol.symbol_name,
+                      {},
                       10.,
                       UnsignedVolume::from(1.).value(),
                       Side::buy(),
                       0.2};
     Trade open_trade2{std::chrono::milliseconds(133),
                       m_symbol.symbol_name,
+                      {},
                       12.,
                       UnsignedVolume::from(1.).value(),
                       Side::buy(),
@@ -291,6 +307,7 @@ TEST_F(PositionManagerTest, LongOpenedWithTwoTradesProfit)
 
     Trade close_trade(std::chrono::milliseconds(223),
                       m_symbol.symbol_name,
+                      {},
                       20.,
                       UnsignedVolume::from(2.).value(),
                       Side::sell(),
@@ -315,12 +332,14 @@ TEST_F(PositionManagerTest, ShortOpenedWithTwoTradesProfit)
 
     Trade open_trade1{std::chrono::milliseconds(123),
                       m_symbol.symbol_name,
+                      {},
                       10.,
                       UnsignedVolume::from(1.).value(),
                       Side::sell(),
                       0.2};
     Trade open_trade2{std::chrono::milliseconds(133),
                       m_symbol.symbol_name,
+                      {},
                       8.,
                       UnsignedVolume::from(1.).value(),
                       Side::sell(),
@@ -338,6 +357,7 @@ TEST_F(PositionManagerTest, ShortOpenedWithTwoTradesProfit)
 
     Trade close_trade(std::chrono::milliseconds(223),
                       m_symbol.symbol_name,
+                      {},
                       6.,
                       UnsignedVolume::from(2.).value(),
                       Side::buy(),
@@ -363,6 +383,7 @@ TEST_F(PositionManagerTest, LongClosedWithTwoTradesProfit)
 
     Trade open_trade{std::chrono::milliseconds(123),
                      m_symbol.symbol_name,
+                     {},
                      10.,
                      UnsignedVolume::from(2.).value(),
                      Side::buy(),
@@ -371,6 +392,7 @@ TEST_F(PositionManagerTest, LongClosedWithTwoTradesProfit)
 
     Trade close_trade1(std::chrono::milliseconds(213),
                        m_symbol.symbol_name,
+                       {},
                        12.,
                        UnsignedVolume::from(1.).value(),
                        Side::sell(),
@@ -386,6 +408,7 @@ TEST_F(PositionManagerTest, LongClosedWithTwoTradesProfit)
 
     Trade close_trade2(std::chrono::milliseconds(223),
                        m_symbol.symbol_name,
+                       {},
                        14.,
                        UnsignedVolume::from(1.).value(),
                        Side::sell(),
@@ -410,6 +433,7 @@ TEST_F(PositionManagerTest, ShortClosedWithTwoTradesProfit)
 
     Trade open_trade{std::chrono::milliseconds(123),
                      m_symbol.symbol_name,
+                     {},
                      10.,
                      UnsignedVolume::from(2.).value(),
                      Side::sell(),
@@ -418,12 +442,14 @@ TEST_F(PositionManagerTest, ShortClosedWithTwoTradesProfit)
 
     Trade close_trade1(std::chrono::milliseconds(213),
                        m_symbol.symbol_name,
+                       {},
                        8.,
                        UnsignedVolume::from(1.).value(),
                        Side::buy(),
                        0.3);
     Trade close_trade2(std::chrono::milliseconds(223),
                        m_symbol.symbol_name,
+                       {},
                        6.,
                        UnsignedVolume::from(1.).value(),
                        Side::buy(),
@@ -449,6 +475,7 @@ TEST_F(PositionManagerTest, LongFlipClosedWithProfit)
 
     Trade open_trade{std::chrono::milliseconds(123),
                      m_symbol.symbol_name,
+                     {},
                      10.,
                      UnsignedVolume::from(1.).value(),
                      Side::buy(),
@@ -457,6 +484,7 @@ TEST_F(PositionManagerTest, LongFlipClosedWithProfit)
 
     Trade flip_trade(std::chrono::milliseconds(213),
                      m_symbol.symbol_name,
+                     {},
                      12.,
                      UnsignedVolume::from(2.).value(),
                      Side::sell(),
@@ -465,6 +493,7 @@ TEST_F(PositionManagerTest, LongFlipClosedWithProfit)
 
     Trade close_trade(std::chrono::milliseconds(223),
                       m_symbol.symbol_name,
+                      {},
                       8.,
                       UnsignedVolume::from(1.).value(),
                       Side::buy(),
@@ -488,6 +517,7 @@ TEST_F(PositionManagerTest, ShortFlipClosedWithProfit)
 
     Trade open_trade{std::chrono::milliseconds(123),
                      m_symbol.symbol_name,
+                     {},
                      12.,
                      UnsignedVolume::from(1.).value(),
                      Side::sell(),
@@ -496,6 +526,7 @@ TEST_F(PositionManagerTest, ShortFlipClosedWithProfit)
 
     Trade flip_trade(std::chrono::milliseconds(213),
                      m_symbol.symbol_name,
+                     {},
                      10.,
                      UnsignedVolume::from(2.).value(),
                      Side::buy(),
@@ -504,6 +535,7 @@ TEST_F(PositionManagerTest, ShortFlipClosedWithProfit)
 
     Trade close_trade(std::chrono::milliseconds(223),
                       m_symbol.symbol_name,
+                      {},
                       14.,
                       UnsignedVolume::from(1.).value(),
                       Side::sell(),
@@ -527,6 +559,7 @@ TEST_F(PositionManagerTest, LongCloseWithLoss)
 
     Trade open_trade(std::chrono::milliseconds(123),
                      m_symbol.symbol_name,
+                     {},
                      1000.,
                      UnsignedVolume::from(10.).value(),
                      Side::buy(),
@@ -535,6 +568,7 @@ TEST_F(PositionManagerTest, LongCloseWithLoss)
 
     Trade close_trade(std::chrono::milliseconds(223),
                       m_symbol.symbol_name,
+                      {},
                       900.,
                       UnsignedVolume::from(10.).value(),
                       Side::sell(),
@@ -556,6 +590,7 @@ TEST_F(PositionManagerTest, ShortCloseWithLoss)
 
     Trade open_trade(std::chrono::milliseconds(123),
                      m_symbol.symbol_name,
+                     {},
                      900.,
                      UnsignedVolume::from(10.).value(),
                      Side::sell(),
@@ -564,6 +599,7 @@ TEST_F(PositionManagerTest, ShortCloseWithLoss)
 
     Trade close_trade(std::chrono::milliseconds(223),
                       m_symbol.symbol_name,
+                      {},
                       1000.,
                       UnsignedVolume::from(10.).value(),
                       Side::buy(),
@@ -585,6 +621,7 @@ TEST_F(PositionManagerTest, LongCloseWithLossFractionalPrice)
 
     Trade open_trade(std::chrono::milliseconds(123),
                      m_symbol.symbol_name,
+                     {},
                      0.05802,
                      UnsignedVolume::from(1723).value(),
                      Side::buy(),
@@ -593,6 +630,7 @@ TEST_F(PositionManagerTest, LongCloseWithLossFractionalPrice)
 
     Trade close_trade(std::chrono::milliseconds(223),
                       m_symbol.symbol_name,
+                      {},
                       0.05796,
                       UnsignedVolume::from(1723).value(),
                       Side::sell(),
@@ -619,6 +657,7 @@ TEST_F(PositionManagerTest, ShortProfitThenLongLoss)
     {
         Trade open_trade(std::chrono::milliseconds(123),
                          m_symbol.symbol_name,
+                         {},
                          0.0584,
                          UnsignedVolume::from(1712).value(),
                          Side::sell(),
@@ -627,6 +666,7 @@ TEST_F(PositionManagerTest, ShortProfitThenLongLoss)
 
         Trade close_trade(std::chrono::milliseconds(223),
                           m_symbol.symbol_name,
+                          {},
                           0.0582,
                           UnsignedVolume::from(1712).value(),
                           Side::buy(),
@@ -648,6 +688,7 @@ TEST_F(PositionManagerTest, ShortProfitThenLongLoss)
     {
         Trade open_trade(std::chrono::milliseconds(323),
                          m_symbol.symbol_name,
+                         {},
                          0.05802,
                          UnsignedVolume::from(1723).value(),
                          Side::buy(),
@@ -656,6 +697,7 @@ TEST_F(PositionManagerTest, ShortProfitThenLongLoss)
 
         Trade close_trade(std::chrono::milliseconds(423),
                           m_symbol.symbol_name,
+                          {},
                           0.05796,
                           UnsignedVolume::from(1723).value(),
                           Side::sell(),

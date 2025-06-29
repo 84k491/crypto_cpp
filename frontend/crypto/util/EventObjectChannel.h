@@ -64,6 +64,12 @@ public:
             Priority priority = Priority::Normal);
     void unsubscribe(xg::Guid guid);
 
+    size_t subscribers_count() const
+    {
+        // TODO thread safe
+        return m_update_callbacks.size();
+    };
+
 private:
     ObjectT m_data;
     std::vector<std::tuple< // TODO make it thread-safe

@@ -72,10 +72,10 @@ void DSMADiffStrategy::push_price(std::pair<std::chrono::milliseconds, double> t
     m_strategy_internal_data_channel.push(ts_and_price.first, {"dsma_diff", "diff", diff_percent});
 
     if (diff_coef > m_diff_threshold) {
-        try_send_order(Side::buy(), ts_and_price.second, ts_and_price.first, {});
+        try_send_order(Side::buy(), ts_and_price.second, ts_and_price.first);
     }
     else if (diff_coef < -m_diff_threshold) {
-        try_send_order(Side::sell(), ts_and_price.second, ts_and_price.first, {});
+        try_send_order(Side::sell(), ts_and_price.second, ts_and_price.first);
     }
 }
 

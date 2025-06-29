@@ -120,9 +120,9 @@ void RateOfChangeStrategy::push_candle(const Candle & c)
     }
 
     if (roc > m_config.m_signal_threshold) {
-        try_send_order(Side::buy(), c.close(), close_ts, {});
+        try_send_order(Side::buy(), c.close(), close_ts);
         return;
     }
 
-    try_send_order(Side::sell(), c.close(), close_ts, {});
+    try_send_order(Side::sell(), c.close(), close_ts);
 }

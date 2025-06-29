@@ -315,6 +315,7 @@ TEST_F(StrategyInstanceTest, OpenAndClosePos_GetResult_DontCloseTwiceOnStop)
     const auto open_trade = Trade{
             open_trade_ts,
             m_symbol.symbol_name,
+            {},
             open_trade_price,
             open_trade_volume,
             open_trade_side,
@@ -351,6 +352,7 @@ TEST_F(StrategyInstanceTest, OpenAndClosePos_GetResult_DontCloseTwiceOnStop)
         const auto close_trade = Trade{
                 close_trade_ts,
                 m_symbol.symbol_name,
+                {},
                 open_trade_price * 2,
                 open_trade_volume,
                 open_trade_side.opposite(),
@@ -430,6 +432,7 @@ TEST_F(StrategyInstanceTest, OpenPositionWithTpsl_CloseOnGracefullStop)
         const auto open_trade = Trade{
                 open_trade_ts,
                 m_symbol.symbol_name,
+                {},
                 order_req.order.price(),
                 order_req.order.volume(),
                 order_req.order.side(),
@@ -473,6 +476,7 @@ TEST_F(StrategyInstanceTest, OpenPositionWithTpsl_CloseOnGracefullStop)
         const auto close_trade = Trade{
                 close_trade_ts,
                 m_symbol.symbol_name,
+                {},
                 order_req.order.price(),
                 order_req.order.volume(),
                 order_req.order.side(),
@@ -629,6 +633,7 @@ TEST_F(StrategyInstanceTest, OpenPos_TpslReject_ClosePosAndPanic)
         const auto open_trade = Trade{
                 open_trade_ts,
                 m_symbol.symbol_name,
+                {},
                 open_trade_price,
                 open_trade_volume,
                 open_trade_side,
@@ -670,6 +675,7 @@ TEST_F(StrategyInstanceTest, OpenPos_TpslReject_ClosePosAndPanic)
         const auto close_trade = Trade{
                 close_trade_ts,
                 m_symbol.symbol_name,
+                {},
                 close_trade_price,
                 close_trade_volume,
                 close_trade_side,

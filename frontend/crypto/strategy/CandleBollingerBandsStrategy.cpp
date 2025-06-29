@@ -113,11 +113,11 @@ void CandleBollingerBandsStrategy::push_candle(const Candle & candle) {
 
     const bool too_many_candles_above = std::abs(m_candles_above_price_trigger) > m_config.m_candles_threshold;
     if (!too_many_candles_above && m_candles_above_price_trigger > 0 && candle.side() == SideEnum::Sell) {
-        try_send_order(Side::sell(), price, ts, {});
+        try_send_order(Side::sell(), price, ts);
         m_last_signal_side = Side::sell();
     }
     if (!too_many_candles_above && m_candles_above_price_trigger < 0 && candle.side() == SideEnum::Buy) {
-        try_send_order(Side::buy(), price, ts, {});
+        try_send_order(Side::buy(), price, ts);
         m_last_signal_side = Side::buy();
     }
 

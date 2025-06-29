@@ -14,8 +14,7 @@ public:
     }
 
 protected:
-    bool try_send_order(Side side, double price, std::chrono::milliseconds ts, OrderManager::OrderCallback && on_response);
-    bool send_order(Side side, double price, std::chrono::milliseconds ts, OrderManager::OrderCallback && on_response);
+    bool try_send_order(Side side, double price, std::chrono::milliseconds ts);
 
 protected:
     const double m_pos_currency_amount = 100.;

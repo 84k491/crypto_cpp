@@ -101,6 +101,7 @@ std::optional<Trade> BacktestTradingGateway::try_trade_tpsl(std::chrono::millise
     Trade trade{
             ts,
             m_symbol,
+            {}, // TODO
             trade_price.value(),
             pos_volume,
             opposite_side,
@@ -118,6 +119,7 @@ void BacktestTradingGateway::try_trigger_conditionals(std::chrono::milliseconds 
         Trade trade{
                 ts,
                 m_symbol,
+                o.guid(),
                 o.trigger_price(),
                 o.order().volume(),
                 o.order().side(),
@@ -180,6 +182,7 @@ void BacktestTradingGateway::push_order_request(const OrderRequestEvent & req)
     Trade trade{
             std::chrono::duration_cast<std::chrono::milliseconds>(order.signal_ts()),
             order.symbol(),
+            order.guid(),
             price,
             volume,
             order.side(),
@@ -304,6 +307,7 @@ std::optional<std::variant<Trade, StopLoss>> BacktestTrailingStopLoss::on_price_
     Trade trade{
             ts,
             m_trailing_stop.symbol_name(),
+            {}, // TODO
             m_current_stop_loss.stop_price(),
             vol,
             opposite_side,

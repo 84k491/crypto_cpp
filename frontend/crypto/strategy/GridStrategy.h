@@ -58,7 +58,10 @@ private:
     struct Level
     {
         int level_num = 0;
-        SignedVolume volume;
+
+        std::shared_ptr<ISubscription> mo_sub;
+        std::shared_ptr<MarketOrder> market_order;
+
         std::optional<TakeProfitMarketOrder> tp;
         std::optional<StopLossMarketOrder> sl;
     };
@@ -68,6 +71,8 @@ private:
     double get_price_from_level_number(int level_num)    const;
 
 private:
+    EventLoopSubscriber & m_event_loop;
+
     GridStrategyConfig m_config;
 
     OrderManager & m_orders;

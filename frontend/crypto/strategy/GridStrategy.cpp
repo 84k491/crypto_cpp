@@ -47,6 +47,7 @@ GridStrategy::GridStrategy(
         StrategyChannelsRefs channels,
         OrderManager & orders)
     : StrategyBase(orders)
+    , m_event_loop(event_loop)
     , m_config(config)
     , m_orders(orders)
     , m_trend(config.m_interval)
@@ -107,20 +108,29 @@ void GridStrategy::push_price(std::chrono::milliseconds ts, double price)
     }
 
     const Side side = price_level > 0 ? Side::sell() : Side::buy();
+    auto & channel = m_orders.send_market_order(
+            price,
+            SignedVolume{UnsignedVolume::from(m_pos_currency_amount).value(), side},
+            ts);
+
+    auto sub = channel.subscribe(
+            m_event_loop.m_event_loop,
+            [&](const std::shared_ptr<MarketOrder> & or_ptr) {
+                if (or_ptr->filled_volume().value() > 0.) {
+                    on_order_traded(*or_ptr, price_level);
+                }
+
+                // TODO handle reject
+            });
+
     m_orders_by_levels.emplace(
             price_level,
             Level{
                     .level_num = price_level,
-                    .volume = SignedVolume{m_pos_currency_amount},
+                    .mo_sub = sub,
+                    .market_order = channel.get(),
                     .tp = std::nullopt,
                     .sl = std::nullopt});
-    send_order(side, price, ts, [&](const MarketOrder & mo, bool active) {
-        if (!active) {
-            on_order_traded(mo, price_level);
-        }
-
-        // TODO handle reject
-    });
 }
 
 void GridStrategy::on_order_traded(const MarketOrder & order, int price_level)
@@ -176,7 +186,7 @@ GridStrategy::Level * GridStrategy::find_level(xg::Guid order_guid)
 {
     for (auto it = m_orders_by_levels.begin(), end = m_orders_by_levels.end(); it != end; ++it) {
         auto & [l, orders] = *it;
-        auto & [_, vol, tp, sl] = orders;
+        auto & [_, _1, mo, tp, sl] = orders;
 
         if (tp.has_value() && tp->guid() == order_guid) {
             return &orders;

@@ -100,6 +100,7 @@ std::optional<Trade> Execution::to_trade() const
     return Trade(
             std::chrono::milliseconds(std::stoll(execTime)),
             symbol,
+            {}, // TODO
             execPrice,
             volume_opt.value(),
             side == "Buy" ? Side::buy() : Side::sell(),

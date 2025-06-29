@@ -50,7 +50,7 @@ void DebugEveryTickStrategy::push_price(std::pair<std::chrono::milliseconds, dou
     const auto side = last_side.opposite();
     last_side = side;
 
-    try_send_order(side, ts_and_price.second, ts_and_price.first, {});
+    try_send_order(side, ts_and_price.second, ts_and_price.first);
 }
 
 bool DebugEveryTickStrategy::is_valid() const

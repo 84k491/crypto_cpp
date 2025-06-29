@@ -62,7 +62,7 @@ void RelativeStrengthIndexStrategy::push_candle(const Candle & c)
 
     const auto side = rsi.value() > upper_trigger ? Side::buy() : Side::sell();
 
-    try_send_order(side, c.close(), c.close_ts(), {});
+    try_send_order(side, c.close(), c.close_ts());
 }
 
 bool RelativeStrengthIndexStrategyConfig::is_valid() const

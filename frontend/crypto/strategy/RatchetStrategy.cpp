@@ -62,5 +62,5 @@ void RatchetStrategy::push_candle(const Candle & c)
     }
 
     const auto side = value < c.close() ? Side::buy() : Side::sell();
-    try_send_order(side, c.close(), c.close_ts(), {});
+    try_send_order(side, c.close(), c.close_ts());
 }

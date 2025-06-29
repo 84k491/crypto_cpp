@@ -118,12 +118,12 @@ void BBRSIStrategy::push_candle(const Candle & candle)
     m_price_in_trigger_zone_bb = false;
 
     if (bb_res.m_trend < price && rsi.value() > m_rsi_top_threshold && candle.side() == SideEnum::Sell) {
-        try_send_order(Side::sell(), price, ts, {});
+        try_send_order(Side::sell(), price, ts);
         m_last_signal_side = Side::sell();
         return;
     }
     if (bb_res.m_trend > price && rsi.value() < m_rsi_bot_threshold && candle.side() == SideEnum::Buy) {
-        try_send_order(Side::buy(), price, ts, {});
+        try_send_order(Side::buy(), price, ts);
         m_last_signal_side = Side::buy();
         return;
     }

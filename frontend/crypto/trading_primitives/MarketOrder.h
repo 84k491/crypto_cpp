@@ -55,6 +55,8 @@ public:
     }
 
     void regenerate_guid() { m_guid = xg::newGuid(); }
+    auto target_volume() const { return m_target_volume; }
+    auto filled_volume() const { return m_filled_volume; }
     auto volume() const { return m_volume; }
     auto symbol() const { return m_symbol; }
     auto side() const { return m_side; }
@@ -62,12 +64,14 @@ public:
     auto signal_ts() const { return m_signal_ts; }
     auto guid() const { return m_guid; }
 
-    auto reject_reason() { return m_reject_reason; }
+    const auto & reject_reason() const { return m_reject_reason; }
     void set_reject_reason(const std::string & r) { m_reject_reason = r; }
 
     Status status() const;
 
     void on_trade(UnsignedVolume vol, double price, double fee);
+
+    std::string m_reject_reason;
 
 private:
     xg::Guid m_guid;
@@ -80,7 +84,5 @@ private:
     Side m_side = Side::buy();
     double m_price = 0.;
     std::chrono::milliseconds m_signal_ts = {};
-
-    std::string m_reject_reason;
 };
 std::ostream & operator<<(std::ostream & os, const MarketOrder & order);

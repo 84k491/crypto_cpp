@@ -5,11 +5,14 @@
 
 #include "fmt/format.h"
 
+#include <cassert>
+#include <utility>
+
 OrderManager::OrderManager(
         Symbol symbol,
         EventLoopSubscriber & event_loop,
         ITradingGateway & tr_gateway)
-    : m_symbol(symbol)
+    : m_symbol(std::move(symbol))
     , m_tr_gateway(tr_gateway)
     , m_event_loop(event_loop)
 {
@@ -17,6 +20,12 @@ OrderManager::OrderManager(
             m_tr_gateway.order_response_channel(),
             [this](const OrderResponseEvent & e) {
                 on_order_response(e);
+            });
+
+    m_event_loop.subscribe(
+            m_tr_gateway.trade_channel(),
+            [this](const TradeEvent & e) {
+                on_order_trade(e);
             });
 }
 
@@ -40,7 +49,7 @@ std::variant<SignedVolume, std::string> OrderManager::adjusted_volume(SignedVolu
     return {adjusted_target_volume};
 }
 
-void OrderManager::send_market_order(double price, SignedVolume vol, std::chrono::milliseconds ts, OrderCallback && on_response)
+EventObjectChannel<std::shared_ptr<MarketOrder>> & OrderManager::send_market_order(double price, SignedVolume vol, std::chrono::milliseconds ts)
 {
     const auto adj_vol_var = adjusted_volume(vol);
     if (std::holds_alternative<std::string>(adj_vol_var)) {
@@ -48,18 +57,28 @@ void OrderManager::send_market_order(double price, SignedVolume vol, std::chrono
     }
     const auto adj_vol = std::get<SignedVolume>(adj_vol_var);
 
-    const auto order = MarketOrder{
+    const auto order = std::make_shared<MarketOrder>(
             m_symbol.symbol_name,
             price,
             adj_vol,
-            ts};
+            ts);
 
-    OrderRequestEvent or_event{order};
-    m_pending_orders.emplace(
-            order.guid(),
-            std::make_pair(order,
-                           std::move(on_response)));
+    OrderRequestEvent or_event{*order};
+
+    // TODO erase them
+    const auto [it, success] = m_orders.emplace(
+            order->guid(),
+            EventObjectChannel<std::shared_ptr<MarketOrder>>{});
+    assert(success);
+
+    EventObjectChannel<std::shared_ptr<MarketOrder>> & order_channel = it->second;
+    order_channel.update([&](auto & order_ptr) {
+        order_ptr = order;
+    });
+
     m_tr_gateway.push_order_request(or_event);
+
+    return order_channel;
 }
 
 void OrderManager::send_take_profit(double price, SignedVolume vol, std::chrono::milliseconds ts, TakeProfitCallback && on_response)
@@ -130,50 +149,62 @@ void OrderManager::on_take_profit_response(const TakeProfitUpdatedEvent & r)
     callback(tp, r.active);
 }
 
-void on_stop_loss_reposnse(const StopLossUpdatedEvent & r);
-
 void OrderManager::on_order_response(const OrderResponseEvent & response)
 {
-    const auto it = m_pending_orders.find(response.request_guid);
-    if (it == m_pending_orders.end()) {
+    const auto it = m_orders.find(response.request_guid);
+    if (it == m_orders.end()) {
         Logger::log<LogLevel::Warning>("unsolicited OrderResponseEvent");
         return;
     }
-    ScopeExit se([&]() { m_pending_orders.erase(it); });
+    ScopeExit se([&]() { m_orders.erase(it); });
 
-    const auto & [guid, order_and_cb] = *it;
-    const auto & [order, cb] = order_and_cb;
+    auto & [guid, channel] = *it;
 
     // TODO set price and volume from the response
 
     if (response.reject_reason.has_value() && !response.retry) {
-        const std::string er = fmt::format("OrderRejected: {}", response.reject_reason.value());
-        Logger::logf<LogLevel::Warning>(er);
-        m_error_channel.push(er);
-
-        cb(order, false);
+        channel.update([&](auto & order_ptr) {
+            order_ptr->m_reject_reason = response.reject_reason.value();
+        });
     }
 
-    if (!response.retry) {
-        cb(order, true);
-        return;
-    }
+    // channel.update([&](auto & order_ptr) {
+    //     order_ptr->;
+    // });
 
-    {
-        auto [old_guid, new_order] = *it; // copy
-        new_order.first.regenerate_guid();
-        OrderRequestEvent or_event{new_order.first};
-        m_pending_orders.emplace(
-                new_order.first.guid(),
-                std::make_pair(
-                        new_order.first,
-                        std::move(new_order.second)));
-        Logger::logf<LogLevel::Debug>("Re-sending order with a new guid: {} -> {}", old_guid, new_order.first.guid());
-        m_tr_gateway.push_order_request(or_event);
-    }
+    // if (!response.retry) {
+    // }
+
+    // {
+    //     auto [old_guid, new_order] = *it; // copy
+    //     new_order.first.regenerate_guid();
+    //     OrderRequestEvent or_event{new_order.first};
+    //     m_pending_orders.emplace(
+    //             new_order.first.guid(),
+    //             std::make_pair(
+    //                     new_order.first,
+    //                     std::move(new_order.second)));
+    //     Logger::logf<LogLevel::Debug>("Re-sending order with a new guid: {} -> {}", old_guid, new_order.first.guid());
+    //     m_tr_gateway.push_order_request(or_event);
+    // }
 }
 
-const std::map<xg::Guid, std::pair<MarketOrder, OrderManager::OrderCallback>> & OrderManager::pending_orders() const
+void OrderManager::on_order_trade(const TradeEvent & ev)
 {
-    return m_pending_orders;
+    const auto it = m_orders.find(ev.trade.order_guid());
+    if (it == m_orders.end()) {
+        Logger::log<LogLevel::Warning>("unsolicited TradeEvent");
+        return;
+    }
+    ScopeExit se([&]() { m_orders.erase(it); });
+
+    auto & [guid, channel] = *it;
+
+    channel.update([&](std::shared_ptr<MarketOrder> & order_ptr) {
+        order_ptr->on_trade(ev.trade.unsigned_volume(), ev.trade.price(), ev.trade.fee());
+    });
+
+    if (channel.subscribers_count() == 0) {
+        m_orders.erase(it);
+    }
 }
