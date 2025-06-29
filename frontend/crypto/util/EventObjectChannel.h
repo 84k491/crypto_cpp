@@ -57,6 +57,11 @@ public:
         return m_data;
     }
 
+    void set_on_sub_count_changed(std::function<void(size_t)> && cb)
+    {
+        m_sub_count_callback = std::move(cb);
+    }
+
     [[nodiscard]] std::shared_ptr<EventObjectSubscription<ObjectT>>
     subscribe(
             const std::shared_ptr<ILambdaAcceptor> & consumer,
@@ -77,6 +82,8 @@ private:
             std::function<void(const ObjectT &)>, // TODO move it to subscription
             std::weak_ptr<EventObjectSubscription<ObjectT>>>>
             m_update_callbacks;
+
+    std::function<void(size_t)> m_sub_count_callback;
 };
 
 template <typename ObjectT>
@@ -114,6 +121,11 @@ EventObjectChannel<ObjectT>::subscribe(
     auto sptr = std::make_shared<EventObjectSubscription<ObjectT>>(consumer, *this, guid);
 
     m_update_callbacks.push_back({guid, std::move(update_callback), std::weak_ptr{sptr}});
+
+    if (m_sub_count_callback) {
+        m_sub_count_callback(m_update_callbacks.size());
+    }
+
     return sptr;
 }
 
@@ -126,6 +138,11 @@ void EventObjectChannel<ObjectT>::unsubscribe(xg::Guid guid)
             break;
         }
     }
+
+    if (m_sub_count_callback) {
+        m_sub_count_callback(m_update_callbacks.size());
+    }
+
 }
 
 template <typename ObjectT>

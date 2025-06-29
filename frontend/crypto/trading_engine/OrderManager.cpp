@@ -75,6 +75,11 @@ EventObjectChannel<std::shared_ptr<MarketOrder>> & OrderManager::send_market_ord
     order_channel.update([&](auto & order_ptr) {
         order_ptr = order;
     });
+    order_channel.set_on_sub_count_changed([this, guid = order->guid()](size_t sub_cnt) {
+        if (sub_cnt == 0) {
+            m_orders.erase(guid);
+        }
+    });
 
     m_tr_gateway.push_order_request(or_event);
 
