@@ -33,6 +33,8 @@ public:
     EventChannel<TpslUpdatedEvent> & tpsl_updated_channel() override;
     EventChannel<TrailingStopLossResponseEvent> & trailing_stop_response_channel() override;
     EventChannel<TrailingStopLossUpdatedEvent> & trailing_stop_update_channel() override;
+    EventChannel<StopLossUpdatedEvent> & stop_loss_update_channel() override;
+    EventChannel<TakeProfitUpdatedEvent> & take_profit_update_channel() override;
 
 private:
     void register_subs();

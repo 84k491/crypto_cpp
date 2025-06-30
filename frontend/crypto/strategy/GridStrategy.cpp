@@ -152,7 +152,7 @@ void GridStrategy::on_order_traded(const MarketOrder & order, int price_level)
     }
 
     const auto [tp_price, sl_price] = calc_tp_sl_prices(order.price(), order.side()); // TODO use trade price
-    auto vol = SignedVolume{order.volume(), order.side().opposite()};
+    auto vol = SignedVolume{order.filled_volume(), order.side().opposite()};
     m_orders.send_take_profit(
             tp_price,
             vol,

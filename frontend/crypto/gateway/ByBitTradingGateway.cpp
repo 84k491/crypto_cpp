@@ -6,6 +6,7 @@
 #include "Ohlc.h"
 
 #include <chrono>
+#include <stdexcept>
 #include <variant>
 
 ByBitTradingGateway::ByBitTradingGateway()
@@ -141,7 +142,7 @@ void ByBitTradingGateway::process_event(const OrderRequestEvent & req)
             {"symbol", order.symbol()},
             {"side", order.side_str()},
             {"orderType", "Market"},
-            {"qty", std::to_string(order.volume().value())},
+            {"qty", std::to_string(order.target_volume().value())},
             {"timeInForce", "IOC"},
             {"orderLinkId", order_id},
             {"orderFilter", "Order"},
@@ -378,4 +379,15 @@ EventChannel<TrailingStopLossResponseEvent> & ByBitTradingGateway::trailing_stop
 EventChannel<TrailingStopLossUpdatedEvent> & ByBitTradingGateway::trailing_stop_update_channel()
 {
     return m_trailing_stop_update_channel;
+}
+
+EventChannel<StopLossUpdatedEvent> & ByBitTradingGateway::stop_loss_update_channel()
+{
+    // TODO
+    throw std::runtime_error("not implemented");
+}
+
+EventChannel<TakeProfitUpdatedEvent> & ByBitTradingGateway::take_profit_update_channel()
+{
+    throw std::runtime_error("not implemented");
 }

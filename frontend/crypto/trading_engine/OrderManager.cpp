@@ -22,11 +22,26 @@ OrderManager::OrderManager(
                 on_order_response(e);
             });
 
+    // there is no fees in order response
     m_event_loop.subscribe(
             m_tr_gateway.trade_channel(),
             [this](const TradeEvent & e) {
                 on_order_trade(e);
             });
+
+    m_event_loop.subscribe(
+        m_tr_gateway.stop_loss_update_channel(),
+        [this](const StopLossUpdatedEvent & ev) {
+            // TODO
+        }
+    );
+
+    m_event_loop.subscribe(
+        m_tr_gateway.take_profit_update_channel(),
+        [this](const StopLossUpdatedEvent & ev) {
+            // TODO
+        }
+    );
 }
 
 std::variant<SignedVolume, std::string> OrderManager::adjusted_volume(SignedVolume vol)

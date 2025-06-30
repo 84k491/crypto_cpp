@@ -115,15 +115,15 @@ std::optional<Trade> BacktestTradingGateway::try_trade_tpsl(std::chrono::millise
 void BacktestTradingGateway::try_trigger_conditionals(std::chrono::milliseconds ts, double price)
 {
     const auto trigger = [&](const ConditionalMarketOrder & o, bool take_profit) {
-        *m_pos_volume += SignedVolume{o.order().volume().value() * o.order().side().sign()};
+        *m_pos_volume += SignedVolume{o.target_volume().value() * o.side().sign()};
         Trade trade{
                 ts,
                 m_symbol,
                 o.guid(),
                 o.trigger_price(),
-                o.order().volume(),
-                o.order().side(),
-                (o.order().volume().value() * price) * taker_fee_rate,
+                o.target_volume(),
+                o.side(),
+                (o.target_volume().value() * price) * taker_fee_rate,
         };
         m_trade_channel.push(std::move(trade));
         if (take_profit) {
@@ -137,12 +137,12 @@ void BacktestTradingGateway::try_trigger_conditionals(std::chrono::milliseconds 
     for (auto it = m_stop_losses.begin(), end = m_stop_losses.end(); it != end; ++it) {
         const auto & o = *it;
 
-        if (price <= o.trigger_price() && o.order().side() == Side::sell()) {
+        if (price <= o.trigger_price() && o.side() == Side::sell()) {
             trigger(o, false);
             it = m_stop_losses.erase(it);
         }
 
-        if (price >= o.trigger_price() && o.order().side() == Side::buy()) {
+        if (price >= o.trigger_price() && o.side() == Side::buy()) {
             trigger(o, false);
             it = m_stop_losses.erase(it);
         }
@@ -151,12 +151,12 @@ void BacktestTradingGateway::try_trigger_conditionals(std::chrono::milliseconds 
     for (auto it = m_take_profits.begin(), end = m_take_profits.end(); it != end; ++it) {
         const auto & o = *it;
 
-        if (price >= o.trigger_price() && o.order().side() == Side::sell()) {
+        if (price >= o.trigger_price() && o.side() == Side::sell()) {
             trigger(o, true);
             it = m_take_profits.erase(it);
         }
 
-        if (price <= o.trigger_price() && o.order().side() == Side::buy()) {
+        if (price <= o.trigger_price() && o.side() == Side::buy()) {
             trigger(o, true);
             it = m_take_profits.erase(it);
         }
@@ -175,7 +175,7 @@ void BacktestTradingGateway::push_order_request(const OrderRequestEvent & req)
     m_symbol = order.symbol();
 
     const auto & price = m_last_price;
-    const auto volume = order.volume();
+    const auto volume = order.target_volume();
 
     const double currency_spent = price * volume.value();
     const double fee = currency_spent * taker_fee_rate;
@@ -243,7 +243,7 @@ void BacktestTradingGateway::push_stop_loss_request(const StopLossMarketOrder & 
     m_stop_losses.push_back(order);
     m_stop_loss_update_channel.push({order.guid(), true});
 
-    try_trigger_conditionals(order.order().signal_ts(), m_last_price);
+    try_trigger_conditionals(order.signal_ts(), m_last_price);
 }
 
 void BacktestTradingGateway::push_take_profit_request(const TakeProfitMarketOrder & order)
@@ -251,7 +251,7 @@ void BacktestTradingGateway::push_take_profit_request(const TakeProfitMarketOrde
     m_take_profits.push_back(order);
     m_take_profit_update_channel.push({order.guid(), true});
 
-    try_trigger_conditionals(order.order().signal_ts(), m_last_price);
+    try_trigger_conditionals(order.signal_ts(), m_last_price);
 }
 
 bool BacktestEventConsumer::push_to_queue(LambdaEvent value)

@@ -135,6 +135,16 @@ public:
         return m_tsl_updated_channel;
     }
 
+    EventChannel<TakeProfitUpdatedEvent> & take_profit_update_channel() override
+    {
+        return m_take_profit_update_channel;
+    }
+
+    EventChannel<StopLossUpdatedEvent> & stop_loss_update_channel() override
+    {
+        return m_stop_loss_update_channel;
+    }
+
 public:
     std::optional<OrderRequestEvent> m_last_order_request;
     std::optional<TpslRequestEvent> m_last_tpsl_request;
@@ -145,6 +155,8 @@ public:
     EventChannel<TpslUpdatedEvent> m_tpsl_updated_channel;
     EventChannel<TrailingStopLossResponseEvent> m_tsl_response_channel;
     EventChannel<TrailingStopLossUpdatedEvent> m_tsl_updated_channel;
+    EventChannel<TakeProfitUpdatedEvent> m_take_profit_update_channel;
+    EventChannel<StopLossUpdatedEvent> m_stop_loss_update_channel;
 };
 
 class MockEventConsumer : public ILambdaAcceptor
@@ -309,7 +321,7 @@ TEST_F(StrategyInstanceTest, OpenAndClosePos_GetResult_DontCloseTwiceOnStop)
     ASSERT_TRUE(tr_gateway.m_last_order_request.has_value());
     const auto order_req = tr_gateway.m_last_order_request.value();
     const auto open_trade_price = order_req.order.price();
-    const auto open_trade_volume = order_req.order.volume();
+    const auto open_trade_volume = order_req.order.target_volume();
     const auto open_trade_side = order_req.order.side();
     const std::chrono::milliseconds open_trade_ts = std::chrono::milliseconds(1001);
     const auto open_trade = Trade{
@@ -434,7 +446,7 @@ TEST_F(StrategyInstanceTest, OpenPositionWithTpsl_CloseOnGracefullStop)
                 m_symbol.symbol_name,
                 {},
                 order_req.order.price(),
-                order_req.order.volume(),
+                order_req.order.target_volume(),
                 order_req.order.side(),
                 0.1};
         const auto open_trade_event = TradeEvent(open_trade);
@@ -478,7 +490,7 @@ TEST_F(StrategyInstanceTest, OpenPositionWithTpsl_CloseOnGracefullStop)
                 m_symbol.symbol_name,
                 {},
                 order_req.order.price(),
-                order_req.order.volume(),
+                order_req.order.target_volume(),
                 order_req.order.side(),
                 0.1};
         const auto close_trade_event = TradeEvent(close_trade);
@@ -627,7 +639,7 @@ TEST_F(StrategyInstanceTest, OpenPos_TpslReject_ClosePosAndPanic)
         ASSERT_TRUE(tr_gateway.m_last_order_request.has_value());
         const auto order_req = tr_gateway.m_last_order_request.value();
         const auto open_trade_price = order_req.order.price();
-        const auto open_trade_volume = order_req.order.volume();
+        const auto open_trade_volume = order_req.order.target_volume();
         const auto open_trade_side = order_req.order.side();
         const std::chrono::milliseconds open_trade_ts = std::chrono::milliseconds(1001);
         const auto open_trade = Trade{
@@ -669,7 +681,7 @@ TEST_F(StrategyInstanceTest, OpenPos_TpslReject_ClosePosAndPanic)
         ASSERT_TRUE(tr_gateway.m_last_order_request.has_value());
         const auto order_req = tr_gateway.m_last_order_request.value();
         const auto close_trade_price = order_req.order.price();
-        const auto close_trade_volume = order_req.order.volume();
+        const auto close_trade_volume = order_req.order.target_volume();
         const auto close_trade_side = order_req.order.side();
         const std::chrono::milliseconds close_trade_ts = std::chrono::milliseconds(1001);
         const auto close_trade = Trade{

@@ -2,7 +2,7 @@
 
 std::ostream & operator<<(std::ostream & os, const MarketOrder & order)
 {
-    os << "MarketOrder: " << order.side_str() << "; volume: " << order.volume() << "; symbol: " << order.symbol();
+    os << "MarketOrder: " << order.side_str() << "; target_volume: " << order.target_volume() << "; symbol: " << order.symbol();
     return os;
 }
 
@@ -14,19 +14,19 @@ void MarketOrder::on_trade(UnsignedVolume vol, double price, double fee)
     m_fee += fee;
 }
 
-MarketOrder::Status MarketOrder::status() const
+OrderStatus MarketOrder::status() const
 {
     if (!m_reject_reason.empty()) {
-        return MarketOrder::Status::Rejected;
+        return OrderStatus::Rejected;
     }
 
     if (m_filled_volume < m_target_volume) {
-        return MarketOrder::Status::Pending;
+        return OrderStatus::Pending;
     }
 
     if (m_target_volume <= m_filled_volume) {
-        return MarketOrder::Status::Filled;
+        return OrderStatus::Filled;
     }
 
-    return MarketOrder::Status::Rejected;
+    return OrderStatus::Rejected;
 }
