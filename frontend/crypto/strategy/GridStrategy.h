@@ -42,11 +42,8 @@ private:
 
     void on_order_traded(const MarketOrder & order, int price_level);
 
-    void on_take_profit_active(const TakeProfitMarketOrder & tp);
-    void on_stop_loss_active(const StopLossMarketOrder & sl);
-
-    void on_take_profit_inactive(const TakeProfitMarketOrder & ev);
-    void on_stop_loss_inactive(const StopLossMarketOrder & ev);
+    void on_take_profit_traded(const TakeProfitMarketOrder & ev, int price_level);
+    void on_stop_loss_traded(const StopLossMarketOrder & ev, int price_level);
 
     struct TpSlPrices
     {
@@ -62,11 +59,13 @@ private:
         std::shared_ptr<ISubscription> mo_sub;
         std::shared_ptr<MarketOrder> market_order;
 
-        std::optional<TakeProfitMarketOrder> tp;
-        std::optional<StopLossMarketOrder> sl;
+        std::shared_ptr<ISubscription> tp_sub;
+        std::shared_ptr<TakeProfitMarketOrder> tp;
+
+        std::shared_ptr<ISubscription> sl_sub;
+        std::shared_ptr<StopLossMarketOrder> sl;
     };
 
-    Level * find_level(xg::Guid order_guid);
     int get_level_number(double price)    const;
     double get_price_from_level_number(int level_num)    const;
 

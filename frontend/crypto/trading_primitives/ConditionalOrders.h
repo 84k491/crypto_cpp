@@ -33,6 +33,7 @@ public:
     auto & trigger_price() const { return m_trigger_price; }
     auto & type() const { return m_type; }
     OrderStatus status() const override;
+    void on_state_changed(bool active);
 
 private:
     xg::Guid m_guid;

@@ -6,6 +6,7 @@
 #include "fmt/format.h"
 
 #include <cassert>
+#include <stdexcept>
 #include <utility>
 
 OrderManager::OrderManager(
@@ -30,18 +31,16 @@ OrderManager::OrderManager(
             });
 
     m_event_loop.subscribe(
-        m_tr_gateway.stop_loss_update_channel(),
-        [this](const StopLossUpdatedEvent & ev) {
-            // TODO
-        }
-    );
+            m_tr_gateway.take_profit_update_channel(),
+            [this](const TakeProfitUpdatedEvent & ev) {
+                on_take_profit_response(ev);
+            });
 
     m_event_loop.subscribe(
-        m_tr_gateway.take_profit_update_channel(),
-        [this](const StopLossUpdatedEvent & ev) {
-            // TODO
-        }
-    );
+            m_tr_gateway.stop_loss_update_channel(),
+            [this](const StopLossUpdatedEvent & ev) {
+                on_stop_loss_reposnse(ev);
+            });
 }
 
 std::variant<SignedVolume, std::string> OrderManager::adjusted_volume(SignedVolume vol)
@@ -101,7 +100,10 @@ EventObjectChannel<std::shared_ptr<MarketOrder>> & OrderManager::send_market_ord
     return order_channel;
 }
 
-void OrderManager::send_take_profit(double price, SignedVolume vol, std::chrono::milliseconds ts, TakeProfitCallback && on_response)
+EventObjectChannel<std::shared_ptr<TakeProfitMarketOrder>> & OrderManager::send_take_profit(
+        double price,
+        SignedVolume vol,
+        std::chrono::milliseconds ts)
 {
     const auto adj_vol_var = adjusted_volume(vol);
     if (std::holds_alternative<std::string>(adj_vol_var)) {
@@ -110,21 +112,35 @@ void OrderManager::send_take_profit(double price, SignedVolume vol, std::chrono:
     const auto adj_vol = std::get<SignedVolume>(adj_vol_var);
 
     const auto [v, s] = adj_vol.as_unsigned_and_side();
-    TakeProfitMarketOrder tpmo{
+    const auto tpmo = std::make_shared<TakeProfitMarketOrder>(
             m_symbol.symbol_name,
             price,
             v,
             s,
-            ts};
+            ts);
 
-    m_pending_tp.emplace(
-            tpmo.guid(),
-            std::make_pair(tpmo, on_response));
+    const auto [it, success] = m_pending_tp.emplace(
+            tpmo->guid(),
+            EventObjectChannel<std::shared_ptr<TakeProfitMarketOrder>>{});
+    auto & ch = it->second;
+    ch.update([&](auto & order_ptr) {
+        order_ptr = tpmo;
+    });
+    ch.set_on_sub_count_changed([this, guid = tpmo->guid()](size_t sub_cnt) {
+        if (sub_cnt == 0) {
+            m_pending_tp.erase(guid);
+        }
+    });
 
-    m_tr_gateway.push_take_profit_request(tpmo);
+    m_tr_gateway.push_take_profit_request(*tpmo);
+
+    return ch;
 }
 
-void OrderManager::send_stop_loss(double price, SignedVolume vol, std::chrono::milliseconds ts, StopLossCallback && on_response)
+EventObjectChannel<std::shared_ptr<StopLossMarketOrder>> & OrderManager::send_stop_loss(
+        double price,
+        SignedVolume vol,
+        std::chrono::milliseconds ts)
 {
     const auto adj_vol_var = adjusted_volume(vol);
     if (std::holds_alternative<std::string>(adj_vol_var)) {
@@ -133,18 +149,29 @@ void OrderManager::send_stop_loss(double price, SignedVolume vol, std::chrono::m
     const auto adj_vol = std::get<SignedVolume>(adj_vol_var);
 
     const auto [v, s] = adj_vol.as_unsigned_and_side();
-    StopLossMarketOrder slmo{
+    const auto slmo = std::make_shared<StopLossMarketOrder>(
             m_symbol.symbol_name,
             price,
             v,
             s,
-            ts};
+            ts);
 
-    m_pending_sl.emplace(
-            slmo.guid(),
-            std::make_pair(slmo, on_response));
+    const auto [it, success] = m_pending_sl.emplace(
+            slmo->guid(),
+            EventObjectChannel<std::shared_ptr<StopLossMarketOrder>>{});
+    auto & ch = it->second;
+    ch.update([&](auto & order_ptr) {
+        order_ptr = slmo;
+    });
+    ch.set_on_sub_count_changed([this, guid = slmo->guid()](size_t sub_cnt) {
+        if (sub_cnt == 0) {
+            m_pending_sl.erase(guid);
+        }
+    });
 
-    m_tr_gateway.push_stop_loss_request(slmo);
+    m_tr_gateway.push_stop_loss_request(*slmo);
+
+    return ch;
 }
 
 void OrderManager::cancel_take_profit(xg::Guid guid)
@@ -164,9 +191,23 @@ void OrderManager::on_take_profit_response(const TakeProfitUpdatedEvent & r)
         Logger::logf<LogLevel::Error>("Can't find tp on response: {}, active: {}", r.guid, r.active);
         return;
     }
-    const auto & [tp, callback] = it->second;
+    auto & ch = it->second;
+    ch.update([&](std::shared_ptr<TakeProfitMarketOrder> & tp_ptr){
+        tp_ptr->on_state_changed(r.active);
+    });
+}
 
-    callback(tp, r.active);
+void OrderManager::on_stop_loss_reposnse(const StopLossUpdatedEvent & r)
+{
+    const auto it = m_pending_sl.find(r.guid);
+    if (it == m_pending_sl.end()) {
+        Logger::logf<LogLevel::Error>("Can't find sl on response: {}, active: {}", r.guid, r.active);
+        return;
+    }
+    auto & ch = it->second;
+    ch.update([&](std::shared_ptr<StopLossMarketOrder> & sl_ptr){
+        sl_ptr->on_state_changed(r.active);
+    });
 }
 
 void OrderManager::on_order_response(const OrderResponseEvent & response)

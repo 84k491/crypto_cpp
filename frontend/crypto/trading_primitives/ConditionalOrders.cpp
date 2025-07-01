@@ -1,5 +1,10 @@
 #include "ConditionalOrders.h"
 
+void ConditionalMarketOrder::on_state_changed(bool active)
+{
+    m_suspended_volume = active ? m_target_volume : UnsignedVolume{};
+}
+
 OrderStatus ConditionalMarketOrder::status() const
 {
     if (!m_reject_reason.empty()) {

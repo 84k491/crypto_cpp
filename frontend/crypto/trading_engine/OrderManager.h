@@ -25,8 +25,18 @@ public:
     EventObjectChannel<std::shared_ptr<MarketOrder>> & send_market_order(double price, SignedVolume vol, std::chrono::milliseconds ts);
     const auto & pending_orders() const { return m_orders; }
 
-    void send_take_profit(double price, SignedVolume vol, std::chrono::milliseconds ts, TakeProfitCallback && on_response);
-    void send_stop_loss(double price, SignedVolume vol, std::chrono::milliseconds ts, StopLossCallback && on_response);
+    [[nodiscard("Subscribe for the channel")]]
+    EventObjectChannel<std::shared_ptr<TakeProfitMarketOrder>> & send_take_profit(
+            double price,
+            SignedVolume vol,
+            std::chrono::milliseconds ts);
+
+    [[nodiscard("Subscribe for the channel")]]
+    EventObjectChannel<std::shared_ptr<StopLossMarketOrder>> & send_stop_loss(
+            double price,
+            SignedVolume vol,
+            std::chrono::milliseconds ts);
+
     void cancel_take_profit(xg::Guid);
     void cancel_stop_loss(xg::Guid);
 
@@ -43,8 +53,8 @@ private:
     ITradingGateway & m_tr_gateway;
 
     std::map<xg::Guid, EventObjectChannel<std::shared_ptr<MarketOrder>>> m_orders;
-    std::map<xg::Guid, std::pair<TakeProfitMarketOrder, TakeProfitCallback>> m_pending_tp;
-    std::map<xg::Guid, std::pair<StopLossMarketOrder, StopLossCallback>> m_pending_sl;
+    std::map<xg::Guid, EventObjectChannel<std::shared_ptr<TakeProfitMarketOrder>>> m_pending_tp;
+    std::map<xg::Guid, EventObjectChannel<std::shared_ptr<StopLossMarketOrder>>> m_pending_sl;
 
     EventLoopSubscriber & m_event_loop;
     EventChannel<std::string> m_error_channel;
