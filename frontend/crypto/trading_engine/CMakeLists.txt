@@ -17,3 +17,5 @@ target_link_libraries(trading_engine PUBLIC
     gateway
     util
 )
+
+add_subdirectory(tests)

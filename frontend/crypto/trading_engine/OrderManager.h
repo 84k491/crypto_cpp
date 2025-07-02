@@ -14,9 +14,6 @@
 class OrderManager
 {
 public:
-    using TakeProfitCallback = std::function<void(const TakeProfitMarketOrder &, bool)>;
-    using StopLossCallback = std::function<void(const StopLossMarketOrder &, bool)>;
-
     OrderManager(
             Symbol symbol,
             EventLoopSubscriber & event_loop,

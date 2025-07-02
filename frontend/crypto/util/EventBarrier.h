@@ -3,7 +3,6 @@
 
 #include <future>
 
-template <class... Args>
 class EventBarrier
 {
 public:
