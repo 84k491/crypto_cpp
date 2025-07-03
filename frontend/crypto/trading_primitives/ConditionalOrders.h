@@ -34,6 +34,12 @@ public:
     auto & type() const { return m_type; }
     OrderStatus status() const override;
     void on_state_changed(bool active);
+    UnsignedVolume suspended_volume() const { return m_suspended_volume; }
+    void cancel();
+
+    void on_trade(UnsignedVolume vol, double price, double fee) override;
+
+    bool cancel_requested = false;
 
 private:
     xg::Guid m_guid;

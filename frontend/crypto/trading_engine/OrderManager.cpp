@@ -6,7 +6,6 @@
 #include "fmt/format.h"
 
 #include <cassert>
-#include <stdexcept>
 #include <utility>
 
 OrderManager::OrderManager(
@@ -27,7 +26,7 @@ OrderManager::OrderManager(
     m_event_loop.subscribe(
             m_tr_gateway.trade_channel(),
             [this](const TradeEvent & e) {
-                on_order_trade(e);
+                on_trade(e);
             });
 
     m_event_loop.subscribe(
@@ -119,7 +118,7 @@ EventObjectChannel<std::shared_ptr<TakeProfitMarketOrder>> & OrderManager::send_
             s,
             ts);
 
-    const auto [it, success] = m_pending_tp.emplace(
+    const auto [it, success] = m_take_profits.emplace(
             tpmo->guid(),
             EventObjectChannel<std::shared_ptr<TakeProfitMarketOrder>>{});
     auto & ch = it->second;
@@ -128,7 +127,7 @@ EventObjectChannel<std::shared_ptr<TakeProfitMarketOrder>> & OrderManager::send_
     });
     ch.set_on_sub_count_changed([this, guid = tpmo->guid()](size_t sub_cnt) {
         if (sub_cnt == 0) {
-            m_pending_tp.erase(guid);
+            m_take_profits.erase(guid);
         }
     });
 
@@ -156,7 +155,7 @@ EventObjectChannel<std::shared_ptr<StopLossMarketOrder>> & OrderManager::send_st
             s,
             ts);
 
-    const auto [it, success] = m_pending_sl.emplace(
+    const auto [it, success] = m_stop_losses.emplace(
             slmo->guid(),
             EventObjectChannel<std::shared_ptr<StopLossMarketOrder>>{});
     auto & ch = it->second;
@@ -165,7 +164,7 @@ EventObjectChannel<std::shared_ptr<StopLossMarketOrder>> & OrderManager::send_st
     });
     ch.set_on_sub_count_changed([this, guid = slmo->guid()](size_t sub_cnt) {
         if (sub_cnt == 0) {
-            m_pending_sl.erase(guid);
+            m_stop_losses.erase(guid);
         }
     });
 
@@ -176,6 +175,14 @@ EventObjectChannel<std::shared_ptr<StopLossMarketOrder>> & OrderManager::send_st
 
 void OrderManager::cancel_take_profit(xg::Guid guid)
 {
+    const auto it = m_take_profits.find(guid);
+    if (it == m_take_profits.end()) {
+        Logger::logf<LogLevel::Error>("No TP to cancel: {}", guid);
+        return;
+    }
+    it->second.update([&](std::shared_ptr<TakeProfitMarketOrder> & tp){
+        tp->cancel();
+    });
     m_tr_gateway.cancel_take_profit_request(guid);
 }
 
@@ -186,26 +193,26 @@ void OrderManager::cancel_stop_loss(xg::Guid guid)
 
 void OrderManager::on_take_profit_response(const TakeProfitUpdatedEvent & r)
 {
-    const auto it = m_pending_tp.find(r.guid);
-    if (it == m_pending_tp.end()) {
+    const auto it = m_take_profits.find(r.guid);
+    if (it == m_take_profits.end()) {
         Logger::logf<LogLevel::Error>("Can't find tp on response: {}, active: {}", r.guid, r.active);
         return;
     }
     auto & ch = it->second;
-    ch.update([&](std::shared_ptr<TakeProfitMarketOrder> & tp_ptr){
+    ch.update([&](std::shared_ptr<TakeProfitMarketOrder> & tp_ptr) {
         tp_ptr->on_state_changed(r.active);
     });
 }
 
 void OrderManager::on_stop_loss_reposnse(const StopLossUpdatedEvent & r)
 {
-    const auto it = m_pending_sl.find(r.guid);
-    if (it == m_pending_sl.end()) {
+    const auto it = m_stop_losses.find(r.guid);
+    if (it == m_stop_losses.end()) {
         Logger::logf<LogLevel::Error>("Can't find sl on response: {}, active: {}", r.guid, r.active);
         return;
     }
     auto & ch = it->second;
-    ch.update([&](std::shared_ptr<StopLossMarketOrder> & sl_ptr){
+    ch.update([&](std::shared_ptr<StopLossMarketOrder> & sl_ptr) {
         sl_ptr->on_state_changed(r.active);
     });
 }
@@ -250,14 +257,12 @@ void OrderManager::on_order_response(const OrderResponseEvent & response)
     // }
 }
 
-void OrderManager::on_order_trade(const TradeEvent & ev)
+bool OrderManager::try_trade_market_order(const TradeEvent & ev)
 {
     const auto it = m_orders.find(ev.trade.order_guid());
     if (it == m_orders.end()) {
-        Logger::log<LogLevel::Warning>("unsolicited TradeEvent");
-        return;
+        return false;
     }
-    ScopeExit se([&]() { m_orders.erase(it); });
 
     auto & [guid, channel] = *it;
 
@@ -268,4 +273,48 @@ void OrderManager::on_order_trade(const TradeEvent & ev)
     if (channel.subscribers_count() == 0) {
         m_orders.erase(it);
     }
+
+    return true;
+}
+
+bool OrderManager::try_trade_take_profit(const TradeEvent & ev)
+{
+    const auto it = m_take_profits.find(ev.trade.order_guid());
+    if (it == m_take_profits.end()) {
+        return false;
+    }
+
+    auto & [guid, channel] = *it;
+
+    channel.update([&](std::shared_ptr<TakeProfitMarketOrder> & tp) {
+        tp->on_trade(ev.trade.unsigned_volume(), ev.trade.price(), ev.trade.fee());
+    });
+
+    if (channel.subscribers_count() == 0) {
+        m_take_profits.erase(it);
+    }
+
+    return true;
+}
+
+bool OrderManager::try_trade_stop_loss(const TradeEvent & ev)
+{
+    // TODO
+    return false;
+}
+
+void OrderManager::on_trade(const TradeEvent & ev)
+{
+    if (try_trade_market_order(ev)) {
+        return;
+    }
+
+    if (try_trade_take_profit(ev)) {
+        return;
+    }
+
+    if (try_trade_stop_loss(ev)) {
+        return;
+    }
+    Logger::log<LogLevel::Warning>("unsolicited TradeEvent");
 }

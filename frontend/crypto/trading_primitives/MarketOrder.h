@@ -12,6 +12,7 @@ enum class OrderStatus : uint8_t
     Suspended,
     // PartiallyFilled,
     Filled,
+    Cancelled,
     Rejected,
 };
 
@@ -65,13 +66,14 @@ public:
     auto price() const { return m_price; }
     auto signal_ts() const { return m_signal_ts; }
     auto guid() const { return m_guid; }
+    auto fee() const { return m_fee; }
 
     const auto & reject_reason() const { return m_reject_reason; }
     void set_reject_reason(const std::string & r) { m_reject_reason = r; }
 
     virtual OrderStatus status() const;
 
-    void on_trade(UnsignedVolume vol, double price, double fee);
+    virtual void on_trade(UnsignedVolume vol, double price, double fee);
 
     std::string m_reject_reason;
 
