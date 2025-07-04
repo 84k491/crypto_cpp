@@ -127,6 +127,7 @@ EventObjectChannel<std::shared_ptr<TakeProfitMarketOrder>> & OrderManager::send_
     });
     ch.set_on_sub_count_changed([this, guid = tpmo->guid()](size_t sub_cnt) {
         if (sub_cnt == 0) {
+            cancel_take_profit(guid);
             m_take_profits.erase(guid);
         }
     });
@@ -164,6 +165,7 @@ EventObjectChannel<std::shared_ptr<StopLossMarketOrder>> & OrderManager::send_st
     });
     ch.set_on_sub_count_changed([this, guid = slmo->guid()](size_t sub_cnt) {
         if (sub_cnt == 0) {
+            cancel_stop_loss(guid);
             m_stop_losses.erase(guid);
         }
     });
@@ -180,7 +182,7 @@ void OrderManager::cancel_take_profit(xg::Guid guid)
         Logger::logf<LogLevel::Error>("No TP to cancel: {}", guid);
         return;
     }
-    it->second.update([&](std::shared_ptr<TakeProfitMarketOrder> & tp){
+    it->second.update([&](std::shared_ptr<TakeProfitMarketOrder> & tp) {
         tp->cancel();
     });
     m_tr_gateway.cancel_take_profit_request(guid);
@@ -188,6 +190,14 @@ void OrderManager::cancel_take_profit(xg::Guid guid)
 
 void OrderManager::cancel_stop_loss(xg::Guid guid)
 {
+    const auto it = m_stop_losses.find(guid);
+    if (it == m_stop_losses.end()) {
+        Logger::logf<LogLevel::Error>("No SL to cancel: {}", guid);
+        return;
+    }
+    it->second.update([&](std::shared_ptr<StopLossMarketOrder> & sl) {
+        sl->cancel();
+    });
     m_tr_gateway.cancel_stop_loss_request(guid);
 }
 
@@ -299,8 +309,22 @@ bool OrderManager::try_trade_take_profit(const TradeEvent & ev)
 
 bool OrderManager::try_trade_stop_loss(const TradeEvent & ev)
 {
-    // TODO
-    return false;
+    const auto it = m_stop_losses.find(ev.trade.order_guid());
+    if (it == m_stop_losses.end()) {
+        return false;
+    }
+
+    auto & [guid, channel] = *it;
+
+    channel.update([&](std::shared_ptr<StopLossMarketOrder> & sl) {
+        sl->on_trade(ev.trade.unsigned_volume(), ev.trade.price(), ev.trade.fee());
+    });
+
+    if (channel.subscribers_count() == 0) {
+        m_stop_losses.erase(it);
+    }
+
+    return true;
 }
 
 void OrderManager::on_trade(const TradeEvent & ev)

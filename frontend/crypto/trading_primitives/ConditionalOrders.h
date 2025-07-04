@@ -35,13 +35,14 @@ public:
     OrderStatus status() const override;
     void on_state_changed(bool active);
     UnsignedVolume suspended_volume() const { return m_suspended_volume; }
+
     void cancel();
+    bool is_cancel_requested() const { return m_cancel_requested; }
 
     void on_trade(UnsignedVolume vol, double price, double fee) override;
 
-    bool cancel_requested = false;
-
 private:
+    bool m_cancel_requested = false;
     xg::Guid m_guid;
     UnsignedVolume m_suspended_volume;
     double m_trigger_price = 0.;

@@ -85,22 +85,43 @@ public:
                 fee};
         m_trade_channel.push(trade);
     }
-    void cancel_take_profit(const TakeProfitMarketOrder & tp)
-    {
-        m_tp_updated_channel.push({tp.guid(), false});
-    }
-
     void push_stop_loss_request(const StopLossMarketOrder & sl) override
     {
+        last_stop_loss_request = sl;
     }
-
-    void cancel_stop_loss_request(xg::Guid guid) override
+    void reply_to_stop_loss(const StopLossMarketOrder & sl)
     {
+        m_sl_updated_channel.push({sl.guid(), true});
+    }
+    void trade_stop_loss(const StopLossMarketOrder & sl)
+    {
+        Trade trade{
+                sl.signal_ts(),
+                sl.symbol(),
+                sl.guid(),
+                sl.price(),
+                sl.target_volume(),
+                sl.side(),
+                fee};
+        m_trade_channel.push(trade);
     }
 
     void cancel_take_profit_request(xg::Guid guid) override
     {
         last_cancel_take_profit_request = guid;
+    }
+    void cancel_take_profit(const TakeProfitMarketOrder & tp)
+    {
+        m_tp_updated_channel.push({tp.guid(), false});
+    }
+
+    void cancel_stop_loss_request(xg::Guid guid) override
+    {
+        last_cancel_stop_loss_request = guid;
+    }
+    void cancel_stop_loss(const StopLossMarketOrder & sl)
+    {
+        m_sl_updated_channel.push({sl.guid(), false});
     }
 
     EventChannel<OrderResponseEvent> & order_response_channel() override
@@ -155,8 +176,12 @@ protected:
     OrderManager order_manager;
 
     std::optional<OrderRequestEvent> last_order_request;
+
     std::optional<TakeProfitMarketOrder> last_take_profit_request;
+    std::optional<StopLossMarketOrder> last_stop_loss_request;
+
     std::optional<xg::Guid> last_cancel_take_profit_request;
+    std::optional<xg::Guid> last_cancel_stop_loss_request;
 
     EventChannel<BarrierEvent> m_barrier_channel;
 };
@@ -269,8 +294,8 @@ TEST_F(OrderManagerTest, TakeProfitSuspendAndCancel)
     ASSERT_EQ(tp->status(), OrderStatus::Suspended);
     ASSERT_EQ(tp->suspended_volume(), tp->target_volume());
 
-    // TODO cancel
     order_manager.cancel_take_profit(last_take_profit_request->guid());
+    ASSERT_TRUE(tp->is_cancel_requested());
 
     {
         cancel_take_profit(*tp);
@@ -290,7 +315,148 @@ TEST_F(OrderManagerTest, TakeProfitSuspendAndCancel)
 
 TEST_F(OrderManagerTest, TakeProfitCancelOnChannelDrop)
 {
-    // TODO
+    auto & ch = order_manager.send_take_profit(111, SignedVolume{1}, 1ms);
+    std::shared_ptr<TakeProfitMarketOrder> tp = nullptr;
+    auto tp_sub = ch.subscribe(
+            event_loop.m_event_loop,
+            [&](const std::shared_ptr<TakeProfitMarketOrder> & tp_ptr) {
+                tp = tp_ptr;
+            });
+    tp = ch.get();
+    ASSERT_TRUE(tp);
+    ASSERT_EQ(tp->status(), OrderStatus::Pending);
+    ASSERT_TRUE(last_take_profit_request.has_value());
+    ASSERT_DOUBLE_EQ(tp->target_volume().value(), 1.);
+    ASSERT_EQ(order_manager.conditionals(), 1);
+
+    {
+        reply_to_take_profit(last_take_profit_request.value());
+        EventBarrier barrier{event_loop, m_barrier_channel};
+        barrier.wait();
+    }
+
+    ASSERT_EQ(tp->status(), OrderStatus::Suspended);
+    ASSERT_EQ(tp->suspended_volume(), tp->target_volume());
+
+    EXPECT_EQ(order_manager.conditionals(), 1);
+    tp_sub.reset();
+    EXPECT_EQ(order_manager.conditionals(), 0);
+    ASSERT_TRUE(tp->is_cancel_requested());
+}
+
+TEST_F(OrderManagerTest, StopLossSuspendAndFill)
+{
+    auto & ch = order_manager.send_stop_loss(111, SignedVolume{1}, 1ms);
+    std::shared_ptr<StopLossMarketOrder> sl = nullptr;
+    auto sl_sub = ch.subscribe(
+            event_loop.m_event_loop,
+            [&](const std::shared_ptr<StopLossMarketOrder> & sl_ptr) {
+                sl = sl_ptr;
+            });
+    sl = ch.get();
+    ASSERT_TRUE(sl);
+    ASSERT_EQ(sl->status(), OrderStatus::Pending);
+    ASSERT_TRUE(last_stop_loss_request.has_value());
+    ASSERT_DOUBLE_EQ(sl->target_volume().value(), 1.);
+    ASSERT_EQ(order_manager.conditionals(), 1);
+
+    {
+        reply_to_stop_loss(last_stop_loss_request.value());
+        EventBarrier barrier{event_loop, m_barrier_channel};
+        barrier.wait();
+    }
+
+    ASSERT_EQ(sl->status(), OrderStatus::Suspended);
+    ASSERT_EQ(sl->suspended_volume(), sl->target_volume());
+
+    {
+        trade_stop_loss(last_stop_loss_request.value());
+        EventBarrier barrier{event_loop, m_barrier_channel};
+        barrier.wait();
+    }
+
+    EXPECT_EQ(sl->status(), OrderStatus::Filled);
+    EXPECT_EQ(sl->suspended_volume(), UnsignedVolume{});
+    EXPECT_EQ(sl->filled_volume(), sl->target_volume());
+
+    EXPECT_EQ(order_manager.conditionals(), 1);
+    sl_sub.reset();
+    EXPECT_EQ(order_manager.conditionals(), 0);
+}
+
+TEST_F(OrderManagerTest, StopLossSuspendAndCancel)
+{
+    auto & ch = order_manager.send_stop_loss(111, SignedVolume{1}, 1ms);
+    std::shared_ptr<StopLossMarketOrder> sl = nullptr;
+    auto tp_sub = ch.subscribe(
+            event_loop.m_event_loop,
+            [&](const std::shared_ptr<StopLossMarketOrder> & sl_ptr) {
+                sl = sl_ptr;
+            });
+    sl = ch.get();
+    ASSERT_TRUE(sl);
+    ASSERT_EQ(sl->status(), OrderStatus::Pending);
+    ASSERT_TRUE(last_stop_loss_request.has_value());
+    ASSERT_DOUBLE_EQ(sl->target_volume().value(), 1.);
+    ASSERT_EQ(order_manager.conditionals(), 1);
+
+    {
+        reply_to_stop_loss(last_stop_loss_request.value());
+        EventBarrier barrier{event_loop, m_barrier_channel};
+        barrier.wait();
+    }
+
+    ASSERT_EQ(sl->status(), OrderStatus::Suspended);
+    ASSERT_EQ(sl->suspended_volume(), sl->target_volume());
+
+    order_manager.cancel_stop_loss(last_stop_loss_request->guid());
+    ASSERT_TRUE(sl->is_cancel_requested());
+
+    {
+        cancel_stop_loss(*sl);
+        EventBarrier barrier{event_loop, m_barrier_channel};
+        barrier.wait();
+    }
+
+    EXPECT_EQ(sl->status(), OrderStatus::Cancelled);
+    EXPECT_EQ(sl->suspended_volume(), UnsignedVolume{});
+    ASSERT_DOUBLE_EQ(sl->target_volume().value(), 0.);
+    EXPECT_EQ(sl->filled_volume(), sl->target_volume());
+
+    EXPECT_EQ(order_manager.conditionals(), 1);
+    tp_sub.reset();
+    EXPECT_EQ(order_manager.conditionals(), 0);
+}
+
+TEST_F(OrderManagerTest, StopLossCancelOnChannelDrop)
+{
+    auto & ch = order_manager.send_stop_loss(111, SignedVolume{1}, 1ms);
+    std::shared_ptr<StopLossMarketOrder> sl = nullptr;
+    auto tp_sub = ch.subscribe(
+            event_loop.m_event_loop,
+            [&](const std::shared_ptr<StopLossMarketOrder> & sl_ptr) {
+                sl = sl_ptr;
+            });
+    sl = ch.get();
+    ASSERT_TRUE(sl);
+    ASSERT_EQ(sl->status(), OrderStatus::Pending);
+    ASSERT_TRUE(last_stop_loss_request.has_value());
+    ASSERT_DOUBLE_EQ(sl->target_volume().value(), 1.);
+    ASSERT_EQ(order_manager.conditionals(), 1);
+
+    {
+        reply_to_stop_loss(last_stop_loss_request.value());
+        EventBarrier barrier{event_loop, m_barrier_channel};
+        barrier.wait();
+    }
+
+    ASSERT_EQ(sl->status(), OrderStatus::Suspended);
+    ASSERT_EQ(sl->suspended_volume(), sl->target_volume());
+
+    EXPECT_EQ(order_manager.conditionals(), 1);
+    tp_sub.reset();
+    EXPECT_EQ(order_manager.conditionals(), 0);
+    ASSERT_TRUE(sl->is_cancel_requested());
 }
 
 } // namespace test

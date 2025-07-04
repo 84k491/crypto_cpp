@@ -7,7 +7,7 @@ void ConditionalMarketOrder::on_state_changed(bool active)
 
 void ConditionalMarketOrder::cancel()
 {
-    cancel_requested = true;
+    m_cancel_requested = true;
     m_target_volume = m_filled_volume;
 }
 
@@ -17,7 +17,7 @@ OrderStatus ConditionalMarketOrder::status() const
         return OrderStatus::Rejected;
     }
 
-    if (cancel_requested) {
+    if (m_cancel_requested) {
         if (m_target_volume != m_filled_volume) {
             return OrderStatus::Pending;
         }
