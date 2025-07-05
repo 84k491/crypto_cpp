@@ -31,6 +31,9 @@ public:
             ITradingGateway & gateway,
             StrategyChannelsRefs channels)
     {
+        if (strategy_name == "Native") {
+            return {};
+        }
         if (strategy_name == "TpslExit") {
             std::shared_ptr<IExitStrategy> res = std::make_shared<TpslExitStrategy>(
                     symbol,
@@ -123,18 +126,25 @@ StrategyInstance::StrategyInstance(
             m_event_loop,
             tr_gateway,
             m_strategy_channels);
-    if (!exit_strategy_opt) {
-        Logger::log<LogLevel::Error>("Can't build exit strategy");
-        m_status.push(WorkStatus::Panic);
-        return;
-    }
-    m_exit_strategy = *exit_strategy_opt;
+    if (exit_strategy_opt) {
+        m_exit_strategy = *exit_strategy_opt;
+        m_event_loop.subscribe(m_exit_strategy->error_channel(), [this](const std::pair<std::string, bool> & err) {
+            const auto & [err_str, do_panic] = err;
+            Logger::log<LogLevel::Error>(std::string(err_str));
+            stop_async(do_panic);
+        });
 
-    m_event_loop.subscribe(m_exit_strategy->error_channel(), [this](const std::pair<std::string, bool> & err) {
-        const auto & [err_str, do_panic] = err;
-        Logger::log<LogLevel::Error>(std::string(err_str));
-        stop_async(do_panic);
-    });
+        m_exit_str_subs.push_back(
+                m_exit_strategy->tpsl_channel().subscribe(
+                        m_event_loop.m_event_loop,
+                        [](const auto &) {},
+                        [&](const auto & ts, const auto & tpsl) { m_tpsl_channel.push(ts, tpsl); }));
+        m_exit_str_subs.push_back(
+                m_exit_strategy->trailing_stop_channel().subscribe(
+                        m_event_loop.m_event_loop,
+                        [](const auto &) {},
+                        [&](const auto & ts, const auto & tsl) { m_trailing_stop_channel.push(ts, tsl); }));
+    }
 
     m_status.push(WorkStatus::Stopped);
 
@@ -286,8 +296,10 @@ void StrategyInstance::set_channel_capacity(std::optional<std::chrono::milliseco
     strategy_internal_data_channel().set_capacity(capacity);
     candle_channel().set_capacity(capacity);
     // depo_channel().set_capacity(capacity);
-    tpsl_channel().set_capacity(capacity);
-    trailing_stop_channel().set_capacity(capacity);
+    if (m_exit_strategy) {
+        tpsl_channel().set_capacity(capacity);
+        trailing_stop_channel().set_capacity(capacity);
+    }
     price_channel().set_capacity(capacity);
 }
 
@@ -338,12 +350,12 @@ EventObjectChannel<WorkStatus> & StrategyInstance::status_channel()
 
 EventTimeseriesChannel<Tpsl> & StrategyInstance::tpsl_channel()
 {
-    return m_exit_strategy->tpsl_channel();
+    return m_tpsl_channel;
 }
 
 EventTimeseriesChannel<StopLoss> & StrategyInstance::trailing_stop_channel()
 {
-    return m_exit_strategy->trailing_stop_channel();
+    return m_trailing_stop_channel;
 }
 
 // TODO maybe make it more elegant?
@@ -474,7 +486,7 @@ void StrategyInstance::handle_event(const TradeEvent & response)
     if (pos.has_value()) {
         m_price_levels_channel.push(trade.ts(), pos->price_levels());
     }
-    m_opened_pos_channel.push(m_position_manager.opened());
+    m_opened_pos_channel.push(m_position_manager.opened() != nullptr);
 
     m_trade_channel.push(trade.ts(), trade);
 }

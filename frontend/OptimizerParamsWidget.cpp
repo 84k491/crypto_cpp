@@ -1,4 +1,5 @@
 #include "OptimizerParamsWidget.h"
+#include "nlohmann/json_fwd.hpp"
 
 #include <qboxlayout.h>
 
@@ -31,9 +32,15 @@ void OptimizerParametersWidget::setup_widget(const JsonStrategyMetaInfo & entry_
     };
 
     const auto entry_params = entry_parameters.get()["parameters"].get<std::vector<nlohmann::json>>();
-    const auto exit_params = exit_parameters.get()["parameters"].get<std::vector<nlohmann::json>>();
     fill_gb("Entry", entry_params);
-    fill_gb("Exit", exit_params);
+
+    if (exit_parameters.get().contains("parameters")) {
+        const auto exit_params = exit_parameters.get()["parameters"].get<std::vector<nlohmann::json>>();
+        fill_gb("Exit", exit_params);
+    }
+    else {
+        fill_gb("Exit", nlohmann::json{});
+    }
 
     setLayout(top_layout);
 }

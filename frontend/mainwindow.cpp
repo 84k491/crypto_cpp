@@ -63,7 +63,9 @@ MainWindow::MainWindow(QWidget * parent)
     ui->cb_strategy->addItem("Ratchet");
     ui->cb_strategy->addItem("RelativeStrengthIndex");
     ui->cb_strategy->addItem("BBRSI");
+    ui->cb_strategy->addItem("Grid");
     ui->cb_strategy->setCurrentText(saved_state.m_strategy_name.c_str());
+    ui->cb_exit_strategy->addItem("Native");
     ui->cb_exit_strategy->addItem("TpslExit");
     ui->cb_exit_strategy->addItem("TrailingStop");
     ui->cb_exit_strategy->addItem("DynamicTrailingStop");
@@ -373,7 +375,11 @@ std::optional<JsonStrategyMetaInfo> MainWindow::get_entry_strategy_parameters() 
 
 std::optional<JsonStrategyMetaInfo> MainWindow::get_exit_strategy_parameters() const
 {
-    const auto json_data = StrategyFactory::get_meta_info(ui->cb_exit_strategy->currentText().toStdString());
+    const auto strategy_name = ui->cb_exit_strategy->currentText().toStdString();
+    if (strategy_name == "Native") {
+        return JsonStrategyMetaInfo{nlohmann::json{}};
+    }
+    const auto json_data = StrategyFactory::get_meta_info(strategy_name);
     return json_data;
 }
 

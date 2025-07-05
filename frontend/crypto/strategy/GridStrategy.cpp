@@ -22,8 +22,8 @@ GridStrategyConfig::GridStrategyConfig(JsonStrategyConfig json)
 
 double GridStrategyConfig::get_one_level_width(double ref_price) const
 {
-    const auto price_rad = m_price_radius_perc * ref_price;
-    return price_rad / m_levels_per_side;
+    const auto price_radius = (m_price_radius_perc * 0.01) * ref_price;
+    return price_radius / m_levels_per_side;
 }
 
 bool GridStrategyConfig::is_valid() const
@@ -84,7 +84,9 @@ std::optional<std::chrono::milliseconds> GridStrategy::timeframe() const
 int GridStrategy::get_level_number(double price) const
 {
     const double diff = price - m_last_trend_value;
-    return (int)std::lround(diff / m_config.get_one_level_width(m_last_trend_value));
+    const auto one_level_width = m_config.get_one_level_width(m_last_trend_value);
+    const auto res = (int)std::lround(diff / one_level_width);
+    return res;
 }
 
 double GridStrategy::get_price_from_level_number(int level_num) const
@@ -100,6 +102,7 @@ void GridStrategy::push_price(std::chrono::milliseconds ts, double price)
     }
 
     const auto price_level = get_level_number(price);
+    Logger::logf<LogLevel::Status>("Price level: {}", price_level);
 
     // TODO handle 'over 2 levels' scenario
 

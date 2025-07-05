@@ -58,8 +58,8 @@ public:
     std::shared_ptr<IStrategy> get_strategy() const { return m_strategy; }
 
 private:
-    template<class T>
-    void handle_event_generic(const T& ev);
+    template <class T>
+    void handle_event_generic(const T & ev);
 
     void handle_event(const HistoricalMDGeneratorEvent & response);
     void handle_event(const HistoricalMDPriceEvent & response);
@@ -95,6 +95,10 @@ private:
     EventTimeseriesChannel<Candle> m_candle_channel;
     EventTimeseriesChannel<double> m_depo_channel;
     EventTimeseriesChannel<PositionResult> m_positions_channel;
+
+    EventTimeseriesChannel<Tpsl> m_tpsl_channel;
+    EventTimeseriesChannel<StopLoss> m_trailing_stop_channel;
+    std::list<std::shared_ptr<ISubscription>> m_exit_str_subs;
 
     StrategyChannelsRefs m_strategy_channels;
 
