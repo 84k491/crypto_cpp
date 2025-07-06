@@ -70,6 +70,10 @@ private:
     double get_price_from_level_number(int level_num)    const;
 
 private:
+    void maybe_report_levels(std::chrono::milliseconds ts);
+    std::chrono::milliseconds last_reported_ts = {};
+
+private:
     EventLoopSubscriber & m_event_loop;
 
     GridStrategyConfig m_config;

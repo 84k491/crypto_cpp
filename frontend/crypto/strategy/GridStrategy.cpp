@@ -101,6 +101,7 @@ void GridStrategy::push_price(std::chrono::milliseconds ts, double price)
         m_last_trend_value = v;
         m_strategy_internal_data_channel.push(ts, {"prices", "trend", v});
     }
+    maybe_report_levels(ts);
 
     const auto price_level = get_level_number(price);
 
@@ -251,4 +252,18 @@ GridStrategy::TpSlPrices GridStrategy::calc_tp_sl_prices(double order_price, Sid
     const auto sl_price = (top_level * sign * level_width) + order_price;
 
     return {.take_profit_price = tp_price, .stop_loss_price = sl_price};
+}
+
+void GridStrategy::maybe_report_levels(std::chrono::milliseconds ts)
+{
+    if (ts - last_reported_ts < m_config.m_interval / 10) {
+        return;
+    }
+
+    for (int i = int(m_config.m_levels_per_side) * -1; i < int(m_config.m_levels_per_side) + 1; ++i) {
+        const auto p = get_price_from_level_number(i);
+        m_strategy_internal_data_channel.push(ts, {"prices", std::to_string(i), p});
+    }
+
+    last_reported_ts = ts;
 }
