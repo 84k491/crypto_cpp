@@ -99,10 +99,10 @@ void GridStrategy::push_price(std::chrono::milliseconds ts, double price)
     {
         UNWRAP_RET_VOID(v, m_trend.push_value({ts, price}))
         m_last_trend_value = v;
+        m_strategy_internal_data_channel.push(ts, {"prices", "trend", v});
     }
 
     const auto price_level = get_level_number(price);
-    Logger::logf<LogLevel::Status>("Price level: {}", price_level);
 
     // TODO handle 'over 2 levels' scenario
 
@@ -233,7 +233,7 @@ void GridStrategy::on_stop_loss_traded(const StopLossMarketOrder & order, int pr
     }
     auto & level = it->second;
 
-    m_orders.cancel_take_profit(level.sl->guid());
+    m_orders.cancel_take_profit(level.tp->guid());
 
     m_orders_by_levels.erase(level.level_num);
 }
@@ -245,7 +245,10 @@ GridStrategy::TpSlPrices GridStrategy::calc_tp_sl_prices(double order_price, Sid
     const auto tp_price = get_price_from_level_number(tp_level);
 
     // top of the last level
-    const auto sl_price = (m_config.m_levels_per_side + 1) * (-1 * side.sign()) * m_config.get_one_level_width(m_last_trend_value);
+    const auto top_level = int(m_config.m_levels_per_side + 1);
+    const auto sign = (-1 * side.sign());
+    const auto level_width = m_config.get_one_level_width(m_last_trend_value);
+    const auto sl_price = (top_level * sign * level_width) + order_price;
 
     return {.take_profit_price = tp_price, .stop_loss_price = sl_price};
 }

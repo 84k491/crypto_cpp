@@ -19,11 +19,11 @@ public:
     OrderManagerTest()
         : order_manager(
                   Symbol{
-                          "TSTUSDT",
-                          Symbol::LotSizeFilter{
-                                  0.001,
-                                  1e6,
-                                  0.01}},
+                          .symbol_name = "TSTUSDT",
+                          .lot_size_filter = Symbol::LotSizeFilter{
+                                  .min_qty = 0.001,
+                                  .max_qty = 1e6,
+                                  .qty_step = 0.01}},
                   event_loop,
                   *this)
     {
@@ -34,7 +34,17 @@ public:
         last_order_request = order;
     }
 
-    void reply_to_order_req(const OrderRequestEvent & order)
+    void ack_order_req(const OrderRequestEvent & order)
+    {
+        MarketOrder o = order.order;
+
+        OrderResponseEvent response{
+                o.symbol(),
+                o.guid(),
+                {}};
+        m_order_response_channel.push(response);
+    }
+    void trade_market_order(const OrderRequestEvent & order)
     {
         MarketOrder o = order.order;
 
@@ -47,12 +57,6 @@ public:
                 o.side(),
                 fee};
         m_trade_channel.push(trade);
-
-        OrderResponseEvent response{
-                o.symbol(),
-                o.guid(),
-                {}};
-        m_order_response_channel.push(response);
     }
 
     void push_tpsl_request(const TpslRequestEvent &) override
@@ -204,7 +208,8 @@ TEST_F(OrderManagerTest, MarketOrderFill)
     ASSERT_EQ(order_ptr->status(), OrderStatus::Pending);
     ASSERT_EQ(order_manager.pending_orders().size(), 1);
 
-    reply_to_order_req(last_order_request.value());
+    trade_market_order(last_order_request.value());
+    ack_order_req(last_order_request.value());
     last_order_request.reset();
 
     EventBarrier barrier{event_loop, m_barrier_channel};
@@ -215,13 +220,44 @@ TEST_F(OrderManagerTest, MarketOrderFill)
     ASSERT_EQ(order_manager.pending_orders().size(), 0);
 }
 
+TEST_F(OrderManagerTest, MarketOrderFillTradeAfterAck)
+{
+    auto & order_ch = order_manager.send_market_order(111, SignedVolume{1}, 1ms);
+    auto order_ptr = order_ch.get();
+
+    auto sub_ptr = order_ch.subscribe(
+            event_loop.m_event_loop,
+            [&](const auto & o) {
+                order_ptr = o;
+            });
+
+    ASSERT_TRUE(order_ptr);
+    ASSERT_TRUE(last_order_request.has_value());
+    ASSERT_EQ(order_ptr->status(), OrderStatus::Pending);
+    ASSERT_EQ(order_manager.pending_orders().size(), 1);
+
+    ack_order_req(last_order_request.value());
+    trade_market_order(last_order_request.value());
+    last_order_request.reset();
+
+    EventBarrier barrier{event_loop, m_barrier_channel};
+    barrier.wait();
+
+    sub_ptr.reset();
+
+    EXPECT_EQ(order_ptr->status(), OrderStatus::Filled);
+    EXPECT_EQ(order_ptr->fee(), fee);
+    EXPECT_EQ(order_manager.pending_orders().size(), 0);
+}
+
 TEST_F(OrderManagerTest, MarketOrderNoSub)
 {
     order_manager.send_market_order(111, SignedVolume{1}, 1ms);
 
     ASSERT_TRUE(last_order_request.has_value());
 
-    reply_to_order_req(last_order_request.value());
+    trade_market_order(last_order_request.value());
+    ack_order_req(last_order_request.value());
 
     EventBarrier barrier{event_loop, m_barrier_channel};
     barrier.wait();

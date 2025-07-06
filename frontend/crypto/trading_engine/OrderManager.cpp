@@ -1,7 +1,6 @@
 #include "OrderManager.h"
 
 #include "Logger.h"
-#include "ScopeExit.h"
 
 #include "fmt/format.h"
 
@@ -78,7 +77,6 @@ EventObjectChannel<std::shared_ptr<MarketOrder>> & OrderManager::send_market_ord
 
     OrderRequestEvent or_event{*order};
 
-    // TODO erase them
     const auto [it, success] = m_orders.emplace(
             order->guid(),
             EventObjectChannel<std::shared_ptr<MarketOrder>>{});
@@ -234,7 +232,6 @@ void OrderManager::on_order_response(const OrderResponseEvent & response)
         Logger::log<LogLevel::Warning>("unsolicited OrderResponseEvent");
         return;
     }
-    ScopeExit se([&]() { m_orders.erase(it); });
 
     auto & [guid, channel] = *it;
 
@@ -246,25 +243,11 @@ void OrderManager::on_order_response(const OrderResponseEvent & response)
         });
     }
 
-    // channel.update([&](auto & order_ptr) {
-    //     order_ptr->;
-    // });
+    if (channel.get()->status() == OrderStatus::Pending) {
+        return;
+    }
 
-    // if (!response.retry) {
-    // }
-
-    // {
-    //     auto [old_guid, new_order] = *it; // copy
-    //     new_order.first.regenerate_guid();
-    //     OrderRequestEvent or_event{new_order.first};
-    //     m_pending_orders.emplace(
-    //             new_order.first.guid(),
-    //             std::make_pair(
-    //                     new_order.first,
-    //                     std::move(new_order.second)));
-    //     Logger::logf<LogLevel::Debug>("Re-sending order with a new guid: {} -> {}", old_guid, new_order.first.guid());
-    //     m_tr_gateway.push_order_request(or_event);
-    // }
+    m_orders.erase(it);
 }
 
 bool OrderManager::try_trade_market_order(const TradeEvent & ev)
