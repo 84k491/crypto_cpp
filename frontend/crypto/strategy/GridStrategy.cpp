@@ -4,6 +4,8 @@
 #include "Macros.h"
 #include "StrategyBase.h"
 
+#include <cmath>
+
 GridStrategyConfig::GridStrategyConfig(JsonStrategyConfig json)
 {
     if (json.get().contains("timeframe_s")) {
@@ -81,17 +83,38 @@ std::optional<std::chrono::milliseconds> GridStrategy::timeframe() const
 //   -1 lvl
 // ------------------------ -2 * width
 //   ...
+int GridLevels::get_level_number(double price, double trend, double level_width)
+{
+    const double diff = price - trend;
+    const double dbl_num = diff/ level_width;
+    if (dbl_num > 0) {
+        return int(std::floorl(dbl_num));
+    }
+    else {
+        return int(std::ceill(dbl_num));
+    }
+}
+
+double GridLevels::get_price_from_level_number(int level_num, double trend, double level_width)
+{
+    double offset = level_num * level_width;
+    return trend + offset;
+}
+
 int GridStrategy::get_level_number(double price) const
 {
-    const double diff = price - m_last_trend_value;
-    const auto one_level_width = m_config.get_one_level_width(m_last_trend_value);
-    const auto res = (int)std::lround(diff / one_level_width);
-    return res;
+    return GridLevels::get_level_number(
+            price,
+            m_last_trend_value,
+            m_config.get_one_level_width(m_last_trend_value));
 }
 
 double GridStrategy::get_price_from_level_number(int level_num) const
 {
-    return m_last_trend_value + (level_num * m_config.get_one_level_width(m_last_trend_value));
+    return GridLevels::get_price_from_level_number(
+            level_num,
+            m_last_trend_value,
+            m_config.get_one_level_width(m_last_trend_value));
 }
 
 void GridStrategy::push_price(std::chrono::milliseconds ts, double price)
@@ -104,10 +127,15 @@ void GridStrategy::push_price(std::chrono::milliseconds ts, double price)
     maybe_report_levels(ts);
 
     const auto price_level = get_level_number(price);
-
     // TODO handle 'over 2 levels' scenario
 
-    if (price_level == 0 || m_orders_by_levels.contains(price_level)) {
+    if (price_level == 0) {
+        return;
+    }
+    if (unsigned(std::abs(price_level)) >= m_config.m_levels_per_side) {
+        return;
+    }
+    if (m_orders_by_levels.contains(price_level)) {
         return;
     }
 
@@ -266,4 +294,14 @@ void GridStrategy::maybe_report_levels(std::chrono::milliseconds ts)
     }
 
     last_reported_ts = ts;
+}
+
+void GridStrategy::print_levels()
+{
+    std::stringstream ss;
+    for (int i = int(m_config.m_levels_per_side) * -1; i < int(m_config.m_levels_per_side) + 1; ++i) {
+        const auto p = get_price_from_level_number(i);
+        ss << fmt::format("Level {}: {}, ", i, p);
+    }
+    Logger::logf<LogLevel::Debug>("{}", ss.str());
 }

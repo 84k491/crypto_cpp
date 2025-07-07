@@ -24,6 +24,13 @@ struct GridStrategyConfig
     double m_price_radius_perc = 0.; // to the end of the last level
 };
 
+namespace GridLevels {
+
+int get_level_number(double price, double trend, double level_width);
+double get_price_from_level_number(int level_num, double trend, double level_width);
+
+} // namespace GridLevels
+
 class GridStrategy : public StrategyBase
 {
 public:
@@ -66,11 +73,12 @@ private:
         std::shared_ptr<StopLossMarketOrder> sl;
     };
 
-    int get_level_number(double price)    const;
-    double get_price_from_level_number(int level_num)    const;
+    int get_level_number(double price) const;
+    double get_price_from_level_number(int level_num) const;
 
 private:
     void maybe_report_levels(std::chrono::milliseconds ts);
+    void print_levels();
     std::chrono::milliseconds last_reported_ts = {};
 
 private:

@@ -19,3 +19,5 @@ target_link_libraries(strategy PRIVATE
     gateway # needed for exit strat. TODO remove
     ta
 )
+
+add_subdirectory(tests)
