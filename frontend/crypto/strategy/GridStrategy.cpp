@@ -88,10 +88,10 @@ int GridLevels::get_level_number(double price, double trend, double level_width)
     const double diff = price - trend;
     const double dbl_num = diff/ level_width;
     if (dbl_num > 0) {
-        return int(std::floorl(dbl_num));
+        return int(floorl(dbl_num));
     }
     else {
-        return int(std::ceill(dbl_num));
+        return int(ceill(dbl_num));
     }
 }
 

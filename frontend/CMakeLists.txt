@@ -9,7 +9,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Widgets)
 
 set(PROJECT_SOURCES
         main.cpp
@@ -24,16 +24,14 @@ set(PROJECT_SOURCES
         OptimizerParamsWidget.cpp
 )
 
-qt_add_executable(frontend
-        MANUAL_FINALIZATION
+add_executable(frontend
         ${PROJECT_SOURCES}
         chart_window.h chart_window.cpp chart_window.ui
         PositionResultView.h PositionResultView.cpp PositionResultView.ui
 )
-
 target_include_directories(frontend PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(frontend PRIVATE
-    Qt${QT_VERSION_MAJOR}::Widgets
+    Qt6::Widgets
     qcustomplot
     nlohmann_json::nlohmann_json
     crossguid
@@ -58,6 +56,4 @@ install(TARGETS frontend
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
-if(QT_VERSION_MAJOR EQUAL 6)
-    qt_finalize_executable(frontend)
-endif()
+qt_finalize_executable(frontend)
