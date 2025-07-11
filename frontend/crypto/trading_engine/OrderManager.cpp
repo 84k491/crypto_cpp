@@ -82,7 +82,7 @@ EventObjectChannel<std::shared_ptr<MarketOrder>> & OrderManager::send_market_ord
             EventObjectChannel<std::shared_ptr<MarketOrder>>{});
     assert(success);
 
-    EventObjectChannel<std::shared_ptr<MarketOrder>> & order_channel = it->second;
+    EventObjectChannel<std::shared_ptr<MarketOrder>> & order_channel = it->second.ch;
     order_channel.update([&](auto & order_ptr) {
         order_ptr = order;
     });
@@ -203,7 +203,10 @@ void OrderManager::on_take_profit_response(const TakeProfitUpdatedEvent & r)
 {
     const auto it = m_take_profits.find(r.guid);
     if (it == m_take_profits.end()) {
-        Logger::logf<LogLevel::Error>("Can't find tp on response: {}, active: {}", r.guid, r.active);
+        if (r.active) {
+            Logger::logf<LogLevel::Error>("Can't find active tp on response: {}", r.guid);
+            m_error_channel.push(fmt::format("Can't find active tp on response: {}", r.guid.str()));
+        }
         return;
     }
     auto & ch = it->second;
@@ -216,7 +219,10 @@ void OrderManager::on_stop_loss_reposnse(const StopLossUpdatedEvent & r)
 {
     const auto it = m_stop_losses.find(r.guid);
     if (it == m_stop_losses.end()) {
-        Logger::logf<LogLevel::Error>("Can't find sl on response: {}, active: {}", r.guid, r.active);
+        if (r.active) {
+            Logger::logf<LogLevel::Error>("Can't find actiev sl on response: {}", r.guid);
+            m_error_channel.push(fmt::format("Can't find actiev sl on response: {}", r.guid.str()));
+        }
         return;
     }
     auto & ch = it->second;
@@ -230,24 +236,24 @@ void OrderManager::on_order_response(const OrderResponseEvent & response)
     const auto it = m_orders.find(response.request_guid);
     if (it == m_orders.end()) {
         Logger::log<LogLevel::Warning>("unsolicited OrderResponseEvent");
+        m_error_channel.push("unsolicited OrderResponseEvent");
         return;
     }
 
-    auto & [guid, channel] = *it;
+    auto & [guid, mo] = *it;
 
     // TODO set price and volume from the response
 
     if (response.reject_reason.has_value() && !response.retry) {
-        channel.update([&](auto & order_ptr) {
+        mo.ch.update([&](auto & order_ptr) {
             order_ptr->m_reject_reason = response.reject_reason.value();
         });
     }
 
-    if (channel.get()->status() == OrderStatus::Pending) {
-        return;
+    if (mo.traded) {
+        m_orders.erase(it);
     }
-
-    m_orders.erase(it);
+    mo.acked = true;
 }
 
 bool OrderManager::try_trade_market_order(const TradeEvent & ev)
@@ -257,15 +263,18 @@ bool OrderManager::try_trade_market_order(const TradeEvent & ev)
         return false;
     }
 
-    auto & [guid, channel] = *it;
+    auto & [guid, mo] = *it;
 
-    channel.update([&](std::shared_ptr<MarketOrder> & order_ptr) {
+    mo.ch.update([&](std::shared_ptr<MarketOrder> & order_ptr) {
         order_ptr->on_trade(ev.trade.unsigned_volume(), ev.trade.price(), ev.trade.fee());
     });
 
-    if (channel.subscribers_count() == 0) {
-        m_orders.erase(it);
+    if (mo.ch.subscribers_count() == 0) {
+        if (mo.acked) {
+            m_orders.erase(it);
+        }
     }
+    mo.traded = true;
 
     return true;
 }
@@ -324,4 +333,5 @@ void OrderManager::on_trade(const TradeEvent & ev)
         return;
     }
     Logger::log<LogLevel::Warning>("unsolicited TradeEvent");
+    m_error_channel.push("unsolicited TradeEvent");
 }

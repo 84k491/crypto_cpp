@@ -37,8 +37,16 @@ public:
 
     void cancel_take_profit(xg::Guid);
     void cancel_stop_loss(xg::Guid);
+    auto & error_channel() { return m_error_channel; }
 
 private:
+    struct MarketOrderChannelWithAckInfo
+    {
+        EventObjectChannel<std::shared_ptr<MarketOrder>> ch;
+        bool acked = false;
+        bool traded = false;
+    };
+
     std::variant<SignedVolume, std::string> adjusted_volume(SignedVolume vol);
 
     void on_order_response(const OrderResponseEvent & r);
@@ -54,7 +62,7 @@ private:
     Symbol m_symbol;
     ITradingGateway & m_tr_gateway;
 
-    std::map<xg::Guid, EventObjectChannel<std::shared_ptr<MarketOrder>>> m_orders;
+    std::map<xg::Guid, MarketOrderChannelWithAckInfo> m_orders;
     std::map<xg::Guid, EventObjectChannel<std::shared_ptr<TakeProfitMarketOrder>>> m_take_profits;
     std::map<xg::Guid, EventObjectChannel<std::shared_ptr<StopLossMarketOrder>>> m_stop_losses;
 

@@ -27,6 +27,11 @@ public:
                   event_loop,
                   *this)
     {
+        m_error_sub = order_manager.error_channel().subscribe(
+                event_loop.m_event_loop,
+                [](const auto & err) {
+                    FAIL() << err;
+                });
     }
 
     void push_order_request(const OrderRequestEvent & order) override
@@ -188,6 +193,8 @@ protected:
     std::optional<xg::Guid> last_cancel_stop_loss_request;
 
     EventChannel<BarrierEvent> m_barrier_channel;
+
+    std::shared_ptr<ISubscription> m_error_sub;
 };
 
 using namespace std::chrono_literals;
