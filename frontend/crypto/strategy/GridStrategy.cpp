@@ -86,7 +86,7 @@ std::optional<std::chrono::milliseconds> GridStrategy::timeframe() const
 int GridLevels::get_level_number(double price, double trend, double level_width)
 {
     const double diff = price - trend;
-    const double dbl_num = diff/ level_width;
+    const double dbl_num = diff / level_width;
     if (dbl_num > 0) {
         return int(floorl(dbl_num));
     }
@@ -140,9 +140,15 @@ void GridStrategy::push_price(std::chrono::milliseconds ts, double price)
     }
 
     const Side side = price_level > 0 ? Side::sell() : Side::buy();
+    const auto default_size_opt = UnsignedVolume::from(m_pos_currency_amount / price);
+    if (!default_size_opt.has_value()) {
+        Logger::logf<LogLevel::Error>("Can't get proper order volume. Amount: {}, price: {}", m_pos_currency_amount, price);
+        // TODO push to error channel
+        return;
+    }
     auto & channel = m_orders.send_market_order(
             price,
-            SignedVolume{UnsignedVolume::from(m_pos_currency_amount).value(), side},
+            SignedVolume{default_size_opt.value(), side},
             ts);
 
     auto sub = channel.subscribe(
