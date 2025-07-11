@@ -178,11 +178,11 @@ StrategyInstance::StrategyInstance(
                 handle_event_generic(e);
             });
 
-    m_event_loop.subscribe(
-            m_tr_gateway.order_response_channel(),
-            [this](const OrderResponseEvent & e) {
-                handle_event_generic(e);
-            });
+    // m_event_loop.subscribe(
+    //         m_tr_gateway.order_response_channel(),
+    //         [this](const OrderResponseEvent & e) {
+    //             handle_event_generic(e);
+    //         });
     m_event_loop.subscribe(
             m_tr_gateway.trade_channel(),
             [this](const TradeEvent & e) {

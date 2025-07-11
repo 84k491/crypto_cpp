@@ -11,6 +11,7 @@
 #include <chrono>
 #include <map>
 
+// TODO handle order rejects
 class OrderManager
 {
 public:

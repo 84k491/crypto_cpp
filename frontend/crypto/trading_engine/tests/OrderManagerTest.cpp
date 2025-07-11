@@ -257,7 +257,7 @@ TEST_F(OrderManagerTest, MarketOrderFillTradeAfterAck)
     EXPECT_EQ(order_manager.pending_orders().size(), 0);
 }
 
-TEST_F(OrderManagerTest, MarketOrderNoSub)
+TEST_F(OrderManagerTest, MarketOrderNoSubTradeFirst)
 {
     order_manager.send_market_order(111, SignedVolume{1}, 1ms);
 
@@ -265,6 +265,21 @@ TEST_F(OrderManagerTest, MarketOrderNoSub)
 
     trade_market_order(last_order_request.value());
     ack_order_req(last_order_request.value());
+
+    EventBarrier barrier{event_loop, m_barrier_channel};
+    barrier.wait();
+
+    ASSERT_EQ(order_manager.pending_orders().size(), 0);
+}
+
+TEST_F(OrderManagerTest, MarketOrderNoSubAckFirst)
+{
+    order_manager.send_market_order(111, SignedVolume{1}, 1ms);
+
+    ASSERT_TRUE(last_order_request.has_value());
+
+    ack_order_req(last_order_request.value());
+    trade_market_order(last_order_request.value());
 
     EventBarrier barrier{event_loop, m_barrier_channel};
     barrier.wait();

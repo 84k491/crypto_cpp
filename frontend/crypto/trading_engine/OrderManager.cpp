@@ -235,8 +235,8 @@ void OrderManager::on_order_response(const OrderResponseEvent & response)
 {
     const auto it = m_orders.find(response.request_guid);
     if (it == m_orders.end()) {
-        Logger::log<LogLevel::Warning>("unsolicited OrderResponseEvent");
-        m_error_channel.push("unsolicited OrderResponseEvent");
+        Logger::logf<LogLevel::Warning>("unsolicited OrderResponseEvent {}", response.request_guid);
+        m_error_channel.push(fmt::format("unsolicited OrderResponseEvent {}", response.request_guid.str()));
         return;
     }
 
