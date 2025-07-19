@@ -113,6 +113,7 @@ private:
     bool first_price_received = false;
 
     std::pair<std::chrono::milliseconds, double> m_last_ts_and_price;
+    std::optional<double> m_previous_profit;
 
     EventObjectChannel<WorkStatus> m_status;
 

@@ -44,7 +44,7 @@ TEST_F(PositionManagerTest, OpenLongDontClose)
     EXPECT_EQ(opened_pos.side(), Side::buy());
     EXPECT_EQ(opened_pos.opened_volume().value(), 10.);
     EXPECT_EQ(opened_pos.open_ts().count(), 1234567);
-    EXPECT_EQ(opened_pos.entry_fee(), 0.2);
+    EXPECT_EQ(opened_pos.total_entry_fee(), 0.2);
 }
 
 // open a short position, check parameters
@@ -69,7 +69,7 @@ TEST_F(PositionManagerTest, OpenShortDontClose)
     EXPECT_EQ(opened_pos.side(), Side::sell());
     EXPECT_EQ(opened_pos.opened_volume().value(), -10.);
     EXPECT_EQ(opened_pos.open_ts().count(), 1234567);
-    EXPECT_EQ(opened_pos.entry_fee(), 0.2);
+    EXPECT_EQ(opened_pos.total_entry_fee(), 0.2);
 }
 
 // open a long position, close it
@@ -301,7 +301,7 @@ TEST_F(PositionManagerTest, LongOpenedWithTwoTradesProfit)
     const auto & pos = *pm.opened();
     EXPECT_EQ(pos.side(), Side::buy());
     EXPECT_EQ(pos.open_ts().count(), 123);
-    EXPECT_EQ(pos.entry_fee(), 0.5);
+    EXPECT_EQ(pos.total_entry_fee(), 0.5);
     EXPECT_EQ(pos.opened_volume().value(), 2.);
     EXPECT_EQ(pos.avg_entry_price(), 11.);
 
@@ -351,7 +351,7 @@ TEST_F(PositionManagerTest, ShortOpenedWithTwoTradesProfit)
     const auto & pos = *pm.opened();
     EXPECT_EQ(pos.side(), Side::sell());
     EXPECT_EQ(pos.open_ts().count(), 123);
-    EXPECT_EQ(pos.entry_fee(), 0.5);
+    EXPECT_EQ(pos.total_entry_fee(), 0.5);
     EXPECT_EQ(pos.opened_volume().value(), -2.);
     EXPECT_EQ(pos.avg_entry_price(), 9.);
 
@@ -397,12 +397,12 @@ TEST_F(PositionManagerTest, LongClosedWithTwoTradesProfit)
                        UnsignedVolume::from(1.).value(),
                        Side::sell(),
                        0.3);
-    EXPECT_FALSE(pm.on_trade_received(close_trade1).has_value());
+    EXPECT_TRUE(pm.on_trade_received(close_trade1).has_value());
 
     ASSERT_TRUE(pm.opened());
     const auto & pos = *pm.opened();
     EXPECT_EQ(pos.side(), Side::buy());
-    EXPECT_EQ(pos.entry_fee(), 0.2);
+    EXPECT_EQ(pos.total_entry_fee(), 0.1) << "Half of volume traded -> half fee extracted";
     EXPECT_EQ(pos.opened_volume().value(), 1.);
     EXPECT_EQ(pos.avg_entry_price(), 10.);
 
@@ -454,7 +454,7 @@ TEST_F(PositionManagerTest, ShortClosedWithTwoTradesProfit)
                        UnsignedVolume::from(1.).value(),
                        Side::buy(),
                        0.4);
-    EXPECT_FALSE(pm.on_trade_received(close_trade1).has_value());
+    EXPECT_TRUE(pm.on_trade_received(close_trade1).has_value());
     const auto res_opt = pm.on_trade_received(close_trade2);
     ASSERT_TRUE(res_opt.has_value());
     EXPECT_FALSE(pm.opened());
@@ -489,7 +489,7 @@ TEST_F(PositionManagerTest, LongFlipClosedWithProfit)
                      UnsignedVolume::from(2.).value(),
                      Side::sell(),
                      0.3);
-    EXPECT_FALSE(pm.on_trade_received(flip_trade).has_value());
+    EXPECT_TRUE(pm.on_trade_received(flip_trade).has_value());
 
     Trade close_trade(std::chrono::milliseconds(223),
                       m_symbol.symbol_name,
@@ -531,7 +531,7 @@ TEST_F(PositionManagerTest, ShortFlipClosedWithProfit)
                      UnsignedVolume::from(2.).value(),
                      Side::buy(),
                      0.3);
-    EXPECT_FALSE(pm.on_trade_received(flip_trade).has_value());
+    EXPECT_TRUE(pm.on_trade_received(flip_trade).has_value());
 
     Trade close_trade(std::chrono::milliseconds(223),
                       m_symbol.symbol_name,

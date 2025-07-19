@@ -35,9 +35,9 @@ std::optional<ClosedPosition> OpenedPosition::on_trade(double price, const Signe
     ClosedPosition closed_pos;
     closed_pos.m_avg_closed_price = price;
     closed_pos.m_closed_volume = vol;
-    closed_pos.m_close_fee = fee;
+    closed_pos.m_entry_and_close_fee = fee + extract_fee(vol.as_unsigned_and_side().first);
     const auto raw_profit_on_close = (price - m_avg_entry_price) * -vol.value();
-    closed_pos.m_rpnl = raw_profit_on_close - fee;
+    closed_pos.m_rpnl = raw_profit_on_close - closed_pos.m_entry_and_close_fee;
 
     return closed_pos;
 }
@@ -49,7 +49,7 @@ ClosedPosition & ClosedPosition::operator+=(const ClosedPosition & other)
     const auto other_amount = other.m_closed_volume.value() * other.m_avg_closed_price;
     m_avg_closed_price = (current_amount + other_amount) / (m_closed_volume.value() + other.m_closed_volume.value());
     m_rpnl += other.m_rpnl;
-    m_close_fee += other.m_close_fee;
+    m_entry_and_close_fee += other.m_entry_and_close_fee;
     return *this;
 }
 
@@ -67,12 +67,22 @@ ProfitPriceLevels OpenedPosition::price_levels() const
     return {.fee_profit_price = fee_profit_price, .no_loss_price = no_loss_price, .fee_loss_price = fee_loss_price};
 }
 
+double OpenedPosition::extract_fee(const UnsignedVolume & vol)
+{
+    const auto fee_per_one_vol = m_total_entry_fee / m_absolute_volume.as_unsigned_and_side().first.value();
+    const auto extracted_fee = vol.value() * fee_per_one_vol;
+
+    m_total_entry_fee -= extracted_fee;
+
+    return extracted_fee;
+}
+
 std::ostream & operator<<(std::ostream & os, const OpenedPosition & pos)
 {
     os << "OpenedPosition: "
        << "side = " << pos.side()
        << ", open_ts = " << pos.open_ts()
-       << ", entry_fee = " << pos.entry_fee()
+       << ", entry_fee = " << pos.total_entry_fee()
        << ", opened_volume = " << pos.opened_volume().as_unsigned_and_side().first
        << ", avg_entry_price = " << pos.m_avg_entry_price
        << ", guid = " << pos.m_guid;
@@ -85,6 +95,6 @@ std::ostream & operator<<(std::ostream & os, const ClosedPosition & pos)
        << "closed_volume = " << pos.m_closed_volume.value()
        << ", avg_closed_price = " << pos.m_avg_closed_price
        << ", rpnl = " << pos.m_rpnl
-       << ", close_fee = " << pos.m_close_fee;
+       << ", entry_and_close_fee = " << pos.m_entry_and_close_fee;
     return os;
 }

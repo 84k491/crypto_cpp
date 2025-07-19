@@ -29,7 +29,7 @@ public:
     double m_avg_closed_price = {};
 
     double m_rpnl = {}; // close fee included
-    double m_close_fee = {};
+    double m_entry_and_close_fee = {};
 };
 
 class OpenedPosition
@@ -41,11 +41,11 @@ public:
 
     auto side() const { return m_absolute_volume.as_unsigned_and_side().second; }
     auto open_ts() const { return m_open_ts; }
-    auto entry_fee() const { return m_total_entry_fee; }
+    auto total_entry_fee() const { return m_total_entry_fee; } // for whole current opened vol
     auto opened_volume() const { return m_absolute_volume; }
     auto avg_entry_price() const { return m_avg_entry_price; }
 
-    auto expected_total_fee() const { return m_total_entry_fee + m_single_trade_fee; }
+    auto expected_total_fee() const { return m_total_entry_fee + m_single_trade_fee; } // TODO use avg
     ProfitPriceLevels price_levels() const;
 
     std::optional<ClosedPosition> on_trade(double price, const SignedVolume & vol, double fee);
@@ -54,6 +54,7 @@ public:
 
 private:
     double price_for_upnl(double required_upnl) const;
+    double extract_fee(const UnsignedVolume & vol);
 
 private:
     xg::Guid m_guid;

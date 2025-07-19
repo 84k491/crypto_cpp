@@ -240,7 +240,15 @@ void StrategyInstance::process_position_result(const PositionResult & new_result
     m_positions_channel.push(ts, new_result);
 
     m_strategy_result.update([&](StrategyResult & res) {
+        const auto old = m_previous_profit.value_or(0.);
+        res.final_profit -= old;
         res.final_profit += new_result.pnl_with_fee;
+        m_previous_profit = new_result.pnl_with_fee;
+
+        if (new_result.close_ts != std::chrono::milliseconds{}) {
+            m_previous_profit = {};
+        }
+
         res.fees_paid += new_result.fees_paid;
 
         if (new_result.pnl_with_fee > 0.) {
