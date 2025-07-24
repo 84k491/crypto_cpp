@@ -30,7 +30,7 @@ RatchetStrategy::RatchetStrategy(
         EventLoopSubscriber & event_loop,
         StrategyChannelsRefs channels,
         OrderManager & orders)
-    : StrategyBase(orders)
+    : StrategyBase(orders, event_loop, channels)
     , m_config(config)
     , m_ratchet(config.m_retracement)
 {

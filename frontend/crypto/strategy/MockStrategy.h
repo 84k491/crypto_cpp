@@ -12,7 +12,7 @@ public:
             EventLoopSubscriber & event_loop,
             StrategyChannelsRefs channels,
             OrderManager & orders)
-        : StrategyBase(orders)
+        : StrategyBase(orders, event_loop, channels)
     {
         m_channel_subs.push_back(channels.price_channel.subscribe(
                 event_loop.m_event_loop,

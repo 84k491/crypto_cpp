@@ -48,7 +48,7 @@ GridStrategy::GridStrategy(
         EventLoopSubscriber & event_loop,
         StrategyChannelsRefs channels,
         OrderManager & orders)
-    : StrategyBase(orders)
+    : StrategyBase(orders, event_loop, channels)
     , m_event_loop(event_loop)
     , m_config(config)
     , m_orders(orders)

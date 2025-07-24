@@ -35,7 +35,7 @@ DSMADiffStrategy::DSMADiffStrategy(
         EventLoopSubscriber & event_loop,
         StrategyChannelsRefs channels,
         OrderManager & orders)
-    : StrategyBase(orders)
+    : StrategyBase(orders, event_loop, channels)
     , m_config(conf)
     , m_slow_avg(conf.m_slow_interval)
     , m_fast_avg(conf.m_fast_interval)

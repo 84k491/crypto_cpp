@@ -44,7 +44,7 @@ CandleBollingerBandsStrategy::CandleBollingerBandsStrategy(
         EventLoopSubscriber & event_loop,
         StrategyChannelsRefs channels,
         OrderManager & orders)
-    : StrategyBase(orders)
+    : StrategyBase(orders, event_loop, channels)
     , m_config(config)
     , m_bollinger_bands(config.m_interval, config.m_std_deviation_coefficient)
 {
@@ -66,7 +66,8 @@ std::optional<std::chrono::milliseconds> CandleBollingerBandsStrategy::timeframe
     return {};
 }
 
-void CandleBollingerBandsStrategy::push_candle(const Candle & candle) {
+void CandleBollingerBandsStrategy::push_candle(const Candle & candle)
+{
     const auto ts = candle.close_ts();
     const auto price = candle.close();
 

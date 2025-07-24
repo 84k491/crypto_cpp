@@ -1,7 +1,6 @@
 #pragma once
 
 #include "JsonStrategyConfig.h"
-#include "Signal.h"
 #include "SimpleMovingAverage.h"
 #include "StrategyBase.h"
 #include "StrategyChannels.h"

@@ -29,7 +29,7 @@ DebugEveryTickStrategy::DebugEveryTickStrategy(
         EventLoopSubscriber & event_loop,
         StrategyChannelsRefs channels,
         OrderManager & orders)
-    : StrategyBase(orders)
+    : StrategyBase(orders, event_loop, channels)
     , m_config(conf)
 {
     m_channel_subs.push_back(channels.price_channel.subscribe(

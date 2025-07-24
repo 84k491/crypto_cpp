@@ -47,7 +47,7 @@ BBRSIStrategy::BBRSIStrategy(
         EventLoopSubscriber & event_loop,
         StrategyChannelsRefs channels,
         OrderManager & orders)
-    : StrategyBase(orders)
+    : StrategyBase(orders, event_loop, channels)
     , m_config(config)
     , m_bollinger_bands(config.m_timeframe * config.m_bb_interval, config.m_std_deviation_coefficient)
     , m_rsi_top_threshold(100 - config.m_margin)

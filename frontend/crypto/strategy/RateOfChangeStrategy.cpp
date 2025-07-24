@@ -43,7 +43,7 @@ RateOfChangeStrategy::RateOfChangeStrategy(
         EventLoopSubscriber & event_loop,
         StrategyChannelsRefs channels,
         OrderManager & orders)
-    : StrategyBase(orders)
+    : StrategyBase(orders,event_loop,channels)
     , m_config(config)
 {
     m_channel_subs.push_back(channels.candle_channel.subscribe(

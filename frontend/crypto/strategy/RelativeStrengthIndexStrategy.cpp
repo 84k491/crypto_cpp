@@ -30,7 +30,7 @@ RelativeStrengthIndexStrategy::RelativeStrengthIndexStrategy(
         EventLoopSubscriber & event_loop,
         StrategyChannelsRefs channels,
         OrderManager & orders)
-    : StrategyBase(orders)
+    : StrategyBase(orders, event_loop, channels)
     , m_config(config)
     , m_rsi(config.m_interval)
 {

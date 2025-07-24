@@ -32,7 +32,7 @@ BollingerBandsStrategy::BollingerBandsStrategy(
         EventLoopSubscriber & event_loop,
         StrategyChannelsRefs channels,
         OrderManager & orders)
-    : StrategyBase(orders)
+    : StrategyBase(orders, event_loop, channels)
     , m_config(config)
     , m_bollinger_bands(config.m_interval, config.m_std_deviation_coefficient)
 {
