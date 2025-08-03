@@ -18,38 +18,34 @@ private:
     double m_risk;
 };
 
+class OrderManager;
 class TrailigStopLossStrategy : public ExitStrategyBase
 {
 public:
     TrailigStopLossStrategy(
-            Symbol symbol,
+            OrderManager & orders,
             JsonStrategyConfig config,
             EventLoopSubscriber & event_loop,
             ITradingGateway & gateway,
             StrategyChannelsRefs channels);
 
 protected:
-    void handle_event(const TrailingStopLossResponseEvent & response);
-    void handle_event(const TrailingStopLossUpdatedEvent & response);
-
     virtual void on_price_changed(
             std::pair<std::chrono::milliseconds, double> /* ts_and_price */) {}
 
     void on_trade(const Trade & trade);
 
     TrailingStopLoss calc_trailing_stop(const Trade & trade);
-    void send_trailing_stop(TrailingStopLoss trailing_stop);
 
-    void on_error(const std::string &, bool);
+    void on_trailing_stop_updated(const std::shared_ptr<TrailingStopLoss> & tsl);
 
 protected:
-    Symbol m_symbol;
-
-    std::set<xg::Guid> m_pending_requests;
+    OrderManager & m_orders;
+    EventLoopSubscriber & m_event_loop;
+    TrailigStopLossStrategyConfig m_config;
 
     bool m_is_pos_opened = false;
 
-    std::optional<TrailingStopLoss> m_active_stop_loss;
-
-    TrailigStopLossStrategyConfig m_config;
+    std::shared_ptr<TrailingStopLoss> m_active_stop_loss;
+    std::shared_ptr<ISubscription> m_tsl_sub;
 };

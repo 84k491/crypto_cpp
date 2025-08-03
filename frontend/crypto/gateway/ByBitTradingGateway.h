@@ -31,7 +31,6 @@ public:
     EventChannel<TradeEvent> & trade_channel() override;
     EventChannel<TpslResponseEvent> & tpsl_response_channel() override;
     EventChannel<TpslUpdatedEvent> & tpsl_updated_channel() override;
-    EventChannel<TrailingStopLossResponseEvent> & trailing_stop_response_channel() override;
     EventChannel<TrailingStopLossUpdatedEvent> & trailing_stop_update_channel() override;
     EventChannel<StopLossUpdatedEvent> & stop_loss_update_channel() override;
     EventChannel<TakeProfitUpdatedEvent> & take_profit_update_channel() override;
@@ -71,6 +70,5 @@ private:
     EventChannel<TradeEvent> m_trade_channel;
     EventChannel<TpslResponseEvent> m_tpsl_response_channel;
     EventChannel<TpslUpdatedEvent> m_tpsl_updated_channel;
-    EventChannel<TrailingStopLossResponseEvent> m_trailing_stop_response_channel;
     EventChannel<TrailingStopLossUpdatedEvent> m_trailing_stop_update_channel;
 };

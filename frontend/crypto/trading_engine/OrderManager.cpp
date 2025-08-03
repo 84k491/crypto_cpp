@@ -1,5 +1,6 @@
 #include "OrderManager.h"
 
+#include "Events.h"
 #include "Logger.h"
 
 #include "fmt/format.h"
@@ -38,6 +39,12 @@ OrderManager::OrderManager(
             m_tr_gateway.stop_loss_update_channel(),
             [this](const StopLossUpdatedEvent & ev) {
                 on_stop_loss_reposnse(ev);
+            });
+
+    m_event_loop.subscribe(
+            m_tr_gateway.trailing_stop_update_channel(),
+            [this](const TrailingStopLossUpdatedEvent & ev) {
+                on_trailing_stop_reposnse(ev);
             });
 }
 
@@ -80,7 +87,7 @@ EventObjectChannel<std::shared_ptr<MarketOrder>> & OrderManager::send_market_ord
     const auto [it, success] = m_orders.emplace(
             order->guid(),
             EventObjectChannel<std::shared_ptr<MarketOrder>>{});
-    assert(success);
+    assert(success); // TODO handle error. this won't work in release
 
     EventObjectChannel<std::shared_ptr<MarketOrder>> & order_channel = it->second.ch;
     order_channel.update([&](auto & order_ptr) {
@@ -332,6 +339,60 @@ void OrderManager::on_trade(const TradeEvent & ev)
     if (try_trade_stop_loss(ev)) {
         return;
     }
+
+    if (m_trailing_stop.has_value() && m_trailing_stop->get()->guid() == ev.trade.order_guid()) {
+        return;
+    }
+
     Logger::log<LogLevel::Warning>("unsolicited TradeEvent");
     m_error_channel.push("unsolicited TradeEvent");
+}
+
+EventObjectChannel<std::shared_ptr<TrailingStopLoss>> & OrderManager::send_trailing_stop(
+        const TrailingStopLoss & trailing_stop,
+        std::chrono::milliseconds)
+{
+    m_trailing_stop.emplace(EventObjectChannel<std::shared_ptr<TrailingStopLoss>>{});
+    auto & order_channel = m_trailing_stop.value();
+
+    order_channel.update([&](auto & tsl_sptr) {
+        tsl_sptr = std::make_shared<TrailingStopLoss>(trailing_stop);
+    });
+
+    TrailingStopLossRequestEvent request(
+            m_symbol,
+            trailing_stop);
+
+    m_tr_gateway.push_trailing_stop_request(request);
+
+    return order_channel;
+}
+
+void OrderManager::on_trailing_stop_reposnse(const TrailingStopLossUpdatedEvent & response)
+{
+    if (response.reject_reason.has_value()) {
+        std::string err = "Rejected tpsl: " + response.reject_reason.value();
+        m_error_channel.push(err);
+        return;
+    }
+
+    if (!m_trailing_stop.has_value()) { // TODO check guid
+        std::string err = "Unsolicited tpsl response";
+        m_error_channel.push(err);
+        return;
+    }
+
+    if (response.stop_loss.has_value()) {
+        m_trailing_stop->update([&](std::shared_ptr<TrailingStopLoss> & tsl) {
+            tsl->m_active_stop_loss_price = response.stop_loss->stop_price();
+            tsl->m_update_ts = response.timestamp;
+        });
+        return;
+    }
+
+    m_trailing_stop->update([&](std::shared_ptr<TrailingStopLoss> & tsl) {
+        tsl = nullptr;
+    });
+    m_trailing_stop.reset();
+    Logger::log<LogLevel::Debug>("Order manager: Trailing stop loss removed");
 }

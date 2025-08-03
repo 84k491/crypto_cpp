@@ -27,6 +27,7 @@ public:
             const std::string & strategy_name,
             const JsonStrategyConfig & config,
             const Symbol & symbol,
+            OrderManager & orders,
             EventLoopSubscriber & event_loop,
             ITradingGateway & gateway,
             StrategyChannelsRefs channels)
@@ -45,7 +46,7 @@ public:
         }
         if (strategy_name == "TrailingStop") {
             std::shared_ptr<IExitStrategy> res = std::make_shared<TrailigStopLossStrategy>(
-                    symbol,
+                    orders,
                     config,
                     event_loop,
                     gateway,
@@ -54,7 +55,7 @@ public:
         }
         if (strategy_name == "DynamicTrailingStop") {
             std::shared_ptr<IExitStrategy> res = std::make_shared<DynamicTrailingStopLossStrategy>(
-                    symbol,
+                    orders,
                     config,
                     event_loop,
                     gateway,
@@ -97,7 +98,6 @@ StrategyInstance::StrategyInstance(
               m_price_levels_channel,
               tr_gateway.tpsl_response_channel(),
               tr_gateway.tpsl_updated_channel(),
-              tr_gateway.trailing_stop_response_channel(),
               tr_gateway.trailing_stop_update_channel())
     , m_symbol(symbol)
     , m_position_manager(symbol)
@@ -123,6 +123,7 @@ StrategyInstance::StrategyInstance(
             exit_strategy_name,
             exit_strategy_config,
             symbol,
+            m_orders,
             m_event_loop,
             tr_gateway,
             m_strategy_channels);

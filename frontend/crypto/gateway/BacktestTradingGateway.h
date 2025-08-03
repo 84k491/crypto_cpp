@@ -24,6 +24,7 @@ public:
     std::optional<std::variant<Trade, StopLoss>> on_price_updated(std::chrono::milliseconds ts, const double & price);
 
     auto stop_loss() const { return m_current_stop_loss; }
+    auto guid() const { return m_trailing_stop.guid(); }
 
 private:
     std::shared_ptr<SignedVolume> m_pos_volume;
@@ -51,7 +52,6 @@ public:
     EventChannel<TradeEvent> & trade_channel() override;
     EventChannel<TpslResponseEvent> & tpsl_response_channel() override;
     EventChannel<TpslUpdatedEvent> & tpsl_updated_channel() override;
-    EventChannel<TrailingStopLossResponseEvent> & trailing_stop_response_channel() override;
     EventChannel<TrailingStopLossUpdatedEvent> & trailing_stop_update_channel() override;
     EventChannel<StopLossUpdatedEvent> & stop_loss_update_channel() override;
     EventChannel<TakeProfitUpdatedEvent> & take_profit_update_channel() override;
@@ -79,7 +79,6 @@ private:
     EventChannel<TradeEvent> m_trade_channel;
     EventChannel<TpslResponseEvent> m_tpsl_response_channel;
     EventChannel<TpslUpdatedEvent> m_tpsl_updated_channel;
-    EventChannel<TrailingStopLossResponseEvent> m_trailing_stop_response_channel;
     EventChannel<TrailingStopLossUpdatedEvent> m_trailing_stop_update_channel;
     EventChannel<StopLossUpdatedEvent> m_stop_loss_update_channel;
     EventChannel<TakeProfitUpdatedEvent> m_take_profit_update_channel;

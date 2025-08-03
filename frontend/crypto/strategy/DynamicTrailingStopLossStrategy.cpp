@@ -1,6 +1,7 @@
 #include "DynamicTrailingStopLossStrategy.h"
 
 #include "Logger.h"
+#include "OrderManager.h"
 
 DynamicTrailigStopLossStrategyConfig::DynamicTrailigStopLossStrategyConfig(const JsonStrategyConfig & config)
 {
@@ -27,13 +28,13 @@ JsonStrategyConfig DynamicTrailigStopLossStrategyConfig::to_json() const
 }
 
 DynamicTrailingStopLossStrategy::DynamicTrailingStopLossStrategy(
-        Symbol symbol,
+        OrderManager & orders,
         JsonStrategyConfig config,
         EventLoopSubscriber & event_loop,
         ITradingGateway & gateway,
         StrategyChannelsRefs channels)
     : TrailigStopLossStrategy(
-              symbol,
+              orders,
               config,
               event_loop,
               gateway,
@@ -51,7 +52,7 @@ DynamicTrailingStopLossStrategy::DynamicTrailingStopLossStrategy(
 void DynamicTrailingStopLossStrategy::on_price_changed(
         std::pair<std::chrono::milliseconds, double> ts_and_price)
 {
-    if (!m_active_stop_loss.has_value() || !m_pending_requests.empty()) {
+    if (!m_tsl_sub) {
         m_triggered_once = false;
         return;
     }
@@ -84,6 +85,15 @@ void DynamicTrailingStopLossStrategy::on_price_changed(
             m_active_stop_loss->side()};
 
     Logger::logf<LogLevel::Status>("Updating stop loss' price distance to {}", desired_price_distance);
-    send_trailing_stop(new_trailing_stop);
+
+    m_tsl_sub = m_orders.send_trailing_stop(
+                                new_trailing_stop,
+                                ts)
+                        .subscribe(
+                                m_event_loop.m_event_loop,
+                                [this](const auto & tsl) {
+                                    on_trailing_stop_updated(tsl);
+                                });
+
     m_triggered_once = true;
 }

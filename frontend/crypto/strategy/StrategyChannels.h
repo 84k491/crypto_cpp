@@ -17,6 +17,5 @@ struct StrategyChannelsRefs
 
     EventChannel<TpslResponseEvent> & tpsl_response_channel;
     EventChannel<TpslUpdatedEvent> & tpsl_updated_channel;
-    EventChannel<TrailingStopLossResponseEvent> & tsl_response_channel;
     EventChannel<TrailingStopLossUpdatedEvent> & tsl_updated_channel;
 };

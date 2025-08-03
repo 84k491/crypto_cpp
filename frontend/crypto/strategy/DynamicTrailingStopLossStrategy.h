@@ -22,7 +22,7 @@ class DynamicTrailingStopLossStrategy : public TrailigStopLossStrategy
 {
 public:
     DynamicTrailingStopLossStrategy(
-            Symbol symbol,
+            OrderManager & orders,
             JsonStrategyConfig config,
             EventLoopSubscriber & event_loop,
             ITradingGateway & gateway,

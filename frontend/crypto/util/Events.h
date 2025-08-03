@@ -217,29 +217,24 @@ struct TpslRequestEvent : public OneWayEvent
     xg::Guid guid;
 };
 
-struct TrailingStopLossResponseEvent : public OrderResponseEvent
-{
-    TrailingStopLossResponseEvent(xg::Guid request_guid, TrailingStopLoss trailing_stop_loss, std::optional<std::string> reject_reason = std::nullopt)
-        : OrderResponseEvent(trailing_stop_loss.symbol_name(), request_guid, std::move(reject_reason))
-        , trailing_stop_loss(std::move(trailing_stop_loss))
-    {
-    }
-
-    TrailingStopLoss trailing_stop_loss;
-};
-
 struct TrailingStopLossUpdatedEvent : public OneWayEvent
 {
-    TrailingStopLossUpdatedEvent(std::string symbol_name, std::optional<StopLoss> stop_loss, std::chrono::milliseconds timestamp)
+    TrailingStopLossUpdatedEvent(
+            std::string symbol_name,
+            std::optional<StopLoss> stop_loss,
+            std::chrono::milliseconds timestamp,
+            const std::optional<std::string> & reject_reason = {})
         : symbol_name(std::move(symbol_name))
         , stop_loss(std::move(stop_loss))
         , timestamp(timestamp)
+        , reject_reason(reject_reason)
     {
     }
 
     std::string symbol_name;
     std::optional<StopLoss> stop_loss;
     std::chrono::milliseconds timestamp;
+    std::optional<std::string> reject_reason;
 };
 
 struct TrailingStopLossRequestEvent : public OneWayEvent
@@ -249,13 +244,11 @@ struct TrailingStopLossRequestEvent : public OneWayEvent
             TrailingStopLoss trailing_stop_loss)
         : symbol(std::move(symbol))
         , trailing_stop_loss(std::move(trailing_stop_loss))
-        , guid(xg::newGuid())
     {
     }
 
     Symbol symbol;
     TrailingStopLoss trailing_stop_loss;
-    xg::Guid guid;
 };
 
 struct SignalEvent : public OneWayEvent

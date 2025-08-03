@@ -126,10 +126,6 @@ public:
         return m_tpsl_updated_channel;
     }
 
-    EventChannel<TrailingStopLossResponseEvent> & trailing_stop_response_channel() override
-    {
-        return m_tsl_response_channel;
-    }
     EventChannel<TrailingStopLossUpdatedEvent> & trailing_stop_update_channel() override
     {
         return m_tsl_updated_channel;
@@ -153,7 +149,6 @@ public:
     EventChannel<TradeEvent> m_trade_channel;
     EventChannel<TpslResponseEvent> m_tpsl_response_channel;
     EventChannel<TpslUpdatedEvent> m_tpsl_updated_channel;
-    EventChannel<TrailingStopLossResponseEvent> m_tsl_response_channel;
     EventChannel<TrailingStopLossUpdatedEvent> m_tsl_updated_channel;
     EventChannel<TakeProfitUpdatedEvent> m_take_profit_update_channel;
     EventChannel<StopLossUpdatedEvent> m_stop_loss_update_channel;

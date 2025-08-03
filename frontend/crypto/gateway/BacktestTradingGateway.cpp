@@ -42,16 +42,22 @@ void BacktestTradingGateway::on_new_price(std::chrono::milliseconds ts, const do
         if (trade_or_sl.has_value()) {
             std::visit(
                     VariantMatcher{
-                            [&](const Trade & trade) {
+                            [this, ts](const Trade & trade) {
                                 m_trade_channel.push(TradeEvent(trade));
                                 m_trailing_stop_update_channel.push(
-                                        TrailingStopLossUpdatedEvent(trade.symbol_name(), {}, ts));
+                                        TrailingStopLossUpdatedEvent(
+                                                trade.symbol_name(),
+                                                {},
+                                                ts));
                                 m_trailing_stop.reset();
                                 *m_pos_volume = SignedVolume();
                             },
-                            [&](const StopLoss & sl) {
+                            [this, ts](const StopLoss & sl) {
                                 m_trailing_stop_update_channel.push(
-                                        TrailingStopLossUpdatedEvent(sl.symbol_name(), sl, ts));
+                                        TrailingStopLossUpdatedEvent(
+                                                sl.symbol_name(),
+                                                sl,
+                                                ts));
                             }},
                     *trade_or_sl);
         }
@@ -228,11 +234,6 @@ void BacktestTradingGateway::push_trailing_stop_request(const TrailingStopLossRe
             m_last_price,
             trailing_stop_ev.trailing_stop_loss);
 
-    m_trailing_stop_response_channel.push(
-            TrailingStopLossResponseEvent(
-                    trailing_stop_ev.guid,
-                    trailing_stop_ev.trailing_stop_loss));
-
     m_trailing_stop_update_channel.push({m_symbol,
                                          m_trailing_stop->stop_loss(),
                                          m_last_ts});
@@ -279,7 +280,9 @@ BacktestTrailingStopLoss::BacktestTrailingStopLoss(
 std::optional<std::variant<Trade, StopLoss>> BacktestTrailingStopLoss::on_price_updated(std::chrono::milliseconds ts, const double & price)
 {
     const auto [vol, side] = m_pos_volume->as_unsigned_and_side();
-    const auto new_stop_loss = m_trailing_stop.calc_new_stop_loss(price, m_current_stop_loss);
+    const auto new_stop_loss = m_trailing_stop.calc_new_stop_loss(
+            price,
+            m_current_stop_loss);
 
     if (new_stop_loss) {
         m_current_stop_loss = new_stop_loss.value();
@@ -307,7 +310,7 @@ std::optional<std::variant<Trade, StopLoss>> BacktestTrailingStopLoss::on_price_
     Trade trade{
             ts,
             m_trailing_stop.symbol_name(),
-            {}, // TODO
+            m_trailing_stop.guid(),
             m_current_stop_loss.stop_price(),
             vol,
             opposite_side,
@@ -334,11 +337,6 @@ EventChannel<TpslResponseEvent> & BacktestTradingGateway::tpsl_response_channel(
 EventChannel<TpslUpdatedEvent> & BacktestTradingGateway::tpsl_updated_channel()
 {
     return m_tpsl_updated_channel;
-}
-
-EventChannel<TrailingStopLossResponseEvent> & BacktestTradingGateway::trailing_stop_response_channel()
-{
-    return m_trailing_stop_response_channel;
 }
 
 EventChannel<TrailingStopLossUpdatedEvent> & BacktestTradingGateway::trailing_stop_update_channel()
