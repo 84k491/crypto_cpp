@@ -40,6 +40,8 @@ public:
             StrategyChannelsRefs channels,
             OrderManager & orders);
 
+    bool export_price_levels() const override { return false; }
+
     bool is_valid() const override;
 
     std::optional<std::chrono::milliseconds> timeframe() const override;

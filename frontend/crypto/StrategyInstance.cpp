@@ -492,7 +492,7 @@ void StrategyInstance::handle_event(const TradeEvent & response)
         }
     }();
 
-    if (pos.has_value()) {
+    if (pos.has_value() && m_strategy->export_price_levels()) {
         m_price_levels_channel.push(trade.ts(), pos->price_levels());
     }
     m_opened_pos_channel.push(m_position_manager.opened() != nullptr);
