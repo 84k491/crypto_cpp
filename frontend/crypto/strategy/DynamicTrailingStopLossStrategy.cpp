@@ -52,7 +52,7 @@ DynamicTrailingStopLossStrategy::DynamicTrailingStopLossStrategy(
 void DynamicTrailingStopLossStrategy::on_price_changed(
         std::pair<std::chrono::milliseconds, double> ts_and_price)
 {
-    if (!m_tsl_sub) {
+    if (!m_tsl_sub || !m_active_stop_loss) {
         m_triggered_once = false;
         return;
     }

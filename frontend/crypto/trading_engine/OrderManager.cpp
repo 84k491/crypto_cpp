@@ -22,7 +22,7 @@ OrderManager::OrderManager(
                 on_order_response(e);
             });
 
-    // there is no fees in order response
+    // there are no fees in order response
     m_event_loop.subscribe(
             m_tr_gateway.trade_channel(),
             [this](const TradeEvent & e) {
@@ -344,8 +344,8 @@ void OrderManager::on_trade(const TradeEvent & ev)
         return;
     }
 
-    Logger::log<LogLevel::Warning>("unsolicited TradeEvent");
-    m_error_channel.push("unsolicited TradeEvent");
+    Logger::logf<LogLevel::Warning>("unsolicited TradeEvent {}", ev.trade.order_guid());
+    m_error_channel.push(fmt::format("unsolicited TradeEvent {}", ev.trade.order_guid().str()));
 }
 
 EventObjectChannel<std::shared_ptr<TrailingStopLoss>> & OrderManager::send_trailing_stop(
