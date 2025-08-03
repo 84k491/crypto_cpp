@@ -5,7 +5,6 @@
 
 OpenedPosition::OpenedPosition(const Trade & trade)
     : m_guid(xg::newGuid())
-    , m_single_trade_fee(trade.fee())
     , m_open_ts(trade.ts())
 {
     on_trade(trade.price(), SignedVolume(trade.unsigned_volume(), trade.side()), trade.fee());

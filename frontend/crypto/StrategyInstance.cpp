@@ -483,19 +483,18 @@ void StrategyInstance::handle_event(const TradeEvent & response)
         res.set_last_trade_date(trade.ts());
     });
 
-    // const auto pos = [&]() -> std::optional<OpenedPosition> {
-    //     if (m_position_manager.opened() == nullptr) {
-    //         return std::nullopt;
-    //     }
-    //     else {
-    //         return *m_position_manager.opened();
-    //     }
-    // }();
+    const auto pos = [&]() -> std::optional<OpenedPosition> {
+        if (m_position_manager.opened() == nullptr) {
+            return std::nullopt;
+        }
+        else {
+            return *m_position_manager.opened();
+        }
+    }();
 
-    // TODO uncomment
-    // if (pos.has_value()) {
-    //     m_price_levels_channel.push(trade.ts(), pos->price_levels());
-    // }
+    if (pos.has_value()) {
+        m_price_levels_channel.push(trade.ts(), pos->price_levels());
+    }
     m_opened_pos_channel.push(m_position_manager.opened() != nullptr);
 
     m_trade_channel.push(trade.ts(), trade);

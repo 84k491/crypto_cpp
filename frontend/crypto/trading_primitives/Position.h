@@ -45,7 +45,7 @@ public:
     auto opened_volume() const { return m_absolute_volume; }
     auto avg_entry_price() const { return m_avg_entry_price; }
 
-    auto expected_total_fee() const { return m_total_entry_fee + m_single_trade_fee; } // TODO use avg
+    auto expected_total_fee() const { return m_total_entry_fee * 2; }
     ProfitPriceLevels price_levels() const;
 
     std::optional<ClosedPosition> on_trade(double price, const SignedVolume & vol, double fee);
@@ -63,7 +63,6 @@ private:
     double m_avg_entry_price = {};
 
     double m_total_entry_fee = {};
-    double m_single_trade_fee = {};
 
     std::chrono::milliseconds m_open_ts = {};
 };
