@@ -12,6 +12,12 @@ BollingerBandsStrategyConfig::BollingerBandsStrategyConfig(const JsonStrategyCon
     if (json.get().contains("interval_m")) {
         m_interval = std::chrono::minutes(json.get()["interval_m"].get<int>());
     }
+    if (json.get().contains("risk")) {
+        m_risk = json.get()["risk"].get<double>();
+    }
+    if (json.get().contains("no_loss_coef")) {
+        m_no_loss_coef = json.get()["no_loss_coef"].get<double>();
+    }
 }
 
 bool BollingerBandsStrategyConfig::is_valid() const
@@ -24,6 +30,16 @@ JsonStrategyConfig BollingerBandsStrategyConfig::to_json() const
     nlohmann::json json;
     json["std_dev"] = m_std_deviation_coefficient;
     json["interval_m"] = std::chrono::duration_cast<std::chrono::minutes>(m_interval).count();
+    json["risk"] = m_risk;
+    json["no_loss_coef"] = m_no_loss_coef;
+    return json;
+}
+
+JsonStrategyConfig BollingerBandsStrategyConfig::make_exit_strategy_config() const
+{
+    nlohmann::json json;
+    json["risk"] = m_risk;
+    json["no_loss_coef"] = m_no_loss_coef;
     return json;
 }
 
@@ -34,6 +50,10 @@ BollingerBandsStrategy::BollingerBandsStrategy(
         OrderManager & orders)
     : StrategyBase(orders, event_loop, channels)
     , m_config(config)
+    , m_exit_strategy(orders,
+                      config.make_exit_strategy_config(),
+                      event_loop,
+                      channels)
     , m_bollinger_bands(config.m_interval, config.m_std_deviation_coefficient)
 {
     m_channel_subs.push_back(channels.price_channel.subscribe(

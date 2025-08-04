@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Candle.h"
+#include "DynamicTrailingStopLossStrategy.h"
 #include "JsonStrategyConfig.h"
 #include "Ratchet.h"
 #include "StrategyBase.h"
@@ -14,9 +15,14 @@ public:
     bool is_valid() const;
 
     JsonStrategyConfig to_json() const;
+    JsonStrategyConfig make_exit_strategy_config() const;
 
     double m_retracement;
     std::chrono::milliseconds m_timeframe;
+
+    // exit
+    double m_risk;
+    double m_no_loss_coef;
 };
 
 class RatchetStrategy : public StrategyBase
@@ -37,6 +43,8 @@ private:
 
 private:
     RatchetStrategyConfig m_config;
+
+    DynamicTrailingStopLossStrategy m_exit_strategy;
 
     Ratchet m_ratchet;
 };

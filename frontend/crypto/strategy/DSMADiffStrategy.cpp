@@ -14,6 +14,12 @@ DSMADiffStrategyConfig::DSMADiffStrategyConfig(const JsonStrategyConfig & json)
     if (json.get().contains("diff_threshold_percent")) {
         m_diff_threshold_percent = json.get().at("diff_threshold_percent").get<double>();
     }
+    if (json.get().contains("risk")) {
+        m_risk = json.get()["risk"].get<double>();
+    }
+    if (json.get().contains("no_loss_coef")) {
+        m_no_loss_coef = json.get()["no_loss_coef"].get<double>();
+    }
 }
 
 bool DSMADiffStrategyConfig::is_valid() const
@@ -27,6 +33,16 @@ JsonStrategyConfig DSMADiffStrategyConfig::to_json() const
     json["slow_interval_m"] = std::chrono::duration_cast<std::chrono::minutes>(m_slow_interval).count();
     json["fast_interval_m"] = std::chrono::duration_cast<std::chrono::minutes>(m_fast_interval).count();
     json["diff_threshold_percent"] = m_diff_threshold_percent;
+    json["risk"] = m_risk;
+    json["no_loss_coef"] = m_no_loss_coef;
+    return json;
+}
+
+JsonStrategyConfig DSMADiffStrategyConfig::make_exit_strategy_config() const
+{
+    nlohmann::json json;
+    json["risk"] = m_risk;
+    json["no_loss_coef"] = m_no_loss_coef;
     return json;
 }
 
@@ -37,6 +53,10 @@ DSMADiffStrategy::DSMADiffStrategy(
         OrderManager & orders)
     : StrategyBase(orders, event_loop, channels)
     , m_config(conf)
+    , m_exit_strategy(orders,
+                      conf.make_exit_strategy_config(),
+                      event_loop,
+                      channels)
     , m_slow_avg(conf.m_slow_interval)
     , m_fast_avg(conf.m_fast_interval)
     , m_diff_threshold(conf.m_diff_threshold_percent / 100.)

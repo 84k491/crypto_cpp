@@ -1,6 +1,7 @@
 #pragma once
 
 #include "BollingerBands.h"
+#include "DynamicTrailingStopLossStrategy.h"
 #include "JsonStrategyConfig.h"
 #include "RelativeStrengthIndex.h"
 #include "StrategyBase.h"
@@ -15,12 +16,17 @@ struct BBRSIStrategyConfig
     bool is_valid() const;
 
     JsonStrategyConfig to_json() const;
+    JsonStrategyConfig make_exit_strategy_config() const;
 
     std::chrono::milliseconds m_timeframe = {};
     double m_std_deviation_coefficient = 0.;
     unsigned m_bb_interval = {};
     unsigned m_rsi_interval = {};
     unsigned m_margin = 0;
+
+    // exit
+    double m_risk;
+    double m_no_loss_coef;
 };
 
 class BBRSIStrategy : public StrategyBase
@@ -41,6 +47,7 @@ private:
 
 private:
     BBRSIStrategyConfig m_config;
+    DynamicTrailingStopLossStrategy m_exit_strategy;
 
     BollingerBands m_bollinger_bands;
     std::optional<Side> m_last_signal_side;

@@ -5,6 +5,7 @@
 #include "StrategyBase.h"
 #include "StrategyChannels.h"
 
+// TODO it should use tpsl exit strat
 class MockStrategy : public StrategyBase
 {
 public:

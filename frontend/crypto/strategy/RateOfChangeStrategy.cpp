@@ -14,6 +14,12 @@ RateOfChangeStrategyConfig::RateOfChangeStrategyConfig(const JsonStrategyConfig 
     if (json.get().contains("signal_threshold")) {
         m_signal_threshold = json.get()["signal_threshold"].get<double>();
     }
+    if (json.get().contains("risk")) {
+        m_risk = json.get()["risk"].get<double>();
+    }
+    if (json.get().contains("no_loss_coef")) {
+        m_no_loss_coef = json.get()["no_loss_coef"].get<double>();
+    }
 }
 
 bool RateOfChangeStrategyConfig::is_valid() const
@@ -35,6 +41,16 @@ JsonStrategyConfig RateOfChangeStrategyConfig::to_json() const
     json["timeframe_s"] = std::chrono::duration_cast<std::chrono::seconds>(m_timeframe).count();
     json["trigger_interval_m"] = m_trigger_interval;
     json["signal_threshold"] = m_signal_threshold;
+    json["risk"] = m_risk;
+    json["no_loss_coef"] = m_no_loss_coef;
+    return json;
+}
+
+JsonStrategyConfig RateOfChangeStrategyConfig::make_exit_strategy_config() const
+{
+    nlohmann::json json;
+    json["risk"] = m_risk;
+    json["no_loss_coef"] = m_no_loss_coef;
     return json;
 }
 
@@ -43,8 +59,12 @@ RateOfChangeStrategy::RateOfChangeStrategy(
         EventLoopSubscriber & event_loop,
         StrategyChannelsRefs channels,
         OrderManager & orders)
-    : StrategyBase(orders,event_loop,channels)
+    : StrategyBase(orders, event_loop, channels)
     , m_config(config)
+    , m_exit_strategy(orders,
+                      config.make_exit_strategy_config(),
+                      event_loop,
+                      channels)
 {
     m_channel_subs.push_back(channels.candle_channel.subscribe(
             event_loop.m_event_loop,

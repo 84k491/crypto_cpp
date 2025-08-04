@@ -1,5 +1,6 @@
 #pragma once
 
+#include "DynamicTrailingStopLossStrategy.h"
 #include "JsonStrategyConfig.h"
 #include "SimpleMovingAverage.h"
 #include "StrategyBase.h"
@@ -16,9 +17,14 @@ public:
     bool is_valid() const;
 
     JsonStrategyConfig to_json() const;
+    JsonStrategyConfig make_exit_strategy_config() const;
 
     std::chrono::milliseconds m_slow_interval = {};
     std::chrono::milliseconds m_fast_interval = {};
+
+    // exit
+    double m_risk;
+    double m_no_loss_coef;
 };
 
 class DoubleSmaStrategy final : public StrategyBase
@@ -41,6 +47,8 @@ private:
 
 private:
     const DoubleSmaStrategyConfig m_config;
+
+    DynamicTrailingStopLossStrategy m_exit_strategy;
 
     SimpleMovingAverage m_slow_avg;
     SimpleMovingAverage m_fast_avg;

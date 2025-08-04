@@ -1,7 +1,7 @@
 #pragma once
 
+#include "DynamicTrailingStopLossStrategy.h"
 #include "JsonStrategyConfig.h"
-#include "Signal.h"
 #include "StrategyBase.h"
 #include "StrategyChannels.h"
 
@@ -12,14 +12,15 @@ class DebugEveryTickStrategyConfig
 {
 public:
     DebugEveryTickStrategyConfig(const JsonStrategyConfig & json);
-    DebugEveryTickStrategyConfig(std::chrono::milliseconds slow_interval, std::chrono::milliseconds fast_interval);
 
     static bool is_valid();
 
     JsonStrategyConfig to_json() const;
+    JsonStrategyConfig make_exit_strategy_config() const;
 
-    std::chrono::milliseconds m_slow_interval = {};
-    std::chrono::milliseconds m_fast_interval = {};
+    // exit
+    double m_risk;
+    double m_no_loss_coef;
 };
 
 class DebugEveryTickStrategy final : public StrategyBase
@@ -43,6 +44,8 @@ private:
 
 private:
     const DebugEveryTickStrategyConfig m_config;
+
+    DynamicTrailingStopLossStrategy m_exit_strategy;
 
     Side last_side = Side::sell();
 

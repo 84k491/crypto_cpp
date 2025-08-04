@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Candle.h"
+#include "DynamicTrailingStopLossStrategy.h"
 #include "JsonStrategyConfig.h"
 #include "StrategyBase.h"
 #include "StrategyChannels.h"
@@ -13,10 +14,15 @@ public:
     bool is_valid() const;
 
     JsonStrategyConfig to_json() const;
+    JsonStrategyConfig make_exit_strategy_config() const;
 
     std::chrono::milliseconds m_timeframe = {};
     int m_trigger_interval = {};
     double m_signal_threshold = 0.;
+
+    // exit
+    double m_risk;
+    double m_no_loss_coef;
 };
 
 class RateOfChangeStrategy : public StrategyBase
@@ -38,8 +44,9 @@ private:
     void push_candle(const Candle &);
 
 private:
+    RateOfChangeStrategyConfig m_config;
+    DynamicTrailingStopLossStrategy m_exit_strategy;
+
     std::list<double> m_prev_closing_prices;
     int m_trigger_iter = 0;
-
-    RateOfChangeStrategyConfig m_config;
 };

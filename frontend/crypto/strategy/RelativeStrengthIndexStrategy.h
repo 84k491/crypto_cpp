@@ -1,5 +1,6 @@
 #pragma once
 
+#include "DynamicTrailingStopLossStrategy.h"
 #include "JsonStrategyConfig.h"
 #include "RelativeStrengthIndex.h"
 #include "StrategyBase.h"
@@ -13,10 +14,15 @@ public:
     bool is_valid() const;
 
     JsonStrategyConfig to_json() const;
+    JsonStrategyConfig make_exit_strategy_config() const;
 
     std::chrono::milliseconds m_timeframe = {};
     unsigned m_interval = {};
     unsigned m_margin = 0;
+
+    // exit
+    double m_risk;
+    double m_no_loss_coef;
 };
 
 class RelativeStrengthIndexStrategy : public StrategyBase
@@ -37,5 +43,7 @@ private:
 
 private:
     RelativeStrengthIndexStrategyConfig m_config;
+    DynamicTrailingStopLossStrategy m_exit_strategy;
+
     RelativeStrengthIndex m_rsi;
 };
