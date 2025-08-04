@@ -1,4 +1,5 @@
 #include "ByBitTradingGateway.h"
+#include "Events.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -152,10 +153,10 @@ TEST_F(BybitTradingGatewayLiveTest, CloseWithTpsl)
                 trade_cv.notify_all();
             });
 
-    std::optional<TpslResponseEvent> tpsl_response;
-    std::shared_ptr<ISubscription> tpsl_r_sub = trgw.tpsl_response_channel().subscribe(
+    std::optional<TpslUpdatedEvent> tpsl_response;
+    std::shared_ptr<ISubscription> tpsl_r_sub = trgw.tpsl_updated_channel().subscribe(
             el,
-            [&](const TpslResponseEvent & ev) {
+            [&](const TpslUpdatedEvent & ev) {
                 std::lock_guard<std::mutex> lock(mutex);
                 tpsl_response = ev;
 
@@ -287,10 +288,10 @@ TEST_F(BybitTradingGatewayLiveTest, TpslRejectIfNoPos)
     std::condition_variable tpsl_resp_cv;
     std::condition_variable tpsl_upd_cv;
 
-    std::optional<TpslResponseEvent> tpsl_response;
-    std::shared_ptr<ISubscription> tpsl_r_sub = trgw.tpsl_response_channel().subscribe(
+    std::optional<TpslUpdatedEvent> tpsl_response;
+    std::shared_ptr<ISubscription> tpsl_r_sub = trgw.tpsl_updated_channel().subscribe(
             el,
-            [&](const TpslResponseEvent & ev) {
+            [&](const TpslUpdatedEvent & ev) {
                 std::lock_guard<std::mutex> lock(mutex);
                 tpsl_response = ev;
 

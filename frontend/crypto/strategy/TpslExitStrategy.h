@@ -1,7 +1,10 @@
 #pragma once
 
+#include "ConditionalOrders.h"
 #include "EventLoop.h"
+#include "EventLoopSubscriber.h"
 #include "ExitStrategyBase.h"
+#include "ISubsription.h"
 #include "JsonStrategyConfig.h"
 #include "Position.h"
 #include "StrategyChannels.h"
@@ -31,11 +34,12 @@ private:
     double m_risk_reward_ratio = 1.;
 };
 
+class OrderManager;
 class TpslExitStrategy : public ExitStrategyBase
 {
 public:
     TpslExitStrategy(
-            Symbol symbol,
+            OrderManager & orders,
             JsonStrategyConfig config,
             EventLoopSubscriber & event_loop,
             StrategyChannelsRefs channels);
@@ -43,22 +47,19 @@ public:
 private:
     void on_trade(const Trade & trade);
 
-    void handle_event(const TpslResponseEvent & response);
-    void handle_event(const TpslUpdatedEvent & response);
-
     Tpsl calc_tpsl(const Trade & trade);
-    void send_tpsl(Tpsl tpsl);
-
     void on_error(std::string, bool);
 
 private:
+    OrderManager & m_orders;
     TpslExitStrategyConfig m_config;
+    EventLoopSubscriber m_event_loop;
 
     std::pair<std::chrono::milliseconds, double> m_last_ts_and_price;
     bool m_is_pos_opened = false;
 
-    Symbol m_symbol;
-    std::set<xg::Guid> m_pending_requests;
     std::optional<OpenedPosition> m_opened_position;
-    std::optional<Tpsl> m_active_tpsl;
+
+    std::shared_ptr<ISubscription> m_sub;
+    std::shared_ptr<TpslFullPos> m_active_tpsl;
 };

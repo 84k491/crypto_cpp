@@ -113,7 +113,11 @@ std::optional<Trade> BacktestTradingGateway::try_trade_tpsl(std::chrono::millise
             opposite_side,
             (pos_volume.value() * last_price) * taker_fee_rate,
     };
-    TpslUpdatedEvent tpsl_updated_ev(m_symbol, false);
+    TpslUpdatedEvent tpsl_updated_ev{
+            m_symbol,
+            m_tpsl->guid,
+            false,
+            true};
     m_tpsl_updated_channel.push(tpsl_updated_ev);
     return trade;
 }
@@ -198,7 +202,11 @@ void BacktestTradingGateway::push_order_request(const OrderRequestEvent & req)
     *m_pos_volume += SignedVolume(volume, order.side());
 
     if (m_pos_volume->value() == 0 && m_tpsl.has_value()) {
-        TpslUpdatedEvent tpsl_updated_ev(m_symbol, false);
+        TpslUpdatedEvent tpsl_updated_ev(
+                m_symbol,
+                m_tpsl->guid,
+                false,
+                false);
         m_tpsl_updated_channel.push(tpsl_updated_ev);
     }
 
@@ -208,22 +216,22 @@ void BacktestTradingGateway::push_order_request(const OrderRequestEvent & req)
 void BacktestTradingGateway::push_tpsl_request(const TpslRequestEvent & tpsl_ev)
 {
     if (!m_pos_volume || m_pos_volume->value() == 0) {
-        TpslResponseEvent resp_ev(
+        TpslUpdatedEvent tpsl_updated_ev(
                 tpsl_ev.symbol.symbol_name,
                 tpsl_ev.guid,
-                tpsl_ev.tpsl,
+                true,
+                false,
                 "can not set tp/sl/ts for zero position");
-        m_tpsl_response_channel.push(resp_ev);
+        m_tpsl_updated_channel.push(tpsl_updated_ev);
         return;
     }
 
     m_tpsl = tpsl_ev;
-    TpslResponseEvent resp_ev(
-            m_tpsl.value().symbol.symbol_name,
-            m_tpsl.value().guid,
-            tpsl_ev.tpsl);
-    m_tpsl_response_channel.push(resp_ev);
-    TpslUpdatedEvent tpsl_updated_ev(tpsl_ev.symbol.symbol_name, true);
+    TpslUpdatedEvent tpsl_updated_ev(
+            tpsl_ev.symbol.symbol_name,
+            tpsl_ev.guid,
+            true,
+            false);
     m_tpsl_updated_channel.push(tpsl_updated_ev);
 }
 
@@ -327,11 +335,6 @@ EventChannel<OrderResponseEvent> & BacktestTradingGateway::order_response_channe
 EventChannel<TradeEvent> & BacktestTradingGateway::trade_channel()
 {
     return m_trade_channel;
-}
-
-EventChannel<TpslResponseEvent> & BacktestTradingGateway::tpsl_response_channel()
-{
-    return m_tpsl_response_channel;
 }
 
 EventChannel<TpslUpdatedEvent> & BacktestTradingGateway::tpsl_updated_channel()

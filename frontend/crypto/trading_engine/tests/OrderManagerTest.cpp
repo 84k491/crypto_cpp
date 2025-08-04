@@ -143,14 +143,9 @@ public:
         return m_trade_channel;
     }
 
-    EventChannel<TpslResponseEvent> & tpsl_response_channel() override
-    {
-        throw std::runtime_error("not implemented");
-    }
-
     EventChannel<TpslUpdatedEvent> & tpsl_updated_channel() override
     {
-        throw std::runtime_error("not implemented");
+        return m_tpsl_updated_channel;
     }
 
     EventChannel<TrailingStopLossUpdatedEvent> & trailing_stop_update_channel() override
@@ -174,6 +169,7 @@ protected:
     EventChannel<TradeEvent> m_trade_channel;
     EventChannel<TakeProfitUpdatedEvent> m_tp_updated_channel;
     EventChannel<StopLossUpdatedEvent> m_sl_updated_channel;
+    EventChannel<TpslUpdatedEvent> m_tpsl_updated_channel;
     EventChannel<TrailingStopLossUpdatedEvent> m_tsl_updated_channel;
 
     // Test

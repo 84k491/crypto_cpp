@@ -2,6 +2,7 @@
 
 #include "EventLoop.h"
 #include "EventTimeseriesChannel.h"
+#include "Events.h"
 #include "crossguid/guid.hpp"
 
 #include <gmock/gmock.h>
@@ -133,9 +134,9 @@ TEST_F(BacktestTradingGatewayTest, TpslRejectIfNoPos)
     price_source_ch.push(std::chrono::milliseconds{1}, 100.);
 
     bool tpsl_ack_responded = false;
-    auto tpsl_ack_sub = trgw.tpsl_response_channel().subscribe(
+    auto tpsl_ack_sub = trgw.tpsl_updated_channel().subscribe(
             el,
-            [&](const TpslResponseEvent & ev) {
+            [&](const TpslUpdatedEvent & ev) {
                 tpsl_ack_responded = true;
                 EXPECT_EQ(ev.reject_reason, "can not set tp/sl/ts for zero position");
             });
@@ -174,19 +175,14 @@ TEST_F(BacktestTradingGatewayTest, TpslTriggerTp)
     ASSERT_EQ(trgw.pos_volume().value(), 1);
 
     bool tpsl_ack_responded = false;
-    auto tpsl_ack_sub = trgw.tpsl_response_channel().subscribe(
-            el,
-            [&](const TpslResponseEvent & ev) {
-                tpsl_ack_responded = true;
-                EXPECT_FALSE(ev.reject_reason.has_value());
-            });
-
     std::optional<TpslUpdatedEvent> tpsl_upd_response;
     constexpr int tp_price = 120;
     auto tpsl_upd_sub = trgw.tpsl_updated_channel().subscribe(
             el,
             [&](const TpslUpdatedEvent & ev) {
+                tpsl_ack_responded = true;
                 tpsl_upd_response = ev;
+                EXPECT_FALSE(ev.reject_reason.has_value());
             });
 
     bool tp_trade_responded = false;
@@ -239,19 +235,14 @@ TEST_F(BacktestTradingGatewayTest, TpslTriggerSl)
     ASSERT_EQ(trgw.pos_volume().value(), 1);
 
     bool tpsl_ack_responded = false;
-    auto tpsl_ack_sub = trgw.tpsl_response_channel().subscribe(
-            el,
-            [&](const TpslResponseEvent & ev) {
-                tpsl_ack_responded = true;
-                EXPECT_FALSE(ev.reject_reason.has_value());
-            });
-
     std::optional<TpslUpdatedEvent> tpsl_upd_response;
     constexpr int sl_price = 120;
     auto tpsl_upd_sub = trgw.tpsl_updated_channel().subscribe(
             el,
             [&](const TpslUpdatedEvent & ev) {
+                tpsl_ack_responded = true;
                 tpsl_upd_response = ev;
+                EXPECT_FALSE(ev.reject_reason.has_value());
         });
 
     bool tp_trade_responded = false;

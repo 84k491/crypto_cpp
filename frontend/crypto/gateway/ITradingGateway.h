@@ -26,7 +26,6 @@ public:
 
     virtual EventChannel<OrderResponseEvent> & order_response_channel() = 0;
     virtual EventChannel<TradeEvent> & trade_channel() = 0;
-    virtual EventChannel<TpslResponseEvent> & tpsl_response_channel() = 0;
     virtual EventChannel<TpslUpdatedEvent> & tpsl_updated_channel() = 0;
     virtual EventChannel<TrailingStopLossUpdatedEvent> & trailing_stop_update_channel() = 0;
     virtual EventChannel<TakeProfitUpdatedEvent> & take_profit_update_channel() = 0;

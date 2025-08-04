@@ -1,6 +1,8 @@
 #pragma once
 
 #include <ostream>
+
+// TODO move it to the request
 struct Tpsl
 {
     double take_profit_price = 0.;

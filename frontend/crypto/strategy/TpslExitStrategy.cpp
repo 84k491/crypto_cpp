@@ -3,6 +3,7 @@
 #include "Enums.h"
 #include "EventLoop.h"
 #include "Logger.h"
+#include "OrderManager.h"
 #include "Side.h"
 #include "Trade.h"
 
@@ -40,25 +41,13 @@ TpslExitStrategyConfig::TpslExitStrategyConfig(double risk, double risk_reward_r
 }
 
 TpslExitStrategy::TpslExitStrategy(
-        Symbol symbol,
+        OrderManager & orders,
         JsonStrategyConfig config,
         EventLoopSubscriber & event_loop,
         StrategyChannelsRefs channels)
-    : ExitStrategyBase()
+    : m_orders(orders)
     , m_config(config)
-    , m_symbol(std::move(symbol))
 {
-    m_channel_subs.push_back(channels.tpsl_updated_channel.subscribe(
-            event_loop.m_event_loop,
-            [this](const TpslUpdatedEvent & e) {
-                handle_event(e);
-            }));
-    m_channel_subs.push_back(channels.tpsl_response_channel.subscribe(
-            event_loop.m_event_loop,
-            [&](const TpslResponseEvent & response) {
-                handle_event(response);
-            }));
-
     m_channel_subs.push_back(channels.price_channel.subscribe(
             event_loop.m_event_loop,
             [](const auto &) {},
@@ -81,7 +70,7 @@ TpslExitStrategy::TpslExitStrategy(
 void TpslExitStrategy::on_trade(const Trade & trade)
 {
     // TODO set active tpsl, not it's not set anywhere
-    if (m_is_pos_opened && m_active_tpsl.has_value()) {
+    if (m_is_pos_opened && m_active_tpsl != nullptr) {
         // position opened and tpsl is set already
         const std::string_view msg = "TpslExitStrategy: active tpsl already exists";
         Logger::log<LogLevel::Warning>(std::string(msg));
@@ -91,16 +80,17 @@ void TpslExitStrategy::on_trade(const Trade & trade)
     // TODO handle a double trade case, add test
     if (m_is_pos_opened) {
         const auto tpsl = calc_tpsl(trade);
-        send_tpsl(tpsl);
+        m_sub = m_orders.send_tpsl(
+                                tpsl.take_profit_price,
+                                tpsl.stop_loss_price,
+                                trade.side().opposite(),
+                                trade.ts())
+                        .subscribe(
+                                m_event_loop.m_event_loop,
+                                [&](const std::shared_ptr<TpslFullPos> & sptr) {
+                                    m_active_tpsl = sptr;
+                                });
     }
-}
-
-void TpslExitStrategy::send_tpsl(Tpsl tpsl)
-{
-    TpslRequestEvent req(m_symbol, tpsl);
-    m_pending_requests.emplace(req.guid);
-    // m_tr_gateway.push_tpsl_request(req); // TODO
-    throw std::runtime_error("tpsl not implemented");
 }
 
 Tpsl TpslExitStrategy::calc_tpsl(const Trade & trade)
@@ -133,27 +123,6 @@ bool TpslExitStrategyConfig::is_valid() const
 {
     bool limits_ok = m_risk > 0. && m_risk < 1. && m_risk_reward_ratio > 0. && m_risk_reward_ratio < 1.;
     return limits_ok;
-}
-
-void TpslExitStrategy::handle_event(const TpslResponseEvent & response)
-{
-    if (response.reject_reason.has_value()) {
-        std::string err = "Rejected tpsl: " + response.reject_reason.value();
-        on_error(err, true);
-    }
-
-    const size_t erased_cnt = m_pending_requests.erase(response.request_guid);
-    if (erased_cnt == 0) {
-        std::string err = "Unsolicited tpsl response";
-        on_error(err, true);
-    }
-
-    m_tpsl_channel.push(m_last_ts_and_price.first, response.tpsl);
-}
-
-void TpslExitStrategy::handle_event(const TpslUpdatedEvent &)
-{
-    Logger::log<LogLevel::Debug>("TpslUpdatedEvent"); // TODO print it out
 }
 
 void TpslExitStrategy::on_error(std::string err, bool do_panic)

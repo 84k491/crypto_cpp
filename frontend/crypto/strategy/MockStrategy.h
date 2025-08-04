@@ -4,8 +4,8 @@
 #include "ScopeExit.h"
 #include "StrategyBase.h"
 #include "StrategyChannels.h"
+#include "TpslExitStrategy.h"
 
-// TODO it should use tpsl exit strat
 class MockStrategy : public StrategyBase
 {
 public:
@@ -14,6 +14,11 @@ public:
             StrategyChannelsRefs channels,
             OrderManager & orders)
         : StrategyBase(orders, event_loop, channels)
+        , m_exit_strategy(
+                  orders,
+                  JsonStrategyConfig{R"({"risk":0.1,"risk_reward_ratio":0.8")"},
+                  event_loop,
+                  channels)
     {
         m_channel_subs.push_back(channels.price_channel.subscribe(
                 event_loop.m_event_loop,
@@ -49,4 +54,6 @@ public:
 
 private:
     std::optional<Side> m_next_signal_side = Side::buy();
+
+    TpslExitStrategy m_exit_strategy;
 };

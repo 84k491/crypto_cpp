@@ -45,8 +45,6 @@ StrategyInstance::StrategyInstance(
               m_opened_pos_channel,
               m_trade_channel,
               m_price_levels_channel,
-              tr_gateway.tpsl_response_channel(),
-              tr_gateway.tpsl_updated_channel(),
               m_trailing_stop_channel)
     , m_symbol(symbol)
     , m_position_manager(symbol)

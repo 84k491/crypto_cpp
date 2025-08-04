@@ -113,7 +113,11 @@ std::optional<TpslUpdatedEvent> OrderResponseResult::on_tpsl_update(const std::a
 
     // TODO validate
     const bool set_up = response.cancelType == "UNKNOWN";
-    return TpslUpdatedEvent(response.symbol, set_up);
+    return TpslUpdatedEvent{
+            response.symbol,
+            xg::Guid(),
+            set_up,
+            false}; // TODO check status in json
 }
 
 std::optional<TrailingStopLossUpdatedEvent> OrderResponseResult::on_trailing_stop_update(const ByBitMessages::OrderResponse & response)

@@ -6,6 +6,7 @@
 #include "fmt/format.h"
 
 #include <cassert>
+#include <memory>
 #include <utility>
 
 OrderManager::OrderManager(
@@ -44,7 +45,13 @@ OrderManager::OrderManager(
     m_event_loop.subscribe(
             m_tr_gateway.trailing_stop_update_channel(),
             [this](const TrailingStopLossUpdatedEvent & ev) {
-                on_trailing_stop_reposnse(ev);
+                on_trailing_stop_response(ev);
+            });
+
+    m_event_loop.subscribe(
+            m_tr_gateway.tpsl_updated_channel(),
+            [this](const TpslUpdatedEvent & ev) {
+                on_tpsl_reposnse(ev);
             });
 }
 
@@ -344,6 +351,10 @@ void OrderManager::on_trade(const TradeEvent & ev)
         return;
     }
 
+    if (m_tpsl.has_value() && m_tpsl->get()->guid() == ev.trade.order_guid()) {
+        return;
+    }
+
     Logger::logf<LogLevel::Warning>("unsolicited TradeEvent {}", ev.trade.order_guid());
     m_error_channel.push(fmt::format("unsolicited TradeEvent {}", ev.trade.order_guid().str()));
 }
@@ -368,7 +379,37 @@ EventObjectChannel<std::shared_ptr<TrailingStopLoss>> & OrderManager::send_trail
     return order_channel;
 }
 
-void OrderManager::on_trailing_stop_reposnse(const TrailingStopLossUpdatedEvent & response)
+[[nodiscard("Subscribe for the channel")]]
+EventObjectChannel<std::shared_ptr<TpslFullPos>> & OrderManager::send_tpsl(
+        double take_profit_price,
+        double stop_loss_price,
+        Side side,
+        std::chrono::milliseconds ts)
+{
+    const auto tpsl = Tpsl{
+            .take_profit_price = take_profit_price,
+            .stop_loss_price = stop_loss_price};
+
+    auto & tpsl_ch = m_tpsl.emplace(EventObjectChannel<std::shared_ptr<TpslFullPos>>{});
+    tpsl_ch.update([&](std::shared_ptr<TpslFullPos> & tpsl_sptr) {
+        tpsl_sptr = std::make_shared<TpslFullPos>(
+                m_symbol.symbol_name,
+                tpsl.take_profit_price,
+                tpsl.stop_loss_price,
+                side,
+                ts);
+    });
+
+    TpslRequestEvent req(
+            m_symbol,
+            tpsl);
+
+    m_tr_gateway.push_tpsl_request(req);
+
+    return tpsl_ch;
+}
+
+void OrderManager::on_trailing_stop_response(const TrailingStopLossUpdatedEvent & response)
 {
     if (response.reject_reason.has_value()) {
         std::string err = "Rejected tpsl: " + response.reject_reason.value();
@@ -377,7 +418,7 @@ void OrderManager::on_trailing_stop_reposnse(const TrailingStopLossUpdatedEvent 
     }
 
     if (!m_trailing_stop.has_value()) { // TODO check guid
-        std::string err = "Unsolicited tpsl response";
+        std::string err = "Unsolicited trailing stop response";
         m_error_channel.push(err);
         return;
     }
@@ -393,6 +434,29 @@ void OrderManager::on_trailing_stop_reposnse(const TrailingStopLossUpdatedEvent 
     m_trailing_stop->update([&](std::shared_ptr<TrailingStopLoss> & tsl) {
         tsl = nullptr;
     });
+
     m_trailing_stop.reset();
     Logger::log<LogLevel::Debug>("Order manager: Trailing stop loss removed");
+}
+
+void OrderManager::on_tpsl_reposnse(const TpslUpdatedEvent & r)
+{
+    if (!m_tpsl.has_value()) {
+        std::string err = "Unsolicited tpsl response";
+        m_error_channel.push(err);
+        return;
+    }
+
+    m_tpsl->update([&](std::shared_ptr<TpslFullPos> & tpsl_ptr) {
+        tpsl_ptr->m_acked = true;
+
+        tpsl_ptr->m_reject_reason = r.reject_reason;
+
+        tpsl_ptr->m_set_up = r.set_up;
+        tpsl_ptr->m_triggered = r.triggered;
+    });
+
+    if (!r.set_up && r.triggered) {
+        m_tpsl.reset();
+    }
 }

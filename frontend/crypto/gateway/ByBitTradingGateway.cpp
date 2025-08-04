@@ -216,11 +216,12 @@ void ByBitTradingGateway::process_event(const TpslRequestEvent & tpsl)
     const std::future_status status = request_future.wait_for(5000ms);
     if (status != std::future_status::ready) {
         // TODO specify guid
-        m_tpsl_response_channel.push(TpslResponseEvent(
+        m_tpsl_updated_channel.push(TpslUpdatedEvent{
                 tpsl.symbol.symbol_name,
                 tpsl.guid,
-                tpsl.tpsl,
-                "Request timed out"));
+                false,
+                false,
+                "Request timed out"});
         return;
     }
     const std::string request_result = request_future.get();
@@ -228,14 +229,14 @@ void ByBitTradingGateway::process_event(const TpslRequestEvent & tpsl)
     const auto j = json::parse(request_result);
     const ByBitMessages::TpslResult result = j.get<ByBitMessages::TpslResult>();
     if (result.ret_code != 0) {
-        m_tpsl_response_channel.push(TpslResponseEvent(
+        m_tpsl_updated_channel.push(TpslUpdatedEvent(
                 tpsl.symbol.symbol_name,
                 tpsl.guid,
-                tpsl.tpsl,
+                false,
+                false,
                 result.ret_msg));
         return;
     }
-    m_tpsl_response_channel.push(TpslResponseEvent(tpsl.symbol.symbol_name, tpsl.guid, tpsl.tpsl));
 }
 
 void ByBitTradingGateway::process_event(const TrailingStopLossRequestEvent & tsl)
@@ -360,11 +361,6 @@ EventChannel<OrderResponseEvent> & ByBitTradingGateway::order_response_channel()
 EventChannel<TradeEvent> & ByBitTradingGateway::trade_channel()
 {
     return m_trade_channel;
-}
-
-EventChannel<TpslResponseEvent> & ByBitTradingGateway::tpsl_response_channel()
-{
-    return m_tpsl_response_channel;
 }
 
 EventChannel<TpslUpdatedEvent> & ByBitTradingGateway::tpsl_updated_channel()

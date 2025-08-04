@@ -41,7 +41,14 @@ public:
 
     [[nodiscard("Subscribe for the channel")]]
     EventObjectChannel<std::shared_ptr<TrailingStopLoss>> & send_trailing_stop(
-            const TrailingStopLoss& trailing_stop,
+            const TrailingStopLoss & trailing_stop,
+            std::chrono::milliseconds ts);
+
+    [[nodiscard("Subscribe for the channel")]]
+    EventObjectChannel<std::shared_ptr<TpslFullPos>> & send_tpsl(
+            double take_profit_price,
+            double stop_loss_price,
+            Side side,
             std::chrono::milliseconds ts);
 
     auto & error_channel() { return m_error_channel; }
@@ -59,7 +66,8 @@ private:
     void on_order_response(const OrderResponseEvent & r);
     void on_take_profit_response(const TakeProfitUpdatedEvent & r);
     void on_stop_loss_reposnse(const StopLossUpdatedEvent & r);
-    void on_trailing_stop_reposnse(const TrailingStopLossUpdatedEvent & response);
+    void on_trailing_stop_response(const TrailingStopLossUpdatedEvent & response);
+    void on_tpsl_reposnse(const TpslUpdatedEvent & r);
 
     void on_trade(const TradeEvent & ev);
     bool try_trade_market_order(const TradeEvent & ev);
@@ -73,6 +81,8 @@ private:
     std::map<xg::Guid, MarketOrderChannelWithAckInfo> m_orders;
     std::map<xg::Guid, EventObjectChannel<std::shared_ptr<TakeProfitMarketOrder>>> m_take_profits;
     std::map<xg::Guid, EventObjectChannel<std::shared_ptr<StopLossMarketOrder>>> m_stop_losses;
+
+    std::optional<EventObjectChannel<std::shared_ptr<TpslFullPos>>> m_tpsl;
 
     std::optional<EventObjectChannel<std::shared_ptr<TrailingStopLoss>>> m_trailing_stop;
 

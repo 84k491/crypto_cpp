@@ -145,6 +145,7 @@ struct OrderResponseEvent : public OneWayEvent
     bool retry = false;
 };
 
+// TODO remove
 struct TpslResponseEvent : public OrderResponseEvent
 {
     TpslResponseEvent(std::string symbol_name, xg::Guid request_guid, Tpsl tpsl, std::optional<std::string> reject_reason = std::nullopt)
@@ -167,8 +168,8 @@ struct TradeEvent : public OneWayEvent
 
 struct OrderRequestEvent : public OneWayEvent
 {
-    OrderRequestEvent(MarketOrder order)
-        : order(std::move(order))
+    OrderRequestEvent(const MarketOrder & order)
+        : order(order)
     {
     }
     MarketOrder order;
@@ -176,14 +177,27 @@ struct OrderRequestEvent : public OneWayEvent
 
 struct TpslUpdatedEvent : public OneWayEvent
 {
-    TpslUpdatedEvent(std::string symbol_name, bool set_up)
-        : symbol_name(std::move(symbol_name))
+    TpslUpdatedEvent(
+            std::string symbol_name,
+            xg::Guid guid,
+            bool set_up,
+            bool triggered,
+            std::optional<std::string> reject_reason = {})
+        : guid(guid)
+        , symbol_name(std::move(symbol_name))
         , set_up(set_up)
+        , triggered(triggered)
+        , reject_reason(std::move(reject_reason))
     {
     }
 
+    xg::Guid guid;
+
     std::string symbol_name;
     bool set_up = false;
+    bool triggered = false;
+
+    std::optional<std::string> reject_reason;
 };
 
 struct ConditionalOrderUpdateEvent
