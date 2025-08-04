@@ -5,16 +5,14 @@ OptimizerParser::OptimizerParser(OptimizerInputs optimizer_inputs)
 {
 }
 
-std::vector<DoubleJsonStrategyConfig> OptimizerParser::get_possible_configs()
+std::vector<JsonStrategyConfig> OptimizerParser::get_possible_configs()
 {
     const auto entry_configs = get_possible_configs(m_inputs.entry_strategy);
-    const auto exit_configs = get_possible_configs(m_inputs.exit_strategy);
 
-    std::vector<DoubleJsonStrategyConfig> outputs;
+    std::vector<JsonStrategyConfig> outputs;
+    outputs.reserve(entry_configs.size());
     for (const auto & entry_config : entry_configs) {
-        for (const auto & exit_config : exit_configs) {
-            outputs.emplace_back(entry_config, exit_config);
-        }
+        outputs.emplace_back(entry_config);
     }
     return outputs;
 }

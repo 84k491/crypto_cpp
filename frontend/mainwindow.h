@@ -109,17 +109,16 @@ private slots:
     void on_pb_optimize_clicked();
     void on_pb_stop_clicked();
     void on_cb_strategy_currentTextChanged(const QString &);
-    void on_cb_exit_strategy_currentTextChanged(const QString &);
 
     void on_pb_charts_clicked();
     void render_result(StrategyResult result);
     void subscribe_for_positions();
-    void optimized_config_slot(const JsonStrategyConfig & entry_config, const JsonStrategyConfig & exit_config);
+    void optimized_config_slot(const JsonStrategyConfig & entry_config);
 
     void on_lambda(std::function<void()> lambda);
 
 signals:
-    void signal_optimized_config(JsonStrategyConfig entry_config, JsonStrategyConfig exit_config);
+    void signal_optimized_config(JsonStrategyConfig entry_config);
     void signal_optimizer_passed_check(int passed_checks, int total_checks);
     void signal_lambda(std::function<void()> lambda);
 
@@ -130,7 +129,6 @@ private:
     std::optional<Timerange> get_timerange() const;
 
     std::optional<JsonStrategyMetaInfo> get_entry_strategy_parameters() const;
-    std::optional<JsonStrategyMetaInfo> get_exit_strategy_parameters() const;
 
 private:
     Ui::MainWindow * ui;

@@ -52,7 +52,7 @@ OptimizerCollector::OptimizerCollector(std::string criteria_name, const std::vec
 }
 
 bool OptimizerCollector::push(
-        DoubleJsonStrategyConfig strategy_config,
+        JsonStrategyConfig strategy_config,
         const StrategyResult & result)
 {
     const auto score = (*m_criteria)(result);

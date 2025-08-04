@@ -5,7 +5,6 @@
 #include "JsonStrategyConfig.h"
 #include "Logger.h"
 #include "ScopeExit.h"
-#include "StrategyFactory.h"
 #include "StrategyInstance.h"
 
 #include <vector>
@@ -15,7 +14,6 @@ Optimizer::Optimizer(
         Symbol symbol,
         Timerange timerange,
         std::string strategy_name,
-        std::string exit_strategy_name,
         OptimizerInputs optimizer_data,
         size_t threads)
     : m_gateway(gateway)
@@ -23,7 +21,6 @@ Optimizer::Optimizer(
     , m_timerange(timerange)
     , m_optimizer_inputs(std::move(optimizer_data))
     , m_strategy_name(std::move(strategy_name))
-    , m_exit_strategy_name(std::move(exit_strategy_name))
     , m_thread_count(threads)
 {
 }
@@ -33,12 +30,12 @@ void Optimizer::subscribe_for_passed_check(std::function<void(int, int)> && on_p
     m_on_passed_check = std::move(on_passed_checks);
 }
 
-std::optional<DoubleJsonStrategyConfig> Optimizer::optimize()
+std::optional<JsonStrategyConfig> Optimizer::optimize()
 {
     Logger::log<LogLevel::Status>("Starting optimizer");
     OptimizerParser parser(m_optimizer_inputs);
 
-    const std::vector<DoubleJsonStrategyConfig> configs = parser.get_possible_configs();
+    const std::vector<JsonStrategyConfig> configs = parser.get_possible_configs();
 
     Guarded<OptimizerCollector> collector{
             "MinDeviation",
@@ -60,7 +57,7 @@ std::optional<DoubleJsonStrategyConfig> Optimizer::optimize()
              i < configs.size();
              i = input_iter.fetch_add(1)) {
 
-            const auto & [entry_config, exit_config] = configs[i];
+            const auto & entry_config = configs[i];
 
             HistoricalMDRequestData md_request_data = {.start = m_timerange.start(), .end = m_timerange.end()};
 
@@ -70,8 +67,6 @@ std::optional<DoubleJsonStrategyConfig> Optimizer::optimize()
                     md_request_data,
                     m_strategy_name,
                     entry_config,
-                    m_exit_strategy_name,
-                    exit_config,
                     m_gateway,
                     tr_gateway);
             tr_gateway.set_price_source(strategy_instance.price_channel());
@@ -83,7 +78,7 @@ std::optional<DoubleJsonStrategyConfig> Optimizer::optimize()
 
             auto lref = collector.lock();
             if (lref.get().push(configs[i], result)) {
-                Logger::logf<LogLevel::Warning>("New best config: {}, {}", result.to_json(), configs[i].to_json());
+                Logger::logf<LogLevel::Warning>("New best config: {}, {}", result.to_json(), configs[i]);
             }
             m_on_passed_check(output_iter.fetch_add(1), configs.size());
         }

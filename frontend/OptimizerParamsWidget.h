@@ -14,7 +14,7 @@ class OptimizerParametersWidget : public QGroupBox
 public:
     OptimizerParametersWidget(QWidget * parent = nullptr);
 
-    void setup_widget(const JsonStrategyMetaInfo & entry_parameters, const JsonStrategyMetaInfo & exit_parameters);
+    void setup_widget(const JsonStrategyMetaInfo & entry_parameters);
     std::set<std::string> optimizable_parameters();
 
 private:

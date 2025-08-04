@@ -1,6 +1,5 @@
 #include "StrategyInstance.h"
 
-#include "DynamicTrailingStopLossStrategy.h"
 #include "EventBarrier.h"
 #include "EventLoop.h"
 #include "Events.h"
@@ -19,41 +18,6 @@
 #include <optional>
 #include <ranges>
 
-// TODO move it to a separate file
-class ExitStrategyFactory
-{
-public:
-    static std::optional<std::shared_ptr<IExitStrategy>> build_exit_strategy(
-            const std::string & strategy_name,
-            const JsonStrategyConfig & config,
-            OrderManager & orders,
-            EventLoopSubscriber & event_loop,
-            StrategyChannelsRefs channels)
-    {
-        if (strategy_name == "Native") {
-            return {};
-        }
-        if (strategy_name == "TrailingStop") {
-            std::shared_ptr<IExitStrategy> res = std::make_shared<TrailigStopLossStrategy>(
-                    orders,
-                    config,
-                    event_loop,
-                    channels);
-            return res;
-        }
-        if (strategy_name == "DynamicTrailingStop") {
-            std::shared_ptr<IExitStrategy> res = std::make_shared<DynamicTrailingStopLossStrategy>(
-                    orders,
-                    config,
-                    event_loop,
-                    channels);
-            return res;
-        }
-        Logger::logf<LogLevel::Error>("Unknown exit strategy name: {}", strategy_name);
-        return {};
-    }
-};
-
 namespace {
 std::optional<std::chrono::milliseconds> get_timeframe(const JsonStrategyConfig & conf)
 {
@@ -69,8 +33,6 @@ StrategyInstance::StrategyInstance(
         const std::optional<HistoricalMDRequestData> & historical_md_request,
         const std::string & entry_strategy_name,
         const JsonStrategyConfig & entry_strategy_config,
-        const std::string & exit_strategy_name,
-        const JsonStrategyConfig & exit_strategy_config,
         IMarketDataGateway & md_gateway,
         ITradingGateway & tr_gateway)
     : m_strategy_guid(xg::newGuid())
@@ -88,7 +50,6 @@ StrategyInstance::StrategyInstance(
               m_trailing_stop_channel)
     , m_symbol(symbol)
     , m_position_manager(symbol)
-    , m_exit_strategy(nullptr)
     , m_historical_md_request(historical_md_request)
     , m_orders(symbol, m_event_loop, tr_gateway)
 {
@@ -105,32 +66,6 @@ StrategyInstance::StrategyInstance(
         return;
     }
     m_strategy = strategy_ptr_opt.value();
-
-    const auto exit_strategy_opt = ExitStrategyFactory::build_exit_strategy(
-            exit_strategy_name,
-            exit_strategy_config,
-            m_orders,
-            m_event_loop,
-            m_strategy_channels);
-    if (exit_strategy_opt) {
-        m_exit_strategy = *exit_strategy_opt;
-        m_event_loop.subscribe(m_exit_strategy->error_channel(), [this](const std::pair<std::string, bool> & err) {
-            const auto & [err_str, do_panic] = err;
-            Logger::log<LogLevel::Error>(std::string(err_str));
-            stop_async(do_panic);
-        });
-
-        m_exit_str_subs.push_back(
-                m_exit_strategy->tpsl_channel().subscribe(
-                        m_event_loop.m_event_loop,
-                        [](const auto &) {},
-                        [&](const auto & ts, const auto & tpsl) { m_tpsl_channel.push(ts, tpsl); }));
-        m_exit_str_subs.push_back(
-                m_exit_strategy->trailing_stop_channel().subscribe(
-                        m_event_loop.m_event_loop,
-                        [](const auto &) {},
-                        [&](const auto & ts, const auto & tsl) { m_trailing_stop_channel.push(ts, tsl); }));
-    }
 
     m_status.push(WorkStatus::Stopped);
 
@@ -164,11 +99,6 @@ StrategyInstance::StrategyInstance(
                 handle_event_generic(e);
             });
 
-    // m_event_loop.subscribe(
-    //         m_tr_gateway.order_response_channel(),
-    //         [this](const OrderResponseEvent & e) {
-    //             handle_event_generic(e);
-    //         });
     m_event_loop.subscribe(
             m_tr_gateway.trade_channel(),
             [this](const TradeEvent & e) {
@@ -289,11 +219,7 @@ void StrategyInstance::set_channel_capacity(std::optional<std::chrono::milliseco
     trade_channel().set_capacity(capacity);
     strategy_internal_data_channel().set_capacity(capacity);
     candle_channel().set_capacity(capacity);
-    // depo_channel().set_capacity(capacity);
-    if (m_exit_strategy) {
-        tpsl_channel().set_capacity(capacity);
-        trailing_stop_channel().set_capacity(capacity);
-    }
+    // depo_channel().set_capacity(capacity); // don't touch depo
     price_channel().set_capacity(capacity);
 }
 

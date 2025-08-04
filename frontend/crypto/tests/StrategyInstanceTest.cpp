@@ -175,7 +175,6 @@ public:
     StrategyInstanceTest()
         : event_consumer(std::make_shared<MockEventConsumer>())
         , m_symbol("BTCUSD")
-        , exit_strategy_config(0.1, 0.8)
         , strategy_instance(nullptr)
     {
         m_symbol.lot_size_filter.max_qty = 1'000'000;
@@ -187,8 +186,6 @@ public:
                 std::nullopt,
                 "Mock",
                 JsonStrategyConfig{nlohmann::json{}},
-                "TpslExit",
-                exit_strategy_config.to_json(),
                 md_gateway,
                 tr_gateway);
 
@@ -213,7 +210,6 @@ protected:
     MockTradingGateway tr_gateway;
 
     std::shared_ptr<MockStrategy> strategy_ptr;
-    TpslExitStrategyConfig exit_strategy_config;
     std::unique_ptr<StrategyInstance> strategy_instance;
 
     WorkStatus strategy_status = WorkStatus::Panic;

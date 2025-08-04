@@ -29,8 +29,6 @@ public:
             const std::optional<HistoricalMDRequestData> & historical_md_request,
             const std::string & entry_strategy_name,
             const JsonStrategyConfig & entry_strategy_config,
-            const std::string & exit_strategy_name,
-            const JsonStrategyConfig & exit_strategy_config,
             IMarketDataGateway & md_gateway,
             ITradingGateway & tr_gateway);
 
@@ -98,14 +96,12 @@ private:
 
     EventTimeseriesChannel<Tpsl> m_tpsl_channel;
     EventTimeseriesChannel<StopLoss> m_trailing_stop_channel;
-    std::list<std::shared_ptr<ISubscription>> m_exit_str_subs;
 
     StrategyChannelsRefs m_strategy_channels;
 
     const Symbol m_symbol;
     static constexpr double m_pos_currency_amount = 100.;
     PositionManager m_position_manager;
-    std::shared_ptr<IExitStrategy> m_exit_strategy;
 
     const std::optional<HistoricalMDRequestData> m_historical_md_request;
 

@@ -7,7 +7,7 @@ OptimizerParametersWidget::OptimizerParametersWidget(QWidget *)
 {
 }
 
-void OptimizerParametersWidget::setup_widget(const JsonStrategyMetaInfo & entry_parameters, const JsonStrategyMetaInfo & exit_parameters)
+void OptimizerParametersWidget::setup_widget(const JsonStrategyMetaInfo & entry_parameters)
 {
     qDeleteAll(children());
     m_checkboxes.clear();
@@ -33,14 +33,6 @@ void OptimizerParametersWidget::setup_widget(const JsonStrategyMetaInfo & entry_
 
     const auto entry_params = entry_parameters.get()["parameters"].get<std::vector<nlohmann::json>>();
     fill_gb("Entry", entry_params);
-
-    if (exit_parameters.get().contains("parameters")) {
-        const auto exit_params = exit_parameters.get()["parameters"].get<std::vector<nlohmann::json>>();
-        fill_gb("Exit", exit_params);
-    }
-    else {
-        fill_gb("Exit", nlohmann::json{});
-    }
 
     setLayout(top_layout);
 }

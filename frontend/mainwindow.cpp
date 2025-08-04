@@ -25,11 +25,6 @@ MainWindow::MainWindow(QWidget * parent)
     ui->setupUi(this);
     ui->wt_entry_params->setTitle("Entry parameters");
 
-    if (const auto meta_info_opt = StrategyFactory::get_meta_info("TpslExit"); meta_info_opt.has_value()) {
-        ui->wt_exit_params->setup_widget(meta_info_opt.value());
-    }
-    ui->wt_exit_params->setTitle("Exit parameters");
-
     connect(this, &MainWindow::signal_lambda, this, &MainWindow::on_lambda);
 
     connect(this, &MainWindow::signal_optimizer_passed_check, this, [this](int passed_checks, int total_checks) {
@@ -65,11 +60,6 @@ MainWindow::MainWindow(QWidget * parent)
     ui->cb_strategy->addItem("BBRSI");
     ui->cb_strategy->addItem("Grid");
     ui->cb_strategy->setCurrentText(saved_state.m_strategy_name.c_str());
-    ui->cb_exit_strategy->addItem("Native");
-    ui->cb_exit_strategy->addItem("TpslExit");
-    ui->cb_exit_strategy->addItem("TrailingStop");
-    ui->cb_exit_strategy->addItem("DynamicTrailingStop");
-    ui->cb_exit_strategy->setCurrentText("DynamicTrailingStop");
 
     const auto symbols = m_gateway.get_symbols("USDT");
     for (const auto & symbol : symbols) {
@@ -180,8 +170,6 @@ void MainWindow::on_pb_run_clicked()
             md_request,
             strategy_name,
             entry_config,
-            ui->cb_exit_strategy->currentText().toStdString(),
-            ui->wt_exit_params->get_config(),
             m_gateway,
             tr_gateway);
     if (ui->sb_channel_capacity_h->value() >= 0) {
@@ -263,10 +251,9 @@ void MainWindow::subscribe_for_positions()
             }));
 }
 
-void MainWindow::optimized_config_slot(const JsonStrategyConfig & entry_config, const JsonStrategyConfig & exit_config)
+void MainWindow::optimized_config_slot(const JsonStrategyConfig & entry_config)
 {
     ui->wt_entry_params->setup_values(entry_config);
-    ui->wt_exit_params->setup_values(exit_config);
 }
 
 std::optional<Timerange> MainWindow::get_timerange() const
@@ -298,23 +285,16 @@ void MainWindow::on_pb_optimize_clicked()
 
     const auto entry_strategy_meta_info = get_entry_strategy_parameters();
     const auto timerange_opt = get_timerange();
-    const auto exit_strategy_meta_info = StrategyFactory::get_meta_info(ui->cb_exit_strategy->currentText().toStdString());
-    if (!timerange_opt || !entry_strategy_meta_info || !exit_strategy_meta_info) {
+    if (!timerange_opt || !entry_strategy_meta_info) {
         Logger::log<LogLevel::Error>("No value in required optional");
         return;
     }
     const std::string entry_strategy_name = ui->cb_strategy->currentText().toStdString();
-    const std::string exit_strategy_name = ui->cb_exit_strategy->currentText().toStdString();
 
     OptimizerInputs optimizer_inputs = {
             .entry_strategy = {
                     .meta = entry_strategy_meta_info.value(),
                     .current_config = ui->wt_entry_params->get_config(),
-                    .optimizable_parameters = ui->wt_optimizer_parameters->optimizable_parameters(),
-            },
-            .exit_strategy = {
-                    .meta = exit_strategy_meta_info.value(),
-                    .current_config = ui->wt_exit_params->get_config(),
                     .optimizable_parameters = ui->wt_optimizer_parameters->optimizable_parameters(),
             }};
 
@@ -341,14 +321,12 @@ void MainWindow::on_pb_optimize_clicked()
                    timerange,
                    optimizer_inputs,
                    symbol,
-                   entry_strategy_name,
-                   exit_strategy_name]() {
+                   entry_strategy_name]() {
         Optimizer optimizer(
                 m_gateway,
                 symbol.value(),
                 timerange,
                 entry_strategy_name,
-                exit_strategy_name,
                 optimizer_inputs,
                 ui->sb_optimizer_threads->value());
 
@@ -361,8 +339,8 @@ void MainWindow::on_pb_optimize_clicked()
             Logger::log<LogLevel::Info>("No best config");
             return;
         }
-        emit signal_optimized_config(best_config.value().m_entry_config, best_config.value().m_exit_config);
-        Logger::logf<LogLevel::Info>("Best config: {}; {}", best_config.value().m_entry_config, best_config.value().m_exit_config);
+        emit signal_optimized_config(best_config.value());
+        Logger::logf<LogLevel::Info>("Best config: {}", best_config.value());
     });
     t.detach();
 }
@@ -373,39 +351,12 @@ std::optional<JsonStrategyMetaInfo> MainWindow::get_entry_strategy_parameters() 
     return json_data;
 }
 
-std::optional<JsonStrategyMetaInfo> MainWindow::get_exit_strategy_parameters() const
-{
-    const auto strategy_name = ui->cb_exit_strategy->currentText().toStdString();
-    if (strategy_name == "Native") {
-        return JsonStrategyMetaInfo{nlohmann::json{}};
-    }
-    const auto json_data = StrategyFactory::get_meta_info(strategy_name);
-    return json_data;
-}
-
 void MainWindow::on_cb_strategy_currentTextChanged(const QString &)
 {
     const auto entry_params_opt = get_entry_strategy_parameters();
     if (entry_params_opt) {
         ui->wt_entry_params->setup_widget(entry_params_opt.value());
-
-        const auto exit_params_opt = get_exit_strategy_parameters();
-        if (exit_params_opt.has_value()) {
-            ui->wt_optimizer_parameters->setup_widget(entry_params_opt.value(), exit_params_opt.value());
-        }
-    }
-}
-
-void MainWindow::on_cb_exit_strategy_currentTextChanged(const QString &)
-{
-    const auto exit_params_opt = get_exit_strategy_parameters();
-    if (exit_params_opt) {
-        ui->wt_exit_params->setup_widget(exit_params_opt.value());
-
-        const auto entry_params_opt = get_entry_strategy_parameters();
-        if (entry_params_opt) {
-            ui->wt_optimizer_parameters->setup_widget(entry_params_opt.value(), exit_params_opt.value());
-        }
+        ui->wt_optimizer_parameters->setup_widget(entry_params_opt.value());
     }
 }
 

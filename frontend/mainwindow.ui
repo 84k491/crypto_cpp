@@ -71,20 +71,6 @@
              </layout>
             </item>
             <item>
-             <layout class="QHBoxLayout" name="horizontalLayout_6">
-              <item>
-               <widget class="QLabel" name="label_5">
-                <property name="text">
-                 <string>Exit strategy:</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QComboBox" name="cb_exit_strategy"/>
-              </item>
-             </layout>
-            </item>
-            <item>
              <widget class="QCheckBox" name="cb_live">
               <property name="text">
                <string>Live trading</string>
@@ -186,14 +172,6 @@
          <item>
           <widget class="StrategyParametersWidget" name="wt_entry_params">
            <layout class="QVBoxLayout" name="lo_entry_params"/>
-          </widget>
-         </item>
-         <item>
-          <widget class="StrategyParametersWidget" name="wt_exit_params">
-           <property name="title">
-            <string/>
-           </property>
-           <layout class="QVBoxLayout" name="verticalLayout_2"/>
           </widget>
          </item>
         </layout>

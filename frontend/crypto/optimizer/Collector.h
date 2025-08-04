@@ -88,9 +88,9 @@ public:
 
     OptimizerCollector(std::string criteria_name, const std::vector<FilterParams> & filters);
 
-    bool push(DoubleJsonStrategyConfig strategy_config, const StrategyResult & result);
+    bool push(JsonStrategyConfig strategy_config, const StrategyResult & result);
 
-    std::optional<DoubleJsonStrategyConfig> get_best() const { return m_best; }
+    std::optional<JsonStrategyConfig> get_best() const { return m_best; }
 
 private:
     std::unique_ptr<IOptimizerCriteria> m_criteria;
@@ -98,5 +98,5 @@ private:
     ConjunctiveFilterAggregation m_filters;
 
     double m_best_score = -1.;
-    std::optional<DoubleJsonStrategyConfig> m_best;
+    std::optional<JsonStrategyConfig> m_best;
 };
