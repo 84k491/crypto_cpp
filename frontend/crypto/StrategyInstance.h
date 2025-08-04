@@ -5,7 +5,6 @@
 #include "EventLoop.h"
 #include "EventLoopSubscriber.h"
 #include "EventTimeseriesChannel.h"
-#include "ExitStrategyInterface.h"
 #include "IMarketDataGateway.h"
 #include "ITradingGateway.h"
 #include "JsonStrategyConfig.h"

@@ -88,8 +88,28 @@ void TpslExitStrategy::on_trade(const Trade & trade)
                         .subscribe(
                                 m_event_loop.m_event_loop,
                                 [&](const std::shared_ptr<TpslFullPos> & sptr) {
-                                    m_active_tpsl = sptr;
+                                    on_updated(sptr);
                                 });
+    }
+}
+
+void TpslExitStrategy::on_updated(const std::shared_ptr<TpslFullPos> & sptr)
+{
+    m_active_tpsl = sptr;
+
+    if (!m_active_tpsl) {
+        return;
+    }
+
+    if (m_active_tpsl->status() == OrderStatus::Rejected) {
+        on_error(m_active_tpsl->m_reject_reason.value_or(""), true);
+    }
+
+    if (m_active_tpsl->status() == OrderStatus::Filled ||
+        m_active_tpsl->status() == OrderStatus::Cancelled) {
+
+        m_active_tpsl.reset();
+        m_sub.reset();
     }
 }
 

@@ -26,6 +26,13 @@ public:
                 [this](const auto & ts, const double & price) {
                     push_price({ts, price});
                 }));
+
+        m_channel_subs.push_back(
+                m_exit_strategy.error_channel().subscribe(
+                        event_loop.m_event_loop,
+                        [&](const std::pair<std::string, bool> & err) {
+                            m_error_channel.push(err);
+                        }));
     }
 
     ~MockStrategy() override = default;

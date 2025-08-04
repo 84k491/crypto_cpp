@@ -47,6 +47,8 @@ private:
     TpslFullPos::Prices calc_tpsl(const Trade & trade);
     void on_error(std::string, bool);
 
+    void on_updated(const std::shared_ptr<TpslFullPos> & sptr);
+
 private:
     OrderManager & m_orders;
     TpslExitStrategyConfig m_config;

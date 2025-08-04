@@ -69,6 +69,20 @@ StrategyInstance::StrategyInstance(
     m_status.push(WorkStatus::Stopped);
 
     m_event_loop.subscribe(
+            m_strategy->error_channel(),
+            [this](const std::pair<std::string, bool> & err) {
+                const auto & [msg, do_panic] = err;
+                if (do_panic) {
+                    Logger::logf<LogLevel::Error>("Panic: {}", msg);
+                }
+                else {
+                    Logger::logf<LogLevel::Warning>("Stopping strategy {} on error: {}", m_strategy_guid, msg);
+                }
+                stop_async(do_panic);
+            },
+            Priority::High);
+
+    m_event_loop.subscribe(
             m_md_gateway.historical_prices_channel(),
             [this](const HistoricalMDGeneratorEvent & e) {
                 handle_event_generic(e);
@@ -139,6 +153,7 @@ void StrategyInstance::stop_async(bool panic)
         m_md_gateway.unsubscribe_from_live(req);
     }
     if (panic) {
+        m_status.push(WorkStatus::Panic);
         m_status_on_stop = WorkStatus::Panic;
     }
     m_stop_ev_channel.push({});

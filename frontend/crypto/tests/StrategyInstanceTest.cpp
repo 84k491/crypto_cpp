@@ -598,108 +598,108 @@ TEST_F(StrategyInstanceTest, ManyPricesReceivedWhileOrderIsPending_NoAdditionalO
 //     ASSERT_EQ(md_gateway.unsubscribed_count(), 1) << "Must unsubscribe on panic";
 // }
 
-// TODO resurrect
-// TEST_F(StrategyInstanceTest, OpenPos_TpslReject_ClosePosAndPanic)
-// {
-//     ASSERT_EQ(strategy_status, WorkStatus::Stopped);
-//     strategy_instance->run_async();
-//     strategy_instance->wait_event_barrier();
-//     ASSERT_EQ(md_gateway.live_requests_count(), 1);
-//     ASSERT_EQ(strategy_status, WorkStatus::Live);
-//     const auto live_req = md_gateway.m_last_live_request.value();
-//
-//     strategy_ptr->signal_on_next_tick(Side::buy());
-//     {
-//         const std::chrono::milliseconds price_ts = std::chrono::milliseconds(1000);
-//         const double price = 10.1;
-//         MDPriceEvent price_event{{price_ts, price, SignedVolume{0.}}};
-//         md_gateway.live_prices_channel().push(price_event);
-//         strategy_instance->wait_event_barrier();
-//     }
-//
-//     StrategyResult result = strategy_instance->strategy_result_channel().get();
-//     ASSERT_EQ(result.trades_count, 0);
-//     const auto strategy_res_sub = strategy_instance->strategy_result_channel().subscribe(
-//             event_consumer,
-//             [&](const auto & res) {
-//                 result = res;
-//             });
-//
-//     {
-//         ASSERT_TRUE(tr_gateway.m_last_order_request.has_value());
-//         const auto order_req = tr_gateway.m_last_order_request.value();
-//         const auto open_trade_price = order_req.order.price();
-//         const auto open_trade_volume = order_req.order.target_volume();
-//         const auto open_trade_side = order_req.order.side();
-//         const std::chrono::milliseconds open_trade_ts = std::chrono::milliseconds(1001);
-//         const auto open_trade = Trade{
-//                 open_trade_ts,
-//                 m_symbol.symbol_name,
-//                 {},
-//                 open_trade_price,
-//                 open_trade_volume,
-//                 open_trade_side,
-//                 0.1};
-//         const auto open_trade_event = TradeEvent(open_trade);
-//
-//         const auto order_response = OrderResponseEvent{
-//                 order_req.order.symbol(),
-//                 order_req.order.guid(),
-//         };
-//
-//         ASSERT_FALSE(tr_gateway.m_last_tpsl_request.has_value()) << "Tpsl request must be after position opened";
-//         ASSERT_EQ(result.trades_count, 0);
-//         tr_gateway.m_trade_channel.push(open_trade_event);
-//         tr_gateway.order_response_channel().push(order_response);
-//         strategy_instance->wait_event_barrier();
-//         ASSERT_EQ(result.trades_count, 1);
-//     }
-//
-//     {
-//         ASSERT_TRUE(tr_gateway.m_last_tpsl_request.has_value());
-//         const auto tpsl_req = tr_gateway.m_last_tpsl_request.value();
-//         tr_gateway.tpsl_response_channel().push(TpslResponseEvent{
-//                 tpsl_req.symbol.symbol_name,
-//                 tpsl_req.guid,
-//                 tpsl_req.tpsl,
-//                 "test_reject"});
-//         strategy_instance->wait_event_barrier();
-//     }
-//
-//     // There must be a close pos request on panic
-//     {
-//         ASSERT_TRUE(tr_gateway.m_last_order_request.has_value());
-//         const auto order_req = tr_gateway.m_last_order_request.value();
-//         const auto close_trade_price = order_req.order.price();
-//         const auto close_trade_volume = order_req.order.target_volume();
-//         const auto close_trade_side = order_req.order.side();
-//         const std::chrono::milliseconds close_trade_ts = std::chrono::milliseconds(1001);
-//         const auto close_trade = Trade{
-//                 close_trade_ts,
-//                 m_symbol.symbol_name,
-//                 {},
-//                 close_trade_price,
-//                 close_trade_volume,
-//                 close_trade_side,
-//                 0.1};
-//         const auto close_trade_event = TradeEvent(close_trade);
-//
-//         const auto order_response = OrderResponseEvent{
-//                 order_req.order.symbol(),
-//                 order_req.order.guid(),
-//         };
-//
-//         ASSERT_EQ(result.trades_count, 1);
-//         tr_gateway.m_trade_channel.push(close_trade_event);
-//         tr_gateway.order_response_channel().push(order_response);
-//         strategy_instance->wait_event_barrier();
-//         ASSERT_EQ(result.trades_count, 2);
-//     }
-//
-//     ASSERT_EQ(strategy_status, WorkStatus::Panic);
-//     ASSERT_EQ(md_gateway.unsubscribed_count(), 1) << "Must unsubscribe on panic";
-//     ASSERT_EQ(result.trades_count, 2);
-// }
+TEST_F(StrategyInstanceTest, OpenPos_TpslReject_ClosePosAndPanic)
+{
+    ASSERT_EQ(strategy_status, WorkStatus::Stopped);
+    strategy_instance->run_async();
+    strategy_instance->wait_event_barrier();
+    ASSERT_EQ(md_gateway.live_requests_count(), 1);
+    ASSERT_EQ(strategy_status, WorkStatus::Live);
+    const auto live_req = md_gateway.m_last_live_request.value();
+
+    strategy_ptr->signal_on_next_tick(Side::buy());
+    {
+        const std::chrono::milliseconds price_ts = std::chrono::milliseconds(1000);
+        const double price = 10.1;
+        MDPriceEvent price_event{{price_ts, price, SignedVolume{0.}}};
+        md_gateway.live_prices_channel().push(price_event);
+        strategy_instance->wait_event_barrier();
+    }
+
+    StrategyResult result = strategy_instance->strategy_result_channel().get();
+    ASSERT_EQ(result.trades_count, 0);
+    const auto strategy_res_sub = strategy_instance->strategy_result_channel().subscribe(
+            event_consumer,
+            [&](const auto & res) {
+                result = res;
+            });
+
+    {
+        ASSERT_TRUE(tr_gateway.m_last_order_request.has_value());
+        const auto order_req = tr_gateway.m_last_order_request.value();
+        const auto open_trade_price = order_req.order.price();
+        const auto open_trade_volume = order_req.order.target_volume();
+        const auto open_trade_side = order_req.order.side();
+        const std::chrono::milliseconds open_trade_ts = std::chrono::milliseconds(1001);
+        const auto open_trade = Trade{
+                open_trade_ts,
+                m_symbol.symbol_name,
+                {},
+                open_trade_price,
+                open_trade_volume,
+                open_trade_side,
+                0.1};
+        const auto open_trade_event = TradeEvent(open_trade);
+
+        const auto order_response = OrderResponseEvent{
+                order_req.order.symbol(),
+                order_req.order.guid(),
+        };
+
+        ASSERT_FALSE(tr_gateway.m_last_tpsl_request.has_value()) << "Tpsl request must be after position opened";
+        ASSERT_EQ(result.trades_count, 0);
+        tr_gateway.m_trade_channel.push(open_trade_event);
+        tr_gateway.order_response_channel().push(order_response);
+        strategy_instance->wait_event_barrier();
+        ASSERT_EQ(result.trades_count, 1);
+    }
+
+    {
+        ASSERT_TRUE(tr_gateway.m_last_tpsl_request.has_value());
+        const auto tpsl_req = tr_gateway.m_last_tpsl_request.value();
+        tr_gateway.tpsl_updated_channel().push(TpslUpdatedEvent{
+                tpsl_req.symbol.symbol_name,
+                tpsl_req.guid,
+                false,
+                false,
+                "test_reject"});
+        strategy_instance->wait_event_barrier();
+    }
+
+    // There must be a close pos request on panic
+    {
+        ASSERT_TRUE(tr_gateway.m_last_order_request.has_value());
+        const auto order_req = tr_gateway.m_last_order_request.value();
+        const auto close_trade_price = order_req.order.price();
+        const auto close_trade_volume = order_req.order.target_volume();
+        const auto close_trade_side = order_req.order.side();
+        const std::chrono::milliseconds close_trade_ts = std::chrono::milliseconds(1001);
+        const auto close_trade = Trade{
+                close_trade_ts,
+                m_symbol.symbol_name,
+                {},
+                close_trade_price,
+                close_trade_volume,
+                close_trade_side,
+                0.1};
+        const auto close_trade_event = TradeEvent(close_trade);
+
+        const auto order_response = OrderResponseEvent{
+                order_req.order.symbol(),
+                order_req.order.guid(),
+        };
+
+        ASSERT_EQ(result.trades_count, 1);
+        tr_gateway.m_trade_channel.push(close_trade_event);
+        tr_gateway.order_response_channel().push(order_response);
+        strategy_instance->wait_event_barrier();
+        ASSERT_EQ(result.trades_count, 2);
+    }
+
+    ASSERT_EQ(strategy_status, WorkStatus::Panic);
+    ASSERT_EQ(md_gateway.unsubscribed_count(), 1) << "Must unsubscribe on panic";
+    ASSERT_EQ(result.trades_count, 2);
+}
 
 // TODO
 // TEST_F(StrategyInstanceTest, PanicOnMarketDataStop) {}

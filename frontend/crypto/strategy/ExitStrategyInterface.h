@@ -1,7 +1,7 @@
 #pragma once
 
+#include "EventChannel.h"
 #include "EventTimeseriesChannel.h"
-#include "EventObjectChannel.h"
 #include "ConditionalOrders.h"
 
 #include <utility>
@@ -14,5 +14,5 @@ public:
     virtual EventTimeseriesChannel<TpslFullPos::Prices> & tpsl_channel() = 0;
     virtual EventTimeseriesChannel<StopLoss> & trailing_stop_channel() = 0;
 
-    virtual EventObjectChannel<std::pair<std::string, bool>> & error_channel() = 0;
+    virtual EventChannel<std::pair<std::string, bool>> & error_channel() = 0;
 };
