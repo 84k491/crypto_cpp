@@ -26,30 +26,18 @@ public:
     static std::optional<std::shared_ptr<IExitStrategy>> build_exit_strategy(
             const std::string & strategy_name,
             const JsonStrategyConfig & config,
-            const Symbol & symbol,
             OrderManager & orders,
             EventLoopSubscriber & event_loop,
-            ITradingGateway & gateway,
             StrategyChannelsRefs channels)
     {
         if (strategy_name == "Native") {
             return {};
-        }
-        if (strategy_name == "TpslExit") {
-            std::shared_ptr<IExitStrategy> res = std::make_shared<TpslExitStrategy>(
-                    symbol,
-                    config,
-                    event_loop,
-                    gateway,
-                    channels);
-            return res;
         }
         if (strategy_name == "TrailingStop") {
             std::shared_ptr<IExitStrategy> res = std::make_shared<TrailigStopLossStrategy>(
                     orders,
                     config,
                     event_loop,
-                    gateway,
                     channels);
             return res;
         }
@@ -58,7 +46,6 @@ public:
                     orders,
                     config,
                     event_loop,
-                    gateway,
                     channels);
             return res;
         }
@@ -98,7 +85,7 @@ StrategyInstance::StrategyInstance(
               m_price_levels_channel,
               tr_gateway.tpsl_response_channel(),
               tr_gateway.tpsl_updated_channel(),
-              tr_gateway.trailing_stop_update_channel())
+              m_trailing_stop_channel)
     , m_symbol(symbol)
     , m_position_manager(symbol)
     , m_exit_strategy(nullptr)
@@ -122,10 +109,8 @@ StrategyInstance::StrategyInstance(
     const auto exit_strategy_opt = ExitStrategyFactory::build_exit_strategy(
             exit_strategy_name,
             exit_strategy_config,
-            symbol,
             m_orders,
             m_event_loop,
-            tr_gateway,
             m_strategy_channels);
     if (exit_strategy_opt) {
         m_exit_strategy = *exit_strategy_opt;

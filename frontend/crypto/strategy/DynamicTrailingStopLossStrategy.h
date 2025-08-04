@@ -25,7 +25,6 @@ public:
             OrderManager & orders,
             JsonStrategyConfig config,
             EventLoopSubscriber & event_loop,
-            ITradingGateway & gateway,
             StrategyChannelsRefs channels);
 
 private:

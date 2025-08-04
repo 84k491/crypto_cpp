@@ -31,13 +31,11 @@ DynamicTrailingStopLossStrategy::DynamicTrailingStopLossStrategy(
         OrderManager & orders,
         JsonStrategyConfig config,
         EventLoopSubscriber & event_loop,
-        ITradingGateway & gateway,
         StrategyChannelsRefs channels)
     : TrailigStopLossStrategy(
               orders,
               config,
               event_loop,
-              gateway,
               channels)
     , m_dynamic_config(config)
 {

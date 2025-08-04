@@ -38,7 +38,6 @@ public:
             Symbol symbol,
             JsonStrategyConfig config,
             EventLoopSubscriber & event_loop,
-            ITradingGateway & gateway,
             StrategyChannelsRefs channels);
 
 private:

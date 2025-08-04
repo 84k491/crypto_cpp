@@ -23,12 +23,11 @@ TrailigStopLossStrategy::TrailigStopLossStrategy(
         OrderManager & orders,
         JsonStrategyConfig config,
         EventLoopSubscriber & event_loop,
-        ITradingGateway & gateway,
         StrategyChannelsRefs channels)
 
-    : ExitStrategyBase(gateway)
-    , m_orders(orders)
+    : m_orders(orders)
     , m_event_loop(event_loop)
+    , m_channels(channels)
     , m_config(config)
 {
     m_channel_subs.push_back(channels.price_channel.subscribe(
@@ -107,4 +106,5 @@ void TrailigStopLossStrategy::on_trailing_stop_updated(const std::shared_ptr<Tra
             tsl->side()};
 
     m_trailing_stop_channel.push(tsl->m_update_ts, sl);
+    m_channels.trailing_stop_loss_channel.push(tsl->m_update_ts, sl);
 }

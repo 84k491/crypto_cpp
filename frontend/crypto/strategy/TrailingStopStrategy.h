@@ -4,8 +4,6 @@
 #include "JsonStrategyConfig.h"
 #include "StrategyChannels.h"
 
-#include <set>
-
 class TrailigStopLossStrategyConfig
 {
 public:
@@ -26,7 +24,6 @@ public:
             OrderManager & orders,
             JsonStrategyConfig config,
             EventLoopSubscriber & event_loop,
-            ITradingGateway & gateway,
             StrategyChannelsRefs channels);
 
 protected:
@@ -42,6 +39,7 @@ protected:
 protected:
     OrderManager & m_orders;
     EventLoopSubscriber & m_event_loop;
+    StrategyChannelsRefs m_channels;
     TrailigStopLossStrategyConfig m_config;
 
     bool m_is_pos_opened = false;

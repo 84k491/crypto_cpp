@@ -20,6 +20,12 @@ CandleBollingerBandsStrategyConfig::CandleBollingerBandsStrategyConfig(const Jso
     if (json.get().contains("candles_threshold")) {
         m_candles_threshold = json.get()["candles_threshold"].get<int>();
     }
+    if (json.get().contains("risk")) {
+        m_risk = json.get()["risk"].get<double>();
+    }
+    if (json.get().contains("no_loss_coef")) {
+        m_no_loss_coef = json.get()["no_loss_coef"].get<double>();
+    }
 }
 
 bool CandleBollingerBandsStrategyConfig::is_valid() const
@@ -36,6 +42,16 @@ JsonStrategyConfig CandleBollingerBandsStrategyConfig::to_json() const
     json["interval_m"] = std::chrono::duration_cast<std::chrono::minutes>(m_interval).count();
     json["timeframe_s"] = std::chrono::duration_cast<std::chrono::seconds>(m_timeframe).count();
     json["candles_threshold"] = m_candles_threshold;
+    json["risk"] = m_risk;
+    json["no_loss_coef"] = m_no_loss_coef;
+    return json;
+}
+
+JsonStrategyConfig CandleBollingerBandsStrategyConfig::make_exit_strategy_config() const
+{
+    nlohmann::json json;
+    json["risk"] = m_risk;
+    json["no_loss_coef"] = m_no_loss_coef;
     return json;
 }
 
@@ -46,6 +62,11 @@ CandleBollingerBandsStrategy::CandleBollingerBandsStrategy(
         OrderManager & orders)
     : StrategyBase(orders, event_loop, channels)
     , m_config(config)
+    , m_exit_strategy(
+              orders,
+              config.make_exit_strategy_config(),
+              event_loop,
+              channels)
     , m_bollinger_bands(config.m_interval, config.m_std_deviation_coefficient)
 {
     m_channel_subs.push_back(channels.candle_channel.subscribe(

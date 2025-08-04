@@ -43,9 +43,8 @@ TpslExitStrategy::TpslExitStrategy(
         Symbol symbol,
         JsonStrategyConfig config,
         EventLoopSubscriber & event_loop,
-        ITradingGateway & gateway,
         StrategyChannelsRefs channels)
-    : ExitStrategyBase(gateway)
+    : ExitStrategyBase()
     , m_config(config)
     , m_symbol(std::move(symbol))
 {
@@ -100,7 +99,8 @@ void TpslExitStrategy::send_tpsl(Tpsl tpsl)
 {
     TpslRequestEvent req(m_symbol, tpsl);
     m_pending_requests.emplace(req.guid);
-    m_tr_gateway.push_tpsl_request(req);
+    // m_tr_gateway.push_tpsl_request(req); // TODO
+    throw std::runtime_error("tpsl not implemented");
 }
 
 Tpsl TpslExitStrategy::calc_tpsl(const Trade & trade)

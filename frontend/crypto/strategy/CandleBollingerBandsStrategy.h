@@ -2,6 +2,7 @@
 
 #include "BollingerBands.h"
 #include "Candle.h"
+#include "DynamicTrailingStopLossStrategy.h"
 #include "JsonStrategyConfig.h"
 #include "StrategyBase.h"
 #include "StrategyChannels.h"
@@ -16,17 +17,20 @@ public:
     bool is_valid() const;
 
     JsonStrategyConfig to_json() const;
+    JsonStrategyConfig make_exit_strategy_config() const;
 
     std::chrono::milliseconds m_timeframe = {};
     std::chrono::milliseconds m_interval = {};
     int m_candles_threshold = 0;
     double m_std_deviation_coefficient = 0.;
+
+    // exit
+    double m_risk;
+    double m_no_loss_coef;
 };
 
 class CandleBollingerBandsStrategy : public StrategyBase
 {
-    static constexpr std::chrono::milliseconds price_filter_interval = std::chrono::minutes(4);
-
 public:
     using ConfigT = CandleBollingerBandsStrategyConfig;
     CandleBollingerBandsStrategy(
@@ -44,6 +48,8 @@ private:
 
 private:
     CandleBollingerBandsStrategyConfig m_config;
+
+    DynamicTrailingStopLossStrategy m_exit_strategy;
 
     BollingerBands m_bollinger_bands;
 
