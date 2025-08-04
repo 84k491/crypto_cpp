@@ -93,9 +93,9 @@ void TpslExitStrategy::on_trade(const Trade & trade)
     }
 }
 
-Tpsl TpslExitStrategy::calc_tpsl(const Trade & trade)
+TpslFullPos::Prices TpslExitStrategy::calc_tpsl(const Trade & trade)
 {
-    Tpsl tpsl;
+    TpslFullPos::Prices tpsl;
     const double & entry_price = trade.price();
     const double total_fee = trade.fee() * 2;
     const double fee_price_delta = total_fee / trade.unsigned_volume().value();

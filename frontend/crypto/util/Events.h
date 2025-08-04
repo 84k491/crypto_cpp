@@ -3,10 +3,9 @@
 #include "LogLevel.h"
 #include "MarketOrder.h"
 #include "Ohlc.h"
+#include "Priority.h"
 #include "Signal.h"
 #include "Symbol.h"
-#include "ThreadSafePriorityQueue.h"
-#include "Tpsl.h"
 #include "Trade.h"
 #include "TrailingStopLoss.h"
 
@@ -145,18 +144,6 @@ struct OrderResponseEvent : public OneWayEvent
     bool retry = false;
 };
 
-// TODO remove
-struct TpslResponseEvent : public OrderResponseEvent
-{
-    TpslResponseEvent(std::string symbol_name, xg::Guid request_guid, Tpsl tpsl, std::optional<std::string> reject_reason = std::nullopt)
-        : OrderResponseEvent(std::move(symbol_name), request_guid, std::move(reject_reason))
-        , tpsl(tpsl)
-    {
-    }
-
-    Tpsl tpsl;
-};
-
 struct TradeEvent : public OneWayEvent
 {
     TradeEvent(Trade trade)
@@ -219,15 +206,18 @@ struct TpslRequestEvent : public OneWayEvent
 {
     TpslRequestEvent(
             Symbol symbol,
-            Tpsl tpsl)
+            double take_profit_price,
+            double stop_loss_price)
         : symbol(std::move(symbol))
-        , tpsl(tpsl)
+        , take_profit_price(take_profit_price)
+        , stop_loss_price(stop_loss_price)
         , guid(xg::newGuid())
     {
     }
 
-    Symbol symbol; // TODO move it to Tpsl
-    Tpsl tpsl;
+    Symbol symbol;
+    double take_profit_price = 0.;
+    double stop_loss_price = 0.;
     xg::Guid guid;
 };
 

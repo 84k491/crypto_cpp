@@ -386,23 +386,20 @@ EventObjectChannel<std::shared_ptr<TpslFullPos>> & OrderManager::send_tpsl(
         Side side,
         std::chrono::milliseconds ts)
 {
-    const auto tpsl = Tpsl{
-            .take_profit_price = take_profit_price,
-            .stop_loss_price = stop_loss_price};
-
     auto & tpsl_ch = m_tpsl.emplace(EventObjectChannel<std::shared_ptr<TpslFullPos>>{});
     tpsl_ch.update([&](std::shared_ptr<TpslFullPos> & tpsl_sptr) {
         tpsl_sptr = std::make_shared<TpslFullPos>(
                 m_symbol.symbol_name,
-                tpsl.take_profit_price,
-                tpsl.stop_loss_price,
+                take_profit_price,
+                stop_loss_price,
                 side,
                 ts);
     });
 
     TpslRequestEvent req(
             m_symbol,
-            tpsl);
+            take_profit_price,
+            stop_loss_price);
 
     m_tr_gateway.push_tpsl_request(req);
 

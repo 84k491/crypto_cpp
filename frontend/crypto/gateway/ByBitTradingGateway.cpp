@@ -196,8 +196,8 @@ void ByBitTradingGateway::process_event(const TpslRequestEvent & tpsl)
     json json_order = {
             {"category", "linear"},
             {"symbol", tpsl.symbol.symbol_name},
-            {"takeProfit", std::to_string(tpsl.tpsl.take_profit_price)},
-            {"stopLoss", std::to_string(tpsl.tpsl.stop_loss_price)},
+            {"takeProfit", std::to_string(tpsl.take_profit_price)},
+            {"stopLoss", std::to_string(tpsl.stop_loss_price)},
             {"tpTriggerBy", "LastPrice"},
             {"slTriggerBy", "LastPrice"},
             {"tpslMode", "Full"},

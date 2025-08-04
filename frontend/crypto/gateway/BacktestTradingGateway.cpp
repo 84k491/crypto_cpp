@@ -73,26 +73,27 @@ std::optional<Trade> BacktestTradingGateway::try_trade_tpsl(std::chrono::millise
     }
     const auto & last_price = price;
 
-    const auto & tpsl = m_tpsl.value().tpsl;
+    double take_profit_price = m_tpsl.value().take_profit_price;
+    double stop_loss_price = m_tpsl.value().stop_loss_price;
     const auto [pos_volume, pos_side] = m_pos_volume->as_unsigned_and_side();
     const Side opposite_side = pos_side.opposite();
     const auto trade_price = [&]() -> std::optional<double> {
         switch (pos_side.value()) {
         case SideEnum::Buy: {
-            if (last_price >= tpsl.take_profit_price) {
-                return tpsl.take_profit_price;
+            if (last_price >= take_profit_price) {
+                return take_profit_price;
             }
-            if (last_price <= tpsl.stop_loss_price) {
-                return tpsl.stop_loss_price;
+            if (last_price <= stop_loss_price) {
+                return stop_loss_price;
             }
             break;
         }
         case SideEnum::Sell: {
-            if (last_price <= tpsl.take_profit_price) {
-                return tpsl.take_profit_price;
+            if (last_price <= take_profit_price) {
+                return take_profit_price;
             }
-            if (last_price >= tpsl.stop_loss_price) {
-                return tpsl.stop_loss_price;
+            if (last_price >= stop_loss_price) {
+                return stop_loss_price;
             }
             break;
         }

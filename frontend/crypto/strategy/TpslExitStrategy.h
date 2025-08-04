@@ -8,9 +8,6 @@
 #include "JsonStrategyConfig.h"
 #include "Position.h"
 #include "StrategyChannels.h"
-#include "Tpsl.h"
-
-#include <set>
 
 class Trade;
 
@@ -47,7 +44,7 @@ public:
 private:
     void on_trade(const Trade & trade);
 
-    Tpsl calc_tpsl(const Trade & trade);
+    TpslFullPos::Prices calc_tpsl(const Trade & trade);
     void on_error(std::string, bool);
 
 private:

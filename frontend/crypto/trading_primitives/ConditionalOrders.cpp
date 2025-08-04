@@ -55,13 +55,13 @@ TpslFullPos::TpslFullPos(
         double take_profit_price,
         double stop_loss_price,
         Side side,
-        std::chrono::milliseconds signal_ts)
+        std::chrono::milliseconds)
     : m_symbol(std::move(symbol))
     , m_guid(xg::newGuid())
-    , m_take_profit_price(take_profit_price)
-    , m_stop_loss_price(stop_loss_price)
+    , m_prices{
+              .take_profit_price = take_profit_price,
+              .stop_loss_price = stop_loss_price}
     , m_side(side)
-    , m_signal_ts(signal_ts)
 {
 }
 
@@ -90,12 +90,12 @@ OrderStatus TpslFullPos::status() const
 
 double TpslFullPos::take_profit_price() const
 {
-    return m_take_profit_price;
+    return m_prices.take_profit_price;
 }
 
 double TpslFullPos::stop_loss_price() const
 {
-    return m_stop_loss_price;
+    return m_prices.stop_loss_price;
 }
 
 xg::Guid TpslFullPos::guid() const

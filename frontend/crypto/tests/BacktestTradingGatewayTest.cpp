@@ -1,5 +1,6 @@
 #include "BacktestTradingGateway.h"
 
+#include "ConditionalOrders.h"
 #include "EventLoop.h"
 #include "EventTimeseriesChannel.h"
 #include "Events.h"
@@ -141,9 +142,9 @@ TEST_F(BacktestTradingGatewayTest, TpslRejectIfNoPos)
                 EXPECT_EQ(ev.reject_reason, "can not set tp/sl/ts for zero position");
             });
 
-    Tpsl tpsl{.take_profit_price = 130., .stop_loss_price = 10.};
+    TpslFullPos::Prices tpsl{.take_profit_price = 130., .stop_loss_price = 10.};
     Symbol test_symbol{.symbol_name = "TSTUSDT", .lot_size_filter = {.min_qty = 0.1, .max_qty = 10., .qty_step = 0.1}};
-    TpslRequestEvent ev{test_symbol, tpsl};
+    TpslRequestEvent ev{test_symbol, tpsl.take_profit_price, tpsl.stop_loss_price};
 
     ASSERT_EQ(trgw.pos_volume().value(), 0);
 
@@ -193,9 +194,9 @@ TEST_F(BacktestTradingGatewayTest, TpslTriggerTp)
                 EXPECT_EQ(ev.trade.price(), tp_price);
             });
 
-    Tpsl tpsl{.take_profit_price = tp_price, .stop_loss_price = 50.};
+    TpslFullPos::Prices tpsl{.take_profit_price = tp_price, .stop_loss_price = 50.};
     Symbol test_symbol{.symbol_name = "TSTUSDT", .lot_size_filter = {.min_qty = 0.1, .max_qty = 10., .qty_step = 0.1}};
-    TpslRequestEvent ev{test_symbol, tpsl};
+    TpslRequestEvent ev{test_symbol, tpsl.take_profit_price, tpsl.stop_loss_price};
     trgw.push_tpsl_request(ev);
 
     EXPECT_TRUE(tpsl_ack_responded);
@@ -243,7 +244,7 @@ TEST_F(BacktestTradingGatewayTest, TpslTriggerSl)
                 tpsl_ack_responded = true;
                 tpsl_upd_response = ev;
                 EXPECT_FALSE(ev.reject_reason.has_value());
-        });
+            });
 
     bool tp_trade_responded = false;
     auto tp_trade_sub = trgw.trade_channel().subscribe(
@@ -253,9 +254,9 @@ TEST_F(BacktestTradingGatewayTest, TpslTriggerSl)
                 EXPECT_EQ(ev.trade.price(), sl_price);
             });
 
-    Tpsl tpsl{.take_profit_price = 130., .stop_loss_price = sl_price};
+    TpslFullPos::Prices tpsl{.take_profit_price = 130., .stop_loss_price = sl_price};
     Symbol test_symbol{.symbol_name = "TSTUSDT", .lot_size_filter = {.min_qty = 0.1, .max_qty = 10., .qty_step = 0.1}};
-    TpslRequestEvent ev{test_symbol, tpsl};
+    TpslRequestEvent ev{test_symbol, tpsl.take_profit_price, tpsl.stop_loss_price};
     trgw.push_tpsl_request(ev);
 
     EXPECT_TRUE(tpsl_ack_responded);
@@ -300,11 +301,11 @@ TEST_F(BacktestTradingGatewayTest, TpslRemoveOnClosePos)
             el,
             [&](const TpslUpdatedEvent & ev) {
                 tpsl_upd_response = ev;
-        });
+            });
 
-    Tpsl tpsl{.take_profit_price = 130., .stop_loss_price = sl_price};
+    TpslFullPos::Prices tpsl{.take_profit_price = 130., .stop_loss_price = sl_price};
     Symbol test_symbol{.symbol_name = "TSTUSDT", .lot_size_filter = {.min_qty = 0.1, .max_qty = 10., .qty_step = 0.1}};
-    TpslRequestEvent ev{test_symbol, tpsl};
+    TpslRequestEvent ev{test_symbol, tpsl.take_profit_price, tpsl.stop_loss_price};
     trgw.push_tpsl_request(ev);
 
     ASSERT_TRUE(tpsl_upd_response);
@@ -608,7 +609,7 @@ TEST_F(BacktestTradingGatewayTest, TakeProfitCancel)
                 std::chrono::milliseconds{1},
         };
 
-        guid= tp.guid();
+        guid = tp.guid();
         trgw.push_take_profit_request(tp);
     }
 

@@ -1,4 +1,5 @@
 #include "ByBitTradingGateway.h"
+#include "ConditionalOrders.h"
 #include "Events.h"
 
 #include <gmock/gmock.h>
@@ -204,10 +205,11 @@ TEST_F(BybitTradingGatewayLiveTest, CloseWithTpsl)
     }
 
     const auto entry_price = trade_response->trade.price();
-    Tpsl tpsl{.take_profit_price = entry_price + 500, .stop_loss_price = entry_price - 500};
+    TpslFullPos::Prices tpsl{.take_profit_price = entry_price + 500, .stop_loss_price = entry_price - 500};
     TpslRequestEvent tpsl_req_ev{
             Symbol{.symbol_name = "BTCUSDT", .lot_size_filter = {}},
-            tpsl};
+            tpsl.take_profit_price,
+            tpsl.stop_loss_price};
     trgw.push_tpsl_request(tpsl_req_ev);
 
     order_response = {};
@@ -298,10 +300,11 @@ TEST_F(BybitTradingGatewayLiveTest, TpslRejectIfNoPos)
                 tpsl_resp_cv.notify_all();
             });
 
-    Tpsl tpsl{.take_profit_price = 110'000, .stop_loss_price = 105'000};
+    TpslFullPos::Prices tpsl{.take_profit_price = 110'000, .stop_loss_price = 105'000};
     TpslRequestEvent tpsl_req_ev{
             Symbol{.symbol_name = "BTCUSDT", .lot_size_filter = {}},
-            tpsl};
+            tpsl.take_profit_price,
+            tpsl.stop_loss_price};
     trgw.push_tpsl_request(tpsl_req_ev);
 
     {

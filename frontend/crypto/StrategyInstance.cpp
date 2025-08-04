@@ -1,5 +1,6 @@
 #include "StrategyInstance.h"
 
+#include "ConditionalOrders.h"
 #include "EventBarrier.h"
 #include "EventLoop.h"
 #include "Events.h"
@@ -265,7 +266,7 @@ EventObjectChannel<WorkStatus> & StrategyInstance::status_channel()
     return m_status;
 }
 
-EventTimeseriesChannel<Tpsl> & StrategyInstance::tpsl_channel()
+EventTimeseriesChannel<TpslFullPos::Prices> & StrategyInstance::tpsl_channel()
 {
     return m_tpsl_channel;
 }
