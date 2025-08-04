@@ -71,7 +71,7 @@ private:
     void process_position_result(const PositionResult & new_result,
                                  std::chrono::milliseconds ts);
 
-    bool close_position(double price, std::chrono::milliseconds ts);
+    void close_position(double price, std::chrono::milliseconds ts);
 
     bool ready_to_finish() const;
     void finish_if_needed_and_ready();

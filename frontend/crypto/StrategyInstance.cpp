@@ -114,10 +114,9 @@ StrategyInstance::StrategyInstance(
                                [this](const WorkStatus & status) {
                                    if (status == WorkStatus::Stopped || status == WorkStatus::Panic) {
                                        if (m_position_manager.opened() != nullptr) {
-                                           const bool success = close_position(m_last_ts_and_price.second, m_last_ts_and_price.first);
-                                           if (!success) {
-                                               Logger::logf<LogLevel::Error>("Can't close a position on stop/crash");
-                                           }
+                                           close_position(
+                                                   m_last_ts_and_price.second,
+                                                   m_last_ts_and_price.first);
                                        }
                                    }
                                });
@@ -433,12 +432,7 @@ void StrategyInstance::handle_event(const StrategyStartRequest &)
 void StrategyInstance::handle_event(const StrategyStopRequest &)
 {
     Logger::log<LogLevel::Status>("StrategyStopRequest");
-    if (m_position_manager.opened() != nullptr) {
-        const bool success = close_position(m_last_ts_and_price.second, m_last_ts_and_price.first);
-        if (!success) {
-            Logger::log<LogLevel::Error>("ERROR: can't close a position on stop/panic");
-        }
-    }
+    close_position(m_last_ts_and_price.second, m_last_ts_and_price.first);
 
     m_live_md_requests.clear();
 
@@ -447,28 +441,18 @@ void StrategyInstance::handle_event(const StrategyStopRequest &)
     m_stop_request_handled = true;
 }
 
-bool StrategyInstance::close_position(double price, std::chrono::milliseconds ts)
+void StrategyInstance::close_position(double price, std::chrono::milliseconds ts)
 {
     const auto * pos_ptr = m_position_manager.opened();
     if (pos_ptr == nullptr) {
-        return false;
+        return;
     }
     const auto & pos = *pos_ptr;
 
-    const auto order = [&]() {
-        const auto [vol, side] = pos.opened_volume().as_unsigned_and_side();
-        const auto volume = SignedVolume(vol, side.opposite());
-        return MarketOrder{
-                m_symbol.symbol_name,
-                price,
-                volume,
-                ts};
-    }();
+    const auto [vol, side] = pos.opened_volume().as_unsigned_and_side();
+    const auto volume = SignedVolume(vol, side.opposite());
 
-    OrderRequestEvent or_event{order};
-    m_pending_orders.emplace(order.guid(), order);
-    m_tr_gateway.push_order_request(or_event);
-    return true;
+    m_orders.send_market_order(price, volume, ts);
 }
 
 bool StrategyInstance::ready_to_finish() const
