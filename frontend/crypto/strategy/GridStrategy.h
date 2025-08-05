@@ -47,7 +47,7 @@ public:
     std::optional<std::chrono::milliseconds> timeframe() const override;
 
 private:
-    void push_price(std::chrono::milliseconds ts, double price);
+    void push_candle(std::chrono::milliseconds ts, const Candle & candle);
 
     void on_order_traded(const MarketOrder & order, int price_level);
 

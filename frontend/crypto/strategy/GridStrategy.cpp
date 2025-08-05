@@ -54,11 +54,11 @@ GridStrategy::GridStrategy(
     , m_orders(orders)
     , m_trend(config.m_interval)
 {
-    m_channel_subs.push_back(channels.price_channel.subscribe(
+    m_channel_subs.push_back(channels.candle_channel.subscribe(
             event_loop.m_event_loop,
             [](const auto &) {},
-            [this](const auto & ts, const double & price) {
-                push_price(ts, price);
+            [this](const auto & ts, const Candle & candle) {
+                push_candle(ts, candle);
             }));
 }
 
@@ -117,8 +117,9 @@ double GridStrategy::get_price_from_level_number(int level_num) const
             m_config.get_one_level_width(m_last_trend_value));
 }
 
-void GridStrategy::push_price(std::chrono::milliseconds ts, double price)
+void GridStrategy::push_candle(std::chrono::milliseconds ts, const Candle & candle)
 {
+    const auto price = candle.close();
     {
         UNWRAP_RET_VOID(v, m_trend.push_value({ts, price}))
         m_last_trend_value = v;
