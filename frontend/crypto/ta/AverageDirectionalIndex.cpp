@@ -5,11 +5,11 @@
 #include <algorithm>
 #include <tuple>
 
-AverageDirectionalIndex::AverageDirectionalIndex(size_t interval, std::chrono::milliseconds timeframe)
-    : m_average_true_range(timeframe * interval)
-    , m_smoothed_pdm(timeframe * interval)
-    , m_smoothed_ndm(timeframe * interval)
-    , m_average_directional_index(timeframe * interval)
+AverageDirectionalIndex::AverageDirectionalIndex(std::chrono::milliseconds interval)
+    : m_average_true_range(interval)
+    , m_smoothed_pdm(interval)
+    , m_smoothed_ndm(interval)
+    , m_average_directional_index(interval)
 {
 }
 

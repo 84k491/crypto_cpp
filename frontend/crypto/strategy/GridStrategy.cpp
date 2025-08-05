@@ -52,7 +52,8 @@ GridStrategy::GridStrategy(
     , m_event_loop(event_loop)
     , m_config(config)
     , m_orders(orders)
-    , m_trend(config.m_interval)
+    , m_adx(14 * config.m_timeframe) // TODO use config
+    , m_trend(config.m_interval)     // TODO migrate strategy to candles
 {
     m_channel_subs.push_back(channels.candle_channel.subscribe(
             event_loop.m_event_loop,
@@ -120,16 +121,24 @@ double GridStrategy::get_price_from_level_number(int level_num) const
 void GridStrategy::push_candle(std::chrono::milliseconds ts, const Candle & candle)
 {
     const auto price = candle.close();
+    const auto adx_opt = m_adx.push_candle(candle);
     {
         UNWRAP_RET_VOID(v, m_trend.push_value({ts, price}))
         m_last_trend_value = v;
         m_strategy_internal_data_channel.push(ts, {"prices", "trend", v});
     }
+    UNWRAP_RET_VOID(adx, adx_opt);
+    m_strategy_internal_data_channel.push(ts, {"adx", "trend", adx.adx});
+
     maybe_report_levels(ts);
 
     const auto price_level = get_level_number(price);
     // TODO handle 'over 2 levels' scenario
 
+    constexpr double adx_threshold = 20.;
+    if (adx.adx > adx_threshold) {
+        return;
+    }
     if (price_level == 0) {
         return;
     }

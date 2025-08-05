@@ -1,5 +1,6 @@
 #pragma once
 
+#include "AverageDirectionalIndex.h"
 #include "ConditionalOrders.h"
 #include "EventLoopSubscriber.h"
 #include "JsonStrategyConfig.h"
@@ -90,6 +91,7 @@ private:
 
     OrderManager & m_orders;
 
+    AverageDirectionalIndex m_adx;
     TimeWeightedMovingAverage m_trend;
     double m_last_trend_value = 0.;
 

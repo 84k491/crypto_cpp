@@ -28,7 +28,7 @@ public:
         Direction trend = Direction::UpTrend;
     };
 
-    AverageDirectionalIndex(size_t interval, std::chrono::milliseconds timeframe);
+    AverageDirectionalIndex(std::chrono::milliseconds interval);
 
     std::optional<Result> push_candle(const Candle & current_candle);
 
