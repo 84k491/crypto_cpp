@@ -11,14 +11,20 @@ GridStrategyConfig::GridStrategyConfig(JsonStrategyConfig json)
     if (json.get().contains("timeframe_s")) {
         m_timeframe = std::chrono::seconds(json.get()["timeframe_s"].get<int>());
     }
-    if (json.get().contains("interval_m")) {
-        m_interval = std::chrono::minutes(json.get()["interval_m"].get<int>());
+    if (json.get().contains("interval")) {
+        m_interval = json.get()["interval"].get<int>();
     }
     if (json.get().contains("levels_per_side")) {
         m_levels_per_side = json.get()["levels_per_side"].get<decltype(m_levels_per_side)>();
     }
     if (json.get().contains("price_radius_perc")) {
         m_price_radius_perc = json.get()["price_radius_perc"].get<decltype(m_price_radius_perc)>();
+    }
+    if (json.get().contains("adx_interval")) {
+        m_adx_interval = json.get()["adx_interval"].get<int>();
+    }
+    if (json.get().contains("adx_threshold")) {
+        m_adx_threshold = json.get()["adx_threshold"].get<decltype(m_adx_threshold)>();
     }
 }
 
@@ -37,9 +43,11 @@ JsonStrategyConfig GridStrategyConfig::to_json() const
 {
     nlohmann::json json;
     json["timeframe_s"] = std::chrono::duration_cast<std::chrono::seconds>(m_timeframe).count();
-    json["interval_m"] = std::chrono::duration_cast<std::chrono::minutes>(m_interval).count();
+    json["interval"] = m_interval;
     json["levels_per_side"] = m_levels_per_side;
     json["price_radius_perc"] = m_price_radius_perc;
+    json["adx_interval"] = m_adx_interval;
+    json["adx_threshold"] = m_adx_threshold;
     return json;
 }
 
@@ -52,8 +60,8 @@ GridStrategy::GridStrategy(
     , m_event_loop(event_loop)
     , m_config(config)
     , m_orders(orders)
-    , m_adx(14 * config.m_timeframe) // TODO use config
-    , m_trend(config.m_interval)     // TODO migrate strategy to candles
+    , m_adx(config.m_adx_interval * config.m_timeframe)
+    , m_trend(config.m_interval * config.m_timeframe)
 {
     m_channel_subs.push_back(channels.candle_channel.subscribe(
             event_loop.m_event_loop,
@@ -121,24 +129,46 @@ double GridStrategy::get_price_from_level_number(int level_num) const
 void GridStrategy::push_candle(std::chrono::milliseconds ts, const Candle & candle)
 {
     const auto price = candle.close();
+
     const auto adx_opt = m_adx.push_candle(candle);
-    {
-        UNWRAP_RET_VOID(v, m_trend.push_value({ts, price}))
+    const auto v_opt = m_trend.push_value({ts, price});
+
+    if (adx_opt.has_value()) {
+        m_strategy_internal_data_channel.push(ts, {"adx", "adx", adx_opt->adx});
+    }
+
+    if (v_opt.has_value()) {
+        const auto & v = v_opt.value();
         m_last_trend_value = v;
         m_strategy_internal_data_channel.push(ts, {"prices", "trend", v});
     }
-    UNWRAP_RET_VOID(adx, adx_opt);
-    m_strategy_internal_data_channel.push(ts, {"adx", "trend", adx.adx});
 
-    maybe_report_levels(ts);
+    if (!adx_opt.has_value() || !v_opt.has_value()) {
+        return;
+    }
+
+    const auto & adx = adx_opt.value();
+    report_levels(ts, false);
 
     const auto price_level = get_level_number(price);
     // TODO handle 'over 2 levels' scenario
 
-    constexpr double adx_threshold = 20.;
-    if (adx.adx > adx_threshold) {
+    bool ban = m_ban_until > ts;
+    if (adx.adx > m_config.m_adx_threshold) {
+        if (!ban) {
+            report_levels(ts - std::chrono::milliseconds{1}, true);
+        }
+        m_ban_until = ts + m_config.m_timeframe * m_config.m_interval; // for trend interval
+        report_levels(ts, true);
+
+        m_strategy_internal_data_channel.push(ts, {"adx", "threshold", m_config.m_adx_threshold});
         return;
     }
+
+    if (ban) {
+        return;
+    }
+
     if (price_level == 0) {
         return;
     }
@@ -298,18 +328,21 @@ GridStrategy::TpSlPrices GridStrategy::calc_tp_sl_prices(double order_price, Sid
     return {.take_profit_price = tp_price, .stop_loss_price = sl_price};
 }
 
-void GridStrategy::maybe_report_levels(std::chrono::milliseconds ts)
+void GridStrategy::report_levels(std::chrono::milliseconds ts, bool force)
 {
-    if (ts - last_reported_ts < m_config.m_interval / 10) {
+    if (!force && ts - last_reported_ts < m_config.m_interval * m_config.m_timeframe / 10) {
         return;
     }
 
+    const bool ban = m_ban_until > ts;
     for (int i = int(m_config.m_levels_per_side) * -1; i < int(m_config.m_levels_per_side) + 1; ++i) {
-        const auto p = get_price_from_level_number(i);
+        const auto p = ban ? m_last_trend_value : get_price_from_level_number(i);
         m_strategy_internal_data_channel.push(ts, {"prices", std::to_string(i), p});
     }
 
-    last_reported_ts = ts;
+    if (!ban) {
+        last_reported_ts = ts;
+    }
 }
 
 void GridStrategy::print_levels()

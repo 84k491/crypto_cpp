@@ -20,9 +20,11 @@ struct GridStrategyConfig
     double get_one_level_width(double ref_price) const;
 
     std::chrono::milliseconds m_timeframe = {};
-    std::chrono::milliseconds m_interval = {};
+    size_t m_interval = 0;
     unsigned m_levels_per_side = 0;
     double m_price_radius_perc = 0.; // to the end of the last level
+    size_t m_adx_interval = 0;
+    double m_adx_threshold = 0;
 };
 
 namespace GridLevels {
@@ -80,7 +82,7 @@ private:
     double get_price_from_level_number(int level_num) const;
 
 private:
-    void maybe_report_levels(std::chrono::milliseconds ts);
+    void report_levels(std::chrono::milliseconds ts, bool force);
     void print_levels();
     std::chrono::milliseconds last_reported_ts = {};
 
@@ -96,4 +98,6 @@ private:
     double m_last_trend_value = 0.;
 
     std::map<int, Level> m_orders_by_levels;
+
+    std::chrono::milliseconds m_ban_until = {};
 };

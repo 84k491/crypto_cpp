@@ -80,6 +80,7 @@ EventObjectChannel<std::shared_ptr<MarketOrder>> & OrderManager::send_market_ord
     const auto adj_vol_var = adjusted_volume(vol);
     if (std::holds_alternative<std::string>(adj_vol_var)) {
         m_error_channel.push(std::get<std::string>(adj_vol_var));
+        // TODO what to return here?
     }
     const auto adj_vol = std::get<SignedVolume>(adj_vol_var);
 
