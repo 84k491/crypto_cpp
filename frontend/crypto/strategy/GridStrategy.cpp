@@ -148,18 +148,14 @@ void GridStrategy::push_candle(std::chrono::milliseconds ts, const Candle & cand
     }
 
     const auto & adx = adx_opt.value();
-    report_levels(ts, false);
-
-    const auto price_level = get_level_number(price);
     // TODO handle 'over 2 levels' scenario
 
     bool ban = m_ban_until > ts;
     if (adx.adx > m_config.m_adx_threshold) {
         if (!ban) {
-            report_levels(ts - std::chrono::milliseconds{1}, true);
+            clear_levels(ts);
         }
         m_ban_until = ts + m_config.m_timeframe * m_config.m_interval; // for trend interval
-        report_levels(ts, true);
 
         m_strategy_internal_data_channel.push(ts, {"adx", "threshold", m_config.m_adx_threshold});
         return;
@@ -168,6 +164,10 @@ void GridStrategy::push_candle(std::chrono::milliseconds ts, const Candle & cand
     if (ban) {
         return;
     }
+
+    report_levels(ts);
+
+    const auto price_level = get_level_number(price);
 
     if (price_level == 0) {
         return;
@@ -328,20 +328,24 @@ GridStrategy::TpSlPrices GridStrategy::calc_tp_sl_prices(double order_price, Sid
     return {.take_profit_price = tp_price, .stop_loss_price = sl_price};
 }
 
-void GridStrategy::report_levels(std::chrono::milliseconds ts, bool force)
+void GridStrategy::report_levels(std::chrono::milliseconds ts)
 {
-    if (!force && ts - last_reported_ts < m_config.m_interval * m_config.m_timeframe / 10) {
+    if (ts - last_reported_ts < m_config.m_interval * m_config.m_timeframe / 10) {
         return;
     }
 
-    const bool ban = m_ban_until > ts;
     for (int i = int(m_config.m_levels_per_side) * -1; i < int(m_config.m_levels_per_side) + 1; ++i) {
-        const auto p = ban ? m_last_trend_value : get_price_from_level_number(i);
+        const auto p = get_price_from_level_number(i);
         m_strategy_internal_data_channel.push(ts, {"prices", std::to_string(i), p});
     }
 
-    if (!ban) {
-        last_reported_ts = ts;
+    last_reported_ts = ts;
+}
+
+void GridStrategy::clear_levels(std::chrono::milliseconds ts)
+{
+    for (int i = int(m_config.m_levels_per_side) * -1; i < int(m_config.m_levels_per_side) + 1; ++i) {
+        m_strategy_internal_data_channel.push(ts, {"prices", std::to_string(i), NAN});
     }
 }
 

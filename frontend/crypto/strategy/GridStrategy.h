@@ -82,7 +82,8 @@ private:
     double get_price_from_level_number(int level_num) const;
 
 private:
-    void report_levels(std::chrono::milliseconds ts, bool force);
+    void report_levels(std::chrono::milliseconds ts);
+    void clear_levels(std::chrono::milliseconds ts);
     void print_levels();
     std::chrono::milliseconds last_reported_ts = {};
 
