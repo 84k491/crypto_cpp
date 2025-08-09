@@ -8,7 +8,7 @@
 struct StrategyInternalData
 {
     std::string_view chart_name;
-    std::string_view series_name;
+    std::string series_name;
     double value;
 };
 

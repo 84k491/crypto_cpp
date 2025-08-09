@@ -273,7 +273,7 @@ void GridStrategy::report_levels(std::chrono::milliseconds ts)
 
     for (int i = int(m_config.m_levels_per_side) * -1; i < int(m_config.m_levels_per_side) + 1; ++i) {
         const auto p = get_price_from_level_number(i);
-        m_strategy_internal_data_channel.push(ts, {"prices", std::to_string(i), p});
+        m_strategy_internal_data_channel.push(ts, {.chart_name="prices", .series_name=std::to_string(i), .value=p});
     }
 
     last_reported_ts = ts;
@@ -284,7 +284,7 @@ void GridStrategy::print_levels()
     std::stringstream ss;
     for (int i = int(m_config.m_levels_per_side) * -1; i < int(m_config.m_levels_per_side) + 1; ++i) {
         const auto p = get_price_from_level_number(i);
-        ss << fmt::format("Level {}: {}, ", i, p);
+        ss << fmt::format("\nLevel {}: {},", i, p);
     }
     Logger::logf<LogLevel::Debug>("{}", ss.str());
 }
