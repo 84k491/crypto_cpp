@@ -1,10 +1,12 @@
-#include "GridStrategy.h"
+#include "GridAdxStrategy.h"
 
 #include "GridLevels.h"
 #include "Logger.h"
 #include "StrategyBase.h"
 
-GridStrategyConfig::GridStrategyConfig(JsonStrategyConfig json)
+#include <cmath>
+
+GridAdxStrategyConfig::GridAdxStrategyConfig(JsonStrategyConfig json)
 {
     if (json.get().contains("timeframe_s")) {
         m_timeframe = std::chrono::seconds(json.get()["timeframe_s"].get<int>());
@@ -18,31 +20,39 @@ GridStrategyConfig::GridStrategyConfig(JsonStrategyConfig json)
     if (json.get().contains("price_radius_perc")) {
         m_price_radius_perc = json.get()["price_radius_perc"].get<decltype(m_price_radius_perc)>();
     }
+    if (json.get().contains("adx_interval")) {
+        m_adx_interval = json.get()["adx_interval"].get<int>();
+    }
+    if (json.get().contains("adx_threshold")) {
+        m_adx_threshold = json.get()["adx_threshold"].get<decltype(m_adx_threshold)>();
+    }
 }
 
-double GridStrategyConfig::get_one_level_width(double ref_price) const
+double GridAdxStrategyConfig::get_one_level_width(double ref_price) const
 {
     const auto price_radius = (m_price_radius_perc * 0.01) * ref_price;
     return price_radius / m_levels_per_side;
 }
 
-bool GridStrategyConfig::is_valid() const
+bool GridAdxStrategyConfig::is_valid() const
 {
     return m_levels_per_side > 0;
 }
 
-JsonStrategyConfig GridStrategyConfig::to_json() const
+JsonStrategyConfig GridAdxStrategyConfig::to_json() const
 {
     nlohmann::json json;
     json["timeframe_s"] = std::chrono::duration_cast<std::chrono::seconds>(m_timeframe).count();
     json["interval"] = m_interval;
     json["levels_per_side"] = m_levels_per_side;
     json["price_radius_perc"] = m_price_radius_perc;
+    json["adx_interval"] = m_adx_interval;
+    json["adx_threshold"] = m_adx_threshold;
     return json;
 }
 
-GridStrategy::GridStrategy(
-        const GridStrategyConfig & config,
+GridAdxStrategy::GridAdxStrategy(
+        const GridAdxStrategyConfig & config,
         EventLoopSubscriber & event_loop,
         StrategyChannelsRefs channels,
         OrderManager & orders)
@@ -50,6 +60,7 @@ GridStrategy::GridStrategy(
     , m_event_loop(event_loop)
     , m_config(config)
     , m_orders(orders)
+    , m_adx(config.m_adx_interval * config.m_timeframe)
     , m_trend(config.m_interval * config.m_timeframe)
 {
     m_channel_subs.push_back(channels.candle_channel.subscribe(
@@ -60,17 +71,17 @@ GridStrategy::GridStrategy(
             }));
 }
 
-bool GridStrategy::is_valid() const
+bool GridAdxStrategy::is_valid() const
 {
     return true;
 }
 
-std::optional<std::chrono::milliseconds> GridStrategy::timeframe() const
+std::optional<std::chrono::milliseconds> GridAdxStrategy::timeframe() const
 {
     return m_config.m_timeframe;
 }
 
-int GridStrategy::get_level_number(double price) const
+int GridAdxStrategy::get_level_number(double price) const
 {
     return GridLevels::get_level_number(
             price,
@@ -78,7 +89,7 @@ int GridStrategy::get_level_number(double price) const
             m_config.get_one_level_width(m_last_trend_value));
 }
 
-double GridStrategy::get_price_from_level_number(int level_num) const
+double GridAdxStrategy::get_price_from_level_number(int level_num) const
 {
     return GridLevels::get_price_from_level_number(
             level_num,
@@ -86,22 +97,44 @@ double GridStrategy::get_price_from_level_number(int level_num) const
             m_config.get_one_level_width(m_last_trend_value));
 }
 
-void GridStrategy::push_candle(std::chrono::milliseconds ts, const Candle & candle)
+void GridAdxStrategy::push_candle(std::chrono::milliseconds ts, const Candle & candle)
 {
     const auto price = candle.close();
 
+    const auto adx_opt = m_adx.push_candle(candle);
     const auto v_opt = m_trend.push_value({ts, price});
+
+    if (adx_opt.has_value()) {
+        m_strategy_internal_data_channel.push(ts, {"adx", "adx", adx_opt->adx});
+    }
 
     if (v_opt.has_value()) {
         const auto & v = v_opt.value();
         m_last_trend_value = v;
         m_strategy_internal_data_channel.push(ts, {"prices", "trend", v});
     }
-    else {
+
+    if (!adx_opt.has_value() || !v_opt.has_value()) {
         return;
     }
 
+    const auto & adx = adx_opt.value();
     // TODO handle 'over 2 levels' scenario
+
+    bool ban = m_ban_until > ts;
+    if (adx.adx > m_config.m_adx_threshold) {
+        if (!ban) {
+            clear_levels(ts);
+        }
+        m_ban_until = ts + m_config.m_timeframe * m_config.m_interval; // for trend interval
+
+        m_strategy_internal_data_channel.push(ts, {"adx", "threshold", m_config.m_adx_threshold});
+        return;
+    }
+
+    if (ban) {
+        return;
+    }
 
     report_levels(ts);
 
@@ -151,7 +184,7 @@ void GridStrategy::push_candle(std::chrono::milliseconds ts, const Candle & cand
                     .sl = nullptr});
 }
 
-void GridStrategy::on_order_traded(const MarketOrder & order, int price_level)
+void GridAdxStrategy::on_order_traded(const MarketOrder & order, int price_level)
 {
     const auto it = m_orders_by_levels.find(price_level);
     if (it == m_orders_by_levels.end()) {
@@ -223,7 +256,7 @@ void GridStrategy::on_order_traded(const MarketOrder & order, int price_level)
     }
 }
 
-void GridStrategy::on_take_profit_traded(const TakeProfitMarketOrder & order, int price_level)
+void GridAdxStrategy::on_take_profit_traded(const TakeProfitMarketOrder & order, int price_level)
 {
     const auto it = m_orders_by_levels.find(price_level);
     if (it == m_orders_by_levels.end()) {
@@ -237,7 +270,7 @@ void GridStrategy::on_take_profit_traded(const TakeProfitMarketOrder & order, in
     m_orders_by_levels.erase(level.level_num);
 }
 
-void GridStrategy::on_stop_loss_traded(const StopLossMarketOrder & order, int price_level)
+void GridAdxStrategy::on_stop_loss_traded(const StopLossMarketOrder & order, int price_level)
 {
     const auto it = m_orders_by_levels.find(price_level);
     if (it == m_orders_by_levels.end()) {
@@ -251,7 +284,7 @@ void GridStrategy::on_stop_loss_traded(const StopLossMarketOrder & order, int pr
     m_orders_by_levels.erase(level.level_num);
 }
 
-GridStrategy::TpSlPrices GridStrategy::calc_tp_sl_prices(double order_price, Side side) const
+GridAdxStrategy::TpSlPrices GridAdxStrategy::calc_tp_sl_prices(double order_price, Side side) const
 {
     const auto current_level = get_level_number(order_price);
     const auto tp_level = current_level + side.sign();
@@ -266,7 +299,7 @@ GridStrategy::TpSlPrices GridStrategy::calc_tp_sl_prices(double order_price, Sid
     return {.take_profit_price = tp_price, .stop_loss_price = sl_price};
 }
 
-void GridStrategy::report_levels(std::chrono::milliseconds ts)
+void GridAdxStrategy::report_levels(std::chrono::milliseconds ts)
 {
     if (ts - last_reported_ts < m_config.m_interval * m_config.m_timeframe / 10) {
         return;
@@ -280,7 +313,14 @@ void GridStrategy::report_levels(std::chrono::milliseconds ts)
     last_reported_ts = ts;
 }
 
-void GridStrategy::print_levels()
+void GridAdxStrategy::clear_levels(std::chrono::milliseconds ts)
+{
+    for (int i = int(m_config.m_levels_per_side) * -1; i < int(m_config.m_levels_per_side) + 1; ++i) {
+        m_strategy_internal_data_channel.push(ts, {"prices", std::to_string(i), NAN});
+    }
+}
+
+void GridAdxStrategy::print_levels()
 {
     std::stringstream ss;
     for (int i = int(m_config.m_levels_per_side) * -1; i < int(m_config.m_levels_per_side) + 1; ++i) {

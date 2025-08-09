@@ -24,6 +24,18 @@
             "min_value": 0.6,
             "step": 0.2,
             "max_value": 10
+        },
+        {
+            "name": "adx_interval",
+            "min_value": 30,
+            "step": 10,
+            "max_value": 200
+        },
+        {
+            "name": "adx_threshold",
+            "min_value": 10,
+            "step": 5,
+            "max_value": 40
         }
     ]
 }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "AverageDirectionalIndex.h"
 #include "ConditionalOrders.h"
 #include "EventLoopSubscriber.h"
 #include "JsonStrategyConfig.h"
@@ -8,9 +9,9 @@
 #include "StrategyChannels.h"
 #include "TimeWeightedMovingAverage.h"
 
-struct GridStrategyConfig
+struct GridAdxStrategyConfig
 {
-    GridStrategyConfig(JsonStrategyConfig);
+    GridAdxStrategyConfig(JsonStrategyConfig);
 
     bool is_valid() const;
 
@@ -22,13 +23,15 @@ struct GridStrategyConfig
     size_t m_interval = 0;
     unsigned m_levels_per_side = 0;
     double m_price_radius_perc = 0.; // to the end of the last level
+    size_t m_adx_interval = 0;
+    double m_adx_threshold = 0;
 };
 
-class GridStrategy : public StrategyBase
+class GridAdxStrategy : public StrategyBase
 {
 public:
-    GridStrategy(
-            const GridStrategyConfig & config,
+    GridAdxStrategy(
+            const GridAdxStrategyConfig & config,
             EventLoopSubscriber & event_loop,
             StrategyChannelsRefs channels,
             OrderManager & orders);
@@ -73,18 +76,22 @@ private:
 
 private:
     void report_levels(std::chrono::milliseconds ts);
+    void clear_levels(std::chrono::milliseconds ts);
     void print_levels();
     std::chrono::milliseconds last_reported_ts = {};
 
 private:
     EventLoopSubscriber & m_event_loop;
 
-    GridStrategyConfig m_config;
+    GridAdxStrategyConfig m_config;
 
     OrderManager & m_orders;
 
+    AverageDirectionalIndex m_adx;
     TimeWeightedMovingAverage m_trend;
     double m_last_trend_value = 0.;
 
     std::map<int, Level> m_orders_by_levels;
+
+    std::chrono::milliseconds m_ban_until = {};
 };

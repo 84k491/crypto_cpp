@@ -59,6 +59,7 @@ MainWindow::MainWindow(QWidget * parent)
     ui->cb_strategy->addItem("RelativeStrengthIndex");
     ui->cb_strategy->addItem("BBRSI");
     ui->cb_strategy->addItem("Grid");
+    ui->cb_strategy->addItem("GridAdx");
     ui->cb_strategy->setCurrentText(saved_state.m_strategy_name.c_str());
 
     const auto symbols = m_gateway.get_symbols("USDT");

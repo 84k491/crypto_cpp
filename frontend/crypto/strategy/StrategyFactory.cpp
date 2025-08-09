@@ -1,6 +1,7 @@
 #include "StrategyFactory.h"
 
 #include "BBRSIStrategy.h"
+#include "GridAdxStrategy.h"
 #include "GridStrategy.h"
 #include "BollingerBandsStrategy.h"
 #include "CandleBollingerBandsStrategy.h"
@@ -130,6 +131,14 @@ std::optional<std::shared_ptr<IStrategy>> StrategyFactory::build_strategy(
     }
     if (strategy_name == "Grid") {
         std::shared_ptr<IStrategy> res = std::make_shared<GridStrategy>(
+                config,
+                event_loop,
+                channels,
+                orders);
+        return res;
+    }
+    if (strategy_name == "GridAdx") {
+        std::shared_ptr<IStrategy> res = std::make_shared<GridAdxStrategy>(
                 config,
                 event_loop,
                 channels,
