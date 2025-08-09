@@ -9,7 +9,7 @@
         },
         {
             "name": "interval",
-            "min_value": 120,
+            "min_value": 20,
             "step": 60,
             "max_value": 600
         },

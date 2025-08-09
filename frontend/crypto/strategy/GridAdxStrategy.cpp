@@ -105,7 +105,7 @@ void GridAdxStrategy::push_candle(std::chrono::milliseconds ts, const Candle & c
     const auto v_opt = m_trend.push_value({ts, price});
 
     if (adx_opt.has_value()) {
-        m_strategy_internal_data_channel.push(ts, {"adx", "adx", adx_opt->adx});
+        m_strategy_internal_data_channel.push(ts, {.chart_name = "adx", .series_name = "adx", .value = adx_opt->adx});
     }
 
     if (v_opt.has_value()) {
@@ -307,7 +307,7 @@ void GridAdxStrategy::report_levels(std::chrono::milliseconds ts)
 
     for (int i = int(m_config.m_levels_per_side) * -1; i < int(m_config.m_levels_per_side) + 1; ++i) {
         const auto p = get_price_from_level_number(i);
-        m_strategy_internal_data_channel.push(ts, {"prices", std::to_string(i), p});
+        m_strategy_internal_data_channel.push(ts, {.chart_name = "prices", .series_name = std::to_string(i), .value = p});
     }
 
     last_reported_ts = ts;
