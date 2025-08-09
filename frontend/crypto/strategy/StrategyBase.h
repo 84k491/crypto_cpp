@@ -12,7 +12,7 @@ public:
                  EventLoopSubscriber & event_loop,
                  StrategyChannelsRefs channels);
 
-    EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & strategy_internal_data_channel() override
+    EventTimeseriesChannel<StrategyInternalData> & strategy_internal_data_channel() override
     {
         return m_strategy_internal_data_channel;
     }
@@ -25,7 +25,7 @@ protected:
 protected:
     const double m_pos_currency_amount = 100.;
 
-    EventTimeseriesChannel<std::tuple<std::string, std::string, double>> m_strategy_internal_data_channel;
+    EventTimeseriesChannel<StrategyInternalData> m_strategy_internal_data_channel;
 
     OrderManager & m_order_manager;
     bool m_has_opened_pos = false;

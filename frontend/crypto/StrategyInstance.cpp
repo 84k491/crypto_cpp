@@ -246,7 +246,7 @@ EventTimeseriesChannel<Trade> & StrategyInstance::trade_channel()
     return m_trade_channel;
 }
 
-EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & StrategyInstance::strategy_internal_data_channel()
+EventTimeseriesChannel<StrategyInternalData> & StrategyInstance::strategy_internal_data_channel()
 {
     return m_strategy->strategy_internal_data_channel();
 }

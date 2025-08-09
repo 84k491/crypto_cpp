@@ -37,7 +37,7 @@ public:
     void set_channel_capacity(std::optional<std::chrono::milliseconds> capacity);
     EventTimeseriesChannel<Trade> & trade_channel();
     EventTimeseriesChannel<ProfitPriceLevels> & price_levels_channel();
-    EventTimeseriesChannel<std::tuple<std::string, std::string, double>> & strategy_internal_data_channel();
+    EventTimeseriesChannel<StrategyInternalData> & strategy_internal_data_channel();
     EventTimeseriesChannel<double> & price_channel();
     EventTimeseriesChannel<Candle> & candle_channel();
     EventTimeseriesChannel<double> & depo_channel();

@@ -2,10 +2,9 @@
 
 #include "ConditionalOrders.h"
 #include "Enums.h"
+#include "Logger.h"
 #include "OrdinaryLeastSquares.h"
 #include "ui_chart_window.h"
-
-#include "Logger.h"
 
 ChartWindow::ChartWindow(
         std::string window_name,
@@ -181,7 +180,7 @@ void ChartWindow::subscribe_to_strategy()
                             [this](const std::list<
                                     std::pair<
                                             std::chrono::milliseconds,
-                                            std::tuple<std::string, std::string, double>>> & vec) {
+                                            StrategyInternalData>> & vec) {
                                 // chart_name -> series_name -> timestamp, value
                                 std::map<std::string,
                                          std::map<std::string,
@@ -193,7 +192,7 @@ void ChartWindow::subscribe_to_strategy()
                                         continue;
                                     }
                                     const auto & [chart_name, series_name, value] = v;
-                                    vec_map[chart_name][series_name].emplace_back(ts, value);
+                                    vec_map[std::string{chart_name}][std::string{series_name}].emplace_back(ts, value);
                                 }
                                 for (const auto & [chart_name, series_map] : vec_map) {
                                     for (const auto & [series_name, out_vec] : series_map) {
@@ -204,14 +203,12 @@ void ChartWindow::subscribe_to_strategy()
                             },
                             [&](
                                     std::chrono::milliseconds ts,
-                                    const std::tuple<const std::string,
-                                                     const std::string,
-                                                     double> & data_pair) {
+                                    const StrategyInternalData & data_pair) {
                                 if (!ts_in_range(ts)) {
                                     return;
                                 }
                                 const auto & [chart_name, name, data] = data_pair;
-                                get_or_create_chart(chart_name).push_series_value(name, ts, data);
+                                get_or_create_chart(std::string{chart_name}).push_series_value(std::string{name}, ts, data);
                             }));
     m_subscriptions.push_back(str_instance.trade_channel().subscribe(
             m_event_consumer,
