@@ -24,9 +24,10 @@ struct Symbol
         if (lot_size_filter.qty_step == 0) {
             return std::nullopt;
         }
-        const auto abs_volume_mul = std::abs(current_volume.value()) / lot_size_filter.qty_step;
-        const auto floored_vol = std::floor(abs_volume_mul) * lot_size_filter.qty_step;
+        const auto abs_steps = std::abs(current_volume.value()) / lot_size_filter.qty_step;
+        const auto floored_vol = std::round(abs_steps) * lot_size_filter.qty_step;
         const auto res = std::copysign(floored_vol, current_volume.value());
+
         return SignedVolume(res);
     }
 };

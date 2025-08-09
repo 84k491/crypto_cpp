@@ -362,13 +362,13 @@ TEST_F(StrategyInstanceTest, OpenAndClosePos_GetResult_DontCloseTwiceOnStop)
         ASSERT_EQ(result.trades_count, 2);
     }
     ASSERT_EQ(result.win_rate(), 1.) << "It must be a profit position";
-    ASSERT_DOUBLE_EQ(result.final_profit, 99.79) << "It must be a profit position";
+    ASSERT_DOUBLE_EQ(result.final_profit, 99.800099999999986) << "It must be a profit position";
 
     strategy_instance->stop_async();
     strategy_instance->wait_event_barrier();
     strategy_instance.reset();
     ASSERT_EQ(strategy_status, WorkStatus::Stopped);
-    ASSERT_DOUBLE_EQ(result.final_profit, 99.79);
+    ASSERT_DOUBLE_EQ(result.final_profit, 99.800099999999986);
     ASSERT_EQ(result.trades_count, 2);
 }
 

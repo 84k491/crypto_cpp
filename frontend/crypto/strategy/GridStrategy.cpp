@@ -95,7 +95,7 @@ void GridStrategy::push_candle(std::chrono::milliseconds ts, const Candle & cand
     if (v_opt.has_value()) {
         const auto & v = v_opt.value();
         m_last_trend_value = v;
-        m_strategy_internal_data_channel.push(ts, {"prices", "trend", v});
+        m_strategy_internal_data_channel.push(ts, {.chart_name = "prices", .series_name = "trend", .value = v});
     }
     else {
         return;
@@ -124,6 +124,7 @@ void GridStrategy::push_candle(std::chrono::milliseconds ts, const Candle & cand
         // TODO push to error channel
         return;
     }
+
     auto & channel = m_orders.send_market_order(
             price,
             SignedVolume{default_size_opt.value(), side},
@@ -160,8 +161,6 @@ void GridStrategy::on_order_traded(const MarketOrder & order, int price_level)
         return;
     }
     auto & orders = it->second;
-
-    // TODO verify volume
 
     if (orders.tp || orders.sl) {
         Logger::logf<LogLevel::Error>("There already are tp or sl for level {}", price_level);

@@ -19,6 +19,9 @@ std::optional<ClosedPosition> OpenedPosition::on_trade(double price, const Signe
 
     ScopeExit se{[&]() {
         m_absolute_volume += vol;
+        if (std::fabs(m_absolute_volume.value()) <= 1e-8) {
+            m_absolute_volume = {};
+        }
     }};
 
     // open or increase
