@@ -194,19 +194,23 @@ void StrategyInstance::process_position_result(const PositionResult & new_result
             res.worst_loss_trade = new_result.pnl_with_fee;
         }
 
-        if (new_result.pnl_with_fee > 0.) {
-            if (res.longest_profit_trade_time < new_result.opened_time()) {
-                res.longest_profit_trade_time =
-                        std::chrono::duration_cast<std::chrono::seconds>(new_result.opened_time());
+        const auto opened_time_opt = new_result.opened_time();
+        if (opened_time_opt.has_value()) {
+            const auto & opened_time = opened_time_opt.value();
+            if (new_result.pnl_with_fee > 0.) {
+                if (res.longest_profit_trade_time < opened_time) {
+                    res.longest_profit_trade_time =
+                            std::chrono::duration_cast<std::chrono::seconds>(opened_time);
+                }
+                res.total_time_in_profit_pos += std::chrono::duration_cast<std::chrono::seconds>(opened_time);
             }
-            res.total_time_in_profit_pos += std::chrono::duration_cast<std::chrono::seconds>(new_result.opened_time());
-        }
-        if (new_result.pnl_with_fee < 0.) {
-            if (res.longest_loss_trade_time < new_result.opened_time()) {
-                res.longest_loss_trade_time =
-                        std::chrono::duration_cast<std::chrono::seconds>(new_result.opened_time());
+            if (new_result.pnl_with_fee < 0.) {
+                if (res.longest_loss_trade_time < opened_time) {
+                    res.longest_loss_trade_time =
+                            std::chrono::duration_cast<std::chrono::seconds>(opened_time);
+                }
+                res.total_time_in_loss_pos += std::chrono::duration_cast<std::chrono::seconds>(opened_time);
             }
-            res.total_time_in_loss_pos += std::chrono::duration_cast<std::chrono::seconds>(new_result.opened_time());
         }
 
         res.avg_profit_pos_time = static_cast<double>(res.total_time_in_profit_pos.count()) / static_cast<double>(res.profit_positions_cnt);

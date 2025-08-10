@@ -56,9 +56,13 @@ std::optional<PositionResult> PositionManager::on_trade_received(const Trade & t
     return res;
 }
 
-std::chrono::milliseconds PositionResult::opened_time() const
+std::optional<std::chrono::milliseconds> PositionResult::opened_time() const
 {
-    return (close_ts - open_ts);
+    if (!close_ts.has_value()) {
+        return {};
+    }
+    const auto res = (close_ts.value() - open_ts);
+    return res;
 }
 
 std::ostream & operator<<(std::ostream & os, const PositionResult & res)
@@ -66,6 +70,6 @@ std::ostream & operator<<(std::ostream & os, const PositionResult & res)
     os << "PositionResult: "
        << "pnl_with_fee = " << res.pnl_with_fee
        << ", fees_paid = " << res.fees_paid
-       << ", opened_time = " << res.opened_time();
+       << ", opened_time = " << (res.opened_time().has_value() ? std::to_string(res.opened_time()->count()) : "<empty>");
     return os;
 }

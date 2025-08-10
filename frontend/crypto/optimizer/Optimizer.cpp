@@ -38,10 +38,10 @@ std::optional<JsonStrategyConfig> Optimizer::optimize()
     const std::vector<JsonStrategyConfig> configs = parser.get_possible_configs();
 
     Guarded<OptimizerCollector> collector{
-            "MinDeviation",
-            std::vector<OptimizerCollector::FilterParams>{
-                    {.filter_name = "Apr", .value = 5.},
-                    {.filter_name = "TradesPerMonth", .value = 10.},
+            "BestProfit",
+            std::vector<OptimizerCollector::FilterParams>{ // TODO put it on frontend
+                    // {.filter_name = "Apr", .value = 5.},
+                    // {.filter_name = "TradesPerMonth", .value = 10.},
             }};
 
     Logger::log<LogLevel::Debug>("Logs will be suppressed during optimization"); // TODO push as event

@@ -22,7 +22,8 @@ void PositionResultView::update(PositionResult position_result)
     else {
         ui->lb_pnl->setStyleSheet("color: red");
     }
-    const auto opened_time_str = std::to_string(static_cast<double>(position_result.opened_time().count()) / 60000);
+    const auto opened_time = position_result.opened_time().value_or(std::chrono::milliseconds{});
+    const auto opened_time_str = std::to_string(double(opened_time.count()) / 60000);
     ui->lb_open_time->setText(DateTimeConverter::date_time(position_result.open_ts).c_str());
     ui->lb_opened_time_m->setText(opened_time_str.c_str());
 }
@@ -39,10 +40,12 @@ void PositionResultView::on_pb_chart_clicked()
         return;
     }
 
-    const auto opened_time = m_position_result.opened_time();
-    const long delta = opened_time.count() * width_factor;
-    const auto start_ts = std::chrono::milliseconds{m_position_result.open_ts.count() - opened_time.count()};
-    const auto end_ts = std::chrono::milliseconds{m_position_result.close_ts.count() + delta};
+    const auto opened_time = m_position_result.opened_time().has_value() ? m_position_result.opened_time()->count() : 0;
+    const long delta = long(opened_time * width_factor);
+    const auto start_ts = std::chrono::milliseconds{m_position_result.open_ts.count() - opened_time};
+
+    const auto close_ts = m_position_result.close_ts.has_value() ? m_position_result.close_ts->count() : 0;
+    const auto end_ts = std::chrono::milliseconds{close_ts + delta};
 
     m_chart_window = new ChartWindow(
             m_position_result.guid,
