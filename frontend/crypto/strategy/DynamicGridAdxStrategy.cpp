@@ -1,6 +1,6 @@
-#include "GridAdxStrategy.h"
+#include "DynamicGridAdxStrategy.h"
 
-GridAdxStrategyConfig::GridAdxStrategyConfig(JsonStrategyConfig json)
+DynamicGridAdxStrategyConfig::DynamicGridAdxStrategyConfig(JsonStrategyConfig json)
 {
     if (json.get().contains("timeframe_s")) {
         m_timeframe = std::chrono::seconds(json.get()["timeframe_s"].get<int>());
@@ -22,12 +22,12 @@ GridAdxStrategyConfig::GridAdxStrategyConfig(JsonStrategyConfig json)
     }
 }
 
-bool GridAdxStrategyConfig::is_valid() const
+bool DynamicGridAdxStrategyConfig::is_valid() const
 {
     return m_levels_per_side > 0;
 }
 
-JsonStrategyConfig GridAdxStrategyConfig::to_json() const
+JsonStrategyConfig DynamicGridAdxStrategyConfig::to_json() const
 {
     nlohmann::json json;
     json["timeframe_s"] = std::chrono::duration_cast<std::chrono::seconds>(m_timeframe).count();
@@ -39,28 +39,28 @@ JsonStrategyConfig GridAdxStrategyConfig::to_json() const
     return json;
 }
 
-GridAdxStrategy::GridAdxStrategy(
-        const GridAdxStrategyConfig & config,
+DynamicGridAdxStrategy::DynamicGridAdxStrategy(
+        const DynamicGridAdxStrategyConfig & config,
         EventLoopSubscriber & event_loop,
         StrategyChannelsRefs channels,
         OrderManager & orders)
-    : GridWithBan(config.to_json(), event_loop, channels, orders)
+    : DynamicGridWithBan(config.to_json(), event_loop, channels, orders)
     , m_config(config)
     , m_adx(config.m_adx_interval * config.m_timeframe)
 {
 }
 
-bool GridAdxStrategy::is_valid() const
+bool DynamicGridAdxStrategy::is_valid() const
 {
     return true;
 }
 
-std::optional<std::chrono::milliseconds> GridAdxStrategy::timeframe() const
+std::optional<std::chrono::milliseconds> DynamicGridAdxStrategy::timeframe() const
 {
     return m_config.m_timeframe;
 }
 
-bool GridAdxStrategy::is_banned(std::chrono::milliseconds ts, const Candle & candle)
+bool DynamicGridAdxStrategy::is_banned(std::chrono::milliseconds ts, const Candle & candle)
 {
     const auto adx_opt = m_adx.push_candle(candle);
     if (!adx_opt.has_value()) {

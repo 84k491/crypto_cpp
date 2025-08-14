@@ -1,6 +1,5 @@
 #pragma once
 
-#include "AverageDirectionalIndex.h"
 #include "ConditionalOrders.h"
 #include "EventLoopSubscriber.h"
 #include "JsonStrategyConfig.h"
@@ -9,9 +8,9 @@
 #include "StrategyChannels.h"
 #include "TimeWeightedMovingAverage.h"
 
-struct GridWithBanStrategyConfig
+struct DynamicGridWithBanStrategyConfig
 {
-    GridWithBanStrategyConfig(JsonStrategyConfig);
+    DynamicGridWithBanStrategyConfig(JsonStrategyConfig);
 
     bool is_valid() const;
 
@@ -25,11 +24,11 @@ struct GridWithBanStrategyConfig
     double m_price_radius_perc = 0.; // to the end of the last level
 };
 
-class GridWithBan : public StrategyBase
+class DynamicGridWithBan : public StrategyBase
 {
 public:
-    GridWithBan(
-            const GridWithBanStrategyConfig & config,
+    DynamicGridWithBan(
+            const DynamicGridWithBanStrategyConfig & config,
             EventLoopSubscriber & event_loop,
             StrategyChannelsRefs channels,
             OrderManager & orders);
@@ -82,7 +81,7 @@ private:
 private:
     EventLoopSubscriber & m_event_loop;
 
-    GridWithBanStrategyConfig m_config;
+    DynamicGridWithBanStrategyConfig m_config;
 
     OrderManager & m_orders;
 

@@ -1,8 +1,8 @@
 #include "StrategyFactory.h"
 
 #include "BBRSIStrategy.h"
-#include "GridAdxStrategy.h"
-#include "GridStrategy.h"
+#include "DynamicGridAdxStrategy.h"
+#include "DynamicGridStrategy.h"
 #include "BollingerBandsStrategy.h"
 #include "CandleBollingerBandsStrategy.h"
 #include "DSMADiffStrategy.h"
@@ -129,16 +129,16 @@ std::optional<std::shared_ptr<IStrategy>> StrategyFactory::build_strategy(
                 orders);
         return res;
     }
-    if (strategy_name == "Grid") {
-        std::shared_ptr<IStrategy> res = std::make_shared<GridStrategy>(
+    if (strategy_name == "DynamicGrid") {
+        std::shared_ptr<IStrategy> res = std::make_shared<DynamicGridStrategy>(
                 config,
                 event_loop,
                 channels,
                 orders);
         return res;
     }
-    if (strategy_name == "GridAdx") {
-        std::shared_ptr<IStrategy> res = std::make_shared<GridAdxStrategy>(
+    if (strategy_name == "DynamicGridAdx") {
+        std::shared_ptr<IStrategy> res = std::make_shared<DynamicGridAdxStrategy>(
                 config,
                 event_loop,
                 channels,

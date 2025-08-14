@@ -8,9 +8,9 @@
 #include "StrategyChannels.h"
 #include "TimeWeightedMovingAverage.h"
 
-struct GridStrategyConfig
+struct DynamicGridStrategyConfig
 {
-    GridStrategyConfig(JsonStrategyConfig);
+    DynamicGridStrategyConfig(JsonStrategyConfig);
 
     bool is_valid() const;
 
@@ -24,11 +24,11 @@ struct GridStrategyConfig
     double m_price_radius_perc = 0.; // to the end of the last level
 };
 
-class GridStrategy : public StrategyBase
+class DynamicGridStrategy : public StrategyBase
 {
 public:
-    GridStrategy(
-            const GridStrategyConfig & config,
+    DynamicGridStrategy(
+            const DynamicGridStrategyConfig & config,
             EventLoopSubscriber & event_loop,
             StrategyChannelsRefs channels,
             OrderManager & orders);
@@ -79,7 +79,7 @@ private:
 private:
     EventLoopSubscriber & m_event_loop;
 
-    GridStrategyConfig m_config;
+    DynamicGridStrategyConfig m_config;
 
     OrderManager & m_orders;
 

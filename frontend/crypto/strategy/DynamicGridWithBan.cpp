@@ -1,10 +1,13 @@
-#include "GridStrategy.h"
+#include "DynamicGridWithBan.h"
 
 #include "GridLevels.h"
 #include "Logger.h"
+#include "ScopeExit.h"
 #include "StrategyBase.h"
 
-GridStrategyConfig::GridStrategyConfig(JsonStrategyConfig json)
+#include <cmath>
+
+DynamicGridWithBanStrategyConfig::DynamicGridWithBanStrategyConfig(JsonStrategyConfig json)
 {
     if (json.get().contains("timeframe_s")) {
         m_timeframe = std::chrono::seconds(json.get()["timeframe_s"].get<int>());
@@ -20,18 +23,18 @@ GridStrategyConfig::GridStrategyConfig(JsonStrategyConfig json)
     }
 }
 
-double GridStrategyConfig::get_one_level_width(double ref_price) const
+double DynamicGridWithBanStrategyConfig::get_one_level_width(double ref_price) const
 {
     const auto price_radius = (m_price_radius_perc * 0.01) * ref_price;
     return price_radius / m_levels_per_side;
 }
 
-bool GridStrategyConfig::is_valid() const
+bool DynamicGridWithBanStrategyConfig::is_valid() const
 {
     return m_levels_per_side > 0;
 }
 
-JsonStrategyConfig GridStrategyConfig::to_json() const
+JsonStrategyConfig DynamicGridWithBanStrategyConfig::to_json() const
 {
     nlohmann::json json;
     json["timeframe_s"] = std::chrono::duration_cast<std::chrono::seconds>(m_timeframe).count();
@@ -41,8 +44,8 @@ JsonStrategyConfig GridStrategyConfig::to_json() const
     return json;
 }
 
-GridStrategy::GridStrategy(
-        const GridStrategyConfig & config,
+DynamicGridWithBan::DynamicGridWithBan(
+        const DynamicGridWithBanStrategyConfig & config,
         EventLoopSubscriber & event_loop,
         StrategyChannelsRefs channels,
         OrderManager & orders)
@@ -60,17 +63,17 @@ GridStrategy::GridStrategy(
             }));
 }
 
-bool GridStrategy::is_valid() const
+bool DynamicGridWithBan::is_valid() const
 {
     return true;
 }
 
-std::optional<std::chrono::milliseconds> GridStrategy::timeframe() const
+std::optional<std::chrono::milliseconds> DynamicGridWithBan::timeframe() const
 {
     return m_config.m_timeframe;
 }
 
-int GridStrategy::get_level_number(double price) const
+int DynamicGridWithBan::get_level_number(double price) const
 {
     return GridLevels::get_level_number(
             price,
@@ -78,7 +81,7 @@ int GridStrategy::get_level_number(double price) const
             m_config.get_one_level_width(m_last_trend_value));
 }
 
-double GridStrategy::get_price_from_level_number(int level_num) const
+double DynamicGridWithBan::get_price_from_level_number(int level_num) const
 {
     return GridLevels::get_price_from_level_number(
             level_num,
@@ -86,10 +89,14 @@ double GridStrategy::get_price_from_level_number(int level_num) const
             m_config.get_one_level_width(m_last_trend_value));
 }
 
-void GridStrategy::push_candle(std::chrono::milliseconds ts, const Candle & candle)
+void DynamicGridWithBan::push_candle(std::chrono::milliseconds ts, const Candle & candle)
 {
-    const auto price = candle.close();
+    const bool new_banned_state = is_banned(ts, candle);
+    ScopeExit se{[&] {
+        m_prev_banned_state = new_banned_state;
+    }};
 
+    const auto price = candle.close();
     const auto v_opt = m_trend.push_value({ts, price});
 
     if (v_opt.has_value()) {
@@ -97,11 +104,19 @@ void GridStrategy::push_candle(std::chrono::milliseconds ts, const Candle & cand
         m_last_trend_value = v;
         m_strategy_internal_data_channel.push(ts, {.chart_name = "prices", .series_name = "trend", .value = v});
     }
-    else {
+
+    if (!v_opt.has_value()) {
         return;
     }
 
     // TODO handle 'over 2 levels' scenario
+
+    if (new_banned_state) {
+        if (!m_prev_banned_state) {
+            clear_levels(ts);
+        }
+        return;
+    }
 
     report_levels(ts);
 
@@ -124,7 +139,6 @@ void GridStrategy::push_candle(std::chrono::milliseconds ts, const Candle & cand
         // TODO push to error channel
         return;
     }
-
     auto & channel = m_orders.send_market_order(
             price,
             SignedVolume{default_size_opt.value(), side},
@@ -152,7 +166,7 @@ void GridStrategy::push_candle(std::chrono::milliseconds ts, const Candle & cand
                     .sl = nullptr});
 }
 
-void GridStrategy::on_order_traded(const MarketOrder & order, int price_level)
+void DynamicGridWithBan::on_order_traded(const MarketOrder & order, int price_level)
 {
     const auto it = m_orders_by_levels.find(price_level);
     if (it == m_orders_by_levels.end()) {
@@ -161,6 +175,8 @@ void GridStrategy::on_order_traded(const MarketOrder & order, int price_level)
         return;
     }
     auto & orders = it->second;
+
+    // TODO verify volume
 
     if (orders.tp || orders.sl) {
         Logger::logf<LogLevel::Error>("There already are tp or sl for level {}", price_level);
@@ -222,7 +238,7 @@ void GridStrategy::on_order_traded(const MarketOrder & order, int price_level)
     }
 }
 
-void GridStrategy::on_take_profit_traded(const TakeProfitMarketOrder & order, int price_level)
+void DynamicGridWithBan::on_take_profit_traded(const TakeProfitMarketOrder & order, int price_level)
 {
     const auto it = m_orders_by_levels.find(price_level);
     if (it == m_orders_by_levels.end()) {
@@ -236,7 +252,7 @@ void GridStrategy::on_take_profit_traded(const TakeProfitMarketOrder & order, in
     m_orders_by_levels.erase(level.level_num);
 }
 
-void GridStrategy::on_stop_loss_traded(const StopLossMarketOrder & order, int price_level)
+void DynamicGridWithBan::on_stop_loss_traded(const StopLossMarketOrder & order, int price_level)
 {
     const auto it = m_orders_by_levels.find(price_level);
     if (it == m_orders_by_levels.end()) {
@@ -250,7 +266,7 @@ void GridStrategy::on_stop_loss_traded(const StopLossMarketOrder & order, int pr
     m_orders_by_levels.erase(level.level_num);
 }
 
-GridStrategy::TpSlPrices GridStrategy::calc_tp_sl_prices(double order_price, Side side) const
+DynamicGridWithBan::TpSlPrices DynamicGridWithBan::calc_tp_sl_prices(double order_price, Side side) const
 {
     const auto current_level = get_level_number(order_price);
     const auto tp_level = current_level + side.sign();
@@ -265,7 +281,7 @@ GridStrategy::TpSlPrices GridStrategy::calc_tp_sl_prices(double order_price, Sid
     return {.take_profit_price = tp_price, .stop_loss_price = sl_price};
 }
 
-void GridStrategy::report_levels(std::chrono::milliseconds ts)
+void DynamicGridWithBan::report_levels(std::chrono::milliseconds ts)
 {
     if (ts - last_reported_ts < m_config.m_interval * m_config.m_timeframe / 10) {
         return;
@@ -273,18 +289,25 @@ void GridStrategy::report_levels(std::chrono::milliseconds ts)
 
     for (int i = int(m_config.m_levels_per_side) * -1; i < int(m_config.m_levels_per_side) + 1; ++i) {
         const auto p = get_price_from_level_number(i);
-        m_strategy_internal_data_channel.push(ts, {.chart_name="prices", .series_name=std::to_string(i), .value=p});
+        m_strategy_internal_data_channel.push(ts, {.chart_name = "prices", .series_name = std::to_string(i), .value = p});
     }
 
     last_reported_ts = ts;
 }
 
-void GridStrategy::print_levels()
+void DynamicGridWithBan::clear_levels(std::chrono::milliseconds ts)
+{
+    for (int i = int(m_config.m_levels_per_side) * -1; i < int(m_config.m_levels_per_side) + 1; ++i) {
+        m_strategy_internal_data_channel.push(ts, {"prices", std::to_string(i), NAN});
+    }
+}
+
+void DynamicGridWithBan::print_levels()
 {
     std::stringstream ss;
     for (int i = int(m_config.m_levels_per_side) * -1; i < int(m_config.m_levels_per_side) + 1; ++i) {
         const auto p = get_price_from_level_number(i);
-        ss << fmt::format("\nLevel {}: {},", i, p);
+        ss << fmt::format("Level {}: {}, ", i, p);
     }
     Logger::logf<LogLevel::Debug>("{}", ss.str());
 }

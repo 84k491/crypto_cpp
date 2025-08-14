@@ -10,7 +10,7 @@ include_directories(
 ####################################################################################################
 add_executable(grid_levels_test
     GridLevelsTest.cpp
-    ../GridStrategy.cpp
+    ../DynamicGridStrategy.cpp
 )
 target_link_libraries(grid_levels_test
     ${GTEST_BOTH_LIBRARIES}

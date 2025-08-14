@@ -2,14 +2,14 @@
 
 #include "AverageDirectionalIndex.h"
 #include "EventLoopSubscriber.h"
-#include "GridWithBan.h"
+#include "DynamicGridWithBan.h"
 #include "JsonStrategyConfig.h"
 #include "OrderManager.h"
 #include "StrategyChannels.h"
 
-struct GridAdxStrategyConfig
+struct DynamicGridAdxStrategyConfig
 {
-    GridAdxStrategyConfig(JsonStrategyConfig);
+    DynamicGridAdxStrategyConfig(JsonStrategyConfig);
 
     bool is_valid() const;
 
@@ -24,11 +24,11 @@ struct GridAdxStrategyConfig
     double m_adx_threshold = 0;
 };
 
-class GridAdxStrategy : public GridWithBan
+class DynamicGridAdxStrategy : public DynamicGridWithBan
 {
 public:
-    GridAdxStrategy(
-            const GridAdxStrategyConfig & config,
+    DynamicGridAdxStrategy(
+            const DynamicGridAdxStrategyConfig & config,
             EventLoopSubscriber & event_loop,
             StrategyChannelsRefs channels,
             OrderManager & orders);
@@ -43,7 +43,7 @@ private:
 private:
     // EventLoopSubscriber & m_event_loop;
 
-    GridAdxStrategyConfig m_config;
+    DynamicGridAdxStrategyConfig m_config;
     AverageDirectionalIndex m_adx;
 
     std::chrono::milliseconds m_ban_until = {};
