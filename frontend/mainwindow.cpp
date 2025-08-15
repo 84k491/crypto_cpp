@@ -49,17 +49,10 @@ MainWindow::MainWindow(QWidget * parent)
         ui->dt_from->setDateTime(QDateTime::fromMSecsSinceEpoch(static_cast<qint64>(saved_state.m_start_ts_unix_time)));
     }
 
-    ui->cb_strategy->addItem("DoubleSma");
-    ui->cb_strategy->addItem("BollingerBands");
-    ui->cb_strategy->addItem("CandleBB");
-    ui->cb_strategy->addItem("DebugEveryTick");
-    ui->cb_strategy->addItem("RateOfChange");
-    ui->cb_strategy->addItem("DSMADiff");
-    ui->cb_strategy->addItem("Ratchet");
-    ui->cb_strategy->addItem("RelativeStrengthIndex");
-    ui->cb_strategy->addItem("BBRSI");
-    ui->cb_strategy->addItem("Grid");
-    ui->cb_strategy->addItem("GridAdx");
+    const auto names = StrategyFactory::i().get_all_strategy_names();
+    for (const auto & name : names) {
+        ui->cb_strategy->addItem(name.c_str());
+    }
     ui->cb_strategy->setCurrentText(saved_state.m_strategy_name.c_str());
 
     const auto symbols = m_gateway.get_symbols("USDT");
@@ -348,7 +341,7 @@ void MainWindow::on_pb_optimize_clicked()
 
 std::optional<JsonStrategyMetaInfo> MainWindow::get_entry_strategy_parameters() const
 {
-    const auto json_data = StrategyFactory::get_meta_info(ui->cb_strategy->currentText().toStdString());
+    const auto json_data = StrategyFactory::i().get_meta_info(ui->cb_strategy->currentText().toStdString());
     return json_data;
 }
 

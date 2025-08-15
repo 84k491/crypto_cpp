@@ -33,7 +33,7 @@ JsonStrategyConfig StaticGridWithBanStrategyConfig::to_json() const
 
 double StaticGridWithBan::level_width_in_currency() const
 {
-    return m_previous_limits->mid_price() / 100. * m_config.m_level_width_perc;
+    return (m_previous_limits->mid_price() / 100.) * m_config.m_level_width_perc;
 }
 
 StaticGridWithBan::StaticGridWithBan(
@@ -52,6 +52,36 @@ StaticGridWithBan::StaticGridWithBan(
             [this](const auto & ts, const Candle & candle) {
                 push_candle(ts, candle);
             }));
+}
+
+bool StaticGridWithBan::is_valid() const
+{
+    return m_config.m_level_width_perc > 0.;
+}
+
+std::optional<std::chrono::milliseconds> StaticGridWithBan::timeframe() const
+{
+    return m_config.m_timeframe;
+}
+
+double StaticGridWithBan::Limits::mid_price() const
+{
+    return (max_price - min_price) / 2.;
+}
+
+void StaticGridWithBan::Limits::update_prices(double price)
+{
+    if (min_price > price) {
+        min_price = price;
+    }
+    if (max_price < price) {
+        max_price = price;
+    }
+}
+
+double StaticGridWithBan::Limits::price_radius() const
+{
+    return max_price - mid_price();
 }
 
 int StaticGridWithBan::get_level_number(double price) const

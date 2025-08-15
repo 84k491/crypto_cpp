@@ -134,8 +134,6 @@ private:
     Ui::MainWindow * ui;
     std::shared_ptr<MainWindowEventConsumer> m_event_consumer;
 
-    StrategyFactory m_strategy_factory;
-
     ByBitMarketDataGateway m_gateway;
     std::unique_ptr<BacktestTradingGateway> m_backtest_tr_gateway;
     std::unique_ptr<ByBitTradingGateway> m_trading_gateway;

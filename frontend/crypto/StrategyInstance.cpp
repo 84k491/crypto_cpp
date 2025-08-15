@@ -52,7 +52,7 @@ StrategyInstance::StrategyInstance(
     , m_historical_md_request(historical_md_request)
     , m_orders(symbol, m_event_loop, tr_gateway)
 {
-    const auto strategy_ptr_opt = StrategyFactory::build_strategy(
+    const auto strategy_ptr_opt = StrategyFactory::i().build_strategy(
             entry_strategy_name,
             entry_strategy_config,
             m_event_loop,
