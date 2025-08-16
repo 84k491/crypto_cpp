@@ -19,86 +19,29 @@
 #include <fstream>
 #include <optional>
 
+#define BUILDER(Name)                 \
+    {#Name,                           \
+     [](const JsonStrategyConfig & c, \
+        EventLoopSubscriber & el,     \
+        StrategyChannelsRefs ch,      \
+        OrderManager & om) { return std::make_shared<Name##Strategy>(c, el, ch, om); }}
+
 StrategyFactory::StrategyFactory()
 {
     m_builders = {
-            {"Mock",
-             [](const JsonStrategyConfig &,
-                EventLoopSubscriber & el,
-                StrategyChannelsRefs ch,
-                OrderManager & om) { return std::make_shared<MockStrategy>(el, ch, om); }},
-
-            {"DoubleSma",
-             [](const JsonStrategyConfig & c,
-                EventLoopSubscriber & el,
-                StrategyChannelsRefs ch,
-                OrderManager & om) { return std::make_shared<DoubleSmaStrategy>(c, el, ch, om); }},
-
-            {"BollingerBands",
-             [](const JsonStrategyConfig & c,
-                EventLoopSubscriber & el,
-                StrategyChannelsRefs ch,
-                OrderManager & om) { return std::make_shared<BollingerBandsStrategy>(c, el, ch, om); }},
-
-            {"CandleBB",
-             [](const JsonStrategyConfig & c,
-                EventLoopSubscriber & el,
-                StrategyChannelsRefs ch,
-                OrderManager & om) { return std::make_shared<CandleBollingerBandsStrategy>(c, el, ch, om); }},
-
-            {"DebugEveryTick",
-             [](const JsonStrategyConfig & c,
-                EventLoopSubscriber & el,
-                StrategyChannelsRefs ch,
-                OrderManager & om) { return std::make_shared<DebugEveryTickStrategy>(c, el, ch, om); }},
-
-            {"RateOfChange",
-             [](const JsonStrategyConfig & c,
-                EventLoopSubscriber & el,
-                StrategyChannelsRefs ch,
-                OrderManager & om) { return std::make_shared<RateOfChangeStrategy>(c, el, ch, om); }},
-
-            {"DSMADiff",
-             [](const JsonStrategyConfig & c,
-                EventLoopSubscriber & el,
-                StrategyChannelsRefs ch,
-                OrderManager & om) { return std::make_shared<DSMADiffStrategy>(c, el, ch, om); }},
-
-            {"Ratchet",
-             [](const JsonStrategyConfig & c,
-                EventLoopSubscriber & el,
-                StrategyChannelsRefs ch,
-                OrderManager & om) { return std::make_shared<RatchetStrategy>(c, el, ch, om); }},
-
-            {"RelativeStrengthIndex",
-             [](const JsonStrategyConfig & c,
-                EventLoopSubscriber & el,
-                StrategyChannelsRefs ch,
-                OrderManager & om) { return std::make_shared<RelativeStrengthIndexStrategy>(c, el, ch, om); }},
-
-            {"BBRSI",
-             [](const JsonStrategyConfig & c,
-                EventLoopSubscriber & el,
-                StrategyChannelsRefs ch,
-                OrderManager & om) { return std::make_shared<BBRSIStrategy>(c, el, ch, om); }},
-
-            {"DynamicGrid",
-             [](const JsonStrategyConfig & c,
-                EventLoopSubscriber & el,
-                StrategyChannelsRefs ch,
-                OrderManager & om) { return std::make_shared<DynamicGridStrategy>(c, el, ch, om); }},
-
-            {"DynamicGridAdx",
-             [](const JsonStrategyConfig & c,
-                EventLoopSubscriber & el,
-                StrategyChannelsRefs ch,
-                OrderManager & om) { return std::make_shared<DynamicGridAdxStrategy>(c, el, ch, om); }},
-
-            {"StaticGrid",
-             [](const JsonStrategyConfig & c,
-                EventLoopSubscriber & el,
-                StrategyChannelsRefs ch,
-                OrderManager & om) { return std::make_shared<StaticGridStrategy>(c, el, ch, om); }},
+            BUILDER(Mock),
+            BUILDER(DoubleSma),
+            BUILDER(BollingerBands),
+            BUILDER(CandleBollingerBands),
+            BUILDER(DebugEveryTick),
+            BUILDER(RateOfChange),
+            BUILDER(DSMADiff),
+            BUILDER(Ratchet),
+            BUILDER(RelativeStrengthIndex),
+            BUILDER(BBRSI),
+            BUILDER(DynamicGrid),
+            BUILDER(DynamicGridAdx),
+            BUILDER(StaticGrid),
     };
 }
 

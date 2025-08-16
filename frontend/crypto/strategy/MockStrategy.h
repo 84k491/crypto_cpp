@@ -10,6 +10,7 @@ class MockStrategy : public StrategyBase
 {
 public:
     MockStrategy(
+            const JsonStrategyConfig &,
             EventLoopSubscriber & event_loop,
             StrategyChannelsRefs channels,
             OrderManager & orders)
