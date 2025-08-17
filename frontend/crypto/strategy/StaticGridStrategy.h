@@ -15,7 +15,7 @@ struct StaticGridStrategyConfig
 
     std::chrono::milliseconds m_timeframe = {};
     size_t m_interval = 0;
-    unsigned m_level_width_perc = 0;
+    double m_level_width_perc = 0;
 };
 
 class StaticGridStrategy : public StaticGridWithBan

@@ -4,6 +4,8 @@
 #include "Logger.h"
 #include "ScopeExit.h"
 
+#include <algorithm>
+
 StaticGridWithBanStrategyConfig::StaticGridWithBanStrategyConfig(JsonStrategyConfig json)
 {
     if (json.get().contains("timeframe_s")) {
@@ -66,17 +68,13 @@ std::optional<std::chrono::milliseconds> StaticGridWithBan::timeframe() const
 
 double StaticGridWithBan::Limits::mid_price() const
 {
-    return (max_price - min_price) / 2.;
+    return min_price + ((max_price - min_price) / 2.);
 }
 
 void StaticGridWithBan::Limits::update_prices(double price)
 {
-    if (min_price > price) {
-        min_price = price;
-    }
-    if (max_price < price) {
-        max_price = price;
-    }
+    min_price = std::min(min_price, price);
+    max_price = std::max(max_price, price);
 }
 
 double StaticGridWithBan::Limits::price_radius() const
@@ -112,8 +110,9 @@ void StaticGridWithBan::try_interval_handover(std::chrono::milliseconds ts)
     if (ts < m_current_interval_start_ts + m_config.m_interval * m_config.m_timeframe) {
         return;
     }
+    m_current_interval_start_ts = ts;
 
-    report_levels(ts - std::chrono::milliseconds{1});
+    report_levels(ts - m_config.m_timeframe);
 
     m_previous_limits = m_next_limits;
     m_next_limits = {};
@@ -123,6 +122,10 @@ void StaticGridWithBan::try_interval_handover(std::chrono::milliseconds ts)
 
 void StaticGridWithBan::push_candle(std::chrono::milliseconds ts, const Candle & candle)
 {
+    if (m_current_interval_start_ts == std::chrono::milliseconds{}) {
+        m_current_interval_start_ts = ts;
+    }
+
     try_interval_handover(ts);
 
     const bool new_banned_state = is_banned(ts, candle);
@@ -142,7 +145,7 @@ void StaticGridWithBan::push_candle(std::chrono::milliseconds ts, const Candle &
     if (price_level == 0) {
         return;
     }
-    if (m_previous_limits->min_price < price || price < m_previous_limits->max_price) {
+    if (price < m_previous_limits->min_price || m_previous_limits->max_price < price) {
         return;
     }
     if (m_orders_by_levels.contains(price_level)) {
@@ -304,8 +307,15 @@ StaticGridWithBan::TpSlPrices StaticGridWithBan::calc_tp_sl_prices(double order_
 
 void StaticGridWithBan::report_levels(std::chrono::milliseconds ts)
 {
-    for (int i = get_levels_per_side() * -1; i < get_levels_per_side() + 1; ++i) {
-        const auto p = get_price_from_level_number(i);
+    if (!m_previous_limits) {
+        return;
+    }
+
+    const int levels_per_side = get_levels_per_side();
+    m_max_levels_per_side = std::max(levels_per_side, m_max_levels_per_side);
+
+    for (int i = m_max_levels_per_side * -1; i < m_max_levels_per_side + 1; ++i) {
+        const auto p = (i > levels_per_side) ? NAN : get_price_from_level_number(i);
         m_strategy_internal_data_channel.push(ts, {.chart_name = "prices", .series_name = std::to_string(i), .value = p});
     }
 }

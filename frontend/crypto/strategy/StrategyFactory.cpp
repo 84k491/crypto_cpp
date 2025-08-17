@@ -79,6 +79,7 @@ std::optional<JsonStrategyMetaInfo> StrategyFactory::get_meta_info(const std::st
 std::vector<std::string> StrategyFactory::get_all_strategy_names() const
 {
     std::vector<std::string> res;
+    res.reserve(m_builders.size());
     for (const auto & [name, _] : m_builders) {
         res.emplace_back(name);
     }
@@ -95,7 +96,7 @@ std::optional<std::shared_ptr<IStrategy>> StrategyFactory::build_strategy(
     const auto it = m_builders.find(strategy_name);
     if (it == m_builders.end()) {
         Logger::logf<LogLevel::Error>("Unknown strategy name: {}", strategy_name);
-        return {};
+        return std::nullopt;
     }
 
     const auto & [_, builder] = *it;

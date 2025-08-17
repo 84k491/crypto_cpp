@@ -13,7 +13,7 @@ struct StaticGridWithBanStrategyConfig
 
     std::chrono::milliseconds m_timeframe = {};
     size_t m_interval = 0;
-    unsigned m_level_width_perc = 0;
+    double m_level_width_perc = 0;
 };
 
 class StaticGridWithBan : public StrategyBase
@@ -93,5 +93,6 @@ private:
 
     std::map<int, Level> m_orders_by_levels;
 
+    int m_max_levels_per_side = 0;
     bool m_prev_banned_state = false;
 };
