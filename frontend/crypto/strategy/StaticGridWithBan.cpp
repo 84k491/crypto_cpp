@@ -44,8 +44,8 @@ StaticGridWithBan::StaticGridWithBan(
         StrategyChannelsRefs channels,
         OrderManager & orders)
     : StrategyBase(orders, event_loop, channels)
-    , m_event_loop(event_loop)
     , m_config(config)
+    , m_event_loop(event_loop)
     , m_orders(orders)
 {
     m_channel_subs.push_back(channels.candle_channel.subscribe(
@@ -117,6 +117,7 @@ void StaticGridWithBan::try_interval_handover(std::chrono::milliseconds ts)
     m_previous_limits = m_next_limits;
     m_next_limits = {};
 
+    Logger::logf<LogLevel::Info>("Handover: PrevMin: {}, PrevMax: {}", m_previous_limits->min_price, m_previous_limits->max_price);
     report_levels(ts);
 }
 
@@ -146,6 +147,10 @@ void StaticGridWithBan::push_candle(std::chrono::milliseconds ts, const Candle &
         return;
     }
     if (price < m_previous_limits->min_price || m_previous_limits->max_price < price) {
+        m_last_out_of_bounds_price_ts = ts;
+        return;
+    }
+    if (new_banned_state) {
         return;
     }
     if (m_orders_by_levels.contains(price_level)) {
@@ -315,7 +320,7 @@ void StaticGridWithBan::report_levels(std::chrono::milliseconds ts)
     m_max_levels_per_side = std::max(levels_per_side, m_max_levels_per_side);
 
     for (int i = m_max_levels_per_side * -1; i < m_max_levels_per_side + 1; ++i) {
-        const auto p = (i > levels_per_side) ? NAN : get_price_from_level_number(i);
+        const auto p = (std::abs(i) > levels_per_side) ? NAN : get_price_from_level_number(i);
         m_strategy_internal_data_channel.push(ts, {.chart_name = "prices", .series_name = std::to_string(i), .value = p});
     }
 }

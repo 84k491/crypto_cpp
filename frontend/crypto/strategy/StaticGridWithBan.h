@@ -71,6 +71,11 @@ private:
     };
     TpSlPrices calc_tp_sl_prices(double order_price, Side side) const;
 
+protected:
+    std::chrono::milliseconds m_last_out_of_bounds_price_ts = {};
+    std::chrono::milliseconds m_current_interval_start_ts = {};
+    StaticGridWithBanStrategyConfig m_config;
+
 private:
     int get_level_number(double price) const;
     double get_price_from_level_number(int level_num) const;
@@ -83,13 +88,10 @@ private:
 
 private:
     EventLoopSubscriber & m_event_loop;
-    StaticGridWithBanStrategyConfig m_config;
     OrderManager & m_orders;
 
     std::optional<Limits> m_previous_limits;
     Limits m_next_limits;
-
-    std::chrono::milliseconds m_current_interval_start_ts = {};
 
     std::map<int, Level> m_orders_by_levels;
 

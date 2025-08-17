@@ -27,5 +27,5 @@ public:
             StrategyChannelsRefs channels,
             OrderManager & orders);
 
-    bool is_banned(std::chrono::milliseconds, const Candle &) override { return false; }
+    bool is_banned(std::chrono::milliseconds, const Candle &) override;
 };

@@ -39,3 +39,10 @@ StaticGridStrategy::StaticGridStrategy(
               orders)
 {
 }
+
+bool StaticGridStrategy::is_banned(std::chrono::milliseconds, const Candle &)
+{
+    const bool later_than_start = m_current_interval_start_ts < m_last_out_of_bounds_price_ts;
+    const bool before_end = m_last_out_of_bounds_price_ts < m_current_interval_start_ts + (m_config.m_interval * m_config.m_timeframe);
+    return later_than_start && before_end;
+}
