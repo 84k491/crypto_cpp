@@ -21,19 +21,18 @@ public:
                   event_loop,
                   channels)
     {
-        m_channel_subs.push_back(channels.price_channel.subscribe(
-                event_loop.m_event_loop,
+        event_loop.subscribe(
+                channels.price_channel,
                 [](const auto &) {},
                 [this](const auto & ts, const double & price) {
                     push_price({ts, price});
-                }));
+                });
 
-        m_channel_subs.push_back(
-                m_exit_strategy.error_channel().subscribe(
-                        event_loop.m_event_loop,
-                        [&](const std::pair<std::string, bool> & err) {
-                            m_error_channel.push(err);
-                        }));
+        event_loop.subscribe(
+                m_exit_strategy.error_channel(),
+                [&](const std::pair<std::string, bool> & err) {
+                    m_error_channel.push(err);
+                });
     }
 
     ~MockStrategy() override = default;

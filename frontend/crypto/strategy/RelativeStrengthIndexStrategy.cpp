@@ -54,12 +54,12 @@ RelativeStrengthIndexStrategy::RelativeStrengthIndexStrategy(
                       channels)
     , m_rsi(config.m_interval)
 {
-    m_channel_subs.push_back(channels.candle_channel.subscribe(
-            event_loop.m_event_loop,
+    event_loop.subscribe(
+            channels.candle_channel,
             [](const auto &) {},
             [this](const auto &, const Candle & candle) {
                 push_candle(candle);
-            }));
+            });
 }
 
 void RelativeStrengthIndexStrategy::push_candle(const Candle & c)

@@ -56,12 +56,12 @@ BollingerBandsStrategy::BollingerBandsStrategy(
                       channels)
     , m_bollinger_bands(config.m_interval, config.m_std_deviation_coefficient)
 {
-    m_channel_subs.push_back(channels.price_channel.subscribe(
-            event_loop.m_event_loop,
+    event_loop.subscribe(
+            channels.price_channel,
             [](const auto &) {},
             [this](const auto & ts, const double & price) {
                 push_price({ts, price});
-            }));
+            });
 }
 
 bool BollingerBandsStrategy::is_valid() const

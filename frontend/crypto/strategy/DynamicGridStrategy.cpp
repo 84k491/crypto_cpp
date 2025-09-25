@@ -52,12 +52,12 @@ DynamicGridStrategy::DynamicGridStrategy(
     , m_orders(orders)
     , m_trend(config.m_interval * config.m_timeframe)
 {
-    m_channel_subs.push_back(channels.candle_channel.subscribe(
-            event_loop.m_event_loop,
+    event_loop.subscribe(
+            channels.candle_channel,
             [](const auto &) {},
             [this](const auto & ts, const Candle & candle) {
                 push_candle(ts, candle);
-            }));
+            });
 }
 
 bool DynamicGridStrategy::is_valid() const
@@ -130,8 +130,8 @@ void DynamicGridStrategy::push_candle(std::chrono::milliseconds ts, const Candle
             SignedVolume{default_size_opt.value(), side},
             ts);
 
-    auto sub = channel.subscribe(
-            m_event_loop.m_event_loop,
+    auto sub = m_event_loop.subscribe_for_sub(
+            channel,
             [&, price_level](const std::shared_ptr<MarketOrder> & or_ptr) {
                 if (or_ptr->status() == OrderStatus::Filled) {
                     on_order_traded(*or_ptr, price_level);
@@ -176,8 +176,8 @@ void DynamicGridStrategy::on_order_traded(const MarketOrder & order, int price_l
                 tp_price,
                 vol,
                 order.signal_ts());
-        const auto tp_sub = take_profit_channel.subscribe(
-                m_event_loop.m_event_loop,
+        const auto tp_sub = m_event_loop.subscribe_for_sub(
+                take_profit_channel,
                 [&, price_level](const std::shared_ptr<TakeProfitMarketOrder> & tp) {
                     switch (tp->status()) {
                     case OrderStatus::Rejected: {
@@ -201,8 +201,8 @@ void DynamicGridStrategy::on_order_traded(const MarketOrder & order, int price_l
                 sl_price,
                 vol,
                 order.signal_ts());
-        const auto sl_sub = stop_loss_channel.subscribe(
-                m_event_loop.m_event_loop,
+        const auto sl_sub = m_event_loop.subscribe_for_sub(
+                stop_loss_channel,
                 [&, price_level](const std::shared_ptr<StopLossMarketOrder> & sl) {
                     switch (sl->status()) {
                     case OrderStatus::Rejected: {
@@ -273,7 +273,7 @@ void DynamicGridStrategy::report_levels(std::chrono::milliseconds ts)
 
     for (int i = int(m_config.m_levels_per_side) * -1; i < int(m_config.m_levels_per_side) + 1; ++i) {
         const auto p = get_price_from_level_number(i);
-        m_strategy_internal_data_channel.push(ts, {.chart_name="prices", .series_name=std::to_string(i), .value=p});
+        m_strategy_internal_data_channel.push(ts, {.chart_name = "prices", .series_name = std::to_string(i), .value = p});
     }
 
     last_reported_ts = ts;

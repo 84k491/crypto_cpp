@@ -57,12 +57,12 @@ DoubleSmaStrategy::DoubleSmaStrategy(
     , m_slow_avg(conf.m_slow_interval)
     , m_fast_avg(conf.m_fast_interval)
 {
-    m_channel_subs.push_back(channels.price_channel.subscribe(
-            event_loop.m_event_loop,
+    event_loop.subscribe(
+            channels.price_channel,
             [](const auto &) {},
             [this](const auto & ts, const double & price) {
                 push_price({ts, price});
-            }));
+            });
 }
 
 void DoubleSmaStrategy::push_price(std::pair<std::chrono::milliseconds, double> ts_and_price)

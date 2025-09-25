@@ -30,23 +30,25 @@ TrailigStopLossStrategy::TrailigStopLossStrategy(
     , m_channels(channels)
     , m_config(config)
 {
-    m_channel_subs.push_back(channels.price_channel.subscribe(
-            event_loop.m_event_loop,
+    event_loop.subscribe(
+            channels.price_channel,
             [](const auto &) {},
             [this](const auto & ts, const double & price) {
                 on_price_changed({ts, price});
-            }));
+            });
 
-    m_channel_subs.push_back(channels.opened_pos_channel.subscribe(
-            event_loop.m_event_loop,
-            [this](const bool & v) { m_is_pos_opened = v; }));
+    event_loop.subscribe(
+            channels.opened_pos_channel,
+            [this](const bool & v) {
+                m_is_pos_opened = v;
+            });
 
-    m_channel_subs.push_back(channels.trades_channel.subscribe(
-            event_loop.m_event_loop,
+    event_loop.subscribe(
+            channels.trades_channel,
             [](const auto &) {},
             [this](const auto &, const auto & trade) {
                 on_trade(trade);
-            }));
+            });
 }
 
 void TrailigStopLossStrategy::on_trade(const Trade & trade)
@@ -65,14 +67,14 @@ void TrailigStopLossStrategy::on_trade(const Trade & trade)
     }
 
     const auto tsl = calc_trailing_stop(trade);
-    m_tsl_sub = m_orders.send_trailing_stop(
-                                tsl,
-                                trade.ts())
-                        .subscribe(
-                                m_event_loop.m_event_loop,
-                                [this](const auto & tsl) {
-                                    on_trailing_stop_updated(tsl);
-                                });
+    auto & ch = m_orders.send_trailing_stop(
+            tsl,
+            trade.ts());
+    m_tsl_sub = m_event_loop.subscribe_for_sub(
+            ch,
+            [this](const auto & tsl) {
+                on_trailing_stop_updated(tsl);
+            });
 }
 
 TrailingStopLoss TrailigStopLossStrategy::calc_trailing_stop(const Trade & trade)

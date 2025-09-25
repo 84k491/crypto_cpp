@@ -74,12 +74,12 @@ BBRSIStrategy::BBRSIStrategy(
     , m_rsi(config.m_rsi_interval)
     , m_rsi_bot_threshold(config.m_margin)
 {
-    m_channel_subs.push_back(channels.candle_channel.subscribe(
-            event_loop.m_event_loop,
+    event_loop.subscribe(
+            channels.candle_channel,
             [](const auto &) {},
             [this](const auto &, const Candle & candle) {
                 push_candle(candle);
-            }));
+            });
 }
 
 void BBRSIStrategy::push_candle(const Candle & candle)

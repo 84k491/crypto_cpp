@@ -39,12 +39,12 @@ DynamicTrailingStopLossStrategy::DynamicTrailingStopLossStrategy(
               channels)
     , m_dynamic_config(config)
 {
-    m_channel_subs.push_back(channels.price_levels_channel.subscribe(
-            event_loop.m_event_loop,
+    m_event_loop.subscribe(
+            channels.price_levels_channel,
             [](const auto &) {},
             [this](const auto &, const auto & price_levels) {
                 m_last_pos_price_levels = price_levels;
-            }));
+            });
 }
 
 void DynamicTrailingStopLossStrategy::on_price_changed(
@@ -84,14 +84,14 @@ void DynamicTrailingStopLossStrategy::on_price_changed(
 
     Logger::logf<LogLevel::Status>("Updating stop loss' price distance to {}", desired_price_distance);
 
-    m_tsl_sub = m_orders.send_trailing_stop(
-                                new_trailing_stop,
-                                ts)
-                        .subscribe(
-                                m_event_loop.m_event_loop,
-                                [this](const auto & tsl) {
-                                    on_trailing_stop_updated(tsl);
-                                });
+    auto & ch = m_orders.send_trailing_stop(
+            new_trailing_stop,
+            ts);
+    m_tsl_sub = m_event_loop.subscribe_for_sub(
+            ch,
+            [this](const auto & tsl) {
+                on_trailing_stop_updated(tsl);
+            });
 
     m_triggered_once = true;
 }

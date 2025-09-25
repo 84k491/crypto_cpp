@@ -23,6 +23,4 @@ protected:
     EventTimeseriesChannel<TpslFullPos::Prices> m_tpsl_channel;
     EventTimeseriesChannel<StopLoss> m_trailing_stop_channel;
     EventChannel<std::pair<std::string, bool>> m_error_channel;
-
-    std::list<std::shared_ptr<ISubscription>> m_channel_subs;
 };

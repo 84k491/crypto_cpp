@@ -8,12 +8,11 @@ StrategyBase::StrategyBase(
         StrategyChannelsRefs channels)
     : m_order_manager(order_manager)
 {
-    m_channel_subs.push_back(
-            channels.opened_pos_channel.subscribe(
-                    event_loop.m_event_loop,
-                    [this](const bool & v) {
-                        m_has_opened_pos = v;
-                    }));
+    event_loop.subscribe(
+            channels.opened_pos_channel,
+            [this](const bool & v) {
+                m_has_opened_pos = v;
+            });
 }
 
 bool StrategyBase::try_send_order(Side side, double price, std::chrono::milliseconds ts)

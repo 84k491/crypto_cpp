@@ -66,12 +66,12 @@ RateOfChangeStrategy::RateOfChangeStrategy(
                       event_loop,
                       channels)
 {
-    m_channel_subs.push_back(channels.candle_channel.subscribe(
-            event_loop.m_event_loop,
+    event_loop.subscribe(
+            channels.candle_channel,
             [](const auto &) {},
             [this](const auto &, const Candle & candle) {
                 push_candle(candle);
-            }));
+            });
 }
 
 bool RateOfChangeStrategy::is_valid() const

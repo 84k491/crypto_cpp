@@ -48,12 +48,12 @@ StaticGridWithBan::StaticGridWithBan(
     , m_event_loop(event_loop)
     , m_orders(orders)
 {
-    m_channel_subs.push_back(channels.candle_channel.subscribe(
-            event_loop.m_event_loop,
+    event_loop.subscribe(
+            channels.candle_channel,
             [](const auto &) {},
             [this](const auto & ts, const Candle & candle) {
                 push_candle(ts, candle);
-            }));
+            });
 }
 
 bool StaticGridWithBan::is_valid() const
@@ -169,8 +169,8 @@ void StaticGridWithBan::push_candle(std::chrono::milliseconds ts, const Candle &
             SignedVolume{default_size_opt.value(), side},
             ts);
 
-    auto sub = channel.subscribe(
-            m_event_loop.m_event_loop,
+    auto sub = m_event_loop.subscribe_for_sub(
+            channel,
             [&, price_level](const std::shared_ptr<MarketOrder> & or_ptr) {
                 if (or_ptr->status() == OrderStatus::Filled) {
                     on_order_traded(*or_ptr, price_level);
@@ -217,8 +217,8 @@ void StaticGridWithBan::on_order_traded(const MarketOrder & order, int price_lev
                 tp_price,
                 vol,
                 order.signal_ts());
-        const auto tp_sub = take_profit_channel.subscribe(
-                m_event_loop.m_event_loop,
+        const auto tp_sub = m_event_loop.subscribe_for_sub(
+                take_profit_channel,
                 [&, price_level](const std::shared_ptr<TakeProfitMarketOrder> & tp) {
                     switch (tp->status()) {
                     case OrderStatus::Rejected: {
@@ -242,8 +242,8 @@ void StaticGridWithBan::on_order_traded(const MarketOrder & order, int price_lev
                 sl_price,
                 vol,
                 order.signal_ts());
-        const auto sl_sub = stop_loss_channel.subscribe(
-                m_event_loop.m_event_loop,
+        const auto sl_sub = m_event_loop.subscribe_for_sub(
+                stop_loss_channel,
                 [&, price_level](const std::shared_ptr<StopLossMarketOrder> & sl) {
                     switch (sl->status()) {
                     case OrderStatus::Rejected: {

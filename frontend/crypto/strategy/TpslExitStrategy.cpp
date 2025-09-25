@@ -48,23 +48,25 @@ TpslExitStrategy::TpslExitStrategy(
     : m_orders(orders)
     , m_config(config)
 {
-    m_channel_subs.push_back(channels.price_channel.subscribe(
-            event_loop.m_event_loop,
+    event_loop.subscribe(
+            channels.price_channel,
             [](const auto &) {},
             [this](const auto & ts, const double & price) {
                 m_last_ts_and_price = {ts, price};
-            }));
+            });
 
-    m_channel_subs.push_back(channels.opened_pos_channel.subscribe(
-            event_loop.m_event_loop,
-            [this](const bool & v) { m_is_pos_opened = v; }));
+    event_loop.subscribe(
+            channels.opened_pos_channel,
+            [this](const bool & v) {
+                m_is_pos_opened = v;
+            });
 
-    m_channel_subs.push_back(channels.trades_channel.subscribe(
-            event_loop.m_event_loop,
+    event_loop.subscribe(
+            channels.trades_channel,
             [](const auto &) {},
             [this](const auto &, const auto & trade) {
                 on_trade(trade);
-            }));
+            });
 }
 
 void TpslExitStrategy::on_trade(const Trade & trade)
@@ -80,16 +82,16 @@ void TpslExitStrategy::on_trade(const Trade & trade)
     // TODO handle a double trade case, add test
     if (m_is_pos_opened) {
         const auto tpsl = calc_tpsl(trade);
-        m_sub = m_orders.send_tpsl(
-                                tpsl.take_profit_price,
-                                tpsl.stop_loss_price,
-                                trade.side().opposite(),
-                                trade.ts())
-                        .subscribe(
-                                m_event_loop.m_event_loop,
-                                [&](const std::shared_ptr<TpslFullPos> & sptr) {
-                                    on_updated(sptr);
-                                });
+        auto & ch = m_orders.send_tpsl(
+                tpsl.take_profit_price,
+                tpsl.stop_loss_price,
+                trade.side().opposite(),
+                trade.ts());
+        m_sub = m_event_loop.subscribe_for_sub(
+                ch,
+                [&](const std::shared_ptr<TpslFullPos> & sptr) {
+                    on_updated(sptr);
+                });
     }
 }
 

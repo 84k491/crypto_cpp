@@ -27,8 +27,8 @@ public:
                   event_loop,
                   *this)
     {
-        m_error_sub = order_manager.error_channel().subscribe(
-                event_loop.m_event_loop,
+        m_error_sub = event_loop.subscribe_for_sub(
+                order_manager.error_channel(),
                 [](const auto & err) {
                     FAIL() << err;
                 });
@@ -196,8 +196,8 @@ TEST_F(OrderManagerTest, MarketOrderFill)
     auto & order_ch = order_manager.send_market_order(111, SignedVolume{1}, 1ms);
     auto order_ptr = order_ch.get();
 
-    auto sub_ptr = order_ch.subscribe(
-            event_loop.m_event_loop,
+    event_loop.subscribe(
+            order_ch,
             [&](const auto & o) {
                 order_ptr = o;
             });
@@ -224,8 +224,8 @@ TEST_F(OrderManagerTest, MarketOrderFillTradeAfterAck)
     auto & order_ch = order_manager.send_market_order(111, SignedVolume{1}, 1ms);
     auto order_ptr = order_ch.get();
 
-    auto sub_ptr = order_ch.subscribe(
-            event_loop.m_event_loop,
+    auto sub = event_loop.subscribe_for_sub(
+            order_ch,
             [&](const auto & o) {
                 order_ptr = o;
             });
@@ -242,7 +242,7 @@ TEST_F(OrderManagerTest, MarketOrderFillTradeAfterAck)
     EventBarrier barrier{event_loop, m_barrier_channel};
     barrier.wait();
 
-    sub_ptr.reset();
+    sub.reset();
 
     EXPECT_EQ(order_ptr->status(), OrderStatus::Filled);
     EXPECT_EQ(order_ptr->fee(), fee);
@@ -283,8 +283,8 @@ TEST_F(OrderManagerTest, TakeProfitSuspendAndFill)
 {
     auto & ch = order_manager.send_take_profit(111, SignedVolume{1}, 1ms);
     std::shared_ptr<TakeProfitMarketOrder> tp = nullptr;
-    auto tp_sub = ch.subscribe(
-            event_loop.m_event_loop,
+    auto sub = event_loop.subscribe_for_sub(
+            ch,
             [&](const std::shared_ptr<TakeProfitMarketOrder> & tp_ptr) {
                 tp = tp_ptr;
             });
@@ -315,7 +315,7 @@ TEST_F(OrderManagerTest, TakeProfitSuspendAndFill)
     EXPECT_EQ(tp->filled_volume(), tp->target_volume());
 
     EXPECT_EQ(order_manager.conditionals(), 1);
-    tp_sub.reset();
+    sub.reset();
     EXPECT_EQ(order_manager.conditionals(), 0);
 }
 
@@ -323,8 +323,8 @@ TEST_F(OrderManagerTest, TakeProfitSuspendAndCancel)
 {
     auto & ch = order_manager.send_take_profit(111, SignedVolume{1}, 1ms);
     std::shared_ptr<TakeProfitMarketOrder> tp = nullptr;
-    auto tp_sub = ch.subscribe(
-            event_loop.m_event_loop,
+    auto sub = event_loop.subscribe_for_sub(
+            ch,
             [&](const std::shared_ptr<TakeProfitMarketOrder> & tp_ptr) {
                 tp = tp_ptr;
             });
@@ -359,7 +359,7 @@ TEST_F(OrderManagerTest, TakeProfitSuspendAndCancel)
     EXPECT_EQ(tp->filled_volume(), tp->target_volume());
 
     EXPECT_EQ(order_manager.conditionals(), 1);
-    tp_sub.reset();
+    sub.reset();
     EXPECT_EQ(order_manager.conditionals(), 0);
 }
 
@@ -367,8 +367,8 @@ TEST_F(OrderManagerTest, TakeProfitCancelOnChannelDrop)
 {
     auto & ch = order_manager.send_take_profit(111, SignedVolume{1}, 1ms);
     std::shared_ptr<TakeProfitMarketOrder> tp = nullptr;
-    auto tp_sub = ch.subscribe(
-            event_loop.m_event_loop,
+    auto sub = event_loop.subscribe_for_sub(
+            ch,
             [&](const std::shared_ptr<TakeProfitMarketOrder> & tp_ptr) {
                 tp = tp_ptr;
             });
@@ -389,7 +389,7 @@ TEST_F(OrderManagerTest, TakeProfitCancelOnChannelDrop)
     ASSERT_EQ(tp->suspended_volume(), tp->target_volume());
 
     EXPECT_EQ(order_manager.conditionals(), 1);
-    tp_sub.reset();
+    sub.reset();
     EXPECT_EQ(order_manager.conditionals(), 0);
     ASSERT_TRUE(tp->is_cancel_requested());
 }
@@ -398,8 +398,8 @@ TEST_F(OrderManagerTest, StopLossSuspendAndFill)
 {
     auto & ch = order_manager.send_stop_loss(111, SignedVolume{1}, 1ms);
     std::shared_ptr<StopLossMarketOrder> sl = nullptr;
-    auto sl_sub = ch.subscribe(
-            event_loop.m_event_loop,
+    auto sub = event_loop.subscribe_for_sub(
+            ch,
             [&](const std::shared_ptr<StopLossMarketOrder> & sl_ptr) {
                 sl = sl_ptr;
             });
@@ -430,7 +430,7 @@ TEST_F(OrderManagerTest, StopLossSuspendAndFill)
     EXPECT_EQ(sl->filled_volume(), sl->target_volume());
 
     EXPECT_EQ(order_manager.conditionals(), 1);
-    sl_sub.reset();
+    sub.reset();
     EXPECT_EQ(order_manager.conditionals(), 0);
 }
 
@@ -438,8 +438,8 @@ TEST_F(OrderManagerTest, StopLossSuspendAndCancel)
 {
     auto & ch = order_manager.send_stop_loss(111, SignedVolume{1}, 1ms);
     std::shared_ptr<StopLossMarketOrder> sl = nullptr;
-    auto tp_sub = ch.subscribe(
-            event_loop.m_event_loop,
+    auto sub = event_loop.subscribe_for_sub(
+            ch,
             [&](const std::shared_ptr<StopLossMarketOrder> & sl_ptr) {
                 sl = sl_ptr;
             });
@@ -474,7 +474,7 @@ TEST_F(OrderManagerTest, StopLossSuspendAndCancel)
     EXPECT_EQ(sl->filled_volume(), sl->target_volume());
 
     EXPECT_EQ(order_manager.conditionals(), 1);
-    tp_sub.reset();
+    sub.reset();
     EXPECT_EQ(order_manager.conditionals(), 0);
 }
 
@@ -482,8 +482,8 @@ TEST_F(OrderManagerTest, StopLossCancelOnChannelDrop)
 {
     auto & ch = order_manager.send_stop_loss(111, SignedVolume{1}, 1ms);
     std::shared_ptr<StopLossMarketOrder> sl = nullptr;
-    auto tp_sub = ch.subscribe(
-            event_loop.m_event_loop,
+    auto sub = event_loop.subscribe_for_sub(
+            ch,
             [&](const std::shared_ptr<StopLossMarketOrder> & sl_ptr) {
                 sl = sl_ptr;
             });
@@ -504,7 +504,7 @@ TEST_F(OrderManagerTest, StopLossCancelOnChannelDrop)
     ASSERT_EQ(sl->suspended_volume(), sl->target_volume());
 
     EXPECT_EQ(order_manager.conditionals(), 1);
-    tp_sub.reset();
+    sub.reset();
     EXPECT_EQ(order_manager.conditionals(), 0);
     ASSERT_TRUE(sl->is_cancel_requested());
 }
