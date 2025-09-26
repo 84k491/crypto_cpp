@@ -1,8 +1,8 @@
 #pragma once
 
 #include "AverageDirectionalIndex.h"
-#include "EventLoopSubscriber.h"
 #include "DynamicGridWithBan.h"
+#include "EventLoopSubscriber.h"
 #include "JsonStrategyConfig.h"
 #include "OrderManager.h"
 #include "StrategyChannels.h"
@@ -29,7 +29,7 @@ class DynamicGridAdxStrategy : public DynamicGridWithBan
 public:
     DynamicGridAdxStrategy(
             const DynamicGridAdxStrategyConfig & config,
-            EventLoopSubscriber & event_loop,
+            std::shared_ptr<EventLoop> & event_loop,
             StrategyChannelsRefs channels,
             OrderManager & orders);
 

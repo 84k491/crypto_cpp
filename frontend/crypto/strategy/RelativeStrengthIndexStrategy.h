@@ -30,7 +30,7 @@ class RelativeStrengthIndexStrategy : public StrategyBase
 public:
     RelativeStrengthIndexStrategy(
             const RelativeStrengthIndexStrategyConfig & config,
-            EventLoopSubscriber & event_loop,
+            std::shared_ptr<EventLoop> & event_loop,
             StrategyChannelsRefs channels,
             OrderManager & orders);
 
@@ -46,4 +46,6 @@ private:
     DynamicTrailingStopLossStrategy m_exit_strategy;
 
     RelativeStrengthIndex m_rsi;
+
+    EventSubcriber m_sub;
 };

@@ -48,7 +48,7 @@ JsonStrategyConfig DSMADiffStrategyConfig::make_exit_strategy_config() const
 
 DSMADiffStrategy::DSMADiffStrategy(
         const DSMADiffStrategyConfig & conf,
-        EventLoopSubscriber & event_loop,
+        std::shared_ptr<EventLoop> & event_loop,
         StrategyChannelsRefs channels,
         OrderManager & orders)
     : StrategyBase(orders, event_loop, channels)
@@ -60,8 +60,9 @@ DSMADiffStrategy::DSMADiffStrategy(
     , m_slow_avg(conf.m_slow_interval)
     , m_fast_avg(conf.m_fast_interval)
     , m_diff_threshold(conf.m_diff_threshold_percent / 100.)
+    , m_sub{event_loop}
 {
-    event_loop.subscribe(
+    m_sub.subscribe(
             channels.price_channel,
             [](const auto &) {},
             [this](const auto & ts, const double & price) {

@@ -32,7 +32,7 @@ public:
 
     DebugEveryTickStrategy(
             const DebugEveryTickStrategyConfig & conf,
-            EventLoopSubscriber & event_loop,
+            std::shared_ptr<EventLoop> & event_loop,
             StrategyChannelsRefs channels,
             OrderManager & orders);
 
@@ -50,4 +50,6 @@ private:
     Side last_side = Side::sell();
 
     unsigned iteration = 0;
+
+    EventSubcriber m_sub;
 };

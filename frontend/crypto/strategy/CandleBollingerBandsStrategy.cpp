@@ -57,7 +57,7 @@ JsonStrategyConfig CandleBollingerBandsStrategyConfig::make_exit_strategy_config
 
 CandleBollingerBandsStrategy::CandleBollingerBandsStrategy(
         const CandleBollingerBandsStrategyConfig & config,
-        EventLoopSubscriber & event_loop,
+        std::shared_ptr<EventLoop> & event_loop,
         StrategyChannelsRefs channels,
         OrderManager & orders)
     : StrategyBase(orders, event_loop, channels)
@@ -68,8 +68,9 @@ CandleBollingerBandsStrategy::CandleBollingerBandsStrategy(
               event_loop,
               channels)
     , m_bollinger_bands(config.m_interval, config.m_std_deviation_coefficient)
+    , m_sub{event_loop}
 {
-    event_loop.subscribe(
+    m_sub.subscribe(
             channels.candle_channel,
             [](const auto &) {},
             [this](const auto &, const Candle & candle) {

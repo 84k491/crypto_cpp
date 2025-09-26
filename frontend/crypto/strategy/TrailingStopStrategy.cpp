@@ -22,28 +22,27 @@ TrailigStopLossStrategyConfig::TrailigStopLossStrategyConfig(double risk)
 TrailigStopLossStrategy::TrailigStopLossStrategy(
         OrderManager & orders,
         JsonStrategyConfig config,
-        EventLoopSubscriber & event_loop,
+        std::shared_ptr<EventLoop> & event_loop,
         StrategyChannelsRefs channels)
-
     : m_orders(orders)
     , m_event_loop(event_loop)
     , m_channels(channels)
     , m_config(config)
+    , m_main_sub(event_loop)
 {
-    event_loop.subscribe(
+    m_main_sub.subscribe(
             channels.price_channel,
             [](const auto &) {},
             [this](const auto & ts, const double & price) {
                 on_price_changed({ts, price});
             });
-
-    event_loop.subscribe(
+    m_main_sub.subscribe(
             channels.opened_pos_channel,
             [this](const bool & v) {
                 m_is_pos_opened = v;
             });
 
-    event_loop.subscribe(
+    m_main_sub.subscribe(
             channels.trades_channel,
             [](const auto &) {},
             [this](const auto &, const auto & trade) {
@@ -53,7 +52,7 @@ TrailigStopLossStrategy::TrailigStopLossStrategy(
 
 void TrailigStopLossStrategy::on_trade(const Trade & trade)
 {
-    if (m_is_pos_opened && m_tsl_sub != nullptr) {
+    if (m_is_pos_opened && m_tsl_sub.has_value()) {
         // position opened
         // stop loss is set already
         const std::string_view msg = "TrailigStopLossStrategy: active stop loss already exists or pending";
@@ -70,7 +69,9 @@ void TrailigStopLossStrategy::on_trade(const Trade & trade)
     auto & ch = m_orders.send_trailing_stop(
             tsl,
             trade.ts());
-    m_tsl_sub = m_event_loop.subscribe_for_sub(
+
+    m_tsl_sub = EventSubcriber{m_event_loop};
+    m_tsl_sub->subscribe(
             ch,
             [this](const auto & tsl) {
                 on_trailing_stop_updated(tsl);

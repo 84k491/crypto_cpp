@@ -1,5 +1,6 @@
 #pragma once
 
+#include "EventLoopSubscriber.h"
 #include "ExitStrategyBase.h"
 #include "JsonStrategyConfig.h"
 #include "StrategyChannels.h"
@@ -23,7 +24,7 @@ public:
     TrailigStopLossStrategy(
             OrderManager & orders,
             JsonStrategyConfig config,
-            EventLoopSubscriber & event_loop,
+            std::shared_ptr<EventLoop> & event_loop,
             StrategyChannelsRefs channels);
 
 protected:
@@ -38,12 +39,13 @@ protected:
 
 protected:
     OrderManager & m_orders;
-    EventLoopSubscriber & m_event_loop;
+    std::shared_ptr<EventLoop> m_event_loop;
     StrategyChannelsRefs m_channels;
     TrailigStopLossStrategyConfig m_config;
 
     bool m_is_pos_opened = false;
 
     std::shared_ptr<TrailingStopLoss> m_active_stop_loss;
-    std::shared_ptr<ISubscription> m_tsl_sub;
+    EventSubcriber m_main_sub;
+    std::optional<EventSubcriber> m_tsl_sub;
 };

@@ -31,7 +31,7 @@ class DSMADiffStrategy final : public StrategyBase
 public:
     DSMADiffStrategy(
             const DSMADiffStrategyConfig & conf,
-            EventLoopSubscriber & event_loop,
+            std::shared_ptr<EventLoop> & event_loop,
             StrategyChannelsRefs channels,
             OrderManager & orders);
 
@@ -49,4 +49,6 @@ private:
     TimeWeightedMovingAverage m_slow_avg;
     TimeWeightedMovingAverage m_fast_avg;
     double m_diff_threshold = {}; // coef, not percent
+
+    EventSubcriber m_sub;
 };

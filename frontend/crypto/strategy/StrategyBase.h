@@ -8,9 +8,10 @@
 class StrategyBase : public IStrategy
 {
 public:
-    StrategyBase(OrderManager & order_manager,
-                 EventLoopSubscriber & event_loop,
-                 StrategyChannelsRefs channels);
+    StrategyBase(
+            OrderManager & order_manager,
+            std::shared_ptr<EventLoop> & event_loop,
+            StrategyChannelsRefs channels);
 
     EventTimeseriesChannel<StrategyInternalData> & strategy_internal_data_channel() override
     {
@@ -31,4 +32,7 @@ protected:
     bool m_has_opened_pos = false;
 
     EventChannel<std::pair<std::string, bool>> m_error_channel;
+
+private:
+    EventSubcriber m_sub;
 };

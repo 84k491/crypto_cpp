@@ -45,7 +45,7 @@ JsonStrategyConfig DoubleSmaStrategyConfig::make_exit_strategy_config() const
 
 DoubleSmaStrategy::DoubleSmaStrategy(
         const DoubleSmaStrategyConfig & conf,
-        EventLoopSubscriber & event_loop,
+        std::shared_ptr<EventLoop> & event_loop,
         StrategyChannelsRefs channels,
         OrderManager & orders)
     : StrategyBase(orders, event_loop, channels)
@@ -56,8 +56,9 @@ DoubleSmaStrategy::DoubleSmaStrategy(
                       channels)
     , m_slow_avg(conf.m_slow_interval)
     , m_fast_avg(conf.m_fast_interval)
+    , m_sub{event_loop}
 {
-    event_loop.subscribe(
+    m_sub.subscribe(
             channels.price_channel,
             [](const auto &) {},
             [this](const auto & ts, const double & price) {

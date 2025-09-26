@@ -35,7 +35,7 @@ public:
     using ConfigT = CandleBollingerBandsStrategyConfig;
     CandleBollingerBandsStrategy(
             const CandleBollingerBandsStrategyConfig & config,
-            EventLoopSubscriber & event_loop,
+            std::shared_ptr<EventLoop> & event_loop,
             StrategyChannelsRefs channels,
             OrderManager & orders);
 
@@ -56,4 +56,6 @@ private:
     std::optional<Side> m_last_signal_side;
 
     int m_candles_above_price_trigger = 0;
+
+    EventSubcriber m_sub;
 };

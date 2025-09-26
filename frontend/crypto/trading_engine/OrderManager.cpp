@@ -11,44 +11,45 @@
 
 OrderManager::OrderManager(
         Symbol symbol,
-        EventLoopSubscriber & event_loop,
+        std::shared_ptr<EventLoop> & event_loop,
         ITradingGateway & tr_gateway)
     : m_symbol(std::move(symbol))
     , m_tr_gateway(tr_gateway)
     , m_event_loop(event_loop)
+    , m_sub(event_loop)
 {
-    m_event_loop.subscribe(
+    m_sub.subscribe(
             m_tr_gateway.order_response_channel(),
             [this](const OrderResponseEvent & e) {
                 on_order_response(e);
             });
 
     // there are no fees in order response
-    m_event_loop.subscribe(
+    m_sub.subscribe(
             m_tr_gateway.trade_channel(),
             [this](const TradeEvent & e) {
                 on_trade(e);
             });
 
-    m_event_loop.subscribe(
+    m_sub.subscribe(
             m_tr_gateway.take_profit_update_channel(),
             [this](const TakeProfitUpdatedEvent & ev) {
                 on_take_profit_response(ev);
             });
 
-    m_event_loop.subscribe(
+    m_sub.subscribe(
             m_tr_gateway.stop_loss_update_channel(),
             [this](const StopLossUpdatedEvent & ev) {
                 on_stop_loss_reposnse(ev);
             });
 
-    m_event_loop.subscribe(
+    m_sub.subscribe(
             m_tr_gateway.trailing_stop_update_channel(),
             [this](const TrailingStopLossUpdatedEvent & ev) {
                 on_trailing_stop_response(ev);
             });
 
-    m_event_loop.subscribe(
+    m_sub.subscribe(
             m_tr_gateway.tpsl_updated_channel(),
             [this](const TpslUpdatedEvent & ev) {
                 on_tpsl_reposnse(ev);

@@ -54,11 +54,12 @@ private:
 private:
     GatewayConfig::Trading m_config;
 
+    std::shared_ptr<EventLoop> m_event_loop;
+
     RestClient rest_client;
     std::shared_ptr<WebSocketClient> m_ws_client;
     ConnectionWatcher m_connection_watcher;
 
-    EventLoopSubscriber m_event_loop;
 
     EventChannel<OrderRequestEvent> m_order_req_channel;
     EventChannel<TpslRequestEvent> m_tpsl_req_channel;
@@ -69,4 +70,6 @@ private:
     EventChannel<TradeEvent> m_trade_channel;
     EventChannel<TpslUpdatedEvent> m_tpsl_updated_channel;
     EventChannel<TrailingStopLossUpdatedEvent> m_trailing_stop_update_channel;
+
+    EventSubcriber m_sub;
 };

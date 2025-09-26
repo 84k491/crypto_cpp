@@ -44,8 +44,11 @@ private:
     void handle_event(const LogEvent & ev);
 
 private:
+    std::shared_ptr<EventLoop> m_event_loop;
+
     EventChannel<LogEvent> m_log_channel;
 
-    EventLoopSubscriber m_event_loop;
     LogLevel m_min_log_level = LogLevel::Debug;
+
+    EventSubcriber m_sub;
 };

@@ -30,7 +30,7 @@ JsonStrategyConfig DynamicTrailigStopLossStrategyConfig::to_json() const
 DynamicTrailingStopLossStrategy::DynamicTrailingStopLossStrategy(
         OrderManager & orders,
         JsonStrategyConfig config,
-        EventLoopSubscriber & event_loop,
+        std::shared_ptr<EventLoop> & event_loop,
         StrategyChannelsRefs channels)
     : TrailigStopLossStrategy(
               orders,
@@ -38,8 +38,10 @@ DynamicTrailingStopLossStrategy::DynamicTrailingStopLossStrategy(
               event_loop,
               channels)
     , m_dynamic_config(config)
+    , m_event_loop{event_loop}
+    , m_sub{event_loop}
 {
-    m_event_loop.subscribe(
+    m_sub.subscribe(
             channels.price_levels_channel,
             [](const auto &) {},
             [this](const auto &, const auto & price_levels) {
@@ -87,7 +89,8 @@ void DynamicTrailingStopLossStrategy::on_price_changed(
     auto & ch = m_orders.send_trailing_stop(
             new_trailing_stop,
             ts);
-    m_tsl_sub = m_event_loop.subscribe_for_sub(
+    m_tsl_sub = EventSubcriber{m_event_loop};
+    m_tsl_sub->subscribe(
             ch,
             [this](const auto & tsl) {
                 on_trailing_stop_updated(tsl);

@@ -4,11 +4,12 @@
 
 StrategyBase::StrategyBase(
         OrderManager & order_manager,
-        EventLoopSubscriber & event_loop,
+        std::shared_ptr<EventLoop> & event_loop,
         StrategyChannelsRefs channels)
     : m_order_manager(order_manager)
+    , m_sub(event_loop)
 {
-    event_loop.subscribe(
+    m_sub.subscribe(
             channels.opened_pos_channel,
             [this](const bool & v) {
                 m_has_opened_pos = v;

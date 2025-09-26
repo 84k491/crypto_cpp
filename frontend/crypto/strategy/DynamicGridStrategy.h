@@ -29,7 +29,7 @@ class DynamicGridStrategy : public StrategyBase
 public:
     DynamicGridStrategy(
             const DynamicGridStrategyConfig & config,
-            EventLoopSubscriber & event_loop,
+            std::shared_ptr<EventLoop> & event_loop,
             StrategyChannelsRefs channels,
             OrderManager & orders);
 
@@ -58,13 +58,13 @@ private:
     {
         int level_num = 0;
 
-        std::shared_ptr<ISubscription> mo_sub;
+        EventSubcriber mo_sub;
         std::shared_ptr<MarketOrder> market_order;
 
-        std::shared_ptr<ISubscription> tp_sub;
+        std::optional<EventSubcriber> tp_sub;
         std::shared_ptr<TakeProfitMarketOrder> tp;
 
-        std::shared_ptr<ISubscription> sl_sub;
+        std::optional<EventSubcriber> sl_sub;
         std::shared_ptr<StopLossMarketOrder> sl;
     };
 
@@ -77,7 +77,7 @@ private:
     std::chrono::milliseconds last_reported_ts = {};
 
 private:
-    EventLoopSubscriber & m_event_loop;
+    std::shared_ptr<EventLoop> & m_event_loop;
 
     DynamicGridStrategyConfig m_config;
 
@@ -87,4 +87,6 @@ private:
     double m_last_trend_value = 0.;
 
     std::map<int, Level> m_orders_by_levels;
+
+    EventSubcriber m_sub;
 };

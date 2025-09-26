@@ -43,7 +43,7 @@ JsonStrategyConfig DynamicGridStrategyConfig::to_json() const
 
 DynamicGridStrategy::DynamicGridStrategy(
         const DynamicGridStrategyConfig & config,
-        EventLoopSubscriber & event_loop,
+        std::shared_ptr<EventLoop> & event_loop,
         StrategyChannelsRefs channels,
         OrderManager & orders)
     : StrategyBase(orders, event_loop, channels)
@@ -51,8 +51,9 @@ DynamicGridStrategy::DynamicGridStrategy(
     , m_config(config)
     , m_orders(orders)
     , m_trend(config.m_interval * config.m_timeframe)
+    , m_sub{event_loop}
 {
-    event_loop.subscribe(
+    m_sub.subscribe(
             channels.candle_channel,
             [](const auto &) {},
             [this](const auto & ts, const Candle & candle) {
@@ -130,7 +131,8 @@ void DynamicGridStrategy::push_candle(std::chrono::milliseconds ts, const Candle
             SignedVolume{default_size_opt.value(), side},
             ts);
 
-    auto sub = m_event_loop.subscribe_for_sub(
+    auto sub = EventSubcriber{m_event_loop};
+    sub.subscribe(
             channel,
             [&, price_level](const std::shared_ptr<MarketOrder> & or_ptr) {
                 if (or_ptr->status() == OrderStatus::Filled) {
@@ -146,9 +148,9 @@ void DynamicGridStrategy::push_candle(std::chrono::milliseconds ts, const Candle
                     .level_num = price_level,
                     .mo_sub = sub,
                     .market_order = channel.get(),
-                    .tp_sub = nullptr,
+                    .tp_sub = std::nullopt,
                     .tp = nullptr,
-                    .sl_sub = nullptr,
+                    .sl_sub = std::nullopt,
                     .sl = nullptr});
 }
 
@@ -176,7 +178,8 @@ void DynamicGridStrategy::on_order_traded(const MarketOrder & order, int price_l
                 tp_price,
                 vol,
                 order.signal_ts());
-        const auto tp_sub = m_event_loop.subscribe_for_sub(
+        auto tp_sub = EventSubcriber{m_event_loop};
+        tp_sub.subscribe(
                 take_profit_channel,
                 [&, price_level](const std::shared_ptr<TakeProfitMarketOrder> & tp) {
                     switch (tp->status()) {
@@ -201,7 +204,8 @@ void DynamicGridStrategy::on_order_traded(const MarketOrder & order, int price_l
                 sl_price,
                 vol,
                 order.signal_ts());
-        const auto sl_sub = m_event_loop.subscribe_for_sub(
+        auto sl_sub = EventSubcriber{m_event_loop};
+        sl_sub.subscribe(
                 stop_loss_channel,
                 [&, price_level](const std::shared_ptr<StopLossMarketOrder> & sl) {
                     switch (sl->status()) {

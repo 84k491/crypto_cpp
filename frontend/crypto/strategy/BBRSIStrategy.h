@@ -34,7 +34,7 @@ class BBRSIStrategy : public StrategyBase
 public:
     BBRSIStrategy(
             BBRSIStrategyConfig config,
-            EventLoopSubscriber & event_loop,
+            std::shared_ptr<EventLoop> & event_loop,
             StrategyChannelsRefs channels,
             OrderManager & orders);
 
@@ -56,4 +56,6 @@ private:
     unsigned m_rsi_top_threshold = 100;
     RelativeStrengthIndex m_rsi;
     unsigned m_rsi_bot_threshold = 0;
+
+    EventSubcriber m_sub;
 };

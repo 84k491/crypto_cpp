@@ -10,7 +10,9 @@
 #include <variant>
 
 ByBitTradingGateway::ByBitTradingGateway()
-    : m_connection_watcher(*this)
+    : m_event_loop{std::make_shared<EventLoop>()}
+    , m_connection_watcher(*this)
+    , m_sub{m_event_loop}
 {
     const auto config_opt = GatewayConfigLoader::load();
     if (!config_opt) {
@@ -114,19 +116,19 @@ void ByBitTradingGateway::cancel_take_profit_request(xg::Guid)
 
 void ByBitTradingGateway::register_subs()
 {
-    m_event_loop.subscribe(
+    m_sub.subscribe(
             m_order_req_channel,
             [this](const OrderRequestEvent & e) { process_event(e); });
 
-    m_event_loop.subscribe(
+    m_sub.subscribe(
             m_tpsl_req_channel,
             [this](const TpslRequestEvent & e) { process_event(e); });
 
-    m_event_loop.subscribe(
+    m_sub.subscribe(
             m_tsl_req_channel,
             [this](const TrailingStopLossRequestEvent & e) { process_event(e); });
 
-    m_event_loop.subscribe(
+    m_sub.subscribe(
             m_ping_event_channel,
             [this](const PingCheckEvent & e) { process_event(e); });
 }

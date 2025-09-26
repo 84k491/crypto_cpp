@@ -43,25 +43,27 @@ TpslExitStrategyConfig::TpslExitStrategyConfig(double risk, double risk_reward_r
 TpslExitStrategy::TpslExitStrategy(
         OrderManager & orders,
         JsonStrategyConfig config,
-        EventLoopSubscriber & event_loop,
+        std::shared_ptr<EventLoop> & event_loop,
         StrategyChannelsRefs channels)
     : m_orders(orders)
     , m_config(config)
+    , m_event_loop{event_loop}
+    , m_main_sub{event_loop}
 {
-    event_loop.subscribe(
+    m_main_sub.subscribe(
             channels.price_channel,
             [](const auto &) {},
             [this](const auto & ts, const double & price) {
                 m_last_ts_and_price = {ts, price};
             });
 
-    event_loop.subscribe(
+    m_main_sub.subscribe(
             channels.opened_pos_channel,
             [this](const bool & v) {
                 m_is_pos_opened = v;
             });
 
-    event_loop.subscribe(
+    m_main_sub.subscribe(
             channels.trades_channel,
             [](const auto &) {},
             [this](const auto &, const auto & trade) {
@@ -87,7 +89,8 @@ void TpslExitStrategy::on_trade(const Trade & trade)
                 tpsl.stop_loss_price,
                 trade.side().opposite(),
                 trade.ts());
-        m_sub = m_event_loop.subscribe_for_sub(
+        m_tpsl_sub = EventSubcriber{m_event_loop};
+        m_tpsl_sub->subscribe(
                 ch,
                 [&](const std::shared_ptr<TpslFullPos> & sptr) {
                     on_updated(sptr);
@@ -111,7 +114,7 @@ void TpslExitStrategy::on_updated(const std::shared_ptr<TpslFullPos> & sptr)
         m_active_tpsl->status() == OrderStatus::Cancelled) {
 
         m_active_tpsl.reset();
-        m_sub.reset();
+        m_tpsl_sub.reset();
     }
 }
 

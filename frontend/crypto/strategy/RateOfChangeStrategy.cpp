@@ -56,7 +56,7 @@ JsonStrategyConfig RateOfChangeStrategyConfig::make_exit_strategy_config() const
 
 RateOfChangeStrategy::RateOfChangeStrategy(
         const RateOfChangeStrategyConfig & config,
-        EventLoopSubscriber & event_loop,
+        std::shared_ptr<EventLoop> & event_loop,
         StrategyChannelsRefs channels,
         OrderManager & orders)
     : StrategyBase(orders, event_loop, channels)
@@ -65,8 +65,9 @@ RateOfChangeStrategy::RateOfChangeStrategy(
                       config.make_exit_strategy_config(),
                       event_loop,
                       channels)
+    , m_sub{event_loop}
 {
-    event_loop.subscribe(
+    m_sub.subscribe(
             channels.candle_channel,
             [](const auto &) {},
             [this](const auto &, const Candle & candle) {

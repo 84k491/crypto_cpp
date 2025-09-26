@@ -6,11 +6,12 @@
 class EventBarrier
 {
 public:
-    EventBarrier(EventLoopSubscriber & el, EventChannel<BarrierEvent> & ch)
+    EventBarrier(std::shared_ptr<EventLoop> & el, EventChannel<BarrierEvent> & ch)
         : m_future(m_promise.get_future())
+        , m_sub{el}
     {
         BarrierEvent ev;
-        m_sub = el.subscribe_for_sub(
+        m_sub.subscribe(
                 ch,
                 [this, guid = ev.guid](const auto & b_ev) {
                     if (guid != b_ev.guid) {
@@ -30,5 +31,5 @@ public:
 private:
     std::promise<void> m_promise;
     std::future<void> m_future;
-    std::shared_ptr<ISubscription> m_sub;
+    EventSubcriber m_sub;
 };

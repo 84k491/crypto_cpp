@@ -32,7 +32,7 @@ class RateOfChangeStrategy : public StrategyBase
 public:
     RateOfChangeStrategy(
             const RateOfChangeStrategyConfig & config,
-            EventLoopSubscriber & event_loop,
+            std::shared_ptr<EventLoop> & event_loop,
             StrategyChannelsRefs channels,
             OrderManager & orders);
 
@@ -49,4 +49,6 @@ private:
 
     std::list<double> m_prev_closing_prices;
     int m_trigger_iter = 0;
+
+    EventSubcriber m_sub;
 };

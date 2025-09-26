@@ -60,7 +60,7 @@ JsonStrategyConfig BBRSIStrategyConfig::make_exit_strategy_config() const
 
 BBRSIStrategy::BBRSIStrategy(
         BBRSIStrategyConfig config,
-        EventLoopSubscriber & event_loop,
+        std::shared_ptr<EventLoop> & event_loop,
         StrategyChannelsRefs channels,
         OrderManager & orders)
     : StrategyBase(orders, event_loop, channels)
@@ -73,8 +73,9 @@ BBRSIStrategy::BBRSIStrategy(
     , m_rsi_top_threshold(100 - config.m_margin)
     , m_rsi(config.m_rsi_interval)
     , m_rsi_bot_threshold(config.m_margin)
+    , m_sub{event_loop}
 {
-    event_loop.subscribe(
+    m_sub.subscribe(
             channels.candle_channel,
             [](const auto &) {},
             [this](const auto &, const Candle & candle) {

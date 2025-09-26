@@ -111,6 +111,7 @@ class EventLoopSubscriber;
 class EventLoop : public std::enable_shared_from_this<EventLoop>
     , public ILambdaAcceptor
 {
+public:
     EventLoop()
     {
         m_thread = std::thread([this] { run(); });
@@ -121,7 +122,6 @@ class EventLoop : public std::enable_shared_from_this<EventLoop>
         return std::shared_ptr<EventLoop>(new EventLoop());
     }
 
-public:
     ~EventLoop() override
     {
         stop();

@@ -29,7 +29,7 @@ JsonStrategyConfig StaticGridStrategyConfig::to_json() const
 
 StaticGridStrategy::StaticGridStrategy(
         const StaticGridStrategyConfig & config,
-        EventLoopSubscriber & event_loop,
+        std::shared_ptr<EventLoop> & event_loop,
         StrategyChannelsRefs channels,
         OrderManager & orders)
     : StaticGridWithBan(

@@ -32,7 +32,7 @@ public:
     using ConfigT = BollingerBandsStrategyConfig;
     BollingerBandsStrategy(
             const BollingerBandsStrategyConfig & config,
-            EventLoopSubscriber & event_loop,
+            std::shared_ptr<EventLoop> & event_loop,
             StrategyChannelsRefs channels,
             OrderManager & orders);
 
@@ -51,4 +51,6 @@ private:
     BollingerBands m_bollinger_bands;
 
     std::optional<Side> m_last_signal_side;
+
+    EventSubcriber m_sub;
 };

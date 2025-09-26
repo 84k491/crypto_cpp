@@ -19,11 +19,11 @@
 #include <fstream>
 #include <optional>
 
-#define BUILDER(Name)                 \
-    {#Name,                           \
-     [](const JsonStrategyConfig & c, \
-        EventLoopSubscriber & el,     \
-        StrategyChannelsRefs ch,      \
+#define BUILDER(Name)                         \
+    {#Name,                                   \
+     [](const JsonStrategyConfig & c,         \
+        std::shared_ptr<EventLoop> & el, \
+        StrategyChannelsRefs ch,              \
         OrderManager & om) { return std::make_shared<Name##Strategy>(c, el, ch, om); }}
 
 StrategyFactory::StrategyFactory()
@@ -89,7 +89,7 @@ std::vector<std::string> StrategyFactory::get_all_strategy_names() const
 std::optional<std::shared_ptr<IStrategy>> StrategyFactory::build_strategy(
         const std::string & strategy_name,
         const JsonStrategyConfig & config,
-        EventLoopSubscriber & event_loop,
+        std::shared_ptr<EventLoop> & event_loop,
         StrategyChannelsRefs channels,
         OrderManager & orders) const
 {

@@ -45,7 +45,7 @@ JsonStrategyConfig BollingerBandsStrategyConfig::make_exit_strategy_config() con
 
 BollingerBandsStrategy::BollingerBandsStrategy(
         const BollingerBandsStrategyConfig & config,
-        EventLoopSubscriber & event_loop,
+        std::shared_ptr<EventLoop> & event_loop,
         StrategyChannelsRefs channels,
         OrderManager & orders)
     : StrategyBase(orders, event_loop, channels)
@@ -55,8 +55,9 @@ BollingerBandsStrategy::BollingerBandsStrategy(
                       event_loop,
                       channels)
     , m_bollinger_bands(config.m_interval, config.m_std_deviation_coefficient)
+    , m_sub{event_loop}
 {
-    event_loop.subscribe(
+    m_sub.subscribe(
             channels.price_channel,
             [](const auto &) {},
             [this](const auto & ts, const double & price) {

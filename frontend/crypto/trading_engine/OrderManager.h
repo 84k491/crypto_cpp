@@ -17,7 +17,7 @@ class OrderManager
 public:
     OrderManager(
             Symbol symbol,
-            EventLoopSubscriber & event_loop,
+            std::shared_ptr<EventLoop> & event_loop,
             ITradingGateway & tr_gateway);
 
     EventObjectChannel<std::shared_ptr<MarketOrder>> & send_market_order(double price, SignedVolume vol, std::chrono::milliseconds ts);
@@ -86,6 +86,7 @@ private:
 
     std::optional<EventObjectChannel<std::shared_ptr<TrailingStopLoss>>> m_trailing_stop;
 
-    EventLoopSubscriber & m_event_loop;
+    std::shared_ptr<EventLoop> m_event_loop;
+    EventSubcriber m_sub;
     EventChannel<std::string> m_error_channel;
 };

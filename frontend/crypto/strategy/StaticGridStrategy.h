@@ -23,7 +23,7 @@ class StaticGridStrategy : public StaticGridWithBan
 public:
     StaticGridStrategy(
             const StaticGridStrategyConfig & config,
-            EventLoopSubscriber & event_loop,
+            std::shared_ptr<EventLoop> & event_loop,
             StrategyChannelsRefs channels,
             OrderManager & orders);
 

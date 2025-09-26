@@ -17,7 +17,8 @@ public:
     static constexpr double fee = .5;
 
     OrderManagerTest()
-        : order_manager(
+        : event_loop{std::make_shared<EventLoop>()}
+        , order_manager(
                   Symbol{
                           .symbol_name = "TSTUSDT",
                           .lot_size_filter = Symbol::LotSizeFilter{
@@ -26,8 +27,9 @@ public:
                                   .qty_step = 0.01}},
                   event_loop,
                   *this)
+        , m_error_sub(event_loop)
     {
-        m_error_sub = event_loop.subscribe_for_sub(
+        m_error_sub.subscribe(
                 order_manager.error_channel(),
                 [](const auto & err) {
                     FAIL() << err;
@@ -173,7 +175,7 @@ protected:
     EventChannel<TrailingStopLossUpdatedEvent> m_tsl_updated_channel;
 
     // Test
-    EventLoopSubscriber event_loop;
+    std::shared_ptr<EventLoop> event_loop;
     OrderManager order_manager;
 
     std::optional<OrderRequestEvent> last_order_request;
@@ -186,7 +188,7 @@ protected:
 
     EventChannel<BarrierEvent> m_barrier_channel;
 
-    std::shared_ptr<ISubscription> m_error_sub;
+    EventSubcriber m_error_sub;
 };
 
 using namespace std::chrono_literals;
@@ -196,7 +198,8 @@ TEST_F(OrderManagerTest, MarketOrderFill)
     auto & order_ch = order_manager.send_market_order(111, SignedVolume{1}, 1ms);
     auto order_ptr = order_ch.get();
 
-    event_loop.subscribe(
+    auto sub = EventSubcriber{event_loop};
+    sub.subscribe(
             order_ch,
             [&](const auto & o) {
                 order_ptr = o;
@@ -224,7 +227,8 @@ TEST_F(OrderManagerTest, MarketOrderFillTradeAfterAck)
     auto & order_ch = order_manager.send_market_order(111, SignedVolume{1}, 1ms);
     auto order_ptr = order_ch.get();
 
-    auto sub = event_loop.subscribe_for_sub(
+    std::optional<EventSubcriber> sub = EventSubcriber{event_loop};
+    sub->subscribe(
             order_ch,
             [&](const auto & o) {
                 order_ptr = o;
@@ -283,7 +287,9 @@ TEST_F(OrderManagerTest, TakeProfitSuspendAndFill)
 {
     auto & ch = order_manager.send_take_profit(111, SignedVolume{1}, 1ms);
     std::shared_ptr<TakeProfitMarketOrder> tp = nullptr;
-    auto sub = event_loop.subscribe_for_sub(
+
+    std::optional<EventSubcriber> sub = EventSubcriber{event_loop};
+    sub->subscribe(
             ch,
             [&](const std::shared_ptr<TakeProfitMarketOrder> & tp_ptr) {
                 tp = tp_ptr;
@@ -323,7 +329,9 @@ TEST_F(OrderManagerTest, TakeProfitSuspendAndCancel)
 {
     auto & ch = order_manager.send_take_profit(111, SignedVolume{1}, 1ms);
     std::shared_ptr<TakeProfitMarketOrder> tp = nullptr;
-    auto sub = event_loop.subscribe_for_sub(
+
+    std::optional<EventSubcriber> sub = EventSubcriber{event_loop};
+    sub->subscribe(
             ch,
             [&](const std::shared_ptr<TakeProfitMarketOrder> & tp_ptr) {
                 tp = tp_ptr;
@@ -367,7 +375,9 @@ TEST_F(OrderManagerTest, TakeProfitCancelOnChannelDrop)
 {
     auto & ch = order_manager.send_take_profit(111, SignedVolume{1}, 1ms);
     std::shared_ptr<TakeProfitMarketOrder> tp = nullptr;
-    auto sub = event_loop.subscribe_for_sub(
+
+    std::optional<EventSubcriber> sub = EventSubcriber{event_loop};
+    sub->subscribe(
             ch,
             [&](const std::shared_ptr<TakeProfitMarketOrder> & tp_ptr) {
                 tp = tp_ptr;
@@ -398,7 +408,9 @@ TEST_F(OrderManagerTest, StopLossSuspendAndFill)
 {
     auto & ch = order_manager.send_stop_loss(111, SignedVolume{1}, 1ms);
     std::shared_ptr<StopLossMarketOrder> sl = nullptr;
-    auto sub = event_loop.subscribe_for_sub(
+
+    std::optional<EventSubcriber> sub = EventSubcriber{event_loop};
+    sub->subscribe(
             ch,
             [&](const std::shared_ptr<StopLossMarketOrder> & sl_ptr) {
                 sl = sl_ptr;
@@ -438,7 +450,9 @@ TEST_F(OrderManagerTest, StopLossSuspendAndCancel)
 {
     auto & ch = order_manager.send_stop_loss(111, SignedVolume{1}, 1ms);
     std::shared_ptr<StopLossMarketOrder> sl = nullptr;
-    auto sub = event_loop.subscribe_for_sub(
+
+    std::optional<EventSubcriber> sub = EventSubcriber{event_loop};
+    sub->subscribe(
             ch,
             [&](const std::shared_ptr<StopLossMarketOrder> & sl_ptr) {
                 sl = sl_ptr;
@@ -482,7 +496,9 @@ TEST_F(OrderManagerTest, StopLossCancelOnChannelDrop)
 {
     auto & ch = order_manager.send_stop_loss(111, SignedVolume{1}, 1ms);
     std::shared_ptr<StopLossMarketOrder> sl = nullptr;
-    auto sub = event_loop.subscribe_for_sub(
+
+    std::optional<EventSubcriber> sub = EventSubcriber{event_loop};
+    sub->subscribe(
             ch,
             [&](const std::shared_ptr<StopLossMarketOrder> & sl_ptr) {
                 sl = sl_ptr;

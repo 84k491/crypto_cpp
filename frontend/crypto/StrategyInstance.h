@@ -77,6 +77,8 @@ private:
     void finish_if_needed_and_ready();
 
 private:
+    std::shared_ptr<EventLoop> m_event_loop;
+
     const xg::Guid m_strategy_guid;
     CandleBuilder m_candle_builder;
 
@@ -130,9 +132,7 @@ private:
     EventChannel<StrategyStopRequest> m_stop_ev_channel;
     EventChannel<BarrierEvent> m_barrier_channel;
 
-    EventLoopSubscriber m_event_loop;
-
     OrderManager m_orders;
 
-    std::list<std::shared_ptr<ISubscription>> m_channel_subs;
+    EventSubcriber m_sub;
 };

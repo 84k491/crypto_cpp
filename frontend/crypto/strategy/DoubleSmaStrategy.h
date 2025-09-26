@@ -34,7 +34,7 @@ public:
 
     DoubleSmaStrategy(
             const DoubleSmaStrategyConfig & conf,
-            EventLoopSubscriber & event_loop,
+            std::shared_ptr<EventLoop> & event_loop,
             StrategyChannelsRefs channels,
             OrderManager & orders);
 
@@ -55,4 +55,6 @@ private:
 
     std::optional<double> m_prev_slow_avg;
     std::optional<double> m_prev_fast_avg;
+
+    EventSubcriber m_sub;
 };

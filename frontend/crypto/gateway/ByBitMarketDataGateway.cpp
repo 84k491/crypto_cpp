@@ -10,11 +10,14 @@
 #include <chrono>
 #include <crossguid/guid.hpp>
 #include <future>
+#include <memory>
 #include <string>
 #include <vector>
 
 ByBitMarketDataGateway::ByBitMarketDataGateway(bool start)
-    : m_connection_watcher(*this)
+    : m_event_loop{std::make_shared<EventLoop>()}
+    , m_connection_watcher(*this)
+    , m_sub{m_event_loop}
 {
     const auto config_opt = GatewayConfigLoader::load();
     if (!config_opt) {
@@ -383,15 +386,15 @@ void ByBitMarketDataGateway::on_price_received(const nlohmann::json & json)
 
 void ByBitMarketDataGateway::register_subs()
 {
-    m_event_loop.subscribe(
+    m_sub.subscribe(
             m_ping_event_channel,
             [this](const PingCheckEvent & e) { handle_event(e); });
 
-    m_event_loop.subscribe(
+    m_sub.subscribe(
             m_live_md_req_channel,
             [this](const LiveMDRequest & e) { this->handle_event(e); });
 
-    m_event_loop.subscribe(
+    m_sub.subscribe(
             m_historical_md_req_channel,
             [this](const HistoricalMDRequest & e) { this->handle_event(e); });
 }

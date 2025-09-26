@@ -36,7 +36,8 @@ StrategyInstance::StrategyInstance(
         const JsonStrategyConfig & entry_strategy_config,
         IMarketDataGateway & md_gateway,
         ITradingGateway & tr_gateway)
-    : m_strategy_guid(xg::newGuid())
+    : m_event_loop{std::make_shared<EventLoop>()}
+    , m_strategy_guid(xg::newGuid())
     , m_candle_builder{get_timeframe(entry_strategy_config).value_or(std::chrono::minutes{5})}
     , m_md_gateway(md_gateway)
     , m_tr_gateway(tr_gateway)
@@ -51,6 +52,7 @@ StrategyInstance::StrategyInstance(
     , m_position_manager(symbol)
     , m_historical_md_request(historical_md_request)
     , m_orders(symbol, m_event_loop, tr_gateway)
+    , m_sub(m_event_loop)
 {
     const auto strategy_ptr_opt = StrategyFactory::i().build_strategy(
             entry_strategy_name,
@@ -68,7 +70,7 @@ StrategyInstance::StrategyInstance(
 
     m_status.push(WorkStatus::Stopped);
 
-    m_event_loop.subscribe(
+    m_sub.subscribe(
             m_strategy->error_channel(),
             [this](const std::pair<std::string, bool> & err) {
                 const auto & [msg, do_panic] = err;
@@ -82,37 +84,37 @@ StrategyInstance::StrategyInstance(
             },
             Priority::High);
 
-    m_event_loop.subscribe(
+    m_sub.subscribe(
             m_md_gateway.historical_prices_channel(),
             [this](const HistoricalMDGeneratorEvent & e) {
                 handle_event_generic(e);
             },
             Priority::Low);
-    m_event_loop.subscribe(
+    m_sub.subscribe(
             m_md_gateway.live_prices_channel(),
             [this](const MDPriceEvent & e) {
                 handle_event_generic(e);
             },
             Priority::Low);
-    m_event_loop.subscribe(
+    m_sub.subscribe(
             m_historical_md_channel,
             [this](const HistoricalMDPriceEvent & e) {
                 handle_event_generic(e);
             },
             Priority::Low);
 
-    m_event_loop.subscribe(
+    m_sub.subscribe(
             m_start_ev_channel,
             [this](const StrategyStartRequest & e) {
                 handle_event_generic(e);
             });
-    m_event_loop.subscribe(
+    m_sub.subscribe(
             m_stop_ev_channel,
             [this](const StrategyStopRequest & e) {
                 handle_event_generic(e);
             });
 
-    m_event_loop.subscribe(
+    m_sub.subscribe(
             m_tr_gateway.trade_channel(),
             [this](const TradeEvent & e) {
                 handle_event_generic(e);
@@ -123,16 +125,16 @@ StrategyInstance::StrategyInstance(
     });
 
     if (!historical_md_request.has_value()) {
-        m_event_loop.subscribe(m_md_gateway.status_channel(),
-                               [this](const WorkStatus & status) {
-                                   if (status == WorkStatus::Stopped || status == WorkStatus::Panic) {
-                                       if (m_position_manager.opened() != nullptr) {
-                                           close_position(
-                                                   m_last_ts_and_price.second,
-                                                   m_last_ts_and_price.first);
-                                       }
-                                   }
-                               });
+        m_sub.subscribe(m_md_gateway.status_channel(),
+                        [this](const WorkStatus & status) {
+                            if (status == WorkStatus::Stopped || status == WorkStatus::Panic) {
+                                if (m_position_manager.opened() != nullptr) {
+                                    close_position(
+                                            m_last_ts_and_price.second,
+                                            m_last_ts_and_price.first);
+                                }
+                            }
+                        });
     }
 }
 

@@ -43,7 +43,7 @@ JsonStrategyConfig RelativeStrengthIndexStrategyConfig::make_exit_strategy_confi
 
 RelativeStrengthIndexStrategy::RelativeStrengthIndexStrategy(
         const RelativeStrengthIndexStrategyConfig & config,
-        EventLoopSubscriber & event_loop,
+        std::shared_ptr<EventLoop> & event_loop,
         StrategyChannelsRefs channels,
         OrderManager & orders)
     : StrategyBase(orders, event_loop, channels)
@@ -53,8 +53,9 @@ RelativeStrengthIndexStrategy::RelativeStrengthIndexStrategy(
                       event_loop,
                       channels)
     , m_rsi(config.m_interval)
+    , m_sub{event_loop}
 {
-    event_loop.subscribe(
+    m_sub.subscribe(
             channels.candle_channel,
             [](const auto &) {},
             [this](const auto &, const Candle & candle) {

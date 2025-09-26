@@ -6,8 +6,10 @@
 #include <fmt/chrono.h>
 
 Logger::Logger()
+    : m_event_loop{std::make_shared<EventLoop>()}
+    , m_sub(m_event_loop)
 {
-    m_event_loop.subscribe(
+    m_sub.subscribe(
             m_log_channel,
             [this](const LogEvent & e) { handle_event(e); });
 }

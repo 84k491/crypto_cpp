@@ -30,7 +30,7 @@ class RatchetStrategy : public StrategyBase
 public:
     RatchetStrategy(
             RatchetStrategyConfig config,
-            EventLoopSubscriber & event_loop,
+            std::shared_ptr<EventLoop> & event_loop,
             StrategyChannelsRefs channels,
             OrderManager & orders);
 
@@ -47,4 +47,6 @@ private:
     DynamicTrailingStopLossStrategy m_exit_strategy;
 
     Ratchet m_ratchet;
+
+    EventSubcriber m_sub;
 };

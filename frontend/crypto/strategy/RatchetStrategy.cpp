@@ -43,7 +43,7 @@ JsonStrategyConfig RatchetStrategyConfig::make_exit_strategy_config() const
 
 RatchetStrategy::RatchetStrategy(
         RatchetStrategyConfig config,
-        EventLoopSubscriber & event_loop,
+        std::shared_ptr<EventLoop> & event_loop,
         StrategyChannelsRefs channels,
         OrderManager & orders)
     : StrategyBase(orders, event_loop, channels)
@@ -53,8 +53,9 @@ RatchetStrategy::RatchetStrategy(
                       event_loop,
                       channels)
     , m_ratchet(config.m_retracement)
+    , m_sub{event_loop}
 {
-    event_loop.subscribe(
+    m_sub.subscribe(
             channels.candle_channel,
             [](const auto &) {},
             [this](const auto &, const Candle & candle) {

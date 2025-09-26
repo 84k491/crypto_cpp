@@ -11,7 +11,7 @@ class MockStrategy : public StrategyBase
 public:
     MockStrategy(
             const JsonStrategyConfig &,
-            EventLoopSubscriber & event_loop,
+            std::shared_ptr<EventLoop> & event_loop,
             StrategyChannelsRefs channels,
             OrderManager & orders)
         : StrategyBase(orders, event_loop, channels)
@@ -20,15 +20,16 @@ public:
                   JsonStrategyConfig{R"({"risk":0.1,"risk_reward_ratio":0.8")"},
                   event_loop,
                   channels)
+        , m_sub{event_loop}
     {
-        event_loop.subscribe(
+        m_sub.subscribe(
                 channels.price_channel,
                 [](const auto &) {},
                 [this](const auto & ts, const double & price) {
                     push_price({ts, price});
                 });
 
-        event_loop.subscribe(
+        m_sub.subscribe(
                 m_exit_strategy.error_channel(),
                 [&](const std::pair<std::string, bool> & err) {
                     m_error_channel.push(err);
@@ -63,4 +64,6 @@ private:
     std::optional<Side> m_next_signal_side = Side::buy();
 
     TpslExitStrategy m_exit_strategy;
+
+    EventSubcriber m_sub;
 };

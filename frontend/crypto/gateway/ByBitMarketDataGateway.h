@@ -68,6 +68,8 @@ private:
     void on_connection_verified() override;
 
 private:
+    std::shared_ptr<EventLoop> m_event_loop;
+
     GatewayConfig::MarketData m_config;
 
     Guarded<std::vector<LiveMDRequest>> m_live_requests; // TODO remove?
@@ -84,7 +86,6 @@ private:
     std::shared_ptr<WebSocketClient> m_ws_client;
     ConnectionWatcher m_connection_watcher;
 
-    EventLoopSubscriber m_event_loop;
 
     EventChannel<HistoricalMDRequest> m_historical_md_req_channel;
     EventChannel<LiveMDRequest> m_live_md_req_channel;
@@ -93,5 +94,5 @@ private:
     EventChannel<HistoricalMDGeneratorEvent> m_historical_prices_channel;
     EventChannel<MDPriceEvent> m_live_prices_channel;
 
-    std::list<std::shared_ptr<ISubscription>> m_channel_subs;
+    EventSubcriber m_sub;
 };
