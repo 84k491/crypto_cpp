@@ -1,11 +1,9 @@
 #pragma once
 
-#include "EventChannel.h"
 #include "EventLoop.h"
 #include "EventTimeseriesChannel.h"
 #include "ISubsription.h"
 
-#include <cstdlib>
 #include <memory>
 
 class EventSubcriber
