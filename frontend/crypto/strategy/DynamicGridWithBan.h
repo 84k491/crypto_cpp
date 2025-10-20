@@ -29,7 +29,7 @@ class DynamicGridWithBan : public StrategyBase
 public:
     DynamicGridWithBan(
             const DynamicGridWithBanStrategyConfig & config,
-            std::shared_ptr<EventLoop> & event_loop,
+            EventLoop & event_loop,
             StrategyChannelsRefs channels,
             OrderManager & orders);
 
@@ -62,10 +62,10 @@ private:
         EventSubcriber mo_sub;
         std::shared_ptr<MarketOrder> market_order;
 
-        std::optional<EventSubcriber> tp_sub;
+        std::unique_ptr<EventSubcriber> tp_sub;
         std::shared_ptr<TakeProfitMarketOrder> tp;
 
-        std::optional<EventSubcriber> sl_sub;
+        std::unique_ptr<EventSubcriber> sl_sub;
         std::shared_ptr<StopLossMarketOrder> sl;
     };
 
@@ -79,7 +79,7 @@ private:
     std::chrono::milliseconds last_reported_ts = {};
 
 private:
-    std::shared_ptr<EventLoop> & m_event_loop;
+    EventLoop & m_event_loop;
 
     DynamicGridWithBanStrategyConfig m_config;
 

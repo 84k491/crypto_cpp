@@ -6,34 +6,42 @@
 
 #include <utility>
 
+class IDelayedLambdaAcceptor : public ILambdaAcceptor
+{
+public:
+    virtual ~IDelayedLambdaAcceptor() = default;
+
+    virtual bool push_to_queue(LambdaEvent value) = 0;
+    virtual bool push_to_queue_delayed(std::chrono::milliseconds delay, LambdaEvent value) = 0;
+};
+
 class EventLoopWithDelays : public ILambdaAcceptor
 {
 public:
     EventLoopWithDelays()
-        : m_sub(m_ev) // TODO inherit from EL, pass it here by ref
+        : m_sub(m_ev)
     {
         auto & ch = Scheduler::i().delayed_channel(m_guid);
         m_sub.subscribe(
                 ch,
                 [this](LambdaEvent ev) {
-                    m_ev->push_to_queue(std::move(ev));
+                    m_ev.push(std::move(ev));
                 });
     }
 
-    bool push_to_queue(LambdaEvent event) override
+    void push(LambdaEvent event) override
     {
-        return m_ev->push_to_queue(std::move(event));
+        return m_ev.push(std::move(event));
     }
 
-    bool push_to_queue_delayed(std::chrono::milliseconds delay, LambdaEvent value) override
+    void push_delayed(std::chrono::milliseconds delay, LambdaEvent value) override
     {
         Scheduler::i().delay_event(m_guid, delay, value);
-        return true;
     }
 
 private:
     xg::Guid m_guid;
 
-    std::shared_ptr<EventLoop> m_ev;
+    EventLoop m_ev;
     EventSubcriber m_sub;
 };

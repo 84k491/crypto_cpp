@@ -1,3 +1,4 @@
+#include "EventChannel.h"
 #include "EventLoopSubscriber.h"
 #include "Events.h"
 
@@ -6,7 +7,7 @@
 class EventBarrier
 {
 public:
-    EventBarrier(std::shared_ptr<EventLoop> & el, EventChannel<BarrierEvent> & ch)
+    EventBarrier(EventLoop & el, EventChannel<BarrierEvent> & ch)
         : m_future(m_promise.get_future())
         , m_sub{el}
     {

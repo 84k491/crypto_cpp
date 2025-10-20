@@ -7,8 +7,8 @@
 #include "Macros.h"
 
 #include <crossguid/guid.hpp>
+#include <list>
 #include <memory>
-#include <vector>
 
 template <typename ObjectT>
 class EventChannel;
@@ -65,22 +65,25 @@ public:
 
     [[nodiscard]] std::shared_ptr<EventSubscription<EventT>>
     subscribe(
-            const std::shared_ptr<ILambdaAcceptor> & consumer,
+            ILambdaAcceptor & consumer,
             std::function<void(const EventT &)> && update_callback,
             Priority priority = Priority::Normal);
     void unsubscribe(xg::Guid guid);
 
 private:
-    Guarded<std::vector<std::weak_ptr<EventSubscription<EventT>>>> m_update_callbacks;
+    using SubWPtr = std::weak_ptr<EventSubscription<EventT>>;
+    // Guid is here because wptr will be null on unsub on dtor
+    Guarded<std::list<std::pair<xg::Guid, SubWPtr>>> m_subscriptions;
 };
 
 template <typename EventT>
 void EventChannel<EventT>::push(const EventT & object)
 {
-    auto callbacks_lref = m_update_callbacks.lock();
+    auto subs_lref = m_subscriptions.lock();
 
-    for (const auto & wptr : callbacks_lref.get()) {
+    for (const auto & [_, wptr] : subs_lref.get()) {
 
+        // TODO nodiscard on sub
         // it can't be nullptr, unsub always happens before
         UNWRAP_CONTINUE(subsription, wptr.lock());
 
@@ -94,9 +97,9 @@ void EventChannel<EventT>::push(const EventT & object)
 template <typename EventT>
 void EventChannel<EventT>::push_delayed(const EventT & object, std::chrono::milliseconds delay)
 {
-    auto callbacks_lref = m_update_callbacks.lock();
+    auto subs_lref = m_subscriptions.lock();
 
-    for (const auto & wptr : callbacks_lref.get()) {
+    for (const auto & [_, wptr] : subs_lref.get()) {
 
         // it can't be nullptr, unsub always happens before
         UNWRAP_CONTINUE(subsription, wptr.lock());
@@ -113,15 +116,15 @@ void EventChannel<EventT>::push_delayed(const EventT & object, std::chrono::mill
 template <typename EventT>
 std::shared_ptr<EventSubscription<EventT>>
 EventChannel<EventT>::subscribe(
-        const std::shared_ptr<ILambdaAcceptor> & consumer,
+        ILambdaAcceptor & consumer,
         std::function<void(const EventT &)> && update_callback,
         Priority priority)
 {
     const auto guid = xg::newGuid();
     auto sptr = std::make_shared<EventSubscription<EventT>>(consumer, update_callback, priority, *this, guid);
 
-    auto callbacks_lref = m_update_callbacks.lock();
-    callbacks_lref.get().push_back(std::weak_ptr{sptr});
+    auto subs_lref = m_subscriptions.lock();
+    subs_lref.get().push_back(std::make_pair(guid, std::weak_ptr{sptr}));
 
     return sptr;
 }
@@ -129,12 +132,13 @@ EventChannel<EventT>::subscribe(
 template <typename EventT>
 void EventChannel<EventT>::unsubscribe(xg::Guid guid)
 {
-    auto callbacks_lref = m_update_callbacks.lock();
-    auto & callbacks = callbacks_lref.get();
+    auto subs_lref = m_subscriptions.lock();
+    auto & callbacks = subs_lref.get();
 
     for (auto it = callbacks.begin(); it != callbacks.end(); ++it) {
-        auto sptr = it.lock();
-        if (!sptr || sptr->guid() == guid) {
+        auto & [sub_guid, wptr] = *it;
+
+        if (sub_guid == guid) {
             callbacks.erase(it);
             break;
         }
@@ -144,12 +148,12 @@ void EventChannel<EventT>::unsubscribe(xg::Guid guid)
 template <typename EventT>
 EventChannel<EventT>::~EventChannel()
 {
-    auto callbacks_lref = m_update_callbacks.lock();
+    auto subs_lref = m_subscriptions.lock();
 
-    for (auto & wptr : callbacks_lref.get()) {
+    for (auto & [_, wptr] : subs_lref.get()) {
         if (auto sptr = wptr.lock()) {
             sptr->m_channel = nullptr;
         }
     }
-    callbacks_lref.get().clear();
+    subs_lref.get().clear();
 }

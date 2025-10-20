@@ -35,17 +35,17 @@ class StaticGridWithBan : public StrategyBase
         EventSubcriber mo_sub;
         std::shared_ptr<MarketOrder> market_order;
 
-        std::optional<EventSubcriber> tp_sub;
+        std::unique_ptr<EventSubcriber> tp_sub;
         std::shared_ptr<TakeProfitMarketOrder> tp;
 
-        std::optional<EventSubcriber> sl_sub;
+        std::unique_ptr<EventSubcriber> sl_sub;
         std::shared_ptr<StopLossMarketOrder> sl;
     };
 
 public:
     StaticGridWithBan(
             const StaticGridWithBanStrategyConfig & config,
-            std::shared_ptr<EventLoop> & event_loop,
+            EventLoop & event_loop,
             StrategyChannelsRefs channels,
             OrderManager & orders);
 
@@ -87,7 +87,7 @@ private:
     // void print_levels();
 
 private:
-    std::shared_ptr<EventLoop> m_event_loop;
+    EventLoop & m_event_loop;
     OrderManager & m_orders;
 
     std::optional<Limits> m_previous_limits;

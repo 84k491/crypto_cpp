@@ -32,7 +32,7 @@ public:
 
     DebugEveryTickStrategy(
             const DebugEveryTickStrategyConfig & conf,
-            std::shared_ptr<EventLoop> & event_loop,
+            EventLoop & event_loop,
             StrategyChannelsRefs channels,
             OrderManager & orders);
 

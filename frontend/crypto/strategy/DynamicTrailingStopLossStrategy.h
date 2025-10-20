@@ -24,7 +24,7 @@ public:
     DynamicTrailingStopLossStrategy(
             OrderManager & orders,
             JsonStrategyConfig config,
-            std::shared_ptr<EventLoop> & event_loop,
+            EventLoop & event_loop,
             StrategyChannelsRefs channels);
 
 private:
@@ -37,6 +37,6 @@ private:
 
     bool m_triggered_once = false;
 
-    std::shared_ptr<EventLoop> m_event_loop;
+    EventLoop & m_event_loop;
     EventSubcriber m_sub;
 };

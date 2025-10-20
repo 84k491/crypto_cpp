@@ -43,7 +43,7 @@ JsonStrategyConfig RelativeStrengthIndexStrategyConfig::make_exit_strategy_confi
 
 RelativeStrengthIndexStrategy::RelativeStrengthIndexStrategy(
         const RelativeStrengthIndexStrategyConfig & config,
-        std::shared_ptr<EventLoop> & event_loop,
+        EventLoop & event_loop,
         StrategyChannelsRefs channels,
         OrderManager & orders)
     : StrategyBase(orders, event_loop, channels)

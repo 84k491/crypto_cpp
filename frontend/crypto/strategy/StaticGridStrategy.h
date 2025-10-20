@@ -1,6 +1,5 @@
 #pragma once
 
-#include "EventLoopSubscriber.h"
 #include "OrderManager.h"
 #include "StaticGridWithBan.h"
 #include "StrategyChannels.h"
@@ -23,7 +22,7 @@ class StaticGridStrategy : public StaticGridWithBan
 public:
     StaticGridStrategy(
             const StaticGridStrategyConfig & config,
-            std::shared_ptr<EventLoop> & event_loop,
+            EventLoop & event_loop,
             StrategyChannelsRefs channels,
             OrderManager & orders);
 

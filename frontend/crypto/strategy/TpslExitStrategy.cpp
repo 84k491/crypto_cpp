@@ -43,7 +43,7 @@ TpslExitStrategyConfig::TpslExitStrategyConfig(double risk, double risk_reward_r
 TpslExitStrategy::TpslExitStrategy(
         OrderManager & orders,
         JsonStrategyConfig config,
-        std::shared_ptr<EventLoop> & event_loop,
+        EventLoop & event_loop,
         StrategyChannelsRefs channels)
     : m_orders(orders)
     , m_config(config)
@@ -89,7 +89,7 @@ void TpslExitStrategy::on_trade(const Trade & trade)
                 tpsl.stop_loss_price,
                 trade.side().opposite(),
                 trade.ts());
-        m_tpsl_sub = EventSubcriber{m_event_loop};
+        m_tpsl_sub = std::make_unique<EventSubcriber>(m_event_loop);
         m_tpsl_sub->subscribe(
                 ch,
                 [&](const std::shared_ptr<TpslFullPos> & sptr) {

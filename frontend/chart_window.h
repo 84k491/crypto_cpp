@@ -22,8 +22,8 @@ public:
 
 private:
     // IEventConsumer<LambdaEvent>
-    bool push_to_queue(LambdaEvent value) override;
-    bool push_to_queue_delayed(std::chrono::milliseconds delay, LambdaEvent value) override;
+    void push(LambdaEvent value) override;
+    void push_delayed(std::chrono::milliseconds delay, LambdaEvent value) override;
 
 private:
     ChartWindow & m_cw;
@@ -67,7 +67,7 @@ private:
     Ui::ChartWindow * ui;
     QWidget * m_holder_widget = nullptr;
     QVBoxLayout * m_layout = nullptr;
-    std::shared_ptr<ChartWindowEventConsumer> m_event_consumer;
+    ChartWindowEventConsumer m_event_consumer;
 
     const std::string m_price_chart_name = "prices";
     const std::string m_depo_chart_name = "depo";

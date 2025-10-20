@@ -18,13 +18,17 @@ class EventTimeseriesChannel;
 template <typename ObjectT>
 class EventTimeseriesSubsription final : public ISubscription
 {
+    using TimeT = std::chrono::milliseconds;
     friend class EventTimeseriesChannel<ObjectT>;
 
 public:
-    EventTimeseriesSubsription(const std::shared_ptr<ILambdaAcceptor> & consumer,
-                               EventTimeseriesChannel<ObjectT> & channel,
-                               xg::Guid guid)
+    EventTimeseriesSubsription(
+            ILambdaAcceptor & consumer,
+            std::function<void(TimeT, const ObjectT &)> callback,
+            EventTimeseriesChannel<ObjectT> & channel,
+            xg::Guid guid)
         : m_consumer(consumer)
+        , m_callback(callback)
         , m_channel(&channel)
         , m_guid(guid)
     {
@@ -38,7 +42,8 @@ public:
     }
 
 private:
-    std::weak_ptr<ILambdaAcceptor> m_consumer;
+    ILambdaAcceptor & m_consumer;
+    std::function<void(TimeT, const ObjectT &)> m_callback;
     EventTimeseriesChannel<ObjectT> * m_channel;
     xg::Guid m_guid;
 };
@@ -54,7 +59,7 @@ public:
 
     void push(TimeT timestamp, const ObjectT & object);
     [[nodiscard]] std::shared_ptr<EventTimeseriesSubsription<ObjectT>> subscribe(
-            const std::shared_ptr<ILambdaAcceptor> & consumer,
+            ILambdaAcceptor & consumer,
             std::function<void(const std::list<std::pair<TimeT, ObjectT>> &)> && snapshot_callback,
             std::function<void(TimeT, const ObjectT &)> && increment_callback);
 
@@ -66,16 +71,12 @@ public:
     void unsubscribe(xg::Guid guid);
 
 private:
-    struct SubscriberData
-    {
-        xg::Guid guid;
-        std::function<void(TimeT, const ObjectT &)> callback;
-        std::weak_ptr<EventTimeseriesSubsription<ObjectT>> wptr;
-    };
-
-private:
     Guarded<std::list<std::pair<TimeT, ObjectT>>> m_data;
-    Guarded<std::list<SubscriberData>> m_increment_callbacks;
+
+    using SubWPtr = std::weak_ptr<EventTimeseriesSubsription<ObjectT>>;
+    // Guid is here because wptr will be null on unsub on dtor
+    Guarded<std::list<std::pair<xg::Guid, SubWPtr>>> m_subscriptions;
+
     std::optional<std::chrono::milliseconds> m_capacity;
 };
 
@@ -91,30 +92,35 @@ void EventTimeseriesChannel<ObjectT>::push(EventTimeseriesChannel::TimeT timesta
         data.emplace_back(timestamp, object);
     }
 
-    auto callbacks_lref = m_increment_callbacks.lock();
-    for (const auto & el : callbacks_lref.get()) {
-        UNWRAP_CONTINUE(subscribtion, el.wptr.lock());
-        UNWRAP_CONTINUE(consumer, subscribtion.m_consumer.lock());
-        consumer.push(LambdaEvent{
-                [el,
+    auto subs_lref = m_subscriptions.lock();
+    for (const auto & [_, sub_wptr] : subs_lref.get()) {
+
+        // TODO nodiscard on sub
+        // it can't be nullptr, unsub always happens before
+        UNWRAP_CONTINUE(subscribtion, sub_wptr.lock());
+
+        subscribtion.m_consumer.push(LambdaEvent{
+                [cb = subscribtion.m_callback,
                  timestamp,
-                 object] { el.callback(timestamp, object); },
+                 object] { cb(timestamp, object); },
                 Priority::Normal});
     }
 }
 
 template <typename ObjectT>
 std::shared_ptr<EventTimeseriesSubsription<ObjectT>> EventTimeseriesChannel<ObjectT>::subscribe(
-        const std::shared_ptr<ILambdaAcceptor> & consumer,
+        ILambdaAcceptor & consumer,
         std::function<void(const std::list<std::pair<TimeT, ObjectT>> &)> && snapshot_callback,
         std::function<void(TimeT, const ObjectT &)> && increment_callback)
 {
     const auto guid = xg::newGuid();
-    auto sptr = std::make_shared<EventTimeseriesSubsription<ObjectT>>(consumer, *this, guid);
+    auto sptr = std::make_shared<EventTimeseriesSubsription<ObjectT>>(consumer, increment_callback, *this, guid);
 
-    m_increment_callbacks.lock().get().emplace_back(guid, std::move(increment_callback), std::weak_ptr{sptr});
+    auto subs_lref = m_subscriptions.lock();
+    subs_lref.get().emplace_back(std::make_pair(guid, std::weak_ptr{sptr}));
     auto data_lref = m_data.lock();
-    consumer->push(LambdaEvent{
+
+    consumer.push(LambdaEvent{
             [cb = std::move(snapshot_callback),
              d = data_lref.get()] { cb(d); },
             Priority::Normal});
@@ -125,10 +131,13 @@ std::shared_ptr<EventTimeseriesSubsription<ObjectT>> EventTimeseriesChannel<Obje
 template <typename ObjectT>
 void EventTimeseriesChannel<ObjectT>::unsubscribe(xg::Guid guid)
 {
-    auto consumers_lref = m_increment_callbacks.lock();
-    auto & consumers = consumers_lref.get();
+    auto subs_lref = m_subscriptions.lock();
+    auto & consumers = subs_lref.get();
+
     for (auto it = consumers.begin(); it != consumers.end(); ++it) {
-        if (it->guid == guid) {
+        auto & [sub_guid, _] = *it;
+
+        if (sub_guid == guid) {
             consumers.erase(it);
             break;
         }
@@ -138,10 +147,12 @@ void EventTimeseriesChannel<ObjectT>::unsubscribe(xg::Guid guid)
 template <typename ObjectT>
 EventTimeseriesChannel<ObjectT>::~EventTimeseriesChannel()
 {
-    auto consumers_lref = m_increment_callbacks.lock();
-    for (auto & el : consumers_lref.get()) {
-        UNWRAP_CONTINUE(subscribtion, el.wptr.lock());
-        subscribtion.m_channel = nullptr;
+    auto subs_lref = m_subscriptions.lock();
+
+    for (auto & [_, sub_wptr] : subs_lref.get()) {
+        UNWRAP_CONTINUE(subscription, sub_wptr.lock());
+        subscription.m_channel = nullptr;
     }
-    consumers_lref.get().clear();
+
+    subs_lref.get().clear();
 }

@@ -17,8 +17,7 @@ public:
     static constexpr double fee = .5;
 
     OrderManagerTest()
-        : event_loop{std::make_shared<EventLoop>()}
-        , order_manager(
+        : order_manager(
                   Symbol{
                           .symbol_name = "TSTUSDT",
                           .lot_size_filter = Symbol::LotSizeFilter{
@@ -175,7 +174,7 @@ protected:
     EventChannel<TrailingStopLossUpdatedEvent> m_tsl_updated_channel;
 
     // Test
-    std::shared_ptr<EventLoop> event_loop;
+    EventLoop event_loop;
     OrderManager order_manager;
 
     std::optional<OrderRequestEvent> last_order_request;

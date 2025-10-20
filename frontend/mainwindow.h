@@ -86,8 +86,8 @@ public:
 
 private:
     // IEventConsumer<LambdaEvent>
-    bool push_to_queue(LambdaEvent value) override;
-    bool push_to_queue_delayed(std::chrono::milliseconds delay, LambdaEvent value) override;
+    void push(LambdaEvent value) override;
+    void push_delayed(std::chrono::milliseconds delay, LambdaEvent value) override;
 
 private:
     MainWindow & m_mw;
@@ -132,7 +132,7 @@ private:
 
 private:
     Ui::MainWindow * ui;
-    std::shared_ptr<MainWindowEventConsumer> m_event_consumer;
+    MainWindowEventConsumer m_event_consumer;
 
     ByBitMarketDataGateway m_gateway;
     std::unique_ptr<BacktestTradingGateway> m_backtest_tr_gateway;

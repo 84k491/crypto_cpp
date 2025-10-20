@@ -4,7 +4,6 @@
 #include "Logger.h"
 #include "OrderManager.h"
 
-#include <utility>
 
 TrailigStopLossStrategyConfig::TrailigStopLossStrategyConfig(const JsonStrategyConfig & config)
 {
@@ -22,7 +21,7 @@ TrailigStopLossStrategyConfig::TrailigStopLossStrategyConfig(double risk)
 TrailigStopLossStrategy::TrailigStopLossStrategy(
         OrderManager & orders,
         JsonStrategyConfig config,
-        std::shared_ptr<EventLoop> & event_loop,
+        EventLoop & event_loop,
         StrategyChannelsRefs channels)
     : m_orders(orders)
     , m_event_loop(event_loop)
@@ -52,7 +51,7 @@ TrailigStopLossStrategy::TrailigStopLossStrategy(
 
 void TrailigStopLossStrategy::on_trade(const Trade & trade)
 {
-    if (m_is_pos_opened && m_tsl_sub.has_value()) {
+    if (m_is_pos_opened && m_tsl_sub) {
         // position opened
         // stop loss is set already
         const std::string_view msg = "TrailigStopLossStrategy: active stop loss already exists or pending";
@@ -70,7 +69,7 @@ void TrailigStopLossStrategy::on_trade(const Trade & trade)
             tsl,
             trade.ts());
 
-    m_tsl_sub = EventSubcriber{m_event_loop};
+    m_tsl_sub = std::make_unique<EventSubcriber>(m_event_loop);
     m_tsl_sub->subscribe(
             ch,
             [this](const auto & tsl) {

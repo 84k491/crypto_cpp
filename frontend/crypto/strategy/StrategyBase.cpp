@@ -4,7 +4,7 @@
 
 StrategyBase::StrategyBase(
         OrderManager & order_manager,
-        std::shared_ptr<EventLoop> & event_loop,
+        EventLoop & event_loop,
         StrategyChannelsRefs channels)
     : m_order_manager(order_manager)
     , m_sub(event_loop)

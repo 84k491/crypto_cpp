@@ -10,13 +10,12 @@ using namespace testing;
 
 class MockEventLoop : public ILambdaAcceptor
 {
-    bool push_to_queue(LambdaEvent value) override
+    void push(LambdaEvent value) override
     {
         value.func();
-        return true;
     }
 
-    bool push_to_queue_delayed(std::chrono::milliseconds, LambdaEvent) override
+    void push_delayed(std::chrono::milliseconds, LambdaEvent) override
     {
         throw std::runtime_error("Not implemented");
     }
@@ -27,11 +26,10 @@ class BybitTradingGatewayLiveTest : public Test
 public:
     BybitTradingGatewayLiveTest()
     {
-        el = std::make_shared<MockEventLoop>();
     }
 
 protected:
-    std::shared_ptr<MockEventLoop> el;
+    MockEventLoop el;
     std::mutex mutex;
 };
 

@@ -31,7 +31,7 @@ class DSMADiffStrategy final : public StrategyBase
 public:
     DSMADiffStrategy(
             const DSMADiffStrategyConfig & conf,
-            std::shared_ptr<EventLoop> & event_loop,
+            EventLoop & event_loop,
             StrategyChannelsRefs channels,
             OrderManager & orders);
 

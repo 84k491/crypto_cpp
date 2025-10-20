@@ -77,7 +77,7 @@ private:
     void finish_if_needed_and_ready();
 
 private:
-    std::shared_ptr<EventLoop> m_event_loop;
+    EventLoop m_event_loop;
 
     const xg::Guid m_strategy_guid;
     CandleBuilder m_candle_builder;

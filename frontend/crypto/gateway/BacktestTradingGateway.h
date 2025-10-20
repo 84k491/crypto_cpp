@@ -10,8 +10,8 @@
 
 class BacktestEventConsumer : public ILambdaAcceptor
 {
-    bool push_to_queue(LambdaEvent value) override;
-    bool push_to_queue_delayed(std::chrono::milliseconds delay, LambdaEvent value) override;
+    void push(LambdaEvent value) override;
+    void push_delayed(std::chrono::milliseconds delay, LambdaEvent value) override;
 };
 
 class BacktestTrailingStopLoss
@@ -63,7 +63,7 @@ private:
     void try_trigger_conditionals(std::chrono::milliseconds ts, double price);
 
 private:
-    std::shared_ptr<BacktestEventConsumer> m_event_consumer;
+    BacktestEventConsumer m_event_consumer;
 
     std::string m_symbol; // backtest GW can only trade a single symbol now
     std::optional<TpslRequestEvent> m_tpsl;

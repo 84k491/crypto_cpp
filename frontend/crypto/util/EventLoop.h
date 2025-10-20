@@ -17,24 +17,12 @@ class ILambdaAcceptor
 public:
     virtual ~ILambdaAcceptor() = default;
 
-    bool push(LambdaEvent value)
-    {
-        return push_to_queue(std::move(value));
-    }
-
-    bool push_delayed(std::chrono::milliseconds delay, LambdaEvent value)
-    {
-        return push_to_queue_delayed(delay, std::move(value));
-    };
-
-private:
-    virtual bool push_to_queue(LambdaEvent value) = 0;
-    virtual bool push_to_queue_delayed(std::chrono::milliseconds delay, LambdaEvent value) = 0;
+    virtual void push(LambdaEvent value) = 0;
+    virtual void push_delayed(std::chrono::milliseconds delay, LambdaEvent value) = 0;
 };
 
 class EventLoopWithDelays;
-class EventLoop : public std::enable_shared_from_this<EventLoop>
-    , public ILambdaAcceptor
+class EventLoop : public ILambdaAcceptor
 {
     friend class EventLoopWithDelays;
 
@@ -55,19 +43,13 @@ public:
         m_thread.join();
     }
 
-    template <class T>
-    ILambdaAcceptor & as_consumer()
-    {
-        return static_cast<ILambdaAcceptor &>(*this);
-    }
-
 protected:
-    bool push_to_queue(LambdaEvent value) override
+    void push(LambdaEvent value) override
     {
-        return m_queue.push(std::move(value));
+        m_queue.push(std::move(value));
     }
 
-    bool push_to_queue_delayed(std::chrono::milliseconds, LambdaEvent) override
+    void push_delayed(std::chrono::milliseconds, LambdaEvent) override
     {
         throw std::runtime_error("not implemented");
     }

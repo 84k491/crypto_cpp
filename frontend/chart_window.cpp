@@ -2,7 +2,6 @@
 
 #include "ConditionalOrders.h"
 #include "Enums.h"
-#include "Logger.h"
 #include "OrdinaryLeastSquares.h"
 #include "ui_chart_window.h"
 
@@ -18,7 +17,7 @@ ChartWindow::ChartWindow(
     , m_end_ts(end_ts)
     , m_render_depo(render_depo)
     , ui(new Ui::ChartWindow)
-    , m_event_consumer(std::make_shared<ChartWindowEventConsumer>(*this))
+    , m_event_consumer(*this)
     , m_strategy_instance(strategy)
 {
     ui->setupUi(this);
@@ -279,13 +278,12 @@ void ChartWindow::subscribe_to_strategy()
             update_trend_callback));
 }
 
-bool ChartWindowEventConsumer::push_to_queue(LambdaEvent value)
+void ChartWindowEventConsumer::push(LambdaEvent value)
 {
     m_cw.signal_lambda(std::move(value.func));
-    return true;
 }
 
-bool ChartWindowEventConsumer::push_to_queue_delayed(std::chrono::milliseconds, LambdaEvent)
+void ChartWindowEventConsumer::push_delayed(std::chrono::milliseconds, LambdaEvent)
 {
     throw std::runtime_error("Not implemented");
 }

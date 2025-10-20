@@ -32,7 +32,7 @@ public:
     using ConfigT = BollingerBandsStrategyConfig;
     BollingerBandsStrategy(
             const BollingerBandsStrategyConfig & config,
-            std::shared_ptr<EventLoop> & event_loop,
+            EventLoop & event_loop,
             StrategyChannelsRefs channels,
             OrderManager & orders);
 

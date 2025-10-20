@@ -36,8 +36,7 @@ StrategyInstance::StrategyInstance(
         const JsonStrategyConfig & entry_strategy_config,
         IMarketDataGateway & md_gateway,
         ITradingGateway & tr_gateway)
-    : m_event_loop{std::make_shared<EventLoop>()}
-    , m_strategy_guid(xg::newGuid())
+    : m_strategy_guid(xg::newGuid())
     , m_candle_builder{get_timeframe(entry_strategy_config).value_or(std::chrono::minutes{5})}
     , m_md_gateway(md_gateway)
     , m_tr_gateway(tr_gateway)

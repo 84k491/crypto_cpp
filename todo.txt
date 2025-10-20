@@ -1,4 +1,4 @@
-use EventLoop as a ref instead of sptr
+
 remove or block all related events in EL after Subscriber destruction
 
 ---

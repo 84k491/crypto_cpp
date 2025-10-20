@@ -41,7 +41,7 @@ JsonStrategyConfig DynamicGridAdxStrategyConfig::to_json() const
 
 DynamicGridAdxStrategy::DynamicGridAdxStrategy(
         const DynamicGridAdxStrategyConfig & config,
-        std::shared_ptr<EventLoop> & event_loop,
+        EventLoop & event_loop,
         StrategyChannelsRefs channels,
         OrderManager & orders)
     : DynamicGridWithBan(config.to_json(), event_loop, channels, orders)

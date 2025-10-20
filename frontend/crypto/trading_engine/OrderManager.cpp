@@ -11,11 +11,10 @@
 
 OrderManager::OrderManager(
         Symbol symbol,
-        std::shared_ptr<EventLoop> & event_loop,
+        EventLoop & event_loop,
         ITradingGateway & tr_gateway)
     : m_symbol(std::move(symbol))
     , m_tr_gateway(tr_gateway)
-    , m_event_loop(event_loop)
     , m_sub(event_loop)
 {
     m_sub.subscribe(
@@ -93,12 +92,13 @@ EventObjectChannel<std::shared_ptr<MarketOrder>> & OrderManager::send_market_ord
 
     OrderRequestEvent or_event{*order};
 
-    const auto [it, success] = m_orders.emplace(
+    const auto [it, success] = m_orders.try_emplace(
             order->guid(),
-            EventObjectChannel<std::shared_ptr<MarketOrder>>{});
+            MarketOrderChannelWithAckInfo{std::make_unique<EventObjectChannel<std::shared_ptr<MarketOrder>>>()});
+
     assert(success); // TODO handle error. this won't work in release
 
-    EventObjectChannel<std::shared_ptr<MarketOrder>> & order_channel = it->second.ch;
+    EventObjectChannel<std::shared_ptr<MarketOrder>> & order_channel = *it->second.ch;
     order_channel.update([&](auto & order_ptr) {
         order_ptr = order;
     });
@@ -134,8 +134,8 @@ EventObjectChannel<std::shared_ptr<TakeProfitMarketOrder>> & OrderManager::send_
 
     const auto [it, success] = m_take_profits.emplace(
             tpmo->guid(),
-            EventObjectChannel<std::shared_ptr<TakeProfitMarketOrder>>{});
-    auto & ch = it->second;
+            std::make_unique<EventObjectChannel<std::shared_ptr<TakeProfitMarketOrder>>>());
+    auto & ch = *it->second;
     ch.update([&](auto & order_ptr) {
         order_ptr = tpmo;
     });
@@ -172,8 +172,8 @@ EventObjectChannel<std::shared_ptr<StopLossMarketOrder>> & OrderManager::send_st
 
     const auto [it, success] = m_stop_losses.emplace(
             slmo->guid(),
-            EventObjectChannel<std::shared_ptr<StopLossMarketOrder>>{});
-    auto & ch = it->second;
+            std::make_unique<EventObjectChannel<std::shared_ptr<StopLossMarketOrder>>>());
+    auto & ch = *it->second;
     ch.update([&](auto & order_ptr) {
         order_ptr = slmo;
     });
@@ -196,7 +196,7 @@ void OrderManager::cancel_take_profit(xg::Guid guid)
         Logger::logf<LogLevel::Error>("No TP to cancel: {}", guid);
         return;
     }
-    it->second.update([&](std::shared_ptr<TakeProfitMarketOrder> & tp) {
+    it->second->update([&](std::shared_ptr<TakeProfitMarketOrder> & tp) {
         tp->cancel();
     });
     m_tr_gateway.cancel_take_profit_request(guid);
@@ -209,7 +209,7 @@ void OrderManager::cancel_stop_loss(xg::Guid guid)
         Logger::logf<LogLevel::Error>("No SL to cancel: {}", guid);
         return;
     }
-    it->second.update([&](std::shared_ptr<StopLossMarketOrder> & sl) {
+    it->second->update([&](std::shared_ptr<StopLossMarketOrder> & sl) {
         sl->cancel();
     });
     m_tr_gateway.cancel_stop_loss_request(guid);
@@ -226,7 +226,7 @@ void OrderManager::on_take_profit_response(const TakeProfitUpdatedEvent & r)
         return;
     }
     auto & ch = it->second;
-    ch.update([&](std::shared_ptr<TakeProfitMarketOrder> & tp_ptr) {
+    ch->update([&](std::shared_ptr<TakeProfitMarketOrder> & tp_ptr) {
         tp_ptr->on_state_changed(r.active);
     });
 }
@@ -242,7 +242,7 @@ void OrderManager::on_stop_loss_reposnse(const StopLossUpdatedEvent & r)
         return;
     }
     auto & ch = it->second;
-    ch.update([&](std::shared_ptr<StopLossMarketOrder> & sl_ptr) {
+    ch->update([&](std::shared_ptr<StopLossMarketOrder> & sl_ptr) {
         sl_ptr->on_state_changed(r.active);
     });
 }
@@ -261,7 +261,7 @@ void OrderManager::on_order_response(const OrderResponseEvent & response)
     // TODO set price and volume from the response
 
     if (response.reject_reason.has_value() && !response.retry) {
-        mo.ch.update([&](auto & order_ptr) {
+        mo.ch->update([&](auto & order_ptr) {
             order_ptr->m_reject_reason = response.reject_reason.value();
         });
     }
@@ -281,11 +281,11 @@ bool OrderManager::try_trade_market_order(const TradeEvent & ev)
 
     auto & [guid, mo] = *it;
 
-    mo.ch.update([&](std::shared_ptr<MarketOrder> & order_ptr) {
+    mo.ch->update([&](std::shared_ptr<MarketOrder> & order_ptr) {
         order_ptr->on_trade(ev.trade.unsigned_volume(), ev.trade.price(), ev.trade.fee());
     });
 
-    if (mo.ch.subscribers_count() == 0) {
+    if (mo.ch->subscribers_count() == 0) {
         if (mo.acked) {
             m_orders.erase(it);
         }
@@ -304,11 +304,11 @@ bool OrderManager::try_trade_take_profit(const TradeEvent & ev)
 
     auto & [guid, channel] = *it;
 
-    channel.update([&](std::shared_ptr<TakeProfitMarketOrder> & tp) {
+    channel->update([&](std::shared_ptr<TakeProfitMarketOrder> & tp) {
         tp->on_trade(ev.trade.unsigned_volume(), ev.trade.price(), ev.trade.fee());
     });
 
-    if (channel.subscribers_count() == 0) {
+    if (channel->subscribers_count() == 0) {
         m_take_profits.erase(it);
     }
 
@@ -324,11 +324,11 @@ bool OrderManager::try_trade_stop_loss(const TradeEvent & ev)
 
     auto & [guid, channel] = *it;
 
-    channel.update([&](std::shared_ptr<StopLossMarketOrder> & sl) {
+    channel->update([&](std::shared_ptr<StopLossMarketOrder> & sl) {
         sl->on_trade(ev.trade.unsigned_volume(), ev.trade.price(), ev.trade.fee());
     });
 
-    if (channel.subscribers_count() == 0) {
+    if (channel->subscribers_count() == 0) {
         m_stop_losses.erase(it);
     }
 
@@ -349,11 +349,11 @@ void OrderManager::on_trade(const TradeEvent & ev)
         return;
     }
 
-    if (m_trailing_stop.has_value() && m_trailing_stop->get()->guid() == ev.trade.order_guid()) {
+    if (m_trailing_stop && m_trailing_stop->get()->guid() == ev.trade.order_guid()) {
         return;
     }
 
-    if (m_tpsl.has_value() && m_tpsl->get()->guid() == ev.trade.order_guid()) {
+    if (m_tpsl && m_tpsl->get()->guid() == ev.trade.order_guid()) {
         return;
     }
 
@@ -365,8 +365,8 @@ EventObjectChannel<std::shared_ptr<TrailingStopLoss>> & OrderManager::send_trail
         const TrailingStopLoss & trailing_stop,
         std::chrono::milliseconds)
 {
-    m_trailing_stop.emplace(EventObjectChannel<std::shared_ptr<TrailingStopLoss>>{});
-    auto & order_channel = m_trailing_stop.value();
+    m_trailing_stop = std::make_unique<EventObjectChannel<std::shared_ptr<TrailingStopLoss>>>();
+    auto & order_channel = *m_trailing_stop;
 
     order_channel.update([&](auto & tsl_sptr) {
         tsl_sptr = std::make_shared<TrailingStopLoss>(trailing_stop);
@@ -388,7 +388,9 @@ EventObjectChannel<std::shared_ptr<TpslFullPos>> & OrderManager::send_tpsl(
         Side side,
         std::chrono::milliseconds ts)
 {
-    auto & tpsl_ch = m_tpsl.emplace(EventObjectChannel<std::shared_ptr<TpslFullPos>>{});
+    m_tpsl = std::make_unique<EventObjectChannel<std::shared_ptr<TpslFullPos>>>();
+    auto & tpsl_ch = *m_tpsl;
+
     tpsl_ch.update([&](std::shared_ptr<TpslFullPos> & tpsl_sptr) {
         tpsl_sptr = std::make_shared<TpslFullPos>(
                 m_symbol.symbol_name,
@@ -416,7 +418,7 @@ void OrderManager::on_trailing_stop_response(const TrailingStopLossUpdatedEvent 
         return;
     }
 
-    if (!m_trailing_stop.has_value()) { // TODO check guid
+    if (!m_trailing_stop) { // TODO check guid
         std::string err = "Unsolicited trailing stop response";
         m_error_channel.push(err);
         return;
@@ -440,7 +442,7 @@ void OrderManager::on_trailing_stop_response(const TrailingStopLossUpdatedEvent 
 
 void OrderManager::on_tpsl_reposnse(const TpslUpdatedEvent & r)
 {
-    if (!m_tpsl.has_value()) {
+    if (!m_tpsl) {
         std::string err = "Unsolicited tpsl response";
         m_error_channel.push(err);
         return;

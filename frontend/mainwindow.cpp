@@ -20,7 +20,7 @@
 MainWindow::MainWindow(QWidget * parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
-    , m_event_consumer(std::make_shared<MainWindowEventConsumer>(*this))
+    , m_event_consumer(*this)
 {
     ui->setupUi(this);
     ui->wt_entry_params->setTitle("Entry parameters");
@@ -354,10 +354,9 @@ void MainWindow::on_cb_strategy_currentTextChanged(const QString &)
     }
 }
 
-bool MainWindowEventConsumer::push_to_queue(LambdaEvent value)
+void MainWindowEventConsumer::push(LambdaEvent value)
 {
     m_mw.signal_lambda(std::move(value.func));
-    return true;
 }
 
 void MainWindow::on_lambda(std::function<void()> lambda)
@@ -365,7 +364,7 @@ void MainWindow::on_lambda(std::function<void()> lambda)
     lambda();
 }
 
-bool MainWindowEventConsumer::push_to_queue_delayed(std::chrono::milliseconds, LambdaEvent)
+void MainWindowEventConsumer::push_delayed(std::chrono::milliseconds, LambdaEvent)
 {
     throw std::runtime_error("Not implemented");
 }

@@ -29,7 +29,7 @@ class DynamicGridAdxStrategy : public DynamicGridWithBan
 public:
     DynamicGridAdxStrategy(
             const DynamicGridAdxStrategyConfig & config,
-            std::shared_ptr<EventLoop> & event_loop,
+            EventLoop & event_loop,
             StrategyChannelsRefs channels,
             OrderManager & orders);
 

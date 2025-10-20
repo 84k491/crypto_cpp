@@ -2,6 +2,7 @@
 
 #include "EventLoop.h"
 #include "Events.h"
+#include "Guarded.h"
 #include "ISubsription.h"
 #include "Macros.h"
 
@@ -20,10 +21,12 @@ class EventObjectSubscription final : public ISubscription
 
 public:
     EventObjectSubscription(
-            const std::shared_ptr<ILambdaAcceptor> & consumer,
+            ILambdaAcceptor & consumer,
+            std::function<void(const ObjectT &)> update_callback,
             EventObjectChannel<ObjectT> & channel,
             xg::Guid guid)
         : m_consumer(consumer)
+        , m_callback(update_callback)
         , m_channel(&channel)
         , m_guid(guid)
     {
@@ -37,8 +40,11 @@ public:
     }
 
 private:
-    std::weak_ptr<ILambdaAcceptor> m_consumer;
+    ILambdaAcceptor & m_consumer;
+
+    std::function<void(const ObjectT &)> m_callback;
     EventObjectChannel<ObjectT> * m_channel; // TODO make it atomic
+
     xg::Guid m_guid;
 };
 
@@ -51,10 +57,13 @@ public:
 
     void push(const ObjectT & object);
     void update(std::function<void(ObjectT &)> && update_callback);
-    const ObjectT & get() const
+
+    // TODO rename to get_copy
+    const ObjectT get()
     {
-        // TODO make thread safe
-        return m_data;
+        auto lref = m_data.lock();
+        auto & data = lref.get();
+        return data;
     }
 
     void set_on_sub_count_changed(std::function<void(size_t)> && cb)
@@ -64,24 +73,24 @@ public:
 
     [[nodiscard]] std::shared_ptr<EventObjectSubscription<ObjectT>>
     subscribe(
-            const std::shared_ptr<ILambdaAcceptor> & consumer,
+            ILambdaAcceptor & consumer,
             std::function<void(const ObjectT &)> && update_callback,
             Priority priority = Priority::Normal);
     void unsubscribe(xg::Guid guid);
 
-    size_t subscribers_count() const
+    size_t subscribers_count()
     {
-        // TODO thread safe
-        return m_update_callbacks.size();
+        return m_subscriptions.lock().get().size();
     };
 
 private:
-    ObjectT m_data;
-    std::vector<std::tuple< // TODO make it thread-safe
-            xg::Guid,
-            std::function<void(const ObjectT &)>, // TODO move it to subscription
-            std::weak_ptr<EventObjectSubscription<ObjectT>>>>
-            m_update_callbacks;
+    // can't copy because of mutexes
+    Guarded<ObjectT> m_data;
+
+    using SubWPtr = std::weak_ptr<EventObjectSubscription<ObjectT>>;
+
+    // Guid is here because wptr will be null on unsub on dtor
+    Guarded<std::vector<std::pair<xg::Guid, SubWPtr>>> m_subscriptions;
 
     std::function<void(size_t)> m_sub_count_callback;
 };
@@ -89,41 +98,57 @@ private:
 template <typename ObjectT>
 void EventObjectChannel<ObjectT>::push(const ObjectT & object)
 {
-    m_data = object;
-    // TODO erase if nullptr
-    for (const auto & [uuid, cb, wptr] : m_update_callbacks) {
-        UNWRAP_CONTINUE(subscribtion, wptr.lock());
-        UNWRAP_CONTINUE(consumer, subscribtion.m_consumer.lock());
-        consumer.push(LambdaEvent{[cb, object] { cb(object); }, Priority::Normal});
+    auto subs_lref = m_subscriptions.lock();
+    auto data_lref = m_data.lock();
+
+    data_lref.get() = object;
+
+    for (const auto & [_, wptr] : subs_lref.get()) {
+        UNWRAP_CONTINUE(subscription, wptr.lock());
+        subscription.m_consumer.push(LambdaEvent{
+                [cb = subscription.m_callback, object] {
+                    cb(object);
+                },
+                Priority::Normal});
     }
 }
 
 template <typename ObjectT>
 void EventObjectChannel<ObjectT>::update(std::function<void(ObjectT &)> && update_callback)
 {
-    update_callback(m_data);
+    auto subs_lref = m_subscriptions.lock();
+    auto data_lref = m_data.lock();
+
+    update_callback(data_lref.get());
+
     // TODO erase if nullptr
-    for (const auto & [uuid, cb, wptr] : m_update_callbacks) {
-        UNWRAP_CONTINUE(subscribtion, wptr.lock());
-        UNWRAP_CONTINUE(consumer, subscribtion.m_consumer.lock());
-        consumer.push(LambdaEvent([cb, object = m_data] { cb(object); }, Priority::Normal));
+    for (const auto & [_, wptr] : subs_lref.get()) {
+        UNWRAP_CONTINUE(subscription, wptr.lock());
+        subscription.m_consumer.push(LambdaEvent{
+                [cb = subscription.m_callback,
+                 object = data_lref.get()] {
+                    cb(object);
+                },
+                Priority::Normal});
     }
 }
 
 template <typename ObjectT>
 std::shared_ptr<EventObjectSubscription<ObjectT>>
 EventObjectChannel<ObjectT>::subscribe(
-        const std::shared_ptr<ILambdaAcceptor> & consumer,
+        ILambdaAcceptor & consumer,
         std::function<void(const ObjectT &)> && update_callback,
         Priority) // TODO use priority?
 {
     const auto guid = xg::newGuid();
-    auto sptr = std::make_shared<EventObjectSubscription<ObjectT>>(consumer, *this, guid);
+    auto sptr = std::make_shared<EventObjectSubscription<ObjectT>>(consumer, update_callback, *this, guid);
 
-    m_update_callbacks.push_back({guid, std::move(update_callback), std::weak_ptr{sptr}});
+    auto lref = m_subscriptions.lock();
+
+    lref.get().push_back({guid, std::weak_ptr{sptr}});
 
     if (m_sub_count_callback) {
-        m_sub_count_callback(m_update_callbacks.size());
+        m_sub_count_callback(lref.get().size());
     }
 
     return sptr;
@@ -132,26 +157,39 @@ EventObjectChannel<ObjectT>::subscribe(
 template <typename ObjectT>
 void EventObjectChannel<ObjectT>::unsubscribe(xg::Guid guid)
 {
-    for (auto it = m_update_callbacks.begin(); it != m_update_callbacks.end(); ++it) {
-        if (std::get<xg::Guid>(*it) == guid) {
-            m_update_callbacks.erase(it);
-            break;
+    size_t sub_count = 0;
+    {
+        auto lref = m_subscriptions.lock();
+        auto & subs = lref.get();
+
+        for (auto it = subs.begin(); it != subs.end(); ++it) {
+            auto & [sub_guid, _] = *it;
+            if (sub_guid == guid) {
+                subs.erase(it);
+                break;
+            }
         }
+
+        sub_count = subs.size();
     }
 
     if (m_sub_count_callback) {
-        m_sub_count_callback(m_update_callbacks.size());
+        m_sub_count_callback(sub_count);
     }
-
 }
 
 template <typename ObjectT>
 EventObjectChannel<ObjectT>::~EventObjectChannel()
 {
-    for (const auto [guid, cb, wptr] : m_update_callbacks) {
-        if (auto sptr = wptr.lock()) {
+    auto lref = m_subscriptions.lock();
+    auto & subs = lref.get();
+
+    for (const auto [guid, wptr] : subs) {
+        auto sptr = wptr.lock();
+        if (sptr) {
             sptr->m_channel = nullptr;
         }
     }
-    m_update_callbacks.clear();
+
+    subs.clear();
 }

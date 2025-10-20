@@ -44,7 +44,7 @@ private:
     void handle_event(const LogEvent & ev);
 
 private:
-    std::shared_ptr<EventLoop> m_event_loop;
+    EventLoop m_event_loop;
 
     EventChannel<LogEvent> m_log_channel;
 

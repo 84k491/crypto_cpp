@@ -68,7 +68,7 @@ private:
     void on_connection_verified() override;
 
 private:
-    std::shared_ptr<EventLoop> m_event_loop;
+    EventLoop m_event_loop;
 
     GatewayConfig::MarketData m_config;
 
@@ -85,7 +85,6 @@ private:
     RestClient rest_client;
     std::shared_ptr<WebSocketClient> m_ws_client;
     ConnectionWatcher m_connection_watcher;
-
 
     EventChannel<HistoricalMDRequest> m_historical_md_req_channel;
     EventChannel<LiveMDRequest> m_live_md_req_channel;

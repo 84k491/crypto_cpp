@@ -3,6 +3,8 @@
 #include "Logger.h"
 #include "OrderManager.h"
 
+#include <memory>
+
 DynamicTrailigStopLossStrategyConfig::DynamicTrailigStopLossStrategyConfig(const JsonStrategyConfig & config)
 {
     if (config.get().contains("risk")) {
@@ -30,7 +32,7 @@ JsonStrategyConfig DynamicTrailigStopLossStrategyConfig::to_json() const
 DynamicTrailingStopLossStrategy::DynamicTrailingStopLossStrategy(
         OrderManager & orders,
         JsonStrategyConfig config,
-        std::shared_ptr<EventLoop> & event_loop,
+        EventLoop & event_loop,
         StrategyChannelsRefs channels)
     : TrailigStopLossStrategy(
               orders,
@@ -89,7 +91,7 @@ void DynamicTrailingStopLossStrategy::on_price_changed(
     auto & ch = m_orders.send_trailing_stop(
             new_trailing_stop,
             ts);
-    m_tsl_sub = EventSubcriber{m_event_loop};
+    m_tsl_sub = std::make_unique<EventSubcriber>(m_event_loop);
     m_tsl_sub->subscribe(
             ch,
             [this](const auto & tsl) {

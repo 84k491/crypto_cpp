@@ -21,7 +21,7 @@ public:
     std::optional<std::shared_ptr<IStrategy>> build_strategy(
             const std::string & strategy_name,
             const JsonStrategyConfig & config,
-            std::shared_ptr<EventLoop> & event_loop,
+            EventLoop & event_loop,
             StrategyChannelsRefs channels,
             OrderManager & orders) const;
 
@@ -29,7 +29,7 @@ private:
     using BuilderFunction = std::function<
             std::optional<std::shared_ptr<IStrategy>>(
                     const JsonStrategyConfig &,
-                    std::shared_ptr<EventLoop> &,
+                    EventLoop &,
                     StrategyChannelsRefs,
                     OrderManager &)>;
 

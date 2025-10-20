@@ -10,7 +10,7 @@ class StrategyBase : public IStrategy
 public:
     StrategyBase(
             OrderManager & order_manager,
-            std::shared_ptr<EventLoop> & event_loop,
+            EventLoop & event_loop,
             StrategyChannelsRefs channels);
 
     EventTimeseriesChannel<StrategyInternalData> & strategy_internal_data_channel() override

@@ -24,7 +24,7 @@ public:
     TrailigStopLossStrategy(
             OrderManager & orders,
             JsonStrategyConfig config,
-            std::shared_ptr<EventLoop> & event_loop,
+            EventLoop & event_loop,
             StrategyChannelsRefs channels);
 
 protected:
@@ -39,7 +39,7 @@ protected:
 
 protected:
     OrderManager & m_orders;
-    std::shared_ptr<EventLoop> m_event_loop;
+    EventLoop & m_event_loop;
     StrategyChannelsRefs m_channels;
     TrailigStopLossStrategyConfig m_config;
 
@@ -47,5 +47,5 @@ protected:
 
     std::shared_ptr<TrailingStopLoss> m_active_stop_loss;
     EventSubcriber m_main_sub;
-    std::optional<EventSubcriber> m_tsl_sub;
+    std::unique_ptr<EventSubcriber> m_tsl_sub;
 };

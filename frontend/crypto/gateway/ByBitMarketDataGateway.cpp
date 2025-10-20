@@ -15,8 +15,7 @@
 #include <vector>
 
 ByBitMarketDataGateway::ByBitMarketDataGateway(bool start)
-    : m_event_loop{std::make_shared<EventLoop>()}
-    , m_connection_watcher(*this)
+    : m_connection_watcher(*this)
     , m_sub{m_event_loop}
 {
     const auto config_opt = GatewayConfigLoader::load();

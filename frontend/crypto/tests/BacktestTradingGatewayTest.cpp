@@ -16,13 +16,12 @@ using namespace testing;
 
 class MockEventLoop : public ILambdaAcceptor
 {
-    bool push_to_queue(LambdaEvent value) override
+    void push(LambdaEvent value) override
     {
         value.func();
-        return true;
     }
 
-    bool push_to_queue_delayed(std::chrono::milliseconds, LambdaEvent) override
+    void push_delayed(std::chrono::milliseconds, LambdaEvent) override
     {
         throw std::runtime_error("Not implemented");
     }
@@ -31,16 +30,13 @@ class MockEventLoop : public ILambdaAcceptor
 class BacktestTradingGatewayTest : public Test
 {
 public:
-    BacktestTradingGatewayTest()
-    {
-        el = std::make_shared<MockEventLoop>();
-    }
+    BacktestTradingGatewayTest() = default;
 
 protected:
     EventTimeseriesChannel<double> price_source_ch;
     BacktestTradingGateway trgw;
 
-    std::shared_ptr<MockEventLoop> el;
+    MockEventLoop el;
 };
 
 // push some price

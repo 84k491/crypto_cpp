@@ -38,7 +38,7 @@ public:
     TpslExitStrategy(
             OrderManager & orders,
             JsonStrategyConfig config,
-            std::shared_ptr<EventLoop> & event_loop,
+            EventLoop & event_loop,
             StrategyChannelsRefs channels);
 
 private:
@@ -52,7 +52,7 @@ private:
 private:
     OrderManager & m_orders;
     TpslExitStrategyConfig m_config;
-    std::shared_ptr<EventLoop> m_event_loop;
+    EventLoop & m_event_loop;
 
     std::pair<std::chrono::milliseconds, double> m_last_ts_and_price;
     bool m_is_pos_opened = false;
@@ -62,5 +62,5 @@ private:
     std::shared_ptr<TpslFullPos> m_active_tpsl;
 
     EventSubcriber m_main_sub;
-    std::optional<EventSubcriber> m_tpsl_sub;
+    std::unique_ptr<EventSubcriber> m_tpsl_sub;
 };

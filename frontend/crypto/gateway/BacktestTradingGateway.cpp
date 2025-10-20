@@ -8,8 +8,7 @@
 #include <variant>
 
 BacktestTradingGateway::BacktestTradingGateway()
-    : m_event_consumer(std::make_shared<BacktestEventConsumer>())
-    , m_pos_volume(std::make_shared<SignedVolume>(0.))
+    : m_pos_volume(std::make_shared<SignedVolume>(0.))
 {
 }
 
@@ -264,13 +263,12 @@ void BacktestTradingGateway::push_take_profit_request(const TakeProfitMarketOrde
     try_trigger_conditionals(order.signal_ts(), m_last_price);
 }
 
-bool BacktestEventConsumer::push_to_queue(LambdaEvent value)
+void BacktestEventConsumer::push(LambdaEvent value)
 {
     value.func();
-    return true;
 }
 
-bool BacktestEventConsumer::push_to_queue_delayed(std::chrono::milliseconds, LambdaEvent)
+void BacktestEventConsumer::push_delayed(std::chrono::milliseconds, LambdaEvent)
 {
     throw std::runtime_error("Not implemented");
 }

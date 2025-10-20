@@ -1,20 +1,17 @@
 #pragma once
 
 #include "EventLoop.h"
-#include "EventTimeseriesChannel.h"
 #include "ISubsription.h"
 
+#include <list>
 #include <memory>
 
 class EventSubcriber
 {
 public:
-    EventSubcriber(const std::shared_ptr<EventLoop> & el)
+    EventSubcriber(EventLoop & el)
         : m_event_loop(el)
     {
-        if (!m_event_loop) {
-            abort();
-        }
     }
 
     template <class EventChannelT, class UpdateCallbackT>
@@ -41,7 +38,7 @@ public:
     }
 
 private:
-    std::shared_ptr<EventLoop> m_event_loop;
+    EventLoop & m_event_loop;
 
     std::list<std::shared_ptr<ISubscription>> m_subscriptions; // those must be destroyed before EvLoop
 };

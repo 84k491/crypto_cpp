@@ -151,13 +151,12 @@ public:
 
 class MockEventConsumer : public ILambdaAcceptor
 {
-    bool push_to_queue(LambdaEvent value) override
+    void push(LambdaEvent value) override
     {
         value.func();
-        return true;
     }
 
-    bool push_to_queue_delayed(std::chrono::milliseconds, LambdaEvent) override
+    void push_delayed(std::chrono::milliseconds, LambdaEvent) override
     {
         EXPECT_TRUE(false) << "Not implemented";
         throw std::runtime_error("Not implemented");
@@ -168,8 +167,7 @@ class StrategyInstanceTest : public Test
 {
 public:
     StrategyInstanceTest()
-        : event_consumer(std::make_shared<MockEventConsumer>())
-        , m_symbol("BTCUSD")
+        : m_symbol("BTCUSD")
         , strategy_instance(nullptr)
     {
         m_symbol.lot_size_filter.max_qty = 1'000'000;
@@ -198,7 +196,7 @@ public:
     }
 
 protected:
-    std::shared_ptr<MockEventConsumer> event_consumer;
+    MockEventConsumer event_consumer;
     Symbol m_symbol;
 
     MockMDGateway md_gateway;

@@ -60,7 +60,7 @@ JsonStrategyConfig BBRSIStrategyConfig::make_exit_strategy_config() const
 
 BBRSIStrategy::BBRSIStrategy(
         BBRSIStrategyConfig config,
-        std::shared_ptr<EventLoop> & event_loop,
+        EventLoop & event_loop,
         StrategyChannelsRefs channels,
         OrderManager & orders)
     : StrategyBase(orders, event_loop, channels)

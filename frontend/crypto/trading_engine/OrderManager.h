@@ -17,7 +17,7 @@ class OrderManager
 public:
     OrderManager(
             Symbol symbol,
-            std::shared_ptr<EventLoop> & event_loop,
+            EventLoop & event_loop,
             ITradingGateway & tr_gateway);
 
     EventObjectChannel<std::shared_ptr<MarketOrder>> & send_market_order(double price, SignedVolume vol, std::chrono::milliseconds ts);
@@ -56,7 +56,7 @@ public:
 private:
     struct MarketOrderChannelWithAckInfo
     {
-        EventObjectChannel<std::shared_ptr<MarketOrder>> ch;
+        std::unique_ptr<EventObjectChannel<std::shared_ptr<MarketOrder>>> ch;
         bool acked = false;
         bool traded = false;
     };
@@ -79,14 +79,13 @@ private:
     ITradingGateway & m_tr_gateway;
 
     std::map<xg::Guid, MarketOrderChannelWithAckInfo> m_orders;
-    std::map<xg::Guid, EventObjectChannel<std::shared_ptr<TakeProfitMarketOrder>>> m_take_profits;
-    std::map<xg::Guid, EventObjectChannel<std::shared_ptr<StopLossMarketOrder>>> m_stop_losses;
+    std::map<xg::Guid, std::unique_ptr<EventObjectChannel<std::shared_ptr<TakeProfitMarketOrder>>>> m_take_profits;
+    std::map<xg::Guid, std::unique_ptr<EventObjectChannel<std::shared_ptr<StopLossMarketOrder>>>> m_stop_losses;
 
-    std::optional<EventObjectChannel<std::shared_ptr<TpslFullPos>>> m_tpsl;
+    std::unique_ptr<EventObjectChannel<std::shared_ptr<TpslFullPos>>> m_tpsl;
 
-    std::optional<EventObjectChannel<std::shared_ptr<TrailingStopLoss>>> m_trailing_stop;
+    std::unique_ptr<EventObjectChannel<std::shared_ptr<TrailingStopLoss>>> m_trailing_stop;
 
-    std::shared_ptr<EventLoop> m_event_loop;
     EventSubcriber m_sub;
     EventChannel<std::string> m_error_channel;
 };
