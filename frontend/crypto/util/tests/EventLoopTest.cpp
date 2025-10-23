@@ -1,86 +1,107 @@
 #include "EventLoop.h"
 
+#include "EventBarrier.h"
 #include "EventChannel.h"
 #include "EventLoopSubscriber.h"
-#include "Events.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include <thread>
+#include <atomic>
 
 namespace test {
 using namespace testing;
 
-/*
-class MockStrategy
-{
-public:
-    MockStrategy()
-    {
-        m_invoker_sub = m_loop.invoker().register_invoker<OrderResponseEvent>([&](const auto &) {
-            order_acked = true;
-        });
-    }
-    ~MockStrategy() = default;
-
-    bool order_acked = false;
-
-    EventLoopSubscriber<OrderResponseEvent, TradeEvent, LambdaEvent> m_loop;
-    std::shared_ptr<ISubscription> m_invoker_sub;
-};
-
-class MockGateway
-{
-public:
-    MockGateway()
-    {
-        m_invoker_sub = m_loop.invoker().register_invoker<OrderRequestEvent>([&](const auto & order) {
-            m_order_response_channel.push(OrderResponseEvent(order.order.symbol(), order.order.guid()));
-        });
-    }
-    ~MockGateway() = default;
-
-    std::weak_ptr<IEventConsumer> trade_consumer;
-
-    EventLoopSubscriber<OrderRequestEvent> m_loop;
-    EventChannel<OrderResponseEvent> m_order_response_channel;
-    std::shared_ptr<ISubscription> m_invoker_sub;
-};
-
 class EventLoopTest : public Test
 {
 public:
+    EventLoopTest() {}
+
 protected:
+    EventLoop el;
+    EventChannel<BarrierEvent> barrier_channel;
 };
 
-// check that gateway don't crash if strategy is destroyed
-TEST_F(EventLoopTest, StrategyDestruction)
+TEST_F(EventLoopTest, BasicEventHandle)
 {
-    auto strategy = std::make_unique<MockStrategy>();
-    MockGateway gateway;
-    strategy->m_loop.subscribe(
-            gateway.m_order_response_channel,
-            [](const OrderResponseEvent &) {});
+    EventChannel<int> ch;
 
-    // strategy pushes order to gw
-    gateway.m_loop.push_event(OrderRequestEvent{
-            MarketOrder{
-                    "BTCUSDT",
-                    1.1,
-                    SignedVolume{1.},
-                    std::chrono::milliseconds{1}},
+    size_t events_handled = 0;
+    auto sub = std::make_unique<EventSubcriber>(el);
+
+    sub->subscribe(ch, [&](int v) {
+        ++events_handled;
+        EXPECT_EQ(v, 1);
     });
 
-    // gw pushes response to strategy
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    ch.push(1);
+    EventBarrier eb{el, barrier_channel};
+    eb.wait();
+    EXPECT_EQ(events_handled, 1);
 
-    // destroy strategy
-    strategy.reset();
+    sub.reset();
 
-    ASSERT_TRUE(gateway.trade_consumer.expired());
+    ch.push(2);
+    EXPECT_EQ(events_handled, 1);
 }
-*/
+
+struct MockObject
+{
+    MockObject(EventLoop & el, std::atomic_bool & destructed)
+        : m_el{el}
+        , m_destructed(destructed)
+        , m_sub(el)
+    {
+    }
+
+    ~MockObject()
+    {
+        m_destructed = true;
+    }
+
+    void sub(auto & ch)
+    {
+        m_sub.subscribe(ch, [this](int) {
+            if (m_destructed) {
+                FAIL();
+            }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds{100});
+        });
+    }
+
+    EventLoop & m_el;
+
+    std::atomic_bool & m_destructed;
+    EventSubcriber m_sub;
+};
+
+// TODO implement event drop after subscriber destruction
+TEST_F(EventLoopTest, DISABLED_UnsubWithEventsInLoop)
+{
+    std::atomic_bool destructed = false;
+
+    EventChannel<int> ch;
+    auto obj = std::make_unique<MockObject>(el, destructed);
+    obj->sub(ch);
+
+    ch.push(2);
+    {
+        EventBarrier eb{el, barrier_channel};
+        eb.wait();
+    }
+
+    ch.push(3);
+    ch.push(4);
+
+    obj.reset();
+    EXPECT_TRUE(destructed);
+
+    {
+        EventBarrier eb{el, barrier_channel};
+        eb.wait();
+    }
+}
 
 // TODO add test for delayed events
 

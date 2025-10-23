@@ -1,6 +1,6 @@
 #pragma once
 
-#include "EventLoop.h"
+#include "ILambdaAcceptor.h"
 #include "ISubsription.h"
 
 #include <list>
@@ -9,7 +9,7 @@
 class EventSubcriber
 {
 public:
-    EventSubcriber(EventLoop & el)
+    EventSubcriber(ILambdaAcceptor & el)
         : m_event_loop(el)
     {
     }
@@ -38,7 +38,7 @@ public:
     }
 
 private:
-    EventLoop & m_event_loop;
+    ILambdaAcceptor & m_event_loop;
 
     std::list<std::shared_ptr<ISubscription>> m_subscriptions; // those must be destroyed before EvLoop
 };

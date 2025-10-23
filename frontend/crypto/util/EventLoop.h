@@ -1,6 +1,9 @@
 #pragma once
 
+#include "EventLoopSubscriber.h"
 #include "Events.h"
+#include "ILambdaAcceptor.h"
+#include "Scheduler.h"
 #include "ThreadSafePriorityQueue.h"
 
 #include <functional>
@@ -12,27 +15,18 @@ struct VariantMatcher : Ts...
     using Ts::operator()...;
 };
 
-class ILambdaAcceptor
+class EventLoop;
+class BasicEventLoop : public ILambdaAcceptor
 {
-public:
-    virtual ~ILambdaAcceptor() = default;
-
-    virtual void push(LambdaEvent value) = 0;
-    virtual void push_delayed(std::chrono::milliseconds delay, LambdaEvent value) = 0;
-};
-
-class EventLoopWithDelays;
-class EventLoop : public ILambdaAcceptor
-{
-    friend class EventLoopWithDelays;
+    friend class EventLoop;
 
 public:
-    EventLoop()
+    BasicEventLoop()
     {
         m_thread = std::thread([this] { run(); });
     }
 
-    ~EventLoop() override
+    ~BasicEventLoop() override
     {
         stop();
     }
@@ -47,11 +41,6 @@ protected:
     void push(LambdaEvent value) override
     {
         m_queue.push(std::move(value));
-    }
-
-    void push_delayed(std::chrono::milliseconds, LambdaEvent) override
-    {
-        throw std::runtime_error("not implemented");
     }
 
 private:
@@ -70,4 +59,35 @@ private:
 private:
     ThreadSafePriorityQueue<LambdaEvent> m_queue;
     std::thread m_thread;
+};
+
+class EventLoop : public ILambdaAcceptor
+{
+public:
+    EventLoop()
+        : m_sub(m_ev)
+    {
+        auto & ch = Scheduler::i().delayed_channel(m_guid);
+        m_sub.subscribe(
+                ch,
+                [this](LambdaEvent ev) {
+                    m_ev.push(std::move(ev));
+                });
+    }
+
+    void push(LambdaEvent event) override
+    {
+        return m_ev.push(std::move(event));
+    }
+
+    void push_delayed(std::chrono::milliseconds delay, LambdaEvent value) override
+    {
+        Scheduler::i().delay_event(m_guid, delay, value);
+    }
+
+private:
+    xg::Guid m_guid;
+
+    BasicEventLoop m_ev;
+    EventSubcriber m_sub;
 };

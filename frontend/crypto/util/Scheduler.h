@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Events.h"
 #include "EventChannel.h"
 
 #include <condition_variable>

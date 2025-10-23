@@ -1,6 +1,6 @@
 #pragma once
 
-#include "EventChannel.h"
+#include "EventLoop.h"
 #include "EventLoopSubscriber.h"
 #include "Events.h"
 

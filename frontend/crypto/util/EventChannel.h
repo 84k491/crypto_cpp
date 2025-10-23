@@ -1,6 +1,6 @@
 #pragma once
 
-#include "EventLoop.h"
+#include "ILambdaAcceptor.h"
 #include "Events.h"
 #include "Guarded.h"
 #include "ISubsription.h"
