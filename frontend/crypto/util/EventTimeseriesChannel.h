@@ -26,10 +26,12 @@ public:
             ILambdaAcceptor & consumer,
             std::function<void(TimeT, const ObjectT &)> callback,
             EventTimeseriesChannel<ObjectT> & channel,
+            xg::Guid subscriber_guid,
             xg::Guid guid)
         : m_consumer(consumer)
         , m_callback(callback)
         , m_channel(&channel)
+        , m_subscriber_guid(subscriber_guid)
         , m_guid(guid)
     {
     }
@@ -45,6 +47,7 @@ private:
     ILambdaAcceptor & m_consumer;
     std::function<void(TimeT, const ObjectT &)> m_callback;
     EventTimeseriesChannel<ObjectT> * m_channel;
+    xg::Guid m_subscriber_guid;
     xg::Guid m_guid;
 };
 
@@ -60,6 +63,7 @@ public:
     void push(TimeT timestamp, const ObjectT & object);
     [[nodiscard]] std::shared_ptr<EventTimeseriesSubsription<ObjectT>> subscribe(
             ILambdaAcceptor & consumer,
+            xg::Guid subcriber_guid,
             std::function<void(const std::list<std::pair<TimeT, ObjectT>> &)> && snapshot_callback,
             std::function<void(TimeT, const ObjectT &)> && increment_callback);
 
@@ -100,6 +104,7 @@ void EventTimeseriesChannel<ObjectT>::push(EventTimeseriesChannel::TimeT timesta
         UNWRAP_CONTINUE(subscribtion, sub_wptr.lock());
 
         subscribtion.m_consumer.push(LambdaEvent{
+                subscribtion.m_subscriber_guid,
                 [cb = subscribtion.m_callback,
                  timestamp,
                  object] { cb(timestamp, object); },
@@ -110,17 +115,24 @@ void EventTimeseriesChannel<ObjectT>::push(EventTimeseriesChannel::TimeT timesta
 template <typename ObjectT>
 std::shared_ptr<EventTimeseriesSubsription<ObjectT>> EventTimeseriesChannel<ObjectT>::subscribe(
         ILambdaAcceptor & consumer,
+        xg::Guid subcriber_guid,
         std::function<void(const std::list<std::pair<TimeT, ObjectT>> &)> && snapshot_callback,
         std::function<void(TimeT, const ObjectT &)> && increment_callback)
 {
     const auto guid = xg::newGuid();
-    auto sptr = std::make_shared<EventTimeseriesSubsription<ObjectT>>(consumer, increment_callback, *this, guid);
+    auto sptr = std::make_shared<EventTimeseriesSubsription<ObjectT>>(
+            consumer,
+            increment_callback,
+            *this,
+            subcriber_guid,
+            guid);
 
     auto subs_lref = m_subscriptions.lock();
     subs_lref.get().emplace_back(std::make_pair(guid, std::weak_ptr{sptr}));
     auto data_lref = m_data.lock();
 
     consumer.push(LambdaEvent{
+            subcriber_guid,
             [cb = std::move(snapshot_callback),
              d = data_lref.get()] { cb(d); },
             Priority::Normal});

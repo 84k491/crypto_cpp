@@ -8,14 +8,15 @@
 #include <variant>
 
 BacktestTradingGateway::BacktestTradingGateway()
-    : m_pos_volume(std::make_shared<SignedVolume>(0.))
+    : m_sub(m_event_consumer)
+    , m_pos_volume(std::make_shared<SignedVolume>(0.))
 {
 }
 
 void BacktestTradingGateway::set_price_source(EventTimeseriesChannel<double> & channel)
 {
-    m_price_sub = channel.subscribe(
-            m_event_consumer,
+    m_sub.subscribe(
+            channel,
             [](auto &) {},
             [this](std::chrono::milliseconds ts, const double & price) {
                 on_new_price(ts, price);
@@ -175,10 +176,6 @@ void BacktestTradingGateway::try_trigger_conditionals(std::chrono::milliseconds 
 
 void BacktestTradingGateway::push_order_request(const OrderRequestEvent & req)
 {
-    if (!m_price_sub) {
-        Logger::log<LogLevel::Error>("No price sub. Did you forgot to subscribe backtest TRGW for prices?");
-    }
-
     const auto & order = req.order;
     const auto ack_ev = OrderResponseEvent(req.order.symbol(), req.order.guid());
     m_order_response_channel.push(ack_ev);

@@ -21,6 +21,8 @@ MainWindow::MainWindow(QWidget * parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
     , m_event_consumer(*this)
+    , m_sub(std::make_unique<EventSubcriber>(m_event_consumer))
+
 {
     ui->setupUi(this);
     ui->wt_entry_params->setTitle("Entry parameters");
@@ -78,7 +80,7 @@ void MainWindow::handle_status_changed(WorkStatus status)
     if (status == WorkStatus::Stopped || status == WorkStatus::Panic) {
         ui->pb_run->setEnabled(true);
         ui->pb_stop->setEnabled(false);
-        m_subscriptions.clear();
+        m_sub = std::make_unique<EventSubcriber>(m_event_consumer);
     }
     switch (status) {
     case WorkStatus::Backtesting: break;
@@ -93,11 +95,11 @@ void MainWindow::handle_status_changed(WorkStatus status)
 void MainWindow::subscribe_to_strategy()
 {
     Logger::log<LogLevel::Status>("mainwindow subscribe_to_strategy");
-    m_subscriptions.push_back(m_strategy_instance->strategy_result_channel().subscribe(
-            m_event_consumer,
+    m_sub->subscribe(
+            m_strategy_instance->strategy_result_channel(),
             [&](const StrategyResult & result) {
                 render_result(result);
-            }));
+            });
 }
 
 void MainWindow::on_pb_stop_clicked()
@@ -109,7 +111,7 @@ void MainWindow::on_pb_stop_clicked()
 
 void MainWindow::on_pb_run_clicked()
 {
-    m_subscriptions.clear();
+    m_sub = std::make_unique<EventSubcriber>(m_event_consumer);
 
     const auto timerange_opt = get_timerange();
     if (!timerange_opt) {
@@ -175,9 +177,9 @@ void MainWindow::on_pb_run_clicked()
         ptr->set_price_source(m_strategy_instance->price_channel());
     }
 
-    m_subscriptions.push_back(m_strategy_instance->status_channel().subscribe(
-            m_event_consumer,
-            [&](const WorkStatus & status) { handle_status_changed(status); }));
+    m_sub->subscribe(
+            m_strategy_instance->status_channel(),
+            [&](const WorkStatus & status) { handle_status_changed(status); });
 
     m_strategy_instance->run_async();
     Logger::log<LogLevel::Status>("Strategy started");
@@ -228,8 +230,8 @@ void MainWindow::subscribe_for_positions()
     ui->sa_positions->setWidget(holder_widget);
     ui->sa_positions->setWidgetResizable(true);
 
-    m_subscriptions.push_back(m_strategy_instance->positions_channel().subscribe(
-            m_event_consumer,
+    m_sub->subscribe(
+            m_strategy_instance->positions_channel(),
             [&](const std::list<std::pair<std::chrono::milliseconds, PositionResult>> & list) {
                 for (const auto & [_, position_result] : list) {
                     auto * view = new PositionResultView();
@@ -242,7 +244,7 @@ void MainWindow::subscribe_for_positions()
                 // TODO implement
                 // it requieres a separate class of view to handle updates
                 // to avoid rendering all positions on each update
-            }));
+            });
 }
 
 void MainWindow::optimized_config_slot(const JsonStrategyConfig & entry_config)

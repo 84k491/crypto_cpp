@@ -2,6 +2,7 @@
 
 #include "ILambdaAcceptor.h"
 #include "ISubsription.h"
+#include "crossguid/guid.hpp"
 
 #include <list>
 #include <memory>
@@ -10,7 +11,8 @@ class EventSubcriber
 {
 public:
     EventSubcriber(ILambdaAcceptor & el)
-        : m_event_loop(el)
+        : m_guid{xg::newGuid()}
+        , m_event_loop{el}
     {
     }
 
@@ -20,7 +22,11 @@ public:
             UpdateCallbackT && callback,
             Priority priority = Priority::Normal)
     {
-        const auto sub = channel.subscribe(m_event_loop, std::forward<UpdateCallbackT>(callback), priority);
+        const auto sub = channel.subscribe(
+                m_event_loop,
+                m_guid,
+                std::forward<UpdateCallbackT>(callback),
+                priority);
         m_subscriptions.push_back(sub);
     }
 
@@ -32,12 +38,15 @@ public:
     {
         const auto sub = channel.subscribe(
                 m_event_loop,
+                m_guid,
                 std::forward<SnapshotCallbackT>(snapshot_callback),
                 std::forward<UpdateCallbackT>(update_callback));
         m_subscriptions.push_back(sub);
     }
 
 private:
+    xg::Guid m_guid;
+
     ILambdaAcceptor & m_event_loop;
 
     std::list<std::shared_ptr<ISubscription>> m_subscriptions; // those must be destroyed before EvLoop

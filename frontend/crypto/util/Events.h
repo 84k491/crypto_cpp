@@ -255,6 +255,7 @@ struct TrailingStopLossRequestEvent : public OneWayEvent
     TrailingStopLoss trailing_stop_loss;
 };
 
+// TODO remove, not used
 struct SignalEvent : public OneWayEvent
 {
     SignalEvent(Signal signal);
@@ -265,11 +266,13 @@ struct SignalEvent : public OneWayEvent
 using TimerEvent = OneWayEvent;
 using PingCheckEvent = TimerEvent;
 
+// TODO move it to a more basic file
 struct LambdaEvent : public OneWayEvent
 {
-    LambdaEvent(std::function<void()> func, Priority priority)
+    LambdaEvent(xg::Guid subscriber_guid, std::function<void()> func, Priority priority)
         : func(std::move(func))
         , m_priority(priority)
+        , m_subscriber_guid(subscriber_guid)
     {
     }
 
@@ -277,7 +280,7 @@ struct LambdaEvent : public OneWayEvent
 
     std::function<void()> func;
     Priority m_priority;
-    xg::Guid guid;
+    xg::Guid m_subscriber_guid;
 };
 
 struct LogEvent : public OneWayEvent

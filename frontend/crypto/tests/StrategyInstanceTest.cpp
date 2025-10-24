@@ -169,6 +169,7 @@ public:
     StrategyInstanceTest()
         : m_symbol("BTCUSD")
         , strategy_instance(nullptr)
+        , status_sub(event_consumer)
     {
         m_symbol.lot_size_filter.max_qty = 1'000'000;
         m_symbol.lot_size_filter.min_qty = 0.001;
@@ -188,8 +189,8 @@ public:
             strategy_status = strategy_instance->status_channel().get();
         }
 
-        status_sub = strategy_instance->status_channel().subscribe(
-                event_consumer,
+        status_sub.subscribe(
+                strategy_instance->status_channel(),
                 [&](const auto & status) {
                     strategy_status = status;
                 });
@@ -206,7 +207,7 @@ protected:
     std::unique_ptr<StrategyInstance> strategy_instance;
 
     WorkStatus strategy_status = WorkStatus::Panic;
-    std::shared_ptr<EventObjectSubscription<WorkStatus>> status_sub;
+    EventSubcriber status_sub;
 };
 
 // strategy starts in stopped state
@@ -227,8 +228,9 @@ TEST_F(StrategyInstanceTest, SubForLiveMarketData_GetPrice_GracefullStop)
     const auto live_req = md_gateway.m_last_live_request.value();
 
     size_t prices_received = 0;
-    const auto price_sub = strategy_instance->price_channel().subscribe(
-            event_consumer,
+    EventSubcriber price_sub{event_consumer};
+    price_sub.subscribe(
+            strategy_instance->price_channel(),
             [](const auto & vec) {
                 EXPECT_EQ(vec.size(), 0);
             },
@@ -273,8 +275,9 @@ TEST_F(StrategyInstanceTest, OpenAndClosePos_GetResult_DontCloseTwiceOnStop)
     const auto live_req = md_gateway.m_last_live_request.value();
 
     size_t prices_received = 0;
-    const auto price_sub = strategy_instance->price_channel().subscribe(
-            event_consumer,
+    EventSubcriber price_sub{event_consumer};
+    price_sub.subscribe(
+            strategy_instance->price_channel(),
             [](const auto & vec) {
                 EXPECT_EQ(vec.size(), 0);
             },
@@ -294,8 +297,10 @@ TEST_F(StrategyInstanceTest, OpenAndClosePos_GetResult_DontCloseTwiceOnStop)
 
     StrategyResult result = strategy_instance->strategy_result_channel().get();
     ASSERT_EQ(result.trades_count, 0);
-    const auto strategy_res_sub = strategy_instance->strategy_result_channel().subscribe(
-            event_consumer,
+
+    EventSubcriber strategy_res_sub{event_consumer};
+    strategy_res_sub.subscribe(
+            strategy_instance->strategy_result_channel(),
             [&](const auto & res) {
                 result = res;
             });
@@ -515,8 +520,9 @@ TEST_F(StrategyInstanceTest, ManyPricesReceivedWhileOrderIsPending_NoAdditionalO
     const auto live_req = md_gateway.m_last_live_request.value();
 
     size_t prices_received = 0;
-    const auto price_sub = strategy_instance->price_channel().subscribe(
-            event_consumer,
+    EventSubcriber price_sub{event_consumer};
+    price_sub.subscribe(
+            strategy_instance->price_channel(),
             [](const auto & vec) {
                 EXPECT_EQ(vec.size(), 0);
             },
@@ -616,8 +622,10 @@ TEST_F(StrategyInstanceTest, OpenPos_TpslReject_ClosePosAndPanic)
 
     StrategyResult result = strategy_instance->strategy_result_channel().get();
     ASSERT_EQ(result.trades_count, 0);
-    const auto strategy_res_sub = strategy_instance->strategy_result_channel().subscribe(
-            event_consumer,
+
+    EventSubcriber strategy_res_sub{event_consumer};
+    strategy_res_sub.subscribe(
+            strategy_instance->strategy_result_channel(),
             [&](const auto & res) {
                 result = res;
             });

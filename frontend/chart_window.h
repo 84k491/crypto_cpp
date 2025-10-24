@@ -74,7 +74,7 @@ private:
     std::map<std::string, MultiSeriesChart *> m_charts;
 
     std::weak_ptr<StrategyInstance> m_strategy_instance;
-    std::list<std::shared_ptr<ISubscription>> m_subscriptions;
+    EventSubcriber m_sub;
 };
 
 #endif // CHART_WINDOW_H

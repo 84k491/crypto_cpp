@@ -19,6 +19,7 @@ ChartWindow::ChartWindow(
     , ui(new Ui::ChartWindow)
     , m_event_consumer(*this)
     , m_strategy_instance(strategy)
+    , m_sub(m_event_consumer)
 {
     ui->setupUi(this);
     m_holder_widget = new QWidget(ui->scrollArea);
@@ -83,9 +84,8 @@ void ChartWindow::subscribe_to_strategy()
 {
     UNWRAP_RET_VOID(str_instance, m_strategy_instance.lock());
 
-    m_subscriptions.push_back(str_instance.candle_channel().subscribe(
-            m_event_consumer,
-            [this](const auto & vec) {
+    m_sub.subscribe(
+            str_instance.candle_channel(), [this](const auto & vec) {
                 std::list<Candle> candles;
                 for (const auto & [ts, candle] : vec) {
                     if (!ts_in_range(ts)) {
@@ -94,18 +94,15 @@ void ChartWindow::subscribe_to_strategy()
                     candles.push_back(candle);
                 }
                 auto & plot = get_or_create_chart(m_price_chart_name);
-                plot.push_candle_vector(candles);
-            },
-            [&](std::chrono::milliseconds ts, const Candle & candle) {
+                plot.push_candle_vector(candles); }, [&](std::chrono::milliseconds ts, const Candle & candle) {
                 if (!ts_in_range(ts)) {
                     return;
                 }
                 auto & plot = get_or_create_chart(m_price_chart_name);
-                plot.push_candle(candle);
-            }));
+                plot.push_candle(candle); });
 
-    m_subscriptions.push_back(str_instance.price_levels_channel().subscribe(
-            m_event_consumer,
+    m_sub.subscribe(
+            str_instance.price_levels_channel(),
             [this](const auto & vec) {
                 std::vector<std::pair<std::chrono::milliseconds, double>> fee_profit;
                 std::vector<std::pair<std::chrono::milliseconds, double>> no_loss;
@@ -128,10 +125,10 @@ void ChartWindow::subscribe_to_strategy()
                     return;
                 }
                 // TODO impelment
-            }));
+            });
 
-    m_subscriptions.push_back(str_instance.tpsl_channel().subscribe(
-            m_event_consumer,
+    m_sub.subscribe(
+            str_instance.tpsl_channel(),
             [this](const std::list<std::pair<std::chrono::milliseconds, TpslFullPos::Prices>> & input_vec) {
                 std::vector<std::pair<std::chrono::milliseconds, double>> tp, sl;
                 for (const auto & [ts, tpsl] : input_vec) {
@@ -150,9 +147,9 @@ void ChartWindow::subscribe_to_strategy()
                     return;
                 }
                 get_or_create_chart(m_price_chart_name).push_tpsl(ts, tpsl);
-            }));
-    m_subscriptions.push_back(str_instance.trailing_stop_channel().subscribe(
-            m_event_consumer,
+            });
+    m_sub.subscribe(
+            str_instance.trailing_stop_channel(),
             [this](const std::list<std::pair<std::chrono::milliseconds, StopLoss>> & input_vec) {
                 std::vector<std::pair<std::chrono::milliseconds, double>> tsl_vec;
                 tsl_vec.reserve(input_vec.size());
@@ -170,47 +167,44 @@ void ChartWindow::subscribe_to_strategy()
                     return;
                 }
                 get_or_create_chart(m_price_chart_name).push_stop_loss(ts, stop_loss.stop_price());
-            }));
-    m_subscriptions.push_back(
-            str_instance
-                    .strategy_internal_data_channel()
-                    .subscribe(
-                            m_event_consumer,
-                            [this](const std::list<
-                                    std::pair<
-                                            std::chrono::milliseconds,
-                                            StrategyInternalData>> & vec) {
-                                // chart_name -> series_name -> timestamp, value
-                                std::map<std::string,
-                                         std::map<std::string,
-                                                  std::list<std::pair<std::chrono::milliseconds, double>>>>
-                                        vec_map;
+            });
+    m_sub.subscribe(
+            str_instance.strategy_internal_data_channel(),
+            [this](const std::list<
+                    std::pair<
+                            std::chrono::milliseconds,
+                            StrategyInternalData>> & vec) {
+                // chart_name -> series_name -> timestamp, value
+                std::map<std::string,
+                         std::map<std::string,
+                                  std::list<std::pair<std::chrono::milliseconds, double>>>>
+                        vec_map;
 
-                                for (const auto & [ts, v] : vec) {
-                                    if (!ts_in_range(ts)) {
-                                        continue;
-                                    }
-                                    const auto & [chart_name, series_name, value] = v;
-                                    vec_map[std::string{chart_name}][std::string{series_name}].emplace_back(ts, value);
-                                }
-                                for (const auto & [chart_name, series_map] : vec_map) {
-                                    for (const auto & [series_name, out_vec] : series_map) {
-                                        auto & plot = get_or_create_chart(chart_name);
-                                        plot.push_series_vector(series_name, out_vec);
-                                    }
-                                }
-                            },
-                            [&](
-                                    std::chrono::milliseconds ts,
-                                    const StrategyInternalData & data_pair) {
-                                if (!ts_in_range(ts)) {
-                                    return;
-                                }
-                                const auto & [chart_name, name, data] = data_pair;
-                                get_or_create_chart(std::string{chart_name}).push_series_value(std::string{name}, ts, data);
-                            }));
-    m_subscriptions.push_back(str_instance.trade_channel().subscribe(
-            m_event_consumer,
+                for (const auto & [ts, v] : vec) {
+                    if (!ts_in_range(ts)) {
+                        continue;
+                    }
+                    const auto & [chart_name, series_name, value] = v;
+                    vec_map[std::string{chart_name}][std::string{series_name}].emplace_back(ts, value);
+                }
+                for (const auto & [chart_name, series_map] : vec_map) {
+                    for (const auto & [series_name, out_vec] : series_map) {
+                        auto & plot = get_or_create_chart(chart_name);
+                        plot.push_series_vector(series_name, out_vec);
+                    }
+                }
+            },
+            [&](
+                    std::chrono::milliseconds ts,
+                    const StrategyInternalData & data_pair) {
+                if (!ts_in_range(ts)) {
+                    return;
+                }
+                const auto & [chart_name, name, data] = data_pair;
+                get_or_create_chart(std::string{chart_name}).push_series_value(std::string{name}, ts, data);
+            });
+    m_sub.subscribe(
+            str_instance.trade_channel(),
             [this](const std::list<std::pair<std::chrono::milliseconds, Trade>> & input_vec) {
                 std::vector<std::pair<std::chrono::milliseconds, double>> buy, sell;
                 for (const auto & [ts, trade] : input_vec) {
@@ -231,21 +225,19 @@ void ChartWindow::subscribe_to_strategy()
                 }
                 auto & plot = get_or_create_chart(m_price_chart_name);
                 plot.push_scatter_series_vector("buy_trade", buy);
-                plot.push_scatter_series_vector("sell_trade", sell);
-            },
+                plot.push_scatter_series_vector("sell_trade", sell); },
             [&](std::chrono::milliseconds ts, const Trade & trade) {
                 if (!ts_in_range(ts)) {
                     return;
                 }
-                get_or_create_chart(m_price_chart_name).push_trade(trade);
-            }));
+                get_or_create_chart(m_price_chart_name).push_trade(trade); });
 
     if (!m_render_depo) {
         return;
     }
 
-    m_subscriptions.push_back(str_instance.depo_channel().subscribe(
-            m_event_consumer,
+    m_sub.subscribe(
+            str_instance.depo_channel(),
             [this](const auto & vec) {
                 std::list<std::pair<std::chrono::milliseconds, double>> res;
                 for (const auto & [ts, value] : vec) {
@@ -262,7 +254,7 @@ void ChartWindow::subscribe_to_strategy()
                     return;
                 }
                 get_or_create_chart(m_depo_chart_name).push_series_value("depo", ts, depo);
-            }));
+            });
 
     const auto update_trend_callback = [this](const StrategyResult & str_res) {
         auto & plot = get_or_create_chart(m_depo_chart_name);
@@ -273,9 +265,9 @@ void ChartWindow::subscribe_to_strategy()
     };
     const auto res = str_instance.strategy_result_channel().get();
     update_trend_callback(res);
-    m_subscriptions.push_back(str_instance.strategy_result_channel().subscribe(
-            m_event_consumer,
-            update_trend_callback));
+    m_sub.subscribe(
+            str_instance.strategy_result_channel(),
+            update_trend_callback);
 }
 
 void ChartWindowEventConsumer::push(LambdaEvent value)

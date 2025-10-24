@@ -24,10 +24,12 @@ public:
             ILambdaAcceptor & consumer,
             std::function<void(const ObjectT &)> update_callback,
             EventObjectChannel<ObjectT> & channel,
+            xg::Guid subscriber_guid,
             xg::Guid guid)
         : m_consumer(consumer)
         , m_callback(update_callback)
         , m_channel(&channel)
+        , m_subscriber_guid(subscriber_guid)
         , m_guid(guid)
     {
     }
@@ -45,6 +47,7 @@ private:
     std::function<void(const ObjectT &)> m_callback;
     EventObjectChannel<ObjectT> * m_channel; // TODO make it atomic
 
+    xg::Guid m_subscriber_guid;
     xg::Guid m_guid;
 };
 
@@ -74,6 +77,7 @@ public:
     [[nodiscard]] std::shared_ptr<EventObjectSubscription<ObjectT>>
     subscribe(
             ILambdaAcceptor & consumer,
+            xg::Guid subscriber_guid,
             std::function<void(const ObjectT &)> && update_callback,
             Priority priority = Priority::Normal);
     void unsubscribe(xg::Guid guid);
@@ -106,6 +110,7 @@ void EventObjectChannel<ObjectT>::push(const ObjectT & object)
     for (const auto & [_, wptr] : subs_lref.get()) {
         UNWRAP_CONTINUE(subscription, wptr.lock());
         subscription.m_consumer.push(LambdaEvent{
+                subscription.m_subscriber_guid,
                 [cb = subscription.m_callback, object] {
                     cb(object);
                 },
@@ -125,6 +130,7 @@ void EventObjectChannel<ObjectT>::update(std::function<void(ObjectT &)> && updat
     for (const auto & [_, wptr] : subs_lref.get()) {
         UNWRAP_CONTINUE(subscription, wptr.lock());
         subscription.m_consumer.push(LambdaEvent{
+                subscription.m_subscriber_guid,
                 [cb = subscription.m_callback,
                  object = data_lref.get()] {
                     cb(object);
@@ -137,11 +143,17 @@ template <typename ObjectT>
 std::shared_ptr<EventObjectSubscription<ObjectT>>
 EventObjectChannel<ObjectT>::subscribe(
         ILambdaAcceptor & consumer,
+        xg::Guid subscriber_guid,
         std::function<void(const ObjectT &)> && update_callback,
         Priority) // TODO use priority?
 {
     const auto guid = xg::newGuid();
-    auto sptr = std::make_shared<EventObjectSubscription<ObjectT>>(consumer, update_callback, *this, guid);
+    auto sptr = std::make_shared<EventObjectSubscription<ObjectT>>(
+            consumer,
+            update_callback,
+            *this,
+            subscriber_guid,
+            guid);
 
     auto lref = m_subscriptions.lock();
 

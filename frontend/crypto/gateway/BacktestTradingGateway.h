@@ -69,7 +69,7 @@ private:
     std::optional<TpslRequestEvent> m_tpsl;
     double m_last_price = 0.;
     std::chrono::milliseconds m_last_ts = {};
-    std::shared_ptr<ISubscription> m_price_sub;
+    EventSubcriber m_sub;
     std::optional<BacktestTrailingStopLoss> m_trailing_stop;
 
     std::shared_ptr<SignedVolume> m_pos_volume;

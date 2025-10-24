@@ -139,7 +139,7 @@ private:
     std::unique_ptr<ByBitTradingGateway> m_trading_gateway;
 
     std::shared_ptr<StrategyInstance> m_strategy_instance;
-    std::list<std::shared_ptr<ISubscription>> m_subscriptions;
+    std::unique_ptr<EventSubcriber> m_sub;
 
     std::optional<JsonStrategyMetaInfo> m_last_set_strategy_parameters;
     std::map<std::string, QDoubleSpinBox *> m_strategy_parameters_spinboxes;

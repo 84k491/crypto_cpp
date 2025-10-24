@@ -58,23 +58,23 @@ TEST_F(BacktestTradingGatewayTest, MarketOrderOpenClosePos)
         };
 
         bool order_responded = false;
-        auto order_sub = trgw.order_response_channel().subscribe(
-                el,
-                [&](const OrderResponseEvent & r) {
-                    order_responded = true;
-                    EXPECT_EQ(r.request_guid, mo.guid());
-                    EXPECT_FALSE(r.reject_reason.has_value());
-                    EXPECT_FALSE(r.retry);
-                });
+        EventSubcriber order_sub{el};
+        order_sub.subscribe(trgw.order_response_channel(),
+                            [&](const OrderResponseEvent & r) {
+                                order_responded = true;
+                                EXPECT_EQ(r.request_guid, mo.guid());
+                                EXPECT_FALSE(r.reject_reason.has_value());
+                                EXPECT_FALSE(r.retry);
+                            });
 
         bool trade_responded = false;
-        auto trade_sub = trgw.trade_channel().subscribe(
-                el,
-                [&](const TradeEvent & r) {
-                    trade_responded = true;
-                    EXPECT_EQ(r.trade.price(), 100.);
-                    EXPECT_TRUE(r.trade.fee() > 0.);
-                });
+        EventSubcriber trade_sub{el};
+        trade_sub.subscribe(trgw.trade_channel(),
+                            [&](const TradeEvent & r) {
+                                trade_responded = true;
+                                EXPECT_EQ(r.trade.price(), 100.);
+                                EXPECT_TRUE(r.trade.fee() > 0.);
+                            });
 
         OrderRequestEvent ev{mo};
         trgw.push_order_request(ev);
@@ -98,8 +98,9 @@ TEST_F(BacktestTradingGatewayTest, MarketOrderOpenClosePos)
         };
 
         bool order_responded = false;
-        auto order_sub = trgw.order_response_channel().subscribe(
-                el,
+        EventSubcriber order_sub{el};
+        order_sub.subscribe(
+                trgw.order_response_channel(),
                 [&](const OrderResponseEvent & r) {
                     order_responded = true;
                     EXPECT_EQ(r.request_guid, mo.guid());
@@ -108,8 +109,9 @@ TEST_F(BacktestTradingGatewayTest, MarketOrderOpenClosePos)
                 });
 
         bool trade_responded = false;
-        auto trade_sub = trgw.trade_channel().subscribe(
-                el,
+        EventSubcriber trade_sub{el};
+        trade_sub.subscribe(
+                trgw.trade_channel(),
                 [&](const TradeEvent & r) {
                     trade_responded = true;
                     EXPECT_EQ(r.trade.price(), 222.);
@@ -131,8 +133,9 @@ TEST_F(BacktestTradingGatewayTest, TpslRejectIfNoPos)
     price_source_ch.push(std::chrono::milliseconds{1}, 100.);
 
     bool tpsl_ack_responded = false;
-    auto tpsl_ack_sub = trgw.tpsl_updated_channel().subscribe(
-            el,
+    EventSubcriber tpsl_ack_sub{el};
+    tpsl_ack_sub.subscribe(
+            trgw.tpsl_updated_channel(),
             [&](const TpslUpdatedEvent & ev) {
                 tpsl_ack_responded = true;
                 EXPECT_EQ(ev.reject_reason, "can not set tp/sl/ts for zero position");
@@ -174,8 +177,10 @@ TEST_F(BacktestTradingGatewayTest, TpslTriggerTp)
     bool tpsl_ack_responded = false;
     std::optional<TpslUpdatedEvent> tpsl_upd_response;
     constexpr int tp_price = 120;
-    auto tpsl_upd_sub = trgw.tpsl_updated_channel().subscribe(
-            el,
+
+    EventSubcriber tpsl_upd_sub{el};
+    tpsl_upd_sub.subscribe(
+            trgw.tpsl_updated_channel(),
             [&](const TpslUpdatedEvent & ev) {
                 tpsl_ack_responded = true;
                 tpsl_upd_response = ev;
@@ -183,8 +188,10 @@ TEST_F(BacktestTradingGatewayTest, TpslTriggerTp)
             });
 
     bool tp_trade_responded = false;
-    auto tp_trade_sub = trgw.trade_channel().subscribe(
-            el,
+
+    EventSubcriber tp_trade_sub{el};
+    tp_trade_sub.subscribe(
+            trgw.trade_channel(),
             [&](const TradeEvent & ev) {
                 tp_trade_responded = true;
                 EXPECT_EQ(ev.trade.price(), tp_price);
@@ -234,8 +241,10 @@ TEST_F(BacktestTradingGatewayTest, TpslTriggerSl)
     bool tpsl_ack_responded = false;
     std::optional<TpslUpdatedEvent> tpsl_upd_response;
     constexpr int sl_price = 120;
-    auto tpsl_upd_sub = trgw.tpsl_updated_channel().subscribe(
-            el,
+
+    EventSubcriber tpsl_upd_sub{el};
+    tpsl_upd_sub.subscribe(
+            trgw.tpsl_updated_channel(),
             [&](const TpslUpdatedEvent & ev) {
                 tpsl_ack_responded = true;
                 tpsl_upd_response = ev;
@@ -243,8 +252,10 @@ TEST_F(BacktestTradingGatewayTest, TpslTriggerSl)
             });
 
     bool tp_trade_responded = false;
-    auto tp_trade_sub = trgw.trade_channel().subscribe(
-            el,
+
+    EventSubcriber tp_trade_sub{el};
+    tp_trade_sub.subscribe(
+            trgw.trade_channel(),
             [&](const TradeEvent & ev) {
                 tp_trade_responded = true;
                 EXPECT_EQ(ev.trade.price(), sl_price);
@@ -293,8 +304,10 @@ TEST_F(BacktestTradingGatewayTest, TpslRemoveOnClosePos)
 
     std::optional<TpslUpdatedEvent> tpsl_upd_response;
     constexpr int sl_price = 120;
-    auto tpsl_upd_sub = trgw.tpsl_updated_channel().subscribe(
-            el,
+
+    EventSubcriber tpsl_upd_sub{el};
+    tpsl_upd_sub.subscribe(
+            trgw.tpsl_updated_channel(),
             [&](const TpslUpdatedEvent & ev) {
                 tpsl_upd_response = ev;
             });
@@ -333,14 +346,19 @@ TEST_F(BacktestTradingGatewayTest, StopLossSellTriggerLater)
     price_source_ch.push(std::chrono::milliseconds{1}, 100.);
 
     std::optional<StopLossUpdatedEvent> sl_updated_response;
-    auto sl_updated_sub = trgw.stop_loss_update_channel().subscribe(
-            el, [&sl_updated_response](const StopLossUpdatedEvent ev) {
+
+    EventSubcriber sl_updated_sub{el};
+    sl_updated_sub.subscribe(
+            trgw.stop_loss_update_channel(),
+            [&sl_updated_response](const StopLossUpdatedEvent ev) {
                 sl_updated_response = ev;
             });
 
     std::optional<TradeEvent> trade_msg;
-    auto trade_sub = trgw.trade_channel().subscribe(
-            el, [&](const TradeEvent & ev) {
+    EventSubcriber trade_sub{el};
+    trade_sub.subscribe(
+            trgw.trade_channel(),
+            [&](const TradeEvent & ev) {
                 trade_msg = ev;
             });
 
@@ -385,14 +403,19 @@ TEST_F(BacktestTradingGatewayTest, StopLossBuyTriggerLater)
     price_source_ch.push(std::chrono::milliseconds{1}, 90.);
 
     std::optional<StopLossUpdatedEvent> sl_updated_response;
-    auto sl_updated_sub = trgw.stop_loss_update_channel().subscribe(
-            el, [&sl_updated_response](const StopLossUpdatedEvent ev) {
+
+    EventSubcriber sl_updated_sub{el};
+    sl_updated_sub.subscribe(
+            trgw.stop_loss_update_channel(),
+            [&sl_updated_response](const StopLossUpdatedEvent ev) {
                 sl_updated_response = ev;
             });
 
     std::optional<TradeEvent> trade_msg;
-    auto trade_sub = trgw.trade_channel().subscribe(
-            el, [&](const TradeEvent & ev) {
+    EventSubcriber trade_sub{el};
+    trade_sub.subscribe(
+            trgw.trade_channel(),
+            [&](const TradeEvent & ev) {
                 trade_msg = ev;
             });
 
@@ -436,14 +459,18 @@ TEST_F(BacktestTradingGatewayTest, TakeProfitSellTriggerLater)
     price_source_ch.push(std::chrono::milliseconds{1}, 100.);
 
     std::optional<TakeProfitUpdatedEvent> sl_updated_response;
-    auto sl_updated_sub = trgw.take_profit_update_channel().subscribe(
-            el, [&sl_updated_response](const TakeProfitUpdatedEvent ev) {
+    EventSubcriber sl_updated_sub{el};
+    sl_updated_sub.subscribe(
+            trgw.take_profit_update_channel(),
+            [&sl_updated_response](const TakeProfitUpdatedEvent ev) {
                 sl_updated_response = ev;
             });
 
     std::optional<TradeEvent> trade_msg;
-    auto trade_sub = trgw.trade_channel().subscribe(
-            el, [&](const TradeEvent & ev) {
+    EventSubcriber trade_sub{el};
+    trade_sub.subscribe(
+            trgw.trade_channel(),
+            [&](const TradeEvent & ev) {
                 trade_msg = ev;
             });
 
@@ -488,14 +515,18 @@ TEST_F(BacktestTradingGatewayTest, TakeProfitBuyTriggerLater)
     price_source_ch.push(std::chrono::milliseconds{1}, 100.);
 
     std::optional<TakeProfitUpdatedEvent> sl_updated_response;
-    auto sl_updated_sub = trgw.take_profit_update_channel().subscribe(
-            el, [&sl_updated_response](const TakeProfitUpdatedEvent ev) {
+    EventSubcriber sl_updated_sub{el};
+    sl_updated_sub.subscribe(
+            trgw.take_profit_update_channel(),
+            [&sl_updated_response](const TakeProfitUpdatedEvent ev) {
                 sl_updated_response = ev;
             });
 
     std::optional<TradeEvent> trade_msg;
-    auto trade_sub = trgw.trade_channel().subscribe(
-            el, [&](const TradeEvent & ev) {
+    EventSubcriber trade_sub{el};
+    trade_sub.subscribe(
+            trgw.trade_channel(),
+            [&](const TradeEvent & ev) {
                 trade_msg = ev;
             });
 
@@ -540,8 +571,10 @@ TEST_F(BacktestTradingGatewayTest, StopLossCancel)
     price_source_ch.push(std::chrono::milliseconds{1}, 100.);
 
     std::optional<StopLossUpdatedEvent> sl_updated_response;
-    auto sl_updated_sub = trgw.stop_loss_update_channel().subscribe(
-            el, [&sl_updated_response](const StopLossUpdatedEvent ev) {
+    EventSubcriber sl_updated_sub{el};
+    sl_updated_sub.subscribe(
+            trgw.stop_loss_update_channel(),
+            [&sl_updated_response](const StopLossUpdatedEvent ev) {
                 sl_updated_response = ev;
             });
 
@@ -590,8 +623,10 @@ TEST_F(BacktestTradingGatewayTest, TakeProfitCancel)
     price_source_ch.push(std::chrono::milliseconds{1}, 100.);
 
     std::optional<TakeProfitUpdatedEvent> sl_updated_response;
-    auto sl_updated_sub = trgw.take_profit_update_channel().subscribe(
-            el, [&sl_updated_response](const TakeProfitUpdatedEvent ev) {
+    EventSubcriber sl_updated_sub{el};
+    sl_updated_sub.subscribe(
+            trgw.take_profit_update_channel(),
+            [&sl_updated_response](const TakeProfitUpdatedEvent ev) {
                 sl_updated_response = ev;
             });
 
@@ -641,14 +676,18 @@ TEST_F(BacktestTradingGatewayTest, StopLossSellTriggerImmediately)
     price_source_ch.push(std::chrono::milliseconds{1}, 89.);
 
     std::optional<StopLossUpdatedEvent> sl_updated_response;
-    auto sl_updated_sub = trgw.stop_loss_update_channel().subscribe(
-            el, [&sl_updated_response](const StopLossUpdatedEvent ev) {
+    EventSubcriber sl_updated_sub{el};
+    sl_updated_sub.subscribe(
+            trgw.stop_loss_update_channel(),
+            [&sl_updated_response](const StopLossUpdatedEvent ev) {
                 sl_updated_response = ev;
             });
 
     std::optional<TradeEvent> trade_msg;
-    auto trade_sub = trgw.trade_channel().subscribe(
-            el, [&](const TradeEvent & ev) {
+    EventSubcriber trade_sub{el};
+    trade_sub.subscribe(
+            trgw.trade_channel(),
+            [&](const TradeEvent & ev) {
                 trade_msg = ev;
             });
 
@@ -677,14 +716,19 @@ TEST_F(BacktestTradingGatewayTest, StopLossBuyTriggerImmediately)
     price_source_ch.push(std::chrono::milliseconds{1}, 111.);
 
     std::optional<StopLossUpdatedEvent> sl_updated_response;
-    auto sl_updated_sub = trgw.stop_loss_update_channel().subscribe(
-            el, [&sl_updated_response](const StopLossUpdatedEvent ev) {
+
+    EventSubcriber sl_updated_sub{el};
+    sl_updated_sub.subscribe(
+            trgw.stop_loss_update_channel(),
+            [&sl_updated_response](const StopLossUpdatedEvent ev) {
                 sl_updated_response = ev;
             });
 
     std::optional<TradeEvent> trade_msg;
-    auto trade_sub = trgw.trade_channel().subscribe(
-            el, [&](const TradeEvent & ev) {
+    EventSubcriber trade_sub{el};
+    trade_sub.subscribe(
+            trgw.trade_channel(),
+            [&](const TradeEvent & ev) {
                 trade_msg = ev;
             });
 
@@ -713,14 +757,19 @@ TEST_F(BacktestTradingGatewayTest, TakeProfitSellTriggerImmediately)
     price_source_ch.push(std::chrono::milliseconds{1}, 100.);
 
     std::optional<TakeProfitUpdatedEvent> tp_updated_response;
-    auto tp_updated_sub = trgw.take_profit_update_channel().subscribe(
-            el, [&tp_updated_response](const TakeProfitUpdatedEvent ev) {
+
+    EventSubcriber tp_updated_sub{el};
+    tp_updated_sub.subscribe(
+            trgw.take_profit_update_channel(),
+            [&tp_updated_response](const TakeProfitUpdatedEvent ev) {
                 tp_updated_response = ev;
             });
 
     std::optional<TradeEvent> trade_msg;
-    auto trade_sub = trgw.trade_channel().subscribe(
-            el, [&](const TradeEvent & ev) {
+    EventSubcriber trade_sub{el};
+    trade_sub.subscribe(
+            trgw.trade_channel(),
+            [&](const TradeEvent & ev) {
                 trade_msg = ev;
             });
 
@@ -749,14 +798,18 @@ TEST_F(BacktestTradingGatewayTest, TakeProfitBuyTriggerImmediately)
     price_source_ch.push(std::chrono::milliseconds{1}, 99.);
 
     std::optional<TakeProfitUpdatedEvent> tp_updated_response;
-    auto tp_updated_sub = trgw.take_profit_update_channel().subscribe(
-            el, [&tp_updated_response](const TakeProfitUpdatedEvent ev) {
+    EventSubcriber tp_updated_sub{el};
+    tp_updated_sub.subscribe(
+            trgw.take_profit_update_channel(),
+            [&tp_updated_response](const TakeProfitUpdatedEvent ev) {
                 tp_updated_response = ev;
             });
 
     std::optional<TradeEvent> trade_msg;
-    auto trade_sub = trgw.trade_channel().subscribe(
-            el, [&](const TradeEvent & ev) {
+    EventSubcriber trade_sub{el};
+    trade_sub.subscribe(
+            trgw.trade_channel(),
+            [&](const TradeEvent & ev) {
                 trade_msg = ev;
             });
 

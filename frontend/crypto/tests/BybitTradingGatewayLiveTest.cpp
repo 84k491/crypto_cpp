@@ -40,8 +40,9 @@ TEST_F(BybitTradingGatewayLiveTest, OpenAndClosePos)
     std::condition_variable trade_cv;
 
     std::optional<OrderResponseEvent> order_response;
-    std::shared_ptr<ISubscription> order_sub = trgw.order_response_channel().subscribe(
-            el,
+    EventSubcriber order_sub{el};
+    order_sub.subscribe(
+            trgw.order_response_channel(),
             [this, &order_response, &order_cv](const OrderResponseEvent & ev) {
                 std::lock_guard<std::mutex> lock(mutex);
                 order_response = ev;
@@ -49,8 +50,10 @@ TEST_F(BybitTradingGatewayLiveTest, OpenAndClosePos)
             });
 
     std::optional<TradeEvent> trade_response;
-    std::shared_ptr<ISubscription> trade_sub = trgw.trade_channel().subscribe(
-            el,
+
+    EventSubcriber trade_sub{el};
+    trade_sub.subscribe(
+            trgw.trade_channel(),
             [this, &trade_response, &trade_cv](const TradeEvent & ev) {
                 std::lock_guard<std::mutex> lock(mutex);
                 trade_response = ev;
@@ -134,8 +137,10 @@ TEST_F(BybitTradingGatewayLiveTest, CloseWithTpsl)
     std::condition_variable tpsl_upd_cv;
 
     std::optional<OrderResponseEvent> order_response;
-    std::shared_ptr<ISubscription> order_sub = trgw.order_response_channel().subscribe(
-            el,
+
+    EventSubcriber order_sub{el};
+    order_sub.subscribe(
+            trgw.order_response_channel(),
             [this, &order_response, &order_cv](const OrderResponseEvent & ev) {
                 std::lock_guard<std::mutex> lock(mutex);
                 order_response = ev;
@@ -143,8 +148,10 @@ TEST_F(BybitTradingGatewayLiveTest, CloseWithTpsl)
             });
 
     std::optional<TradeEvent> trade_response;
-    std::shared_ptr<ISubscription> trade_sub = trgw.trade_channel().subscribe(
-            el,
+
+    EventSubcriber trade_sub{el};
+    trade_sub.subscribe(
+            trgw.trade_channel(),
             [this, &trade_response, &trade_cv](const TradeEvent & ev) {
                 std::lock_guard<std::mutex> lock(mutex);
                 trade_response = ev;
@@ -153,8 +160,10 @@ TEST_F(BybitTradingGatewayLiveTest, CloseWithTpsl)
             });
 
     std::optional<TpslUpdatedEvent> tpsl_response;
-    std::shared_ptr<ISubscription> tpsl_r_sub = trgw.tpsl_updated_channel().subscribe(
-            el,
+
+    EventSubcriber tpsl_r_sub{el};
+    tpsl_r_sub.subscribe(
+            trgw.tpsl_updated_channel(),
             [&](const TpslUpdatedEvent & ev) {
                 std::lock_guard<std::mutex> lock(mutex);
                 tpsl_response = ev;
@@ -163,8 +172,10 @@ TEST_F(BybitTradingGatewayLiveTest, CloseWithTpsl)
             });
 
     std::optional<TpslUpdatedEvent> tpsl_update;
-    std::shared_ptr<ISubscription> tpsl_upd_sub = trgw.tpsl_updated_channel().subscribe(
-            el,
+
+    EventSubcriber tpsl_upd_sub{el};
+    tpsl_upd_sub.subscribe(
+            trgw.tpsl_updated_channel(),
             [&](const TpslUpdatedEvent & ev) {
                 std::lock_guard<std::mutex> lock(mutex);
                 tpsl_update = ev;
@@ -289,8 +300,10 @@ TEST_F(BybitTradingGatewayLiveTest, TpslRejectIfNoPos)
     std::condition_variable tpsl_upd_cv;
 
     std::optional<TpslUpdatedEvent> tpsl_response;
-    std::shared_ptr<ISubscription> tpsl_r_sub = trgw.tpsl_updated_channel().subscribe(
-            el,
+
+    EventSubcriber tpsl_r_sub{el};
+    tpsl_r_sub.subscribe(
+            trgw.tpsl_updated_channel(),
             [&](const TpslUpdatedEvent & ev) {
                 std::lock_guard<std::mutex> lock(mutex);
                 tpsl_response = ev;

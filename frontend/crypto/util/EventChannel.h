@@ -1,8 +1,8 @@
 #pragma once
 
-#include "ILambdaAcceptor.h"
 #include "Events.h"
 #include "Guarded.h"
+#include "ILambdaAcceptor.h"
 #include "ISubsription.h"
 #include "Macros.h"
 
@@ -24,11 +24,13 @@ public:
             std::function<void(const EventT &)> callback,
             Priority priority,
             EventChannel<EventT> & channel,
+            xg::Guid subscription_guid,
             xg::Guid guid)
         : m_consumer(consumer)
         , m_callback(callback)
         , m_priority(priority)
         , m_channel(&channel)
+        , m_subscriber_guid(subscription_guid)
         , m_guid(guid)
     {
     }
@@ -47,8 +49,9 @@ private:
     std::function<void(const EventT &)> m_callback;
     Priority m_priority;
 
-    // ptr because channel can be destroyed in another thread before sub
+    // ptr because channel can be destroyed in another thread before subscription
     EventChannel<EventT> * m_channel;
+    xg::Guid m_subscriber_guid;
     xg::Guid m_guid;
 };
 
@@ -66,6 +69,7 @@ public:
     [[nodiscard]] std::shared_ptr<EventSubscription<EventT>>
     subscribe(
             ILambdaAcceptor & consumer,
+            xg::Guid subcriber_guid,
             std::function<void(const EventT &)> && update_callback,
             Priority priority = Priority::Normal);
     void unsubscribe(xg::Guid guid);
@@ -89,6 +93,7 @@ void EventChannel<EventT>::push(const EventT & object)
 
         subsription.m_consumer.push(
                 LambdaEvent{
+                        subsription.m_subscriber_guid,
                         [cb = subsription.m_callback, object] { cb(object); },
                         subsription.m_priority});
     }
@@ -107,6 +112,7 @@ void EventChannel<EventT>::push_delayed(const EventT & object, std::chrono::mill
         subsription.m_consumer.push_delayed(
                 delay,
                 LambdaEvent{
+                        subsription.m_subscriber_guid,
                         [cb = subsription.m_callback, object] { cb(object); },
                         subsription.m_priority});
     }
@@ -117,11 +123,12 @@ template <typename EventT>
 std::shared_ptr<EventSubscription<EventT>>
 EventChannel<EventT>::subscribe(
         ILambdaAcceptor & consumer,
+        xg::Guid subcriber_guid,
         std::function<void(const EventT &)> && update_callback,
         Priority priority)
 {
     const auto guid = xg::newGuid();
-    auto sptr = std::make_shared<EventSubscription<EventT>>(consumer, update_callback, priority, *this, guid);
+    auto sptr = std::make_shared<EventSubscription<EventT>>(consumer, update_callback, priority, *this, subcriber_guid, guid);
 
     auto subs_lref = m_subscriptions.lock();
     subs_lref.get().push_back(std::make_pair(guid, std::weak_ptr{sptr}));
