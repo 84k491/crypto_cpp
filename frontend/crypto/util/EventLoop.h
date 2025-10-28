@@ -37,6 +37,14 @@ public:
         m_thread.join();
     }
 
+    void discard_subscriber_events(xg::Guid sub_guid) override
+    {
+        m_queue.discard_events(
+                [sub_guid](const LambdaEvent & ev) -> bool {
+                    return ev.m_subscriber_guid == sub_guid;
+                });
+    }
+
 protected:
     void push(LambdaEvent value) override
     {
@@ -61,7 +69,7 @@ private:
     std::thread m_thread;
 };
 
-class EventLoop : public ILambdaAcceptor
+class EventLoop final : public ILambdaAcceptor
 {
 public:
     EventLoop()
@@ -83,6 +91,11 @@ public:
     void push_delayed(std::chrono::milliseconds delay, LambdaEvent value) override
     {
         Scheduler::i().delay_event(m_guid, delay, value);
+    }
+
+    void discard_subscriber_events(xg::Guid sub_guid) override
+    {
+        m_ev.discard_subscriber_events(sub_guid);
     }
 
 private:

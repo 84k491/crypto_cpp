@@ -7,6 +7,20 @@
 #include <list>
 #include <memory>
 
+/*
+    This class is used to hold user's subscriptions for channels.
+    Events are pushed to a specified EventLoop.
+    Automatically unsubscribes from all subscriptions on destruction
+    Can be destructed in an EventLoop's callback
+    Dangled events are discarded after destruction
+
+    Uses a guarantee: EventSubcriber will be destructed before any object that used in its callbacks
+    Uses a guarantee: EventLoop's lifetime is bigger than EventSubcriber's
+
+    Provides a guarantee: No Event will be executed after EventSubcriber's destructor
+
+    Known race: UB if an Event is being called in one thread and EventSubcriber is being destructed in another
+*/
 class EventSubcriber
 {
 public:
@@ -14,6 +28,12 @@ public:
         : m_guid{xg::newGuid()}
         , m_event_loop{el}
     {
+    }
+
+    ~EventSubcriber()
+    {
+        m_subscriptions.clear();
+        m_event_loop.discard_subscriber_events(m_guid);
     }
 
     template <class EventChannelT, class UpdateCallbackT>
@@ -49,5 +69,5 @@ private:
 
     ILambdaAcceptor & m_event_loop;
 
-    std::list<std::shared_ptr<ISubscription>> m_subscriptions; // those must be destroyed before EvLoop
+    std::list<std::shared_ptr<ISubscription>> m_subscriptions;
 };

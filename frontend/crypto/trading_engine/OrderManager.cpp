@@ -266,10 +266,10 @@ void OrderManager::on_order_response(const OrderResponseEvent & response)
         });
     }
 
+    mo.acked = true;
     if (mo.traded) {
         m_orders.erase(it);
     }
-    mo.acked = true;
 }
 
 bool OrderManager::try_trade_market_order(const TradeEvent & ev)
@@ -285,12 +285,12 @@ bool OrderManager::try_trade_market_order(const TradeEvent & ev)
         order_ptr->on_trade(ev.trade.unsigned_volume(), ev.trade.price(), ev.trade.fee());
     });
 
+    mo.traded = true;
     if (mo.ch->subscribers_count() == 0) {
         if (mo.acked) {
             m_orders.erase(it);
         }
     }
-    mo.traded = true;
 
     return true;
 }

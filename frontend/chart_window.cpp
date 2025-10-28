@@ -275,11 +275,6 @@ void ChartWindowEventConsumer::push(LambdaEvent value)
     m_cw.signal_lambda(std::move(value.func));
 }
 
-void ChartWindowEventConsumer::push_delayed(std::chrono::milliseconds, LambdaEvent)
-{
-    throw std::runtime_error("Not implemented");
-}
-
 void ChartWindow::on_lambda(const std::function<void()> & lambda)
 {
     lambda();

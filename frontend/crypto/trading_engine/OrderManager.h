@@ -10,6 +10,7 @@
 
 #include <chrono>
 #include <map>
+#include <variant>
 
 // TODO handle order rejects
 class OrderManager

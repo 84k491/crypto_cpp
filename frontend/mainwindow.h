@@ -87,7 +87,7 @@ public:
 private:
     // IEventConsumer<LambdaEvent>
     void push(LambdaEvent value) override;
-    void push_delayed(std::chrono::milliseconds delay, LambdaEvent value) override;
+    void discard_subscriber_events(xg::Guid) override {}
 
 private:
     MainWindow & m_mw;

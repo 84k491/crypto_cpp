@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <list>
 #include <string>
+#include <variant>
 
 namespace ByBitMessages {
 

@@ -14,4 +14,6 @@ public:
     {
         throw std::runtime_error("push_delayed not implemented");
     }
+
+    virtual void discard_subscriber_events(xg::Guid sub_guid) = 0;
 };

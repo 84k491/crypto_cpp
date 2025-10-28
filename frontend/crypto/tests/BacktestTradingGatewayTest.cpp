@@ -9,8 +9,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include <memory>
-
 namespace test {
 using namespace testing;
 
@@ -25,6 +23,8 @@ class MockEventLoop : public ILambdaAcceptor
     {
         throw std::runtime_error("Not implemented");
     }
+
+    void discard_subscriber_events(xg::Guid) override {}
 };
 
 class BacktestTradingGatewayTest : public Test

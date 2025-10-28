@@ -19,6 +19,8 @@ class MockEventLoop : public ILambdaAcceptor
     {
         throw std::runtime_error("Not implemented");
     }
+
+    void discard_subscriber_events(xg::Guid) override {}
 };
 
 class BybitTradingGatewayLiveTest : public Test

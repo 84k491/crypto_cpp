@@ -151,11 +151,13 @@ void BacktestTradingGateway::try_trigger_conditionals(std::chrono::milliseconds 
         if (o.side() == Side::sell() && price <= o.trigger_price()) {
             trigger(o, false);
             it = m_stop_losses.erase(it);
+            continue;
         }
 
         if (o.side() == Side::buy() && price >= o.trigger_price()) {
             trigger(o, false);
             it = m_stop_losses.erase(it);
+            continue;
         }
     }
 
@@ -165,11 +167,13 @@ void BacktestTradingGateway::try_trigger_conditionals(std::chrono::milliseconds 
         if (o.side() == Side::sell() && price >= o.trigger_price()) {
             trigger(o, true);
             it = m_take_profits.erase(it);
+            continue;
         }
 
         if (o.side() == Side::buy() && price <= o.trigger_price()) {
             trigger(o, true);
             it = m_take_profits.erase(it);
+            continue;
         }
     }
 }

@@ -76,8 +76,7 @@ struct MockObject
     EventSubcriber m_sub;
 };
 
-// TODO implement event drop after subscriber destruction
-TEST_F(EventLoopTest, DISABLED_UnsubWithEventsInLoop)
+TEST_F(EventLoopTest, UnsubWithEventsInLoop)
 {
     std::atomic_bool destructed = false;
 
@@ -102,6 +101,9 @@ TEST_F(EventLoopTest, DISABLED_UnsubWithEventsInLoop)
         eb.wait();
     }
 }
+
+// TEST_F(EventLoopTest, UnsubWithEventsKeepOneSub)
+// TEST_F(EventLoopTest, UnsubWithEventsDelayedEvent)
 
 // TODO add test for delayed events
 

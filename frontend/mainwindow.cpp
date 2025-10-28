@@ -366,11 +366,6 @@ void MainWindow::on_lambda(std::function<void()> lambda)
     lambda();
 }
 
-void MainWindowEventConsumer::push_delayed(std::chrono::milliseconds, LambdaEvent)
-{
-    throw std::runtime_error("Not implemented");
-}
-
 void MainWindow::on_pb_charts_clicked()
 {
     m_chart_window = new ChartWindow(

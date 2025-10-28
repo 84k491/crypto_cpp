@@ -161,6 +161,8 @@ class MockEventConsumer : public ILambdaAcceptor
         EXPECT_TRUE(false) << "Not implemented";
         throw std::runtime_error("Not implemented");
     }
+
+    void discard_subscriber_events(xg::Guid) override {}
 };
 
 class StrategyInstanceTest : public Test
@@ -185,9 +187,7 @@ public:
 
         strategy_ptr = std::dynamic_pointer_cast<MockStrategy>(strategy_instance->get_strategy());
 
-        {
-            strategy_status = strategy_instance->status_channel().get();
-        }
+        strategy_status = strategy_instance->status_channel().get();
 
         status_sub.subscribe(
                 strategy_instance->status_channel(),
@@ -203,8 +203,8 @@ protected:
     MockMDGateway md_gateway;
     MockTradingGateway tr_gateway;
 
-    std::shared_ptr<MockStrategy> strategy_ptr;
     std::unique_ptr<StrategyInstance> strategy_instance;
+    std::shared_ptr<MockStrategy> strategy_ptr;
 
     WorkStatus strategy_status = WorkStatus::Panic;
     EventSubcriber status_sub;
@@ -251,6 +251,7 @@ TEST_F(StrategyInstanceTest, SubForLiveMarketData_GetPrice_GracefullStop)
     ASSERT_EQ(md_gateway.unsubscribed_count(), 1) << "Must unsubscribe on stop";
     strategy_instance->wait_event_barrier();
     ASSERT_EQ(strategy_status, WorkStatus::Stopped);
+    strategy_ptr.reset();
     strategy_instance.reset();
     ASSERT_EQ(strategy_status, WorkStatus::Stopped);
 }
@@ -369,6 +370,7 @@ TEST_F(StrategyInstanceTest, OpenAndClosePos_GetResult_DontCloseTwiceOnStop)
 
     strategy_instance->stop_async();
     strategy_instance->wait_event_barrier();
+    strategy_ptr.reset();
     strategy_instance.reset();
     ASSERT_EQ(strategy_status, WorkStatus::Stopped);
     ASSERT_DOUBLE_EQ(result.final_profit, 99.800099999999986);
