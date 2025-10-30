@@ -31,7 +31,7 @@ TEST_F(CandleBuilderTest, BuildCandleBasic)
 
     current_time += std::chrono::milliseconds{2};
     const double open_price = 10.;
-    EXPECT_EQ(cb.push_trade(open_price, SignedVolume{1.}, current_time).size(), 0);
+    EXPECT_EQ(cb.push_trade(open_price, SignedVolume{-9.}, current_time).size(), 0);
 
     current_time += std::chrono::milliseconds{3};
     const double low_price = 5.;
@@ -47,12 +47,18 @@ TEST_F(CandleBuilderTest, BuildCandleBasic)
 
     const auto next_candle_ts = open_ts + timeframe + std::chrono::milliseconds{1};
     const auto candles = cb.push_trade(1., SignedVolume{1.}, next_candle_ts);
-    EXPECT_EQ(candles.size(), 1);
-    EXPECT_EQ(candles[0].open(), open_price);
-    EXPECT_EQ(candles[0].high(), high_price);
-    EXPECT_EQ(candles[0].low(), low_price);
-    EXPECT_EQ(candles[0].close(), close_price);
-    EXPECT_EQ(candles[0].volume(), 4.); // total volume
+
+    {
+        EXPECT_EQ(candles.size(), 1);
+
+        EXPECT_EQ(candles[0].open(), open_price);
+        EXPECT_EQ(candles[0].high(), high_price);
+        EXPECT_EQ(candles[0].low(), low_price);
+        EXPECT_EQ(candles[0].close(), close_price);
+        EXPECT_EQ(candles[0].volume(), 12.);
+        EXPECT_EQ(candles[0].buy_taker_volume(), 3);
+        EXPECT_EQ(candles[0].sell_taker_volume(), 9);
+    }
 }
 
 TEST_F(CandleBuilderTest, TwoEmptyCandlesOnBigGap)
@@ -82,16 +88,37 @@ TEST_F(CandleBuilderTest, TwoEmptyCandlesOnBigGap)
     // skipping two next candles
     const auto next_candle_ts = open_ts + 3 * timeframe + std::chrono::milliseconds{1};
     const auto candles = cb.push_trade(1., SignedVolume{1.}, next_candle_ts);
-    EXPECT_EQ(candles.size(), 3);
-    EXPECT_EQ(candles[2].open(), open_price);
-    EXPECT_EQ(candles[2].high(), high_price);
-    EXPECT_EQ(candles[2].low(), low_price);
-    EXPECT_EQ(candles[2].close(), close_price);
-    EXPECT_EQ(candles[2].volume(), 4.); // total volume
 
-    EXPECT_EQ(candles[1].open(), close_price);
-    EXPECT_EQ(candles[1].high(), close_price);
-    EXPECT_EQ(candles[1].low(), close_price);
-    EXPECT_EQ(candles[1].close(), close_price);
-    EXPECT_EQ(candles[1].volume(), 0.);
+    {
+        EXPECT_EQ(candles.size(), 3);
+
+        EXPECT_EQ(candles[0].open(), open_price);
+        EXPECT_EQ(candles[0].high(), high_price);
+        EXPECT_EQ(candles[0].low(), low_price);
+        EXPECT_EQ(candles[0].close(), close_price);
+        EXPECT_EQ(candles[0].volume(), 4.); // total volume
+        EXPECT_EQ(candles[0].trade_count(), 4);
+        EXPECT_EQ(candles[0].buy_taker_volume(), 4);
+        EXPECT_EQ(candles[0].sell_taker_volume(), 0);
+
+        EXPECT_EQ(candles[1].open(), close_price);
+        EXPECT_EQ(candles[1].high(), close_price);
+        EXPECT_EQ(candles[1].low(), close_price);
+        EXPECT_EQ(candles[1].close(), close_price);
+        EXPECT_EQ(candles[1].volume(), 0.);
+        EXPECT_EQ(candles[1].buy_taker_volume(), 0);
+        EXPECT_EQ(candles[1].sell_taker_volume(), 0);
+        EXPECT_EQ(candles[1].trade_count(), 0);
+        EXPECT_EQ(candles[0].close_ts().count(), candles[1].ts().count());
+
+        EXPECT_EQ(candles[2].open(), close_price);
+        EXPECT_EQ(candles[2].high(), close_price);
+        EXPECT_EQ(candles[2].low(), close_price);
+        EXPECT_EQ(candles[2].close(), close_price);
+        EXPECT_EQ(candles[2].volume(), 0.);
+        EXPECT_EQ(candles[2].buy_taker_volume(), 0);
+        EXPECT_EQ(candles[2].sell_taker_volume(), 0);
+        EXPECT_EQ(candles[2].trade_count(), 0);
+        EXPECT_EQ(candles[1].close_ts().count(), candles[2].ts().count());
+    }
 }

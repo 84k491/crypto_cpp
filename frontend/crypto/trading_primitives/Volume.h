@@ -109,6 +109,7 @@ public:
     {
     }
 
+    // TODO use struct instead of pair
     std::pair<UnsignedVolume, Side> as_unsigned_and_side() const
     {
         if (m_value < 0) {
