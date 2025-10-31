@@ -63,12 +63,12 @@ MainWindow::MainWindow(QWidget * parent)
     }
     ui->cb_symbol->setCurrentText(saved_state.m_symbol.c_str());
 
-    Logger::log<LogLevel::Status>("End of mainwindow constructor");
+    LOG_STATUS("End of mainwindow constructor");
 }
 
 void MainWindow::handle_status_changed(WorkStatus status)
 {
-    Logger::logf<LogLevel::Status>("Work status: {}", to_string(status));
+    LOG_STATUS("Work status: {}", to_string(status));
     ui->lb_work_status->setText(to_string(status).c_str());
     if (status == WorkStatus::Backtesting || status == WorkStatus::Live) {
         ui->pb_run->setEnabled(false);
@@ -94,7 +94,7 @@ void MainWindow::handle_status_changed(WorkStatus status)
 
 void MainWindow::subscribe_to_strategy()
 {
-    Logger::log<LogLevel::Status>("mainwindow subscribe_to_strategy");
+    LOG_STATUS("mainwindow subscribe_to_strategy");
     m_sub->subscribe(
             m_strategy_instance->strategy_result_channel(),
             [&](const StrategyResult & result) {
@@ -106,7 +106,7 @@ void MainWindow::on_pb_stop_clicked()
 {
     m_strategy_instance->stop_async();
     m_strategy_instance->finish_future().wait();
-    Logger::log<LogLevel::Status>("Strategy stopped");
+    LOG_STATUS("Strategy stopped");
 }
 
 void MainWindow::on_pb_run_clicked()
@@ -115,7 +115,7 @@ void MainWindow::on_pb_run_clicked()
 
     const auto timerange_opt = get_timerange();
     if (!timerange_opt) {
-        Logger::log<LogLevel::Error>("Invalid timerange");
+        LOG_ERROR("Invalid timerange");
         return;
     }
     const auto & timerange = *timerange_opt;
@@ -141,7 +141,7 @@ void MainWindow::on_pb_run_clicked()
         return std::nullopt;
     }();
     if (!symbol.has_value()) {
-        Logger::logf<LogLevel::Error>(
+        LOG_ERROR(
                 "Invalid symbol on starting strategy: {}",
                 ui->cb_symbol->currentText().toStdString());
         return;
@@ -182,7 +182,7 @@ void MainWindow::on_pb_run_clicked()
             [&](const WorkStatus & status) { handle_status_changed(status); });
 
     m_strategy_instance->run_async();
-    Logger::log<LogLevel::Status>("Strategy started");
+    LOG_STATUS("Strategy started");
 }
 
 MainWindow::~MainWindow()
@@ -259,11 +259,11 @@ std::optional<Timerange> MainWindow::get_timerange() const
     const auto end = std::chrono::milliseconds{start + work_hours};
 
     if (start >= end) {
-        Logger::log<LogLevel::Error>("Invalid timerange");
+        LOG_ERROR("Invalid timerange");
         return {};
     }
     if (start.count() < 0 || end.count() < 0) {
-        Logger::log<LogLevel::Error>("Invalid timerange");
+        LOG_ERROR("Invalid timerange");
         return {};
     }
     return {{start, end}};
@@ -273,7 +273,7 @@ void MainWindow::on_pb_optimize_clicked()
 {
     if (m_strategy_instance) {
         if (m_strategy_instance->status_channel().get() != WorkStatus::Stopped) {
-            Logger::log<LogLevel::Error>("Strategy is not stopped");
+            LOG_ERROR("Strategy is not stopped");
             return;
         }
         m_strategy_instance.reset();
@@ -282,7 +282,7 @@ void MainWindow::on_pb_optimize_clicked()
     const auto entry_strategy_meta_info = get_entry_strategy_parameters();
     const auto timerange_opt = get_timerange();
     if (!timerange_opt || !entry_strategy_meta_info) {
-        Logger::log<LogLevel::Error>("No value in required optional");
+        LOG_ERROR("No value in required optional");
         return;
     }
     const std::string entry_strategy_name = ui->cb_strategy->currentText().toStdString();
@@ -307,7 +307,7 @@ void MainWindow::on_pb_optimize_clicked()
     }();
 
     if (!symbol.has_value()) {
-        Logger::logf<LogLevel::Error>(
+        LOG_ERROR(
                 "Invalid symbol on starting optimizer: {}",
                 ui->cb_symbol->currentText().toStdString());
         return;
@@ -332,11 +332,11 @@ void MainWindow::on_pb_optimize_clicked()
 
         const auto best_config = optimizer.optimize();
         if (!best_config.has_value()) {
-            Logger::log<LogLevel::Info>("No best config");
+            LOG_INFO("No best config");
             return;
         }
         emit signal_optimized_config(best_config.value());
-        Logger::logf<LogLevel::Info>("Best config: {}", best_config.value());
+        LOG_INFO("Best config: {}", best_config.value());
     });
     t.detach();
 }

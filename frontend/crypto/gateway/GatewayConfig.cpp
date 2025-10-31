@@ -53,13 +53,13 @@ std::optional<GatewayConfig> GatewayConfigLoader::load()
 
     const auto env_value = std::getenv(s_config_env_var.data());
     if (env_value == nullptr) {
-        Logger::logf<LogLevel::Warning>("Environment variable {} is not set", s_config_env_var);
+        LOG_WARNING("Environment variable {} is not set", s_config_env_var);
         return {};
     }
     const std::string config_dir = env_value;
 
     if (config_dir.empty()) {
-        Logger::logf<LogLevel::Warning>("Environment variable {} is empty", s_config_env_var);
+        LOG_WARNING("Environment variable {} is empty", s_config_env_var);
         return {};
     }
 
@@ -67,14 +67,14 @@ std::optional<GatewayConfig> GatewayConfigLoader::load()
     for (const auto & file : fs::directory_iterator(config_dir)) {
         const std::string filename = file.path().filename();
         if (filename.length() < 5 || filename.substr(filename.length() - 5) != ".json") {
-            Logger::logf<LogLevel::Warning>("Not a JSON file in config dir: {}", filename);
+            LOG_WARNING("Not a JSON file in config dir: {}", filename);
             continue;
         }
 
         std::ifstream ifs(file.path());
         const auto json = json::parse(ifs);
         if (!json.is_object()) {
-            Logger::logf<LogLevel::Warning>("Not a JSON object in config dir: {}", filename);
+            LOG_WARNING("Not a JSON object in config dir: {}", filename);
             continue;
         }
         sorted_configs.emplace(filename, json);
@@ -85,11 +85,11 @@ std::optional<GatewayConfig> GatewayConfigLoader::load()
     }
     const auto & [filename, json] = *sorted_configs.begin();
 
-    Logger::logf<LogLevel::Info>("Loading config from file: {}", filename);
+    LOG_INFO("Loading config from file: {}", filename);
 
     GatewayConfig config;
     from_json(json, config);
-    Logger::logf<LogLevel::Debug>("Gateway config loaded: {}", config.to_json().dump(2));
+    LOG_DEBUG("Gateway config loaded: {}", config.to_json().dump(2));
 
     return config;
 }

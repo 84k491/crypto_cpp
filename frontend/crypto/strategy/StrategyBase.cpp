@@ -28,7 +28,7 @@ bool StrategyBase::try_send_order(Side side, double price, std::chrono::millisec
 
     const auto default_pos_size_opt = UnsignedVolume::from(m_pos_currency_amount / price);
     if (!default_pos_size_opt.has_value()) {
-        Logger::log<LogLevel::Error>("can't get proper default position size");
+        LOG_ERROR("can't get proper default position size");
         return false;
     }
 

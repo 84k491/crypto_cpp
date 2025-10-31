@@ -14,7 +14,7 @@ std::future<std::string> RestClient::request_async(const std::string & request)
                 std::condition_variable cv;
                 std::mutex m;
 
-                Logger::logf<LogLevel::Debug>("REST request: {}", request.c_str());
+                LOG_DEBUG("REST request: {}", request.c_str());
                 std::string string_result;
                 bool reply_received = false;
                 client
@@ -39,7 +39,7 @@ std::future<std::string> RestClient::request_async(const std::string & request)
 std::string sign_message(const std::string & header_data, const std::string & message, const std::string & secret)
 {
     const std::string whole_data = header_data + message;
-    Logger::logf<LogLevel::Debug>("Signing message: {}", whole_data);
+    LOG_DEBUG("Signing message: {}", whole_data);
     unsigned char * digest = HMAC(
             EVP_sha256(),
             secret.c_str(),
@@ -76,7 +76,7 @@ std::future<std::string> RestClient::request_auth_async(
                 const std::string header_data = timestamp_str + api_key + window_str;
                 std::string sign = sign_message(header_data, request, secret_key);
 
-                Logger::logf<LogLevel::Debug>("REST request: {}", request.c_str());
+                LOG_DEBUG("REST request: {}", request.c_str());
                 std::string string_result;
                 bool reply_received = false;
                 client

@@ -66,7 +66,7 @@ bool ChartWindow::ts_in_range(std::chrono::milliseconds ts) const
     const bool has_start_ts = m_start_ts.count() != 0;
     const bool has_end_ts = m_end_ts.count() != 0;
 
-    // Logger::logf<LogLevel::Debug>("ts_in_range: {} < {} < {}", m_start_ts.count(), ts.count(), m_end_ts.count());
+    // LOG_DEBUG("ts_in_range: {} < {} < {}", m_start_ts.count(), ts.count(), m_end_ts.count());
 
     if (!has_start_ts && !has_end_ts) {
         return true;

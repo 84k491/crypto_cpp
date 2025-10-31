@@ -33,7 +33,7 @@ OptimizerCollector::OptimizerCollector(std::string criteria_name, const std::vec
     TRY_BUILD_CRITERIA(MinDeviation);
 
     if (!m_criteria) {
-        Logger::logf<LogLevel::Error>("Unknown criteria {}", criteria_name);
+        LOG_ERROR("Unknown criteria {}", criteria_name);
     }
 
 #undef TRY_BUILD_CRITERIA

@@ -32,7 +32,7 @@ void Optimizer::subscribe_for_passed_check(std::function<void(int, int)> && on_p
 
 std::optional<JsonStrategyConfig> Optimizer::optimize()
 {
-    Logger::log<LogLevel::Status>("Starting optimizer");
+    LOG_STATUS("Starting optimizer");
     OptimizerParser parser(m_optimizer_inputs);
 
     const std::vector<JsonStrategyConfig> configs = parser.get_possible_configs();
@@ -44,7 +44,7 @@ std::optional<JsonStrategyConfig> Optimizer::optimize()
                     // {.filter_name = "TradesPerMonth", .value = 10.},
             }};
 
-    Logger::log<LogLevel::Debug>("Logs will be suppressed during optimization"); // TODO push as event
+    LOG_DEBUG("Logs will be suppressed during optimization"); // TODO push as event
     Logger::set_min_log_level(LogLevel::Warning);
     ScopeExit se{[]() {
         Logger::set_min_log_level(LogLevel::Debug);
@@ -78,7 +78,7 @@ std::optional<JsonStrategyConfig> Optimizer::optimize()
 
             auto lref = collector.lock();
             if (lref.get().push(configs[i], result)) {
-                Logger::logf<LogLevel::Warning>("New best config: {}, {}", result.to_json(), configs[i]);
+                LOG_WARNING("New best config: {}, {}", result.to_json(), configs[i]);
             }
             m_on_passed_check(output_iter.fetch_add(1), configs.size());
         }

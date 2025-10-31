@@ -31,7 +31,7 @@ public:
     {
         std::ifstream save_file("saved_state.json");
         if (!save_file.is_open()) {
-            Logger::log<LogLevel::Error>("Failed to open saved state file");
+            LOG_ERROR("Failed to open saved state file");
             return;
         }
 
@@ -55,7 +55,7 @@ public:
     {
         std::ofstream save_file("saved_state.json");
         if (!save_file.is_open()) {
-            Logger::log<LogLevel::Error>("Failed to open saved state file");
+            LOG_ERROR("Failed to open saved state file");
             return;
         }
 

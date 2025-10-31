@@ -20,7 +20,7 @@ ByBitMarketDataGateway::ByBitMarketDataGateway(bool start)
 {
     const auto config_opt = GatewayConfigLoader::load();
     if (!config_opt) {
-        Logger::log<LogLevel::Error>("Failed to load bybit trading gateway config");
+        LOG_ERROR("Failed to load bybit trading gateway config");
         return;
     }
     m_config = config_opt.value().market_data;
@@ -34,7 +34,7 @@ ByBitMarketDataGateway::ByBitMarketDataGateway(bool start)
     m_last_server_time = get_server_time();
 
     if (!reconnect_ws_client()) {
-        Logger::log<LogLevel::Warning>("Failed to connect to ByBit market data");
+        LOG_WARNING("Failed to connect to ByBit market data");
     }
 }
 
@@ -58,7 +58,7 @@ bool ByBitMarketDataGateway::reconnect_ws_client()
     {
         auto lref = m_live_requests.lock();
         for (auto & it : lref.get()) {
-            Logger::logf<LogLevel::Debug>("MD Subscribing to: {}", it.symbol.symbol_name);
+            LOG_DEBUG("MD Subscribing to: {}", it.symbol.symbol_name);
             m_ws_client->subscribe("publicTrade." + it.symbol.symbol_name);
         }
     }
@@ -197,7 +197,7 @@ void from_json(const json & j, SymbolResponse & response)
 
 bool ByBitMarketDataGateway::request_historical_klines(const std::string & symbol, const Timerange & timerange, KlinePackCallback && pack_callback)
 {
-    Logger::logf<LogLevel::Debug>(
+    LOG_DEBUG(
             "Whole requested interval seconds: {}",
             std::chrono::duration_cast<std::chrono::seconds>(timerange.duration()).count());
 
@@ -219,7 +219,7 @@ bool ByBitMarketDataGateway::request_historical_klines(const std::string & symbo
         });
 
         const std::chrono::milliseconds remaining_delta = timerange.end() - last_start;
-        Logger::logf<LogLevel::Debug>("Remaining time delta: {}ms", remaining_delta.count());
+        LOG_DEBUG("Remaining time delta: {}ms", remaining_delta.count());
 
         const std::string category = "linear";
 
@@ -247,17 +247,17 @@ bool ByBitMarketDataGateway::request_historical_klines(const std::string & symbo
             inter_result.try_emplace(ohlc.timestamp, ohlc);
         }
 
-        Logger::logf<LogLevel::Debug>("Got {} prices", inter_result.size());
+        LOG_DEBUG("Got {} prices", inter_result.size());
         if (inter_result.empty()) {
-            Logger::log<LogLevel::Warning>("Empty kline result");
+            LOG_WARNING("Empty kline result");
             return false;
         }
         if (const auto delta = inter_result.begin()->first - last_start; delta > min_historical_interval) {
-            Logger::logf<LogLevel::Error>(
+            LOG_ERROR(
                     "ERROR inconsistent time delta: {}s. Stopping",
                     std::chrono::duration_cast<std::chrono::seconds>(delta).count());
 
-            Logger::logf<LogLevel::Error>(
+            LOG_ERROR(
                     "First timestamp: {}s",
                     std::chrono::duration_cast<std::chrono::seconds>(inter_result.begin()->first).count());
             return false;
@@ -265,7 +265,7 @@ bool ByBitMarketDataGateway::request_historical_klines(const std::string & symbo
         pack_callback(std::move(inter_result));
     }
 
-    Logger::logf<LogLevel::Debug>(
+    LOG_DEBUG(
             "All prices received for interval: {}-{}",
             timerange.start().count(),
             timerange.end().count());
@@ -302,7 +302,7 @@ std::vector<Symbol> ByBitMarketDataGateway::get_symbols(const std::string & curr
                                              }),
                                      response.result.symbol_vec.end());
 
-    Logger::logf<LogLevel::Info>("Got {} symbols with currency {}", response.result.symbol_vec.size(), currency);
+    LOG_INFO("Got {} symbols with currency {}", response.result.symbol_vec.size(), currency);
     return response.result.symbol_vec;
 }
 
@@ -318,7 +318,7 @@ std::chrono::milliseconds ByBitMarketDataGateway::get_server_time()
     j.get_to(response);
 
     const auto server_time = std::chrono::duration_cast<std::chrono::milliseconds>(response.result.time_nano);
-    Logger::logf<LogLevel::Debug>("Server time: {}", server_time.count());
+    LOG_DEBUG("Server time: {}", server_time.count());
     return server_time;
 }
 
@@ -349,12 +349,12 @@ void ByBitMarketDataGateway::handle_event(const LiveMDRequest & request)
     const LiveMDRequest & live_request = request;
     auto locked_ref = m_live_requests.lock();
     if (!locked_ref.get().empty()) {
-        Logger::log<LogLevel::Error>("More than one MD live request");
+        LOG_ERROR("More than one MD live request");
         return;
     }
 
     if (!m_ws_client) {
-        Logger::log<LogLevel::Error>("websocket is not ready");
+        LOG_ERROR("websocket is not ready");
         return;
     }
 
@@ -371,7 +371,7 @@ void ByBitMarketDataGateway::on_price_received(const nlohmann::json & json)
 {
     auto locked_ref = m_live_requests.lock();
     if (locked_ref.get().empty()) {
-        Logger::log<LogLevel::Error>("no request on MD received");
+        LOG_ERROR("no request on MD received");
     }
 
     const auto trades_list = json.get<ByBitPublicTradeList>();
@@ -403,7 +403,7 @@ void ByBitMarketDataGateway::unsubscribe_from_live(xg::Guid guid)
     auto live_req_locked = m_live_requests.lock();
     for (auto it = live_req_locked.get().begin(), end = live_req_locked.get().end(); it != end; ++it) {
         if (it->guid == guid) {
-            Logger::logf<LogLevel::Debug>("Erasing live request: {}", guid);
+            LOG_DEBUG("Erasing live request: {}", guid);
             if (m_ws_client) {
                 m_ws_client->unsubscribe("publicTrade." + it->symbol.symbol_name);
             }
@@ -415,9 +415,9 @@ void ByBitMarketDataGateway::unsubscribe_from_live(xg::Guid guid)
 
 void ByBitMarketDataGateway::on_connection_lost()
 {
-    Logger::log<LogLevel::Warning>("Connection lost on market data, reconnecting...");
+    LOG_WARNING("Connection lost on market data, reconnecting...");
     if (!reconnect_ws_client()) {
-        Logger::log<LogLevel::Warning>("Failed to connect to ByBit market data");
+        LOG_WARNING("Failed to connect to ByBit market data");
         m_ping_event_channel.push_delayed(PingCheckEvent{}, std::chrono::seconds{30});
     }
 }

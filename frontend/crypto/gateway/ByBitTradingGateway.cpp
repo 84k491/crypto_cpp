@@ -15,13 +15,13 @@ ByBitTradingGateway::ByBitTradingGateway()
 {
     const auto config_opt = GatewayConfigLoader::load();
     if (!config_opt) {
-        Logger::log<LogLevel::Error>("Failed to load bybit trading gateway config");
+        LOG_ERROR("Failed to load bybit trading gateway config");
         return;
     }
     m_config = config_opt.value().trading;
 
     if (!reconnect_ws_client()) {
-        Logger::log<LogLevel::Warning>("Failed to connect to ByBit trading");
+        LOG_WARNING("Failed to connect to ByBit trading");
     }
 
     register_subs();
@@ -34,7 +34,7 @@ void ByBitTradingGateway::on_order_response(const json & j)
 
     const auto events_opt = result.to_events();
     if (!events_opt) {
-        Logger::logf<LogLevel::Error>("Failed to parse order response: {}", j);
+        LOG_ERROR("Failed to parse order response: {}", j);
         return; // TODO panic
     }
     const auto & events = events_opt.value();
@@ -57,7 +57,7 @@ void ByBitTradingGateway::on_order_response(const json & j)
 
 void ByBitTradingGateway::on_execution(const json & j)
 {
-    Logger::logf<LogLevel::Info>("Execution received {}", j);
+    LOG_INFO("Execution received {}", j);
 
     ByBitMessages::ExecutionResult result;
     from_json(j, result);
@@ -65,13 +65,13 @@ void ByBitTradingGateway::on_execution(const json & j)
     for (const auto & response : result.executions) {
         if (response.execType == "Funding") {
             // TODO handle funding fees
-            Logger::logf<LogLevel::Info>("Execution is funding, skipping. Funding fee: {}", response.execFee);
+            LOG_INFO("Execution is funding, skipping. Funding fee: {}", response.execFee);
             continue;
         }
 
         auto trade_opt = response.to_trade();
         if (!trade_opt.has_value()) {
-            Logger::logf<LogLevel::Error>("ERROR can't get proper trade on execution: {}", j);
+            LOG_ERROR("ERROR can't get proper trade on execution: {}", j);
             return;
         }
         m_trade_channel.push(TradeEvent(std::move(trade_opt.value())));
@@ -168,7 +168,7 @@ void ByBitTradingGateway::process_event(const OrderRequestEvent & req)
         return;
     }
     const std::string request_result = request_future.get();
-    Logger::logf<LogLevel::Debug>("Enter order response: {}", request_result);
+    LOG_DEBUG("Enter order response: {}", request_result);
 
     if (!request_result.empty()) {
         auto event = OrderResponseEvent(
@@ -178,7 +178,7 @@ void ByBitTradingGateway::process_event(const OrderRequestEvent & req)
         return;
     }
 
-    Logger::logf<LogLevel::Warning>("Empty order response for order: {}. Need to push this request again with another guid", req.order.guid());
+    LOG_WARNING("Empty order response for order: {}. Need to push this request again with another guid", req.order.guid());
     auto event = OrderResponseEvent(
             req.order.symbol(),
             req.order.guid(),
@@ -190,7 +190,7 @@ void ByBitTradingGateway::process_event(const OrderRequestEvent & req)
 void ByBitTradingGateway::process_event(const TpslRequestEvent & tpsl)
 {
     using namespace std::chrono_literals;
-    Logger::logf<LogLevel::Debug>("Got TpslRequestEvent");
+    LOG_DEBUG("Got TpslRequestEvent");
 
     // TODO validate stop and take prices
 
@@ -226,7 +226,7 @@ void ByBitTradingGateway::process_event(const TpslRequestEvent & tpsl)
         return;
     }
     const std::string request_result = request_future.get();
-    Logger::logf<LogLevel::Debug>("Enter TPSL response: {}", request_result);
+    LOG_DEBUG("Enter TPSL response: {}", request_result);
     const auto j = json::parse(request_result);
     const ByBitMessages::TpslResult result = j.get<ByBitMessages::TpslResult>();
     if (result.ret_code != 0) {
@@ -244,7 +244,7 @@ void ByBitTradingGateway::process_event(const TrailingStopLossRequestEvent & tsl
 {
     using namespace std::chrono_literals;
 
-    Logger::logf<LogLevel::Debug>("Got TrailingStopLossRequestEvent");
+    LOG_DEBUG("Got TrailingStopLossRequestEvent");
 
     // TODO validate stop price
 
@@ -280,7 +280,7 @@ void ByBitTradingGateway::process_event(const TrailingStopLossRequestEvent & tsl
         return;
     }
     const std::string request_result = request_future.get();
-    Logger::logf<LogLevel::Debug>("Bybit::TPSL response: {}", request_result);
+    LOG_DEBUG("Bybit::TPSL response: {}", request_result);
     const auto j = json::parse(request_result);
     const ByBitMessages::TpslResult result = j.get<ByBitMessages::TpslResult>();
     if (result.ret_code != 0) {
@@ -300,7 +300,7 @@ void ByBitTradingGateway::process_event(const PingCheckEvent & ping_event)
 
 void ByBitTradingGateway::on_ws_message(const json & j)
 {
-    Logger::logf<LogLevel::Debug>("on_ws_message: {}", j.dump());
+    LOG_DEBUG("on_ws_message: {}", j.dump());
     if (j.find("topic") != j.end()) {
         const auto & topic = j.at("topic");
         const std::map<std::string, std::function<void(const json &)>> topic_handlers = {
@@ -308,7 +308,7 @@ void ByBitTradingGateway::on_ws_message(const json & j)
                 {"execution", [&](const json & j) { on_execution(j); }},
         };
         if (const auto it = topic_handlers.find(topic); it == topic_handlers.end()) {
-            Logger::logf<LogLevel::Warning>("Unregistered topic: {}", j.dump());
+            LOG_WARNING("Unregistered topic: {}", j.dump());
             return;
         }
         else {
@@ -316,7 +316,7 @@ void ByBitTradingGateway::on_ws_message(const json & j)
         }
         return;
     }
-    Logger::logf<LogLevel::Warning>("Unrecognized message: {}", j.dump());
+    LOG_WARNING("Unrecognized message: {}", j.dump());
 }
 
 bool ByBitTradingGateway::reconnect_ws_client()
@@ -342,9 +342,9 @@ bool ByBitTradingGateway::reconnect_ws_client()
 
 void ByBitTradingGateway::on_connection_lost()
 {
-    Logger::log<LogLevel::Warning>("Connection lost on trading, reconnecting...");
+    LOG_WARNING("Connection lost on trading, reconnecting...");
     if (!reconnect_ws_client()) {
-        Logger::log<LogLevel::Warning>("Failed to connect to ByBit trading");
+        LOG_WARNING("Failed to connect to ByBit trading");
         m_ping_event_channel.push_delayed(PingCheckEvent{}, std::chrono::seconds{30});
     }
 }

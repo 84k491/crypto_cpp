@@ -25,11 +25,11 @@ RateOfChangeStrategyConfig::RateOfChangeStrategyConfig(const JsonStrategyConfig 
 bool RateOfChangeStrategyConfig::is_valid() const
 {
     if (m_signal_threshold <= 0.) {
-        Logger::logf<LogLevel::Error>("Invalid signal threshold: ", m_signal_threshold);
+        LOG_ERROR("Invalid signal threshold: ", m_signal_threshold);
         return false;
     }
     if (m_trigger_interval <= 1) {
-        Logger::logf<LogLevel::Error>("Invalid trigger interval: ", m_trigger_interval);
+        LOG_ERROR("Invalid trigger interval: ", m_trigger_interval);
         return false;
     }
     return true;

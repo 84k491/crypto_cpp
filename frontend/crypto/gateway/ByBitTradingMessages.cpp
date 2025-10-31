@@ -1,6 +1,7 @@
 #include "ByBitTradingMessages.h"
 
 #include "Ohlc.h"
+#include "Logger.h"
 
 #include <set>
 
@@ -93,7 +94,7 @@ std::optional<Trade> Execution::to_trade() const
 {
     const auto volume_opt = UnsignedVolume::from(qty);
     if (!volume_opt.has_value()) {
-        Logger::logf<LogLevel::Error>("Failed to create UnsignedVolume from qty: {}", qty);
+        LOG_ERROR("Failed to create UnsignedVolume from qty: {}", qty);
         return std::nullopt;
     }
 
@@ -123,7 +124,7 @@ std::optional<TpslUpdatedEvent> OrderResponseResult::on_tpsl_update(const std::a
 std::optional<TrailingStopLossUpdatedEvent> OrderResponseResult::on_trailing_stop_update(const ByBitMessages::OrderResponse & response)
 {
     if (!response.triggerPrice.has_value()) {
-        Logger::logf<LogLevel::Error>(
+        LOG_ERROR(
                 "No trigger price for trailing stop update");
         return {};
     }

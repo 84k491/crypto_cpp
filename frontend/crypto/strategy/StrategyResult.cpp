@@ -1,7 +1,6 @@
 #include "StrategyResult.h"
 
 #include "OrdinaryLeastSquares.h"
-#include "Logger.h"
 
 std::ostream & operator<<(std::ostream & out, const StrategyResult & result)
 {

@@ -13,7 +13,7 @@ OpenedPosition::OpenedPosition(const Trade & trade)
 std::optional<ClosedPosition> OpenedPosition::on_trade(double price, const SignedVolume & vol, double fee)
 {
     if (vol.is_zero()) {
-        Logger::log<LogLevel::Error>("Zero volume on trade");
+        LOG_ERROR("Zero volume on trade");
         return std::nullopt;
     }
 

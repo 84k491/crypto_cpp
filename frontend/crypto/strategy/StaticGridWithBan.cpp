@@ -118,7 +118,7 @@ void StaticGridWithBan::try_interval_handover(std::chrono::milliseconds ts)
     m_previous_limits = m_next_limits;
     m_next_limits = {};
 
-    Logger::logf<LogLevel::Info>("Handover: PrevMin: {}, PrevMax: {}", m_previous_limits->min_price, m_previous_limits->max_price);
+    LOG_INFO("Handover: PrevMin: {}, PrevMax: {}", m_previous_limits->min_price, m_previous_limits->max_price);
     report_levels(ts);
 }
 
@@ -161,7 +161,7 @@ void StaticGridWithBan::push_candle(std::chrono::milliseconds ts, const Candle &
     const Side side = price_level > 0 ? Side::sell() : Side::buy();
     const auto default_size_opt = UnsignedVolume::from(m_pos_currency_amount / price);
     if (!default_size_opt.has_value()) {
-        Logger::logf<LogLevel::Error>("Can't get proper order volume. Amount: {}, price: {}", m_pos_currency_amount, price);
+        LOG_ERROR("Can't get proper order volume. Amount: {}, price: {}", m_pos_currency_amount, price);
         // TODO push to error channel
         return;
     }
@@ -197,7 +197,7 @@ void StaticGridWithBan::on_order_traded(const MarketOrder & order, int price_lev
 {
     const auto it = m_orders_by_levels.find(price_level);
     if (it == m_orders_by_levels.end()) {
-        Logger::logf<LogLevel::Error>("Can't find orders for price level {}", price_level);
+        LOG_ERROR("Can't find orders for price level {}", price_level);
         // TODO panic?
         return;
     }
@@ -206,7 +206,7 @@ void StaticGridWithBan::on_order_traded(const MarketOrder & order, int price_lev
     // TODO verify volume
 
     if (orders.tp || orders.sl) {
-        Logger::logf<LogLevel::Error>("There already are tp or sl for level {}", price_level);
+        LOG_ERROR("There already are tp or sl for level {}", price_level);
         // TODO panic?
         return;
     }
@@ -226,7 +226,7 @@ void StaticGridWithBan::on_order_traded(const MarketOrder & order, int price_lev
                 [&, price_level](const std::shared_ptr<TakeProfitMarketOrder> & tp) {
                     switch (tp->status()) {
                     case OrderStatus::Rejected: {
-                        Logger::logf<LogLevel::Error>("Tp rejected: {}", tp->reject_reason());
+                        LOG_ERROR("Tp rejected: {}", tp->reject_reason());
                         // TODO forward reject
                         break;
                     }
@@ -252,7 +252,7 @@ void StaticGridWithBan::on_order_traded(const MarketOrder & order, int price_lev
                 [&, price_level](const std::shared_ptr<StopLossMarketOrder> & sl) {
                     switch (sl->status()) {
                     case OrderStatus::Rejected: {
-                        Logger::logf<LogLevel::Error>("Sl rejected: {}", sl->reject_reason());
+                        LOG_ERROR("Sl rejected: {}", sl->reject_reason());
                         // TODO forward reject
                         break;
                     }
@@ -272,7 +272,7 @@ void StaticGridWithBan::on_take_profit_traded(const TakeProfitMarketOrder & orde
 {
     const auto it = m_orders_by_levels.find(price_level);
     if (it == m_orders_by_levels.end()) {
-        Logger::logf<LogLevel::Error>("Can't find level for sl: {}", order.guid());
+        LOG_ERROR("Can't find level for sl: {}", order.guid());
         return;
     }
     auto & level = it->second;
@@ -286,7 +286,7 @@ void StaticGridWithBan::on_stop_loss_traded(const StopLossMarketOrder & order, i
 {
     const auto it = m_orders_by_levels.find(price_level);
     if (it == m_orders_by_levels.end()) {
-        Logger::logf<LogLevel::Error>("Can't find level for sl: {}", order.guid());
+        LOG_ERROR("Can't find level for sl: {}", order.guid());
         return;
     }
     auto & level = it->second;

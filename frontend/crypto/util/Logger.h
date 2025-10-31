@@ -6,6 +6,41 @@
 
 #include <fmt/core.h>
 
+#define LOG_DEBUG(FMT, ...)                                                \
+    do {                                                                   \
+        if (Logger::current_min_log_level() <= LogLevel::Debug) {          \
+            Logger::logf<LogLevel::Debug>(FMT __VA_OPT__(, ) __VA_ARGS__); \
+        }                                                                  \
+    } while (false)
+
+#define LOG_STATUS(FMT, ...)                                                \
+    do {                                                                    \
+        if (Logger::current_min_log_level() <= LogLevel::Status) {          \
+            Logger::logf<LogLevel::Status>(FMT __VA_OPT__(, ) __VA_ARGS__); \
+        }                                                                   \
+    } while (false)
+
+#define LOG_INFO(FMT, ...)                                                \
+    do {                                                                  \
+        if (Logger::current_min_log_level() <= LogLevel::Info) {          \
+            Logger::logf<LogLevel::Info>(FMT __VA_OPT__(, ) __VA_ARGS__); \
+        }                                                                 \
+    } while (false)
+
+#define LOG_WARNING(FMT, ...)                                                \
+    do {                                                                     \
+        if (Logger::current_min_log_level() <= LogLevel::Warning) {          \
+            Logger::logf<LogLevel::Warning>(FMT __VA_OPT__(, ) __VA_ARGS__); \
+        }                                                                    \
+    } while (false)
+
+#define LOG_ERROR(FMT, ...)                                                \
+    do {                                                                   \
+        if (Logger::current_min_log_level() <= LogLevel::Error) {          \
+            Logger::logf<LogLevel::Error>(FMT __VA_OPT__(, ) __VA_ARGS__); \
+        }                                                                  \
+    } while (false)
+
 class Logger
 {
 public:
@@ -19,6 +54,7 @@ public:
     }
 
     static void set_min_log_level(LogLevel ll);
+    static LogLevel current_min_log_level();
 
 private:
     Logger();

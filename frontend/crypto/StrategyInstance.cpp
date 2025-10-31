@@ -2,7 +2,6 @@
 
 #include "ConditionalOrders.h"
 #include "EventBarrier.h"
-#include "EventLoop.h"
 #include "Events.h"
 #include "ITradingGateway.h"
 #include "Logger.h"
@@ -61,7 +60,7 @@ StrategyInstance::StrategyInstance(
             m_orders);
 
     if (!strategy_ptr_opt.has_value() || !strategy_ptr_opt.value() || !strategy_ptr_opt.value()->is_valid()) {
-        Logger::log<LogLevel::Error>("Failed to build entry strategy");
+        LOG_ERROR("Failed to build entry strategy");
         m_status.push(WorkStatus::Panic);
         return;
     }
@@ -74,10 +73,10 @@ StrategyInstance::StrategyInstance(
             [this](const std::pair<std::string, bool> & err) {
                 const auto & [msg, do_panic] = err;
                 if (do_panic) {
-                    Logger::logf<LogLevel::Error>("Panic: {}", msg);
+                    LOG_ERROR("Panic: {}", msg);
                 }
                 else {
-                    Logger::logf<LogLevel::Warning>("Stopping strategy {} on error: {}", m_strategy_guid, msg);
+                    LOG_WARNING("Stopping strategy {} on error: {}", m_strategy_guid, msg);
                 }
                 stop_async(do_panic);
             },
@@ -139,7 +138,7 @@ StrategyInstance::StrategyInstance(
 
 StrategyInstance::~StrategyInstance()
 {
-    Logger::log<LogLevel::Status>("StrategyInstance destructor");
+    LOG_STATUS("StrategyInstance destructor");
 }
 
 void StrategyInstance::run_async()
@@ -149,7 +148,7 @@ void StrategyInstance::run_async()
 
 void StrategyInstance::stop_async(bool panic)
 {
-    Logger::log<LogLevel::Status>("stop_async");
+    LOG_STATUS("stop_async");
     for (const auto & req : m_live_md_requests) {
         m_md_gateway.unsubscribe_from_live(req);
     }
@@ -322,14 +321,14 @@ void StrategyInstance::handle_event(const HistoricalMDGeneratorEvent & response)
 
     const size_t erased_cnt = m_pending_requests.erase(response.request_guid());
     if (erased_cnt == 0) {
-        Logger::logf<LogLevel::Debug>("unsolicited HistoricalMDPackEvent: {}, this->guid: {}", response.request_guid(), m_strategy_guid);
+        LOG_DEBUG("unsolicited HistoricalMDPackEvent: {}, this->guid: {}", response.request_guid(), m_strategy_guid);
         return;
     }
 
     m_historical_md_generator = response;
     const auto ev_opt = m_historical_md_generator->get_next();
     if (!ev_opt.has_value()) {
-        Logger::logf<LogLevel::Error>("no event in HistoricalMDGeneratorEvent: {}", response.request_guid());
+        LOG_ERROR("no event in HistoricalMDGeneratorEvent: {}", response.request_guid());
         return;
     }
 
@@ -373,13 +372,13 @@ void StrategyInstance::handle_event(const MDPriceEvent & response)
 void StrategyInstance::handle_event(const OrderResponseEvent & response)
 {
     if (response.reject_reason.has_value() && !response.retry) {
-        Logger::logf<LogLevel::Warning>("OrderRejected: {}", response.reject_reason.value());
+        LOG_WARNING("OrderRejected: {}", response.reject_reason.value());
         stop_async(true);
     }
 
     const auto it = m_pending_orders.find(response.request_guid);
     if (it == m_pending_orders.end()) {
-        Logger::log<LogLevel::Error>("unsolicited OrderResponseEvent");
+        LOG_ERROR("unsolicited OrderResponseEvent");
         return;
     }
     ScopeExit se([&]() { m_pending_orders.erase(it); });
@@ -393,14 +392,14 @@ void StrategyInstance::handle_event(const OrderResponseEvent & response)
     order.regenerate_guid();
     OrderRequestEvent or_event{order};
     m_pending_orders.emplace(order.guid(), order);
-    Logger::logf<LogLevel::Debug>("Re-sending order with guid: {}", order.guid());
+    LOG_DEBUG("Re-sending order with guid: {}", order.guid());
     m_tr_gateway.push_order_request(or_event);
 }
 
 void StrategyInstance::handle_event(const TradeEvent & response)
 {
     const auto & trade = response.trade;
-    Logger::logf<LogLevel::Debug>("Trade received: {}", trade);
+    LOG_DEBUG("Trade received: {}", trade);
     const auto res = m_position_manager.on_trade_received(response.trade);
 
     if (res.has_value()) {
@@ -450,7 +449,7 @@ void StrategyInstance::handle_event(const StrategyStartRequest &)
 
 void StrategyInstance::handle_event(const StrategyStopRequest &)
 {
-    Logger::log<LogLevel::Status>("StrategyStopRequest");
+    LOG_STATUS("StrategyStopRequest");
     close_position(m_last_ts_and_price.second, m_last_ts_and_price.first);
 
     m_live_md_requests.clear();
@@ -481,7 +480,7 @@ bool StrategyInstance::ready_to_finish() const
     const bool historical_md_finished = !m_historical_md_generator.has_value();
     const bool res = pos_closed && got_active_requests && !m_backtest_in_progress && historical_md_finished;
     if (res) {
-        Logger::log<LogLevel::Status>("StrategyInstance is ready to finish");
+        LOG_STATUS("StrategyInstance is ready to finish");
     }
     return res;
 }

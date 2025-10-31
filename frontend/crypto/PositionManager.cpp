@@ -11,7 +11,7 @@ std::optional<PositionResult> PositionManager::on_trade_received(const Trade & t
 {
     if (!m_opened_position.has_value()) {
         m_opened_position = OpenedPosition(trade);
-        Logger::logf<LogLevel::Status>("Opened position: {}", m_opened_position.value());
+        LOG_STATUS("Opened position: {}", m_opened_position.value());
         return std::nullopt;
     }
 
@@ -20,11 +20,11 @@ std::optional<PositionResult> PositionManager::on_trade_received(const Trade & t
     const auto closed_pos_opt = pos.on_trade(trade.price(), trade_vol, trade.fee());
 
     if (!closed_pos_opt.has_value()) {
-        Logger::logf<LogLevel::Status>("Position opened further. New state: {}", pos);
+        LOG_STATUS("Position opened further. New state: {}", pos);
         return {};
     }
 
-    Logger::logf<LogLevel::Status>("Closed position: {}", *closed_pos_opt);
+    LOG_STATUS("Closed position: {}", *closed_pos_opt);
     {
         if (m_closed_position.has_value()) {
             m_closed_position.value() += *closed_pos_opt;
@@ -43,16 +43,16 @@ std::optional<PositionResult> PositionManager::on_trade_received(const Trade & t
     res.guid = pos.guid();
 
     if (pos.opened_volume().is_zero()) {
-        Logger::logf<LogLevel::Status>("Position {} has been closed completely", pos.guid());
+        LOG_STATUS("Position {} has been closed completely", pos.guid());
         res.close_ts = trade.ts();
         m_opened_position = {};
         m_closed_position = {};
     }
     else {
-        Logger::logf<LogLevel::Status>("Position partially closed. Now: {}", pos);
+        LOG_STATUS("Position partially closed. Now: {}", pos);
     }
 
-    Logger::logf<LogLevel::Status>("Position result: {}", res);
+    LOG_STATUS("Position result: {}", res);
     return res;
 }
 

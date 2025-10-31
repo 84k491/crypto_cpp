@@ -86,7 +86,7 @@ void DynamicTrailingStopLossStrategy::on_price_changed(
             desired_price_distance,
             m_active_stop_loss->side()};
 
-    Logger::logf<LogLevel::Status>("Updating stop loss' price distance to {}", desired_price_distance);
+    LOG_STATUS("Updating stop loss' price distance to {}", desired_price_distance);
 
     auto & ch = m_orders.send_trailing_stop(
             new_trailing_stop,

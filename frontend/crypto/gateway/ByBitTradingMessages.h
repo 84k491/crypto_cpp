@@ -2,7 +2,6 @@
 #include "Ohlc.h"
 #include "Trade.h"
 
-#include <Logger.h>
 #include <cstdint>
 #include <list>
 #include <string>

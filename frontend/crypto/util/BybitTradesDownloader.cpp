@@ -58,7 +58,7 @@ FileReader::FileReader(std::string filepath)
     : ifs(filepath)
 {
     if (!ifs.is_open()) {
-        Logger::logf<LogLevel::Error>("Can't open file: {}, {}", filepath, errno);
+        LOG_ERROR("Can't open file: {}, {}", filepath, errno);
         return;
     }
     std::getline(ifs, last_line); // skip csv header
@@ -154,7 +154,7 @@ std::list<std::string> BybitTradesDownloader::download(const HistoricalMDRequest
                     csv_file +
                     ".gz";
 
-            Logger::logf<LogLevel::Debug>("Downloading {}", csv_file);
+            LOG_DEBUG("Downloading {}", csv_file);
             std::string curl = "curl -XGET '";
             curl += url;
             curl += "' -o ";
@@ -162,18 +162,18 @@ std::list<std::string> BybitTradesDownloader::download(const HistoricalMDRequest
             curl += "/";
             curl += csv_file;
             curl += ".gz";
-            Logger::logf<LogLevel::Debug>("Rest request: {}", curl.c_str());
+            LOG_DEBUG("Rest request: {}", curl.c_str());
             system(curl.c_str());
             const auto gunzip = "gunzip " + std::string(download_dir) + "/" + csv_file + ".gz";
-            Logger::logf<LogLevel::Debug>("Unzipping: {}", gunzip);
+            LOG_DEBUG("Unzipping: {}", gunzip);
             system(gunzip.c_str());
 
             if (!std::filesystem::exists(std::string(download_dir) + "/" + csv_file)) {
-                Logger::logf<LogLevel::Error>("Can't download file: {}", csv_file);
+                LOG_ERROR("Can't download file: {}", csv_file);
                 return {};
             }
 
-            Logger::logf<LogLevel::Debug>("Downloaded file: {}", csv_file);
+            LOG_DEBUG("Downloaded file: {}", csv_file);
         }
     }
 

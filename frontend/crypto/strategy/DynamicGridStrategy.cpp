@@ -121,7 +121,7 @@ void DynamicGridStrategy::push_candle(std::chrono::milliseconds ts, const Candle
     const Side side = price_level > 0 ? Side::sell() : Side::buy();
     const auto default_size_opt = UnsignedVolume::from(m_pos_currency_amount / price);
     if (!default_size_opt.has_value()) {
-        Logger::logf<LogLevel::Error>("Can't get proper order volume. Amount: {}, price: {}", m_pos_currency_amount, price);
+        LOG_ERROR("Can't get proper order volume. Amount: {}, price: {}", m_pos_currency_amount, price);
         // TODO push to error channel
         return;
     }
@@ -158,14 +158,14 @@ void DynamicGridStrategy::on_order_traded(const MarketOrder & order, int price_l
 {
     const auto it = m_orders_by_levels.find(price_level);
     if (it == m_orders_by_levels.end()) {
-        Logger::logf<LogLevel::Error>("Can't find orders for price level {}", price_level);
+        LOG_ERROR("Can't find orders for price level {}", price_level);
         // TODO panic?
         return;
     }
     auto & orders = it->second;
 
     if (orders.tp || orders.sl) {
-        Logger::logf<LogLevel::Error>("There already are tp or sl for level {}", price_level);
+        LOG_ERROR("There already are tp or sl for level {}", price_level);
         // TODO panic?
         return;
     }
@@ -184,7 +184,7 @@ void DynamicGridStrategy::on_order_traded(const MarketOrder & order, int price_l
                 [&, price_level](const std::shared_ptr<TakeProfitMarketOrder> & tp) {
                     switch (tp->status()) {
                     case OrderStatus::Rejected: {
-                        Logger::logf<LogLevel::Error>("Tp rejected: {}", tp->reject_reason());
+                        LOG_ERROR("Tp rejected: {}", tp->reject_reason());
                         // TODO forward reject
                         break;
                     }
@@ -210,7 +210,7 @@ void DynamicGridStrategy::on_order_traded(const MarketOrder & order, int price_l
                 [&, price_level](const std::shared_ptr<StopLossMarketOrder> & sl) {
                     switch (sl->status()) {
                     case OrderStatus::Rejected: {
-                        Logger::logf<LogLevel::Error>("Sl rejected: {}", sl->reject_reason());
+                        LOG_ERROR("Sl rejected: {}", sl->reject_reason());
                         // TODO forward reject
                         break;
                     }
@@ -230,7 +230,7 @@ void DynamicGridStrategy::on_take_profit_traded(const TakeProfitMarketOrder & or
 {
     const auto it = m_orders_by_levels.find(price_level);
     if (it == m_orders_by_levels.end()) {
-        Logger::logf<LogLevel::Error>("Can't find level for sl: {}", order.guid());
+        LOG_ERROR("Can't find level for sl: {}", order.guid());
         return;
     }
     auto & level = it->second;
@@ -244,7 +244,7 @@ void DynamicGridStrategy::on_stop_loss_traded(const StopLossMarketOrder & order,
 {
     const auto it = m_orders_by_levels.find(price_level);
     if (it == m_orders_by_levels.end()) {
-        Logger::logf<LogLevel::Error>("Can't find level for sl: {}", order.guid());
+        LOG_ERROR("Can't find level for sl: {}", order.guid());
         return;
     }
     auto & level = it->second;
@@ -290,5 +290,5 @@ void DynamicGridStrategy::print_levels()
         const auto p = get_price_from_level_number(i);
         ss << fmt::format("\nLevel {}: {},", i, p);
     }
-    Logger::logf<LogLevel::Debug>("{}", ss.str());
+    LOG_DEBUG("{}", ss.str());
 }

@@ -10,7 +10,7 @@ TrailigStopLossStrategyConfig::TrailigStopLossStrategyConfig(const JsonStrategyC
     if (config.get().contains("risk")) {
         m_risk = config.get()["risk"].get<double>();
     }
-    Logger::log<LogLevel::Debug>("TrailigStopLossStrategyConfig c-tor");
+    LOG_DEBUG("TrailigStopLossStrategyConfig c-tor");
 }
 
 TrailigStopLossStrategyConfig::TrailigStopLossStrategyConfig(double risk)
@@ -55,7 +55,7 @@ void TrailigStopLossStrategy::on_trade(const Trade & trade)
         // position opened
         // stop loss is set already
         const std::string_view msg = "TrailigStopLossStrategy: active stop loss already exists or pending";
-        Logger::log<LogLevel::Warning>(std::string(msg));
+        LOG_WARNING(std::string(msg));
         return;
     }
 
@@ -98,7 +98,7 @@ void TrailigStopLossStrategy::on_trailing_stop_updated(const std::shared_ptr<Tra
     if (!tsl || !tsl->m_active_stop_loss_price.has_value()) {
         m_tsl_sub.reset();
         m_active_stop_loss.reset();
-        Logger::log<LogLevel::Debug>("Trailing stop loss removed");
+        LOG_DEBUG("Trailing stop loss removed");
         return;
     }
 

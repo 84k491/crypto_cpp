@@ -13,7 +13,7 @@ void ConnectionWatcher::set_ping_sender(std::weak_ptr<IPingSender> & ping_sender
         sptr->send_ping();
     }
     else {
-        Logger::log<LogLevel::Error>("Empty ping sender");
+        LOG_ERROR("Empty ping sender");
     }
     m_ping_sender = ping_sender;
 }

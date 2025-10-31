@@ -193,7 +193,7 @@ void OrderManager::cancel_take_profit(xg::Guid guid)
 {
     const auto it = m_take_profits.find(guid);
     if (it == m_take_profits.end()) {
-        Logger::logf<LogLevel::Error>("No TP to cancel: {}", guid);
+        LOG_ERROR("No TP to cancel: {}", guid);
         return;
     }
     it->second->update([&](std::shared_ptr<TakeProfitMarketOrder> & tp) {
@@ -206,7 +206,7 @@ void OrderManager::cancel_stop_loss(xg::Guid guid)
 {
     const auto it = m_stop_losses.find(guid);
     if (it == m_stop_losses.end()) {
-        Logger::logf<LogLevel::Error>("No SL to cancel: {}", guid);
+        LOG_ERROR("No SL to cancel: {}", guid);
         return;
     }
     it->second->update([&](std::shared_ptr<StopLossMarketOrder> & sl) {
@@ -220,7 +220,7 @@ void OrderManager::on_take_profit_response(const TakeProfitUpdatedEvent & r)
     const auto it = m_take_profits.find(r.guid);
     if (it == m_take_profits.end()) {
         if (r.active) {
-            Logger::logf<LogLevel::Error>("Can't find active tp on response: {}", r.guid);
+            LOG_ERROR("Can't find active tp on response: {}", r.guid);
             m_error_channel.push(fmt::format("Can't find active tp on response: {}", r.guid.str()));
         }
         return;
@@ -236,7 +236,7 @@ void OrderManager::on_stop_loss_reposnse(const StopLossUpdatedEvent & r)
     const auto it = m_stop_losses.find(r.guid);
     if (it == m_stop_losses.end()) {
         if (r.active) {
-            Logger::logf<LogLevel::Error>("Can't find actiev sl on response: {}", r.guid);
+            LOG_ERROR("Can't find actiev sl on response: {}", r.guid);
             m_error_channel.push(fmt::format("Can't find actiev sl on response: {}", r.guid.str()));
         }
         return;
@@ -251,7 +251,7 @@ void OrderManager::on_order_response(const OrderResponseEvent & response)
 {
     const auto it = m_orders.find(response.request_guid);
     if (it == m_orders.end()) {
-        Logger::logf<LogLevel::Warning>("unsolicited OrderResponseEvent {}", response.request_guid);
+        LOG_WARNING("unsolicited OrderResponseEvent {}", response.request_guid);
         m_error_channel.push(fmt::format("unsolicited OrderResponseEvent {}", response.request_guid.str()));
         return;
     }
@@ -357,7 +357,7 @@ void OrderManager::on_trade(const TradeEvent & ev)
         return;
     }
 
-    Logger::logf<LogLevel::Warning>("unsolicited TradeEvent {}", ev.trade.order_guid());
+    LOG_WARNING("unsolicited TradeEvent {}", ev.trade.order_guid());
     m_error_channel.push(fmt::format("unsolicited TradeEvent {}", ev.trade.order_guid().str()));
 }
 
@@ -437,7 +437,7 @@ void OrderManager::on_trailing_stop_response(const TrailingStopLossUpdatedEvent 
     });
 
     m_trailing_stop.reset();
-    Logger::log<LogLevel::Debug>("Order manager: Trailing stop loss removed");
+    LOG_DEBUG("Order manager: Trailing stop loss removed");
 }
 
 void OrderManager::on_tpsl_reposnse(const TpslUpdatedEvent & r)

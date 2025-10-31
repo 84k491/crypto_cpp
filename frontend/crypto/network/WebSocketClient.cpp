@@ -15,7 +15,7 @@ WebSocketClient::WebSocketClient(
     , m_connection_watcher(connection_watcher)
 {
     m_client_thread = std::make_unique<std::thread>([this]() {
-        Logger::logf<LogLevel::Debug>("websocket thread start");
+        LOG_DEBUG("websocket thread start");
 
         m_client.set_access_channels(websocketpp::log::alevel::fail);
         m_client.clear_access_channels(websocketpp::log::alevel::all);
@@ -32,7 +32,7 @@ WebSocketClient::WebSocketClient(
                                  boost::asio::ssl::context::single_dh_use);
             }
             catch (std::exception & e) {
-                Logger::logf<LogLevel::Error>("Failed to set WS options: {}", e.what());
+                LOG_ERROR("Failed to set WS options: {}", e.what());
             }
             return ctx;
         });
@@ -43,14 +43,14 @@ WebSocketClient::WebSocketClient(
             on_ws_message_received(payload_string);
         });
         m_client.set_open_handler([this](auto con_ptr) {
-            Logger::logf<LogLevel::Status>("Ws connection created. URL: {}", m_url);
+            LOG_STATUS("Ws connection created. URL: {}", m_url);
             if (m_keys.has_value()) {
                 std::string auth_msg = build_auth_message();
                 try {
                     m_client.send(con_ptr, auth_msg, websocketpp::frame::opcode::text);
                 }
                 catch (std::exception & e) {
-                    Logger::logf<LogLevel::Error>("Failed to send auth message: {}", e.what());
+                    LOG_ERROR("Failed to send auth message: {}", e.what());
                 }
             }
             else {
@@ -61,10 +61,10 @@ WebSocketClient::WebSocketClient(
         });
 
         websocketpp::lib::error_code ec;
-        Logger::logf<LogLevel::Status>("WS client connnecting to URL: {}", m_url);
+        LOG_STATUS("WS client connnecting to URL: {}", m_url);
         m_connection = m_client.get_connection(m_url, ec);
         if (ec) {
-            Logger::logf<LogLevel::Error>("could not create connection because: {}", ec.message());
+            LOG_ERROR("could not create connection because: {}", ec.message());
             return 0;
         }
 
@@ -75,10 +75,10 @@ WebSocketClient::WebSocketClient(
         // Start the ASIO io_service run loop
         // this will cause a single connection to be made to the server. c.run()
         // will exit when this connection is closed.
-        Logger::log<LogLevel::Debug>("Running WS client");
+        LOG_DEBUG("Running WS client");
         m_client.run();
         m_ready = false;
-        Logger::log<LogLevel::Debug>("websocket client stopped");
+        LOG_DEBUG("websocket client stopped");
         return 0;
     });
 }
@@ -91,7 +91,7 @@ WebSocketClient::~WebSocketClient() {
 
 void WebSocketClient::subscribe(const std::string & topic)
 {
-    Logger::logf<LogLevel::Status>("Subscribing to {}", topic);
+    LOG_STATUS("Subscribing to {}", topic);
     std::stringstream ss;
     ss << R"({"op": "subscribe", "args": [")" << topic << R"("]})";
     m_client.send(m_connection, ss.str(), websocketpp::frame::opcode::text);
@@ -99,7 +99,7 @@ void WebSocketClient::subscribe(const std::string & topic)
 
 void WebSocketClient::unsubscribe(const std::string & topic)
 {
-    Logger::logf<LogLevel::Status>("Unsubscribing from {}", topic);
+    LOG_STATUS("Unsubscribing from {}", topic);
     std::stringstream ss;
     ss << R"({"op": "unsubscribe", "args": [")" << topic << R"("]})";
     m_client.send(m_connection, ss.str(), websocketpp::frame::opcode::text);
@@ -107,7 +107,7 @@ void WebSocketClient::unsubscribe(const std::string & topic)
 
 void WebSocketClient::on_connected()
 {
-    Logger::logf<LogLevel::Status>("WS client connected to {}", m_url);
+    LOG_STATUS("WS client connected to {}", m_url);
     m_ready = true;
     m_connection_watcher.on_pong_received();
 }
@@ -120,7 +120,7 @@ bool WebSocketClient::send_ping()
         return true;
     }
     catch (std::exception & e) {
-        Logger::logf<LogLevel::Error>("Failed to send ping: {}", e.what());
+        LOG_ERROR("Failed to send ping: {}", e.what());
         return false;
     }
 }
@@ -146,7 +146,7 @@ std::string WebSocketClient::sign_message(const std::string & message, const std
 std::string WebSocketClient::build_auth_message() const
 {
     if (!m_keys.has_value()) {
-        Logger::logf<LogLevel::Error>("No keys provided");
+        LOG_ERROR("No keys provided");
         return "";
     }
 
@@ -163,17 +163,17 @@ std::string WebSocketClient::build_auth_message() const
             {"op", "auth"},
             {"args", {m_keys.value().m_api_key, expires, signature}}};
 
-    Logger::logf<LogLevel::Debug>("Auth message: {}", auth_msg.dump());
+    LOG_DEBUG("Auth message: {}", auth_msg.dump());
     return auth_msg.dump();
 }
 
 void WebSocketClient::on_sub_response(const nlohmann::json & j)
 {
     if (j.at("success") != true) {
-        Logger::logf<LogLevel::Error>("Subscription error: {}", j.dump());
+        LOG_ERROR("Subscription error: {}", j.dump());
         return;
     }
-    Logger::logf<LogLevel::Status>("Subscribed: ", j.dump());
+    LOG_STATUS("Subscribed: ", j.dump());
     m_ping_worker = std::make_unique<WorkerThreadLoop>(
             [this](const std::atomic_bool & running) -> bool {
                 constexpr std::chrono::seconds ping_interval = std::chrono::seconds(20);
@@ -202,7 +202,7 @@ void WebSocketClient::on_ws_message_received(const std::string & message)
                  }},
         };
         if (const auto it = op_handlers.find(op); it == op_handlers.end()) {
-            Logger::logf<LogLevel::Error>("Unregistered operation: {}", j.dump());
+            LOG_ERROR("Unregistered operation: {}", j.dump());
             return;
         }
         else {
@@ -216,7 +216,7 @@ void WebSocketClient::on_ws_message_received(const std::string & message)
 void WebSocketClient::on_auth_response(const json & j)
 {
     if (j.at("success") != true) {
-        Logger::logf<LogLevel::Error>("Auth error: {}", j.dump());
+        LOG_ERROR("Auth error: {}", j.dump());
         return;
     }
 

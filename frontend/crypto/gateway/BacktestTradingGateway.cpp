@@ -1,7 +1,6 @@
 #include "BacktestTradingGateway.h"
 
 #include "Events.h"
-#include "Logger.h"
 #include "Side.h"
 #include "Volume.h"
 

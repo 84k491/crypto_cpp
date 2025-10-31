@@ -44,6 +44,11 @@ void Logger::set_min_log_level(LogLevel ll)
     i().m_min_log_level = ll;
 }
 
+LogLevel Logger::current_min_log_level()
+{
+    return i().m_min_log_level;
+}
+
 template void Logger::log<LogLevel::Debug>(std::string && str);
 template void Logger::log<LogLevel::Status>(std::string && str);
 template void Logger::log<LogLevel::Info>(std::string && str);

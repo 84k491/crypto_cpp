@@ -70,7 +70,7 @@ std::optional<JsonStrategyMetaInfo> StrategyFactory::get_meta_info(const std::st
             file.close();
             return json_data;
         }
-        Logger::logf<LogLevel::Error>("Failed to open JSON file: {}", json_file_path);
+        LOG_ERROR("Failed to open JSON file: {}", json_file_path);
         return {};
     }();
     return json_data;
@@ -95,7 +95,7 @@ std::optional<std::shared_ptr<IStrategy>> StrategyFactory::build_strategy(
 {
     const auto it = m_builders.find(strategy_name);
     if (it == m_builders.end()) {
-        Logger::logf<LogLevel::Error>("Unknown strategy name: {}", strategy_name);
+        LOG_ERROR("Unknown strategy name: {}", strategy_name);
         return std::nullopt;
     }
 

@@ -77,7 +77,7 @@ void TpslExitStrategy::on_trade(const Trade & trade)
     if (m_is_pos_opened && m_active_tpsl != nullptr) {
         // position opened and tpsl is set already
         const std::string_view msg = "TpslExitStrategy: active tpsl already exists";
-        Logger::log<LogLevel::Warning>(std::string(msg));
+        LOG_WARNING(std::string(msg));
         return;
     }
 
