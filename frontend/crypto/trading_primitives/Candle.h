@@ -49,11 +49,11 @@ public:
 
     struct DisbalanceCoef
     {
-        double coef;
+        double unsigned_coef;
         Side side;
     };
-    DisbalanceCoef volume_disbalance_coef() const;
-    SignedVolume volume_disbalance() const;
+    DisbalanceCoef volume_imbalance_coef() const;
+    SignedVolume volume_imbalance() const;
 
     double price_diff() const { return m_close - m_open; }
     double price_diff_coef() const { return (m_close - m_open) / m_open; }
