@@ -16,8 +16,8 @@ public:
 
     std::vector<std::string> get_all_strategy_names() const;
 
-    std::optional<JsonStrategyMetaInfo> get_meta_info(
-            const std::string & strategy_name) const;
+    static std::optional<JsonStrategyMetaInfo> get_meta_info(
+            const std::string & strategy_name);
     std::optional<std::shared_ptr<IStrategy>> build_strategy(
             const std::string & strategy_name,
             const JsonStrategyConfig & config,

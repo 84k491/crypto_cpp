@@ -22,7 +22,7 @@ public:
     std::chrono::milliseconds m_timeframe = {};
     std::chrono::milliseconds m_interval = {};
 
-    // strategy won't trigger if number of candles outside above trigger price
+    // strategy won't trigger if number of candles above trigger price
     // was more than this value on falling back to normal price
     int m_candles_threshold = 0;
     double m_std_deviation_coefficient = 0.;

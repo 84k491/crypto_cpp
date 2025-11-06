@@ -15,6 +15,7 @@
 #include "RelativeStrengthIndexStrategy.h"
 #include "StaticGridStrategy.h"
 #include "StrategyInterface.h"
+#include "VolumeImbalanceTrendStrategy.h"
 
 #include <fstream>
 #include <optional>
@@ -42,6 +43,7 @@ StrategyFactory::StrategyFactory()
             BUILDER(DynamicGrid),
             BUILDER(DynamicGridAdx),
             BUILDER(StaticGrid),
+            BUILDER(VolumeImbalanceTrend),
     };
 }
 
@@ -51,7 +53,7 @@ StrategyFactory & StrategyFactory::i()
     return f;
 }
 
-std::optional<JsonStrategyMetaInfo> StrategyFactory::get_meta_info(const std::string & strategy_name) const
+std::optional<JsonStrategyMetaInfo> StrategyFactory::get_meta_info(const std::string & strategy_name)
 {
     static constexpr std::string_view strategy_parameters_dir = "strategy_parameters/";
     const auto name_to_filename = [&](const std::string & name) {
