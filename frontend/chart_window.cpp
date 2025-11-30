@@ -53,9 +53,16 @@ MultiSeriesChart & ChartWindow::get_or_create_chart(const std::string & chart_na
     if (auto it = m_charts.find(chart_name); it != m_charts.end()) {
         return *it->second;
     }
+
     auto * new_chart = new MultiSeriesChart();
     new_chart->setFixedHeight(get_child_height(height(), height_factor));
     new_chart->set_title(chart_name);
+
+    constexpr std::string_view prices_chart_name = "prices";
+    if (prices_chart_name != chart_name) {
+        new_chart->legend->setVisible(true);
+    }
+
     m_charts[chart_name] = new_chart;
     m_layout->addWidget(new_chart);
     return *new_chart;

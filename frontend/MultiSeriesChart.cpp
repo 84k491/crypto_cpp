@@ -216,7 +216,7 @@ QCPGraph * MultiSeriesChart::get_graph_for_series(std::string_view series_name, 
     const auto idx = it->second;
     if (inserted) {
         addGraph();
-        graph(idx)->setName(series_name.data());
+        graph(idx)->setName(std::string{series_name}.c_str());
         if (is_scatter) {
             graph(idx)->setLineStyle(QCPGraph::lsNone);
             const auto display_params_pair_it = scatter_series_display_params.find(std::string(series_name));
