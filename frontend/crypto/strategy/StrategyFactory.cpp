@@ -15,6 +15,7 @@
 #include "RelativeStrengthIndexStrategy.h"
 #include "StaticGridStrategy.h"
 #include "StrategyInterface.h"
+#include "TrendCatcherStrategy.h"
 #include "VolumeImbalanceTrendStrategy.h"
 
 #include <fstream>
@@ -44,6 +45,7 @@ StrategyFactory::StrategyFactory()
             BUILDER(DynamicGridAdx),
             BUILDER(StaticGrid),
             BUILDER(VolumeImbalanceTrend),
+            BUILDER(TrendCatcher),
     };
 }
 

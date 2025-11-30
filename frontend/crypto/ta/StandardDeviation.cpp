@@ -7,9 +7,8 @@ StandardDeviation::StandardDeviation(std::chrono::milliseconds interval)
 {
 }
 
-std::optional<double> StandardDeviation::push_value(std::pair<std::chrono::milliseconds, double> ts_and_value)
+std::optional<double> StandardDeviation::push_value(std::chrono::milliseconds ts, double value)
 {
-    const auto & [ts, value] = ts_and_value;
     m_values.push_back({ts, value});
     m_sum += value;
     m_sq_sum += value * value;

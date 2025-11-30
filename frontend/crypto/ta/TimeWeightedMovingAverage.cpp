@@ -2,9 +2,6 @@
 
 #include "ScopeExit.h"
 
-#include <cmath>
-#include <iostream>
-
 TimeWeightedMovingAverage::TimeWeightedMovingAverage(std::chrono::milliseconds interval)
     : m_interval(interval)
 {

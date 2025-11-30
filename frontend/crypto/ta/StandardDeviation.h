@@ -9,7 +9,7 @@ class StandardDeviation
 public:
     StandardDeviation(std::chrono::milliseconds interval);
 
-    std::optional<double> push_value(std::pair<std::chrono::milliseconds, double> ts_and_value);
+    std::optional<double> push_value(std::chrono::milliseconds ts, double value);
 
     double mean() const { return m_mean; }
 

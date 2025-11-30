@@ -103,7 +103,7 @@ void VolumeImbalanceTrendStrategy::push_candle(const Candle & candle)
     const auto trade_rate_avg_opt = m_trade_rate_avg.push_value({candle.close_ts(), trade_rate});
     ScopeExit se1{[&] { m_prev_trade_rate_avg_opt = trade_rate_avg_opt; }};
 
-    const auto volatility = m_std.push_value({candle.close_ts(), candle.close()});
+    const auto volatility = m_std.push_value(candle.close_ts(), candle.close());
     const auto rel_volatility_opt = [&] -> decltype(volatility) {
         if (!volatility) {
             return std::nullopt;

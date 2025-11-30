@@ -1,0 +1,47 @@
+{
+    "strategy_name": "TrendCatcher",
+    "parameters": [
+        {
+            "name": "timeframe_s",
+            "min_value": 60,
+            "step": 60,
+            "max_value": 600
+        },
+        {
+            "name": "fast_interval",
+            "min_value": 5,
+            "step": 5,
+            "max_value": 50
+        },
+        {
+            "name": "slow_interval",
+            "min_value": 10,
+            "step": 10,
+            "max_value": 100
+        },
+        {
+            "name": "min_price_diff_perc",
+            "min_value": 0.05,
+            "step": 0.05,
+            "max_value": 0.5
+        },
+        {
+            "name": "max_std_dev_perc",
+            "min_value": 0.4,
+            "step": 0.2,
+            "max_value": 2.0
+        },
+        {
+            "name": "risk",
+            "min_value": 0.010,
+            "step": 0.001,
+            "max_value": 0.030
+        },
+        {
+            "name": "risk_reward_ratio",
+            "min_value": 0.8,
+            "step": 0.2,
+            "max_value": 2.0
+        }
+    ]
+}
