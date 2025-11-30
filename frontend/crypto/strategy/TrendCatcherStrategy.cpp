@@ -147,11 +147,11 @@ void TrendCatcherStrategy::push_candle(const Candle & candle)
     double slow_std_dev_p = *slow_std_dev_opt * 100.;
     double fast_std_dev_p = *fast_std_dev_opt * 100.;
 
-    m_strategy_internal_data_channel.push(ts, {.chart_name = "price_diff", .series_name = "slow_diff", .value = slow_diff_p});
-    m_strategy_internal_data_channel.push(ts, {.chart_name = "price_diff", .series_name = "fast_diff", .value = fast_diff_p});
+    m_strategy_internal_data_channel.push(ts, {.chart_name = "price_diff", .series_name = "slow_diff,%", .value = slow_diff_p});
+    m_strategy_internal_data_channel.push(ts, {.chart_name = "price_diff", .series_name = "fast_diff,%", .value = fast_diff_p});
 
-    m_strategy_internal_data_channel.push(ts, {.chart_name = "std_dev", .series_name = "slow_std_dev", .value = slow_std_dev_p});
-    m_strategy_internal_data_channel.push(ts, {.chart_name = "std_dev", .series_name = "fast_std_dev", .value = fast_std_dev_p});
+    m_strategy_internal_data_channel.push(ts, {.chart_name = "std_dev", .series_name = "slow_std_dev,%", .value = slow_std_dev_p});
+    m_strategy_internal_data_channel.push(ts, {.chart_name = "std_dev", .series_name = "fast_std_dev,%", .value = fast_std_dev_p});
 
     if (sign(slow_diff_p) != sign(fast_diff_p)) {
         return;
