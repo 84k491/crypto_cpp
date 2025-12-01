@@ -130,22 +130,18 @@ void TrendCatcherStrategy::push_candle(const Candle & candle)
     const auto slow_diff_opt = m_slow_diff_ma.push_value({ts, candle.price_diff_coef()});
     const auto fast_diff_opt = m_fast_diff_ma.push_value({ts, candle.price_diff_coef()});
 
-    const auto slow_std_dev_opt = m_slow_std_dev.push_value(ts, candle.price_diff_coef());
-    const auto fast_std_dev_opt = m_fast_std_dev.push_value(ts, candle.price_diff_coef());
-
-    // LOG_DEBUG("Slow interval sec: {}", std::chrono::duration_cast<std::chrono::seconds>(m_config.m_slow_interval));
+    const auto slow_std_dev_opt = m_slow_std_dev.push_value(ts, candle.close());
+    const auto fast_std_dev_opt = m_fast_std_dev.push_value(ts, candle.close());
 
     if (!slow_diff_opt.has_value() || !fast_diff_opt.has_value() || !slow_std_dev_opt.has_value() || !fast_std_dev_opt.has_value()) {
         return;
     }
 
-    // LOG_DEBUG("got values");
-
     // p for percent
     double slow_diff_p = *slow_diff_opt * 100.;
     double fast_diff_p = *fast_diff_opt * 100.;
-    double slow_std_dev_p = *slow_std_dev_opt * 100.;
-    double fast_std_dev_p = *fast_std_dev_opt * 100.;
+    double slow_std_dev_p = (100 * *slow_std_dev_opt) / m_slow_std_dev.mean();
+    double fast_std_dev_p = (100 * *fast_std_dev_opt) / m_fast_std_dev.mean();
 
     m_strategy_internal_data_channel.push(ts, {.chart_name = "price_diff", .series_name = "slow_diff,%", .value = slow_diff_p});
     m_strategy_internal_data_channel.push(ts, {.chart_name = "price_diff", .series_name = "fast_diff,%", .value = fast_diff_p});
@@ -160,12 +156,10 @@ void TrendCatcherStrategy::push_candle(const Candle & candle)
         return;
     }
 
-    // TODO convert from percents to coef
     if (std::fabs(slow_diff_p) < m_config.m_min_price_diff_perc || std::fabs(fast_diff_p) < m_config.m_min_price_diff_perc) {
         return;
     }
 
-    // TODO convert from percents to coef
     if (slow_std_dev_p > m_config.m_max_std_dev_perc || fast_std_dev_p > m_config.m_max_std_dev_perc) {
         return;
     }

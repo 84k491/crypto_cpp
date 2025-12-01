@@ -6,6 +6,7 @@ include_directories(
     ${GMOCK_INCLUDE_DIRS}
     ..
 )
+
 ####################################################################################################
 add_executable(time_weighted_average_test
     TimeWeightedMovingAverageTest.cpp
@@ -17,4 +18,17 @@ target_link_libraries(time_weighted_average_test
     nlohmann_json
 )
 set(UNIT_TEST time_weighted_average_test)
+add_test(NAME ${UNIT_TEST} COMMAND ${UNIT_TEST})
+
+####################################################################################################
+add_executable(standard_deviation_test
+    StandardDeviationTest.cpp
+    ../StandardDeviation.cpp
+)
+target_link_libraries(standard_deviation_test
+    ${GTEST_BOTH_LIBRARIES}
+    util
+    nlohmann_json
+)
+set(UNIT_TEST standard_deviation_test)
 add_test(NAME ${UNIT_TEST} COMMAND ${UNIT_TEST})
