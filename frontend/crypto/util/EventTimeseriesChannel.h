@@ -58,6 +58,7 @@ public:
     using TimeT = std::chrono::milliseconds;
 
     EventTimeseriesChannel() = default;
+    EventTimeseriesChannel(EventTimeseriesChannel &) = delete;
     ~EventTimeseriesChannel();
 
     void push(TimeT timestamp, const ObjectT & object);

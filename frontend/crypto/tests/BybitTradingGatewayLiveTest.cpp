@@ -216,7 +216,7 @@ TEST_F(BybitTradingGatewayLiveTest, CloseWithTpsl)
     }
 
     const auto entry_price = trade_response->trade.price();
-    TpslFullPos::Prices tpsl{.take_profit_price = entry_price + 500, .stop_loss_price = entry_price - 500};
+    TpslPrices tpsl{.take_profit_price = entry_price + 500, .stop_loss_price = entry_price - 500};
     TpslRequestEvent tpsl_req_ev{
             Symbol{.symbol_name = "BTCUSDT", .lot_size_filter = {}},
             tpsl.take_profit_price,
@@ -313,7 +313,7 @@ TEST_F(BybitTradingGatewayLiveTest, TpslRejectIfNoPos)
                 tpsl_resp_cv.notify_all();
             });
 
-    TpslFullPos::Prices tpsl{.take_profit_price = 110'000, .stop_loss_price = 105'000};
+    TpslPrices tpsl{.take_profit_price = 110'000, .stop_loss_price = 105'000};
     TpslRequestEvent tpsl_req_ev{
             Symbol{.symbol_name = "BTCUSDT", .lot_size_filter = {}},
             tpsl.take_profit_price,

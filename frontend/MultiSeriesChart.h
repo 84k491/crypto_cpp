@@ -28,7 +28,7 @@ public:
                                             std::chrono::milliseconds,
                                             double>> & data);
     void push_trade(const Trade & trade);
-    void push_tpsl(std::chrono::milliseconds ts, TpslFullPos::Prices tpsl);
+    void push_tpsl(std::chrono::milliseconds ts, TpslPrices tpsl);
     void push_stop_loss(std::chrono::milliseconds ts, double stop_price);
 
     void set_title(const std::string & title); // TODO implement

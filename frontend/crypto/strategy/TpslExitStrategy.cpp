@@ -46,6 +46,7 @@ TpslExitStrategy::TpslExitStrategy(
         EventLoop & event_loop,
         StrategyChannelsRefs channels)
     : m_orders(orders)
+    , m_tpsl_channel(channels.tpsl_channel)
     , m_config(config)
     , m_event_loop{event_loop}
     , m_main_sub{event_loop}
@@ -116,12 +117,20 @@ void TpslExitStrategy::on_updated(const std::shared_ptr<TpslFullPos> & sptr)
         m_active_tpsl.reset();
         m_tpsl_sub.reset();
     }
+    else {
+        m_tpsl_channel.push(
+                m_active_tpsl->signal_ts(),
+                TpslPrices{
+                        .take_profit_price = m_active_tpsl->take_profit_price(),
+                        .stop_loss_price = m_active_tpsl->stop_loss_price()});
+    }
 }
 
-TpslFullPos::Prices TpslExitStrategy::calc_tpsl(const Trade & trade)
+TpslPrices TpslExitStrategy::calc_tpsl(const Trade & trade)
 {
-    TpslFullPos::Prices tpsl;
-    const double & entry_price = trade.price();
+    TpslPrices tpsl;
+
+    const double entry_price = trade.price();
     const double total_fee = trade.fee() * 2;
     const double fee_price_delta = total_fee / trade.unsigned_volume().value();
 
@@ -146,7 +155,7 @@ TpslFullPos::Prices TpslExitStrategy::calc_tpsl(const Trade & trade)
 
 bool TpslExitStrategyConfig::is_valid() const
 {
-    bool limits_ok = m_risk > 0. && m_risk < 1. && m_risk_reward_ratio > 0. && m_risk_reward_ratio < 1.;
+    bool limits_ok = m_risk > 0. && m_risk < 1. && m_risk_reward_ratio > 0.;
     return limits_ok;
 }
 

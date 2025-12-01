@@ -45,7 +45,8 @@ StrategyInstance::StrategyInstance(
               m_opened_pos_channel,
               m_trade_channel,
               m_price_levels_channel,
-              m_trailing_stop_channel)
+              m_trailing_stop_channel,
+              m_tpsl_channel)
     , m_symbol(symbol)
     , m_position_manager(symbol)
     , m_historical_md_request(historical_md_request)
@@ -285,7 +286,7 @@ EventObjectChannel<WorkStatus> & StrategyInstance::status_channel()
     return m_status;
 }
 
-EventTimeseriesChannel<TpslFullPos::Prices> & StrategyInstance::tpsl_channel()
+EventTimeseriesChannel<TpslPrices> & StrategyInstance::tpsl_channel()
 {
     return m_tpsl_channel;
 }

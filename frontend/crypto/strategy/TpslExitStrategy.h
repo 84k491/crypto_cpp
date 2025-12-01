@@ -4,7 +4,6 @@
 #include "EventLoop.h"
 #include "EventLoopSubscriber.h"
 #include "ExitStrategyBase.h"
-#include "ISubsription.h"
 #include "JsonStrategyConfig.h"
 #include "Position.h"
 #include "StrategyChannels.h"
@@ -44,13 +43,14 @@ public:
 private:
     void on_trade(const Trade & trade);
 
-    TpslFullPos::Prices calc_tpsl(const Trade & trade);
+    TpslPrices calc_tpsl(const Trade & trade);
     void on_error(std::string, bool);
 
     void on_updated(const std::shared_ptr<TpslFullPos> & sptr);
 
 private:
     OrderManager & m_orders;
+    EventTimeseriesChannel<TpslPrices> & m_tpsl_channel;
     TpslExitStrategyConfig m_config;
     EventLoop & m_event_loop;
 

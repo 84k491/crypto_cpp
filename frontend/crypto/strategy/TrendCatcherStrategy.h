@@ -52,6 +52,8 @@ public:
             StrategyChannelsRefs channels,
             OrderManager & orders);
 
+    // TODO check for max std dev over a rolling window. instead of current
+
     bool is_valid() const override;
 
     std::optional<std::chrono::milliseconds> timeframe() const override;

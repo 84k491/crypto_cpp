@@ -44,7 +44,7 @@ public:
     EventTimeseriesChannel<PositionResult> & positions_channel();
     EventObjectChannel<StrategyResult> & strategy_result_channel();
     EventObjectChannel<WorkStatus> & status_channel();
-    EventTimeseriesChannel<TpslFullPos::Prices> & tpsl_channel();
+    EventTimeseriesChannel<TpslPrices> & tpsl_channel();
     EventTimeseriesChannel<StopLoss> & trailing_stop_channel();
 
     void run_async();
@@ -96,7 +96,7 @@ private:
     EventTimeseriesChannel<double> m_depo_channel;
     EventTimeseriesChannel<PositionResult> m_positions_channel;
 
-    EventTimeseriesChannel<TpslFullPos::Prices> m_tpsl_channel;
+    EventTimeseriesChannel<TpslPrices> m_tpsl_channel;
     EventTimeseriesChannel<StopLoss> m_trailing_stop_channel;
 
     StrategyChannelsRefs m_strategy_channels;

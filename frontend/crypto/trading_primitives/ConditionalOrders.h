@@ -95,15 +95,15 @@ public:
     }
 };
 
+struct TpslPrices
+{
+    double take_profit_price = 0.;
+    double stop_loss_price = 0.;
+};
+
 class TpslFullPos
 {
 public:
-    struct Prices
-    {
-        double take_profit_price = 0.;
-        double stop_loss_price = 0.;
-    };
-
     TpslFullPos(
             std::string symbol,
             double take_profit_price,
@@ -115,6 +115,9 @@ public:
 
     double take_profit_price() const;
     double stop_loss_price() const;
+
+    auto signal_ts() const { return m_signal_ts; }
+
     xg::Guid guid() const;
 
     std::optional<std::string> m_reject_reason;
@@ -126,8 +129,9 @@ public:
 private:
     std::string m_symbol;
     xg::Guid m_guid;
+    std::chrono::milliseconds m_signal_ts;
 
-    Prices m_prices;
+    TpslPrices m_prices;
 
     Side m_side;
 };

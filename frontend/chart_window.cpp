@@ -136,7 +136,7 @@ void ChartWindow::subscribe_to_strategy()
 
     m_sub.subscribe(
             str_instance.tpsl_channel(),
-            [this](const std::list<std::pair<std::chrono::milliseconds, TpslFullPos::Prices>> & input_vec) {
+            [this](const std::list<std::pair<std::chrono::milliseconds, TpslPrices>> & input_vec) {
                 std::vector<std::pair<std::chrono::milliseconds, double>> tp, sl;
                 for (const auto & [ts, tpsl] : input_vec) {
                     if (!ts_in_range(ts)) {
@@ -149,7 +149,7 @@ void ChartWindow::subscribe_to_strategy()
                 plot.push_scatter_series_vector("take_profit", tp);
                 plot.push_scatter_series_vector("stop_loss", sl);
             },
-            [&](std::chrono::milliseconds ts, const TpslFullPos::Prices & tpsl) {
+            [&](std::chrono::milliseconds ts, const TpslPrices & tpsl) {
                 if (!ts_in_range(ts)) {
                     return;
                 }

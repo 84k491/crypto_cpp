@@ -55,9 +55,10 @@ TpslFullPos::TpslFullPos(
         double take_profit_price,
         double stop_loss_price,
         Side side,
-        std::chrono::milliseconds)
+        std::chrono::milliseconds signal_ts)
     : m_symbol(std::move(symbol))
     , m_guid(xg::newGuid())
+    , m_signal_ts(signal_ts)
     , m_prices{
               .take_profit_price = take_profit_price,
               .stop_loss_price = stop_loss_price}

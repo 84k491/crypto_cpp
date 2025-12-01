@@ -5,6 +5,8 @@
 #include "EventTimeseriesChannel.h"
 #include "Position.h"
 
+struct TpslPrices;
+
 struct StrategyChannelsRefs
 {
     EventTimeseriesChannel<double> & price_channel;
@@ -15,4 +17,5 @@ struct StrategyChannelsRefs
     EventTimeseriesChannel<ProfitPriceLevels> & price_levels_channel;
 
     EventTimeseriesChannel<StopLoss> & trailing_stop_loss_channel;
+    EventTimeseriesChannel<TpslPrices> & tpsl_channel;
 };

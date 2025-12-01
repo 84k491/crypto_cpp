@@ -178,7 +178,7 @@ void MultiSeriesChart::push_trade(const Trade & trade)
     replot();
 }
 
-void MultiSeriesChart::push_tpsl(std::chrono::milliseconds ts, TpslFullPos::Prices tpsl)
+void MultiSeriesChart::push_tpsl(std::chrono::milliseconds ts, TpslPrices tpsl)
 {
     push_series_value_dont_replot("take_profit", ts, tpsl.take_profit_price, true);
     push_series_value_dont_replot("stop_loss", ts, tpsl.stop_loss_price, true);

@@ -33,9 +33,9 @@
         },
         {
             "name": "risk",
-            "min_value": 0.010,
+            "min_value": 0.001,
             "step": 0.001,
-            "max_value": 0.030
+            "max_value": 0.020
         },
         {
             "name": "risk_reward_ratio",
