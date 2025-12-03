@@ -2,6 +2,7 @@
 
 #include "ConditionalOrders.h"
 #include "Enums.h"
+#include "Logger.h"
 #include "OrdinaryLeastSquares.h"
 #include "ui_chart_window.h"
 
@@ -92,7 +93,24 @@ void ChartWindow::subscribe_to_strategy()
     UNWRAP_RET_VOID(str_instance, m_strategy_instance.lock());
 
     m_sub.subscribe(
-            str_instance.candle_channel(), [this](const auto & vec) {
+            str_instance.market_state_channel(),
+            [this](const auto & vec) {
+                for (const auto & [ts, state] : vec) {
+                    if (!ts_in_range(ts)) {
+                        continue;
+                    }
+
+                    auto & chart = get_or_create_chart(m_price_chart_name);
+                    chart.push_market_state(ts, state);
+                }
+            },
+            [](std::chrono::milliseconds, const auto &) {
+                throw std::runtime_error("not implemented");
+            });
+
+    m_sub.subscribe(
+            str_instance.candle_channel(),
+            [this](const auto & vec) {
                 std::list<Candle> candles;
                 for (const auto & [ts, candle] : vec) {
                     if (!ts_in_range(ts)) {
@@ -101,7 +119,8 @@ void ChartWindow::subscribe_to_strategy()
                     candles.push_back(candle);
                 }
                 auto & plot = get_or_create_chart(m_price_chart_name);
-                plot.push_candle_vector(candles); }, [&](std::chrono::milliseconds ts, const Candle & candle) {
+                plot.push_candle_vector(candles); },
+            [&](std::chrono::milliseconds ts, const Candle & candle) {
                 if (!ts_in_range(ts)) {
                     return;
                 }
@@ -131,7 +150,7 @@ void ChartWindow::subscribe_to_strategy()
                 if (!ts_in_range(ts)) {
                     return;
                 }
-                // TODO impelment
+                throw std::runtime_error("not implemented");
             });
 
     m_sub.subscribe(

@@ -2,6 +2,7 @@
 
 #include "Candle.h"
 #include "ConditionalOrders.h"
+#include "MarketState.h"
 #include "Trade.h"
 #include "qcustomplot.h"
 
@@ -31,17 +32,26 @@ public:
     void push_tpsl(std::chrono::milliseconds ts, TpslPrices tpsl);
     void push_stop_loss(std::chrono::milliseconds ts, double stop_price);
 
+    void push_market_state(std::chrono::milliseconds ts, MarketStateRenderObject state);
+
     void set_title(const std::string & title); // TODO implement
 
     void override_depo_trend(std::pair<std::chrono::milliseconds, double> first, std::pair<std::chrono::milliseconds, double> last);
 
 private:
+    struct ChannelGraphs
+    {
+        QCPGraph * upper;
+        QCPGraph * lower;
+    };
+
     void push_series_value_dont_replot(const std::string & series_name,
                                        std::chrono::milliseconds ts,
                                        double data,
                                        bool is_scatter);
 
     QCPGraph * get_graph_for_series(std::string_view series_name, bool is_scatter);
+    ChannelGraphs get_channel_graphs(MarketState state);
 
 private:
     const std::chrono::milliseconds limit_interval = std::chrono::minutes{1};
@@ -54,4 +64,6 @@ private:
     QCPMarginGroup * m_marginGroup = nullptr;
 
     std::map<std::string, int> m_series_indexes;
+
+    MarketState m_prev_market_state = MarketState::None;
 };

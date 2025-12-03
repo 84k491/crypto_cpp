@@ -50,6 +50,7 @@ StrategyInstance::StrategyInstance(
     , m_symbol(symbol)
     , m_position_manager(symbol)
     , m_historical_md_request(historical_md_request)
+    , m_market_state_std_dev(std::chrono::seconds{600})
     , m_orders(symbol, m_event_loop, tr_gateway)
     , m_sub(m_event_loop)
 {
@@ -82,6 +83,13 @@ StrategyInstance::StrategyInstance(
                 stop_async(do_panic);
             },
             Priority::High);
+
+    m_sub.subscribe(
+            m_strategy->market_state_channel(),
+            [this](MarketState state) {
+                m_current_market_state = state;
+            },
+            Priority::Normal);
 
     m_sub.subscribe(
             m_md_gateway.historical_prices_channel(),
@@ -301,26 +309,22 @@ EventTimeseriesChannel<MarketStateRenderObject> & StrategyInstance::market_state
     return m_market_state_channel;
 }
 
-void StrategyInstance::process_market_state_update(MarketState state)
+void StrategyInstance::maybe_send_market_state_update(const Candle & candle)
 {
-    if (!m_last_candle.has_value()) {
+    const auto std_dev_opt = m_market_state_std_dev.push_value(candle.close_ts(), candle.close());
+    if (!std_dev_opt.has_value()) {
         return;
     }
 
-    if (m_current_market_state == state) {
-        return;
-    }
-    m_current_market_state = state;
+    constexpr double coef = 2.0;
+    const auto mean = m_market_state_std_dev.mean();
 
-    // TODO send every 10th value only
-
-    const auto ts = m_last_candle->close_ts();
     m_market_state_channel.push(
-            ts,
+            candle.ts(),
             MarketStateRenderObject{
-                    m_last_candle->high(),
-                    m_last_candle->low(),
-                    state,
+                    .upper_limit = mean + (*std_dev_opt * coef),
+                    .lower_limit = mean - (*std_dev_opt * coef),
+                    .state = m_current_market_state,
             });
 }
 
@@ -399,7 +403,7 @@ void StrategyInstance::handle_event(const MDPriceEvent & response)
 
     for (const auto & candle : candles) {
         m_candle_channel.push(candle.ts(), candle);
-        m_last_candle = candle;
+        maybe_send_market_state_update(candle);
     }
 }
 

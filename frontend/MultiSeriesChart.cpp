@@ -1,6 +1,9 @@
 #include "MultiSeriesChart.h"
 
 #include "ConditionalOrders.h"
+#include "Logger.h"
+
+#include <cmath>
 
 namespace {
 // colors for series
@@ -19,6 +22,14 @@ std::map<std::string, QColor> line_series_colors = {
         {"upper_band", QColor(232, 141, 56)},
         {"lower_band", QColor(52, 99, 194)},
         {"trend", QColor(140, 50, 80)},
+};
+
+std::map<MarketState, QColor> market_states_colors = {
+        {MarketState::None, QColor(0, 0, 0, 0)},
+        {MarketState::DownTrend, QColor(250, 100, 100)},
+        {MarketState::UpTrend, QColor(100, 250, 100)},
+        {MarketState::NoTrend, QColor(240, 240, 220)},
+        {MarketState::HighVolatility, QColor(240, 220, 240)},
 };
 
 std::map<std::string, std::tuple<QCPScatterStyle::ScatterShape, QColor, QColor, int>>
@@ -191,6 +202,33 @@ void MultiSeriesChart::push_stop_loss(std::chrono::milliseconds ts, double stop_
     replot();
 }
 
+void MultiSeriesChart::push_market_state(std::chrono::milliseconds ts, MarketStateRenderObject state)
+{
+    const auto ts_sec = static_cast<double>(ts.count()) / 1000.;
+
+    if (state.state != m_prev_market_state && m_prev_market_state != MarketState::None) {
+        const auto graphs = get_channel_graphs(m_prev_market_state);
+
+        // fill last value
+        graphs.upper->addData(ts_sec, state.upper_limit);
+        graphs.lower->addData(ts_sec, state.lower_limit);
+
+        // turn it off
+        graphs.upper->addData(ts_sec, std::numeric_limits<double>::quiet_NaN());
+        graphs.lower->addData(ts_sec, std::numeric_limits<double>::quiet_NaN());
+    }
+
+    if (state.state != MarketState::None) {
+        const auto graphs = get_channel_graphs(state.state);
+        graphs.upper->addData(ts_sec, state.upper_limit);
+        graphs.lower->addData(ts_sec, state.lower_limit);
+    }
+
+    m_prev_market_state = state.state;
+
+    replot();
+}
+
 void MultiSeriesChart::set_title(const std::string &)
 {
     // TODO implement
@@ -243,6 +281,36 @@ QCPGraph * MultiSeriesChart::get_graph_for_series(std::string_view series_name, 
         }
     }
     return graph(idx);
+}
+
+MultiSeriesChart::ChannelGraphs MultiSeriesChart::get_channel_graphs(MarketState state)
+{
+    const std::string upper_name = enumToString(state) + "Upper";
+    auto * upper = get_graph_for_series(upper_name, false);
+
+    const std::string lower_name = enumToString(state) + "Lower";
+    auto * lower = get_graph_for_series(lower_name, false);
+
+    if (upper->channelFillGraph() == nullptr) {
+
+        upper->setChannelFillGraph(lower);
+
+        const QColor fill_color = [&]() {
+            const auto it = market_states_colors.find(state);
+
+            if (it == market_states_colors.end()) {
+                return QColor(0, 0, 0, 120);
+            }
+
+            return it->second;
+        }();
+
+        upper->setBrush(QBrush{fill_color});
+        upper->setPen(QPen{QColor(0, 0, 0, 0)});
+        lower->setPen(QPen{QColor(0, 0, 0, 0)});
+    }
+
+    return {.upper = upper, .lower = lower};
 }
 
 void MultiSeriesChart::push_scatter_series_vector(const std::string & series_name,

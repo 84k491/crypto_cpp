@@ -63,7 +63,7 @@ struct MockObject
     {
         m_sub.subscribe(ch, [this](int) {
             if (m_destructed) {
-                FAIL();
+                FAIL(); // TODO this fails
             }
 
             std::this_thread::sleep_for(std::chrono::milliseconds{100});

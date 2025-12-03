@@ -18,4 +18,5 @@ target_link_libraries(optimizer PRIVATE
     strategy
     trading_engine
     network
+    ta # for StandardDev in StrategyInstance
 )

@@ -35,6 +35,7 @@ target_link_libraries(strategy_instance_test
     gateway
     nlohmann_json
     strategy
+    ta
 )
 set(UNIT_TEST strategy_instance_test)
 add_test(NAME ${UNIT_TEST} COMMAND ${UNIT_TEST})

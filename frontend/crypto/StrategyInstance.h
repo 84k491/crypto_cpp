@@ -11,6 +11,7 @@
 #include "MarketState.h"
 #include "OrderManager.h"
 #include "PositionManager.h"
+#include "StandardDeviation.h"
 #include "StrategyChannels.h"
 #include "StrategyInterface.h"
 #include "StrategyResult.h"
@@ -70,7 +71,7 @@ private:
     void handle_event(const StrategyStopRequest & response);
     void after_every_event();
 
-    void process_market_state_update(MarketState state);
+    void maybe_send_market_state_update(const Candle& candle);
 
     void process_position_result(const PositionResult & new_result,
                                  std::chrono::milliseconds ts);
@@ -115,7 +116,6 @@ private:
     bool first_price_received = false;
 
     std::pair<std::chrono::milliseconds, double> m_last_ts_and_price;
-    std::optional<Candle> m_last_candle;
     std::optional<double> m_previous_profit;
 
     EventObjectChannel<WorkStatus> m_status;
@@ -139,6 +139,7 @@ private:
 
     EventTimeseriesChannel<MarketStateRenderObject> m_market_state_channel;
     MarketState m_current_market_state = MarketState::None;
+    StandardDeviation m_market_state_std_dev;
 
     OrderManager m_orders;
 
