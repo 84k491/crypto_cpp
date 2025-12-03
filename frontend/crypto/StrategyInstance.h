@@ -8,6 +8,7 @@
 #include "IMarketDataGateway.h"
 #include "ITradingGateway.h"
 #include "JsonStrategyConfig.h"
+#include "MarketState.h"
 #include "OrderManager.h"
 #include "PositionManager.h"
 #include "StrategyChannels.h"
@@ -46,6 +47,7 @@ public:
     EventObjectChannel<WorkStatus> & status_channel();
     EventTimeseriesChannel<TpslPrices> & tpsl_channel();
     EventTimeseriesChannel<StopLoss> & trailing_stop_channel();
+    EventTimeseriesChannel<MarketStateRenderObject> & market_state_channel();
 
     void run_async();
     void stop_async(bool panic = false);
@@ -67,6 +69,8 @@ private:
     void handle_event(const StrategyStartRequest & ev);
     void handle_event(const StrategyStopRequest & response);
     void after_every_event();
+
+    void process_market_state_update(MarketState state);
 
     void process_position_result(const PositionResult & new_result,
                                  std::chrono::milliseconds ts);
@@ -111,6 +115,7 @@ private:
     bool first_price_received = false;
 
     std::pair<std::chrono::milliseconds, double> m_last_ts_and_price;
+    std::optional<Candle> m_last_candle;
     std::optional<double> m_previous_profit;
 
     EventObjectChannel<WorkStatus> m_status;
@@ -131,6 +136,9 @@ private:
     EventChannel<StrategyStartRequest> m_start_ev_channel;
     EventChannel<StrategyStopRequest> m_stop_ev_channel;
     EventChannel<BarrierEvent> m_barrier_channel;
+
+    EventTimeseriesChannel<MarketStateRenderObject> m_market_state_channel;
+    MarketState m_current_market_state = MarketState::None;
 
     OrderManager m_orders;
 

@@ -18,6 +18,11 @@ public:
         return m_strategy_internal_data_channel;
     }
 
+    EventObjectChannel<MarketState> & market_state_channel() override
+    {
+        return m_market_state_channel;
+    }
+
     EventChannel<std::pair<std::string, bool>> & error_channel() override { return m_error_channel; }
 
 protected:
@@ -27,6 +32,7 @@ protected:
     const double m_pos_currency_amount = 100.;
 
     EventTimeseriesChannel<StrategyInternalData> m_strategy_internal_data_channel;
+    EventObjectChannel<MarketState> m_market_state_channel;
 
     OrderManager & m_order_manager;
     bool m_has_opened_pos = false;

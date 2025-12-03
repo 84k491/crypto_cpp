@@ -149,21 +149,37 @@ void TrendCatcherStrategy::push_candle(const Candle & candle)
     m_strategy_internal_data_channel.push(ts, {.chart_name = "std_dev", .series_name = "slow_std_dev,%", .value = slow_std_dev_p});
     m_strategy_internal_data_channel.push(ts, {.chart_name = "std_dev", .series_name = "fast_std_dev,%", .value = fast_std_dev_p});
 
+    if (slow_std_dev_p > m_config.m_max_std_dev_perc || fast_std_dev_p > m_config.m_max_std_dev_perc) {
+        update_market_state(MarketState::HighVolatility);
+        return;
+    }
+
     if (sign(slow_diff_p) != sign(fast_diff_p)) {
+        update_market_state(MarketState::NoTrend);
         return;
     }
     if ((sign(slow_diff_p) == 0) || (sign(fast_diff_p) == 0)) {
+        update_market_state(MarketState::NoTrend);
         return;
     }
 
     if (std::fabs(slow_diff_p) < m_config.m_min_price_diff_perc || std::fabs(fast_diff_p) < m_config.m_min_price_diff_perc) {
-        return;
-    }
-
-    if (slow_std_dev_p > m_config.m_max_std_dev_perc || fast_std_dev_p > m_config.m_max_std_dev_perc) {
+        update_market_state(MarketState::NoTrend);
         return;
     }
 
     const auto order_side = sign(fast_diff_p) > 0 ? Side::buy() : Side::sell();
     try_send_order(order_side, candle.close(), ts);
+
+    const auto market_state = order_side == Side::buy() ? MarketState::UpTrend : MarketState::DownTrend;
+    update_market_state(market_state);
+}
+
+void TrendCatcherStrategy::update_market_state(MarketState state)
+{
+    const auto current_market_state = m_market_state_channel.get();
+
+    if (current_market_state != state) {
+        m_market_state_channel.push(state);
+    }
 }

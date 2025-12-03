@@ -1,7 +1,9 @@
 #pragma once
 
 #include "EventChannel.h"
+#include "EventObjectChannel.h"
 #include "EventTimeseriesChannel.h"
+#include "MarketState.h"
 
 #include <optional>
 
@@ -18,6 +20,9 @@ public:
     virtual ~IStrategy() = default;
 
     virtual EventTimeseriesChannel<StrategyInternalData> & strategy_internal_data_channel() = 0;
+    virtual EventObjectChannel<MarketState> & market_state_channel() = 0;
+
+    // TODO use custom error object
     virtual EventChannel<std::pair<std::string, bool>> & error_channel() = 0;
 
     virtual bool is_valid() const = 0;

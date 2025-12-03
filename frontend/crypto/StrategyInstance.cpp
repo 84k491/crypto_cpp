@@ -296,6 +296,34 @@ EventTimeseriesChannel<StopLoss> & StrategyInstance::trailing_stop_channel()
     return m_trailing_stop_channel;
 }
 
+EventTimeseriesChannel<MarketStateRenderObject> & StrategyInstance::market_state_channel()
+{
+    return m_market_state_channel;
+}
+
+void StrategyInstance::process_market_state_update(MarketState state)
+{
+    if (!m_last_candle.has_value()) {
+        return;
+    }
+
+    if (m_current_market_state == state) {
+        return;
+    }
+    m_current_market_state = state;
+
+    // TODO send every 10th value only
+
+    const auto ts = m_last_candle->close_ts();
+    m_market_state_channel.push(
+            ts,
+            MarketStateRenderObject{
+                    m_last_candle->high(),
+                    m_last_candle->low(),
+                    state,
+            });
+}
+
 // TODO maybe make it more elegant?
 void StrategyInstance::after_every_event()
 {
@@ -364,9 +392,14 @@ void StrategyInstance::handle_event(const MDPriceEvent & response)
         });
     }
 
-    const auto candles = m_candle_builder.push_trade(public_trade.price(), public_trade.volume(), public_trade.ts());
+    const auto candles = m_candle_builder.push_trade(
+            public_trade.price(),
+            public_trade.volume(),
+            public_trade.ts());
+
     for (const auto & candle : candles) {
         m_candle_channel.push(candle.ts(), candle);
+        m_last_candle = candle;
     }
 }
 

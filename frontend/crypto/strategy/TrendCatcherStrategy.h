@@ -60,6 +60,7 @@ public:
 
 private:
     void push_candle(const Candle &);
+    void update_market_state(MarketState state);
 
 private:
     TrendCatcherStrategyConfig m_config;
