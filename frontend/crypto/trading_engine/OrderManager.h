@@ -84,6 +84,7 @@ private:
     std::map<xg::Guid, std::unique_ptr<EventObjectChannel<std::shared_ptr<StopLossMarketOrder>>>> m_stop_losses;
 
     std::unique_ptr<EventObjectChannel<std::shared_ptr<TpslFullPos>>> m_tpsl;
+    std::optional<xg::Guid> m_last_tpsl_guid; // to avoid unsolicited trade
 
     std::unique_ptr<EventObjectChannel<std::shared_ptr<TrailingStopLoss>>> m_trailing_stop;
 

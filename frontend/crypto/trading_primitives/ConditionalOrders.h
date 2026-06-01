@@ -122,7 +122,7 @@ public:
 
     std::optional<std::string> m_reject_reason;
 
-    bool m_set_up = false;
+    bool m_suspended = false;
     bool m_triggered = false;
     bool m_acked = false;
 

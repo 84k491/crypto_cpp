@@ -26,9 +26,7 @@ class MockEventLoop : public ILambdaAcceptor
 class BybitTradingGatewayLiveTest : public Test
 {
 public:
-    BybitTradingGatewayLiveTest()
-    {
-    }
+    BybitTradingGatewayLiveTest() = default;
 
 protected:
     MockEventLoop el;
@@ -220,7 +218,8 @@ TEST_F(BybitTradingGatewayLiveTest, CloseWithTpsl)
     TpslRequestEvent tpsl_req_ev{
             Symbol{.symbol_name = "BTCUSDT", .lot_size_filter = {}},
             tpsl.take_profit_price,
-            tpsl.stop_loss_price};
+            tpsl.stop_loss_price,
+            xg::newGuid()};
     trgw.push_tpsl_request(tpsl_req_ev);
 
     order_response = {};
@@ -317,7 +316,8 @@ TEST_F(BybitTradingGatewayLiveTest, TpslRejectIfNoPos)
     TpslRequestEvent tpsl_req_ev{
             Symbol{.symbol_name = "BTCUSDT", .lot_size_filter = {}},
             tpsl.take_profit_price,
-            tpsl.stop_loss_price};
+            tpsl.stop_loss_price,
+            xg::newGuid()};
     trgw.push_tpsl_request(tpsl_req_ev);
 
     {

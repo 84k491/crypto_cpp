@@ -142,7 +142,7 @@ TEST_F(BacktestTradingGatewayTest, TpslRejectIfNoPos)
 
     TpslPrices tpsl{.take_profit_price = 130., .stop_loss_price = 10.};
     Symbol test_symbol{.symbol_name = "TSTUSDT", .lot_size_filter = {.min_qty = 0.1, .max_qty = 10., .qty_step = 0.1}};
-    TpslRequestEvent ev{test_symbol, tpsl.take_profit_price, tpsl.stop_loss_price};
+    TpslRequestEvent ev{test_symbol, tpsl.take_profit_price, tpsl.stop_loss_price, xg::newGuid()};
 
     ASSERT_EQ(trgw.pos_volume().value(), 0);
 
@@ -198,7 +198,7 @@ TEST_F(BacktestTradingGatewayTest, TpslTriggerTp)
 
     TpslPrices tpsl{.take_profit_price = tp_price, .stop_loss_price = 50.};
     Symbol test_symbol{.symbol_name = "TSTUSDT", .lot_size_filter = {.min_qty = 0.1, .max_qty = 10., .qty_step = 0.1}};
-    TpslRequestEvent ev{test_symbol, tpsl.take_profit_price, tpsl.stop_loss_price};
+    TpslRequestEvent ev{test_symbol, tpsl.take_profit_price, tpsl.stop_loss_price, xg::newGuid()};
     trgw.push_tpsl_request(ev);
 
     EXPECT_TRUE(tpsl_ack_responded);
@@ -262,7 +262,7 @@ TEST_F(BacktestTradingGatewayTest, TpslTriggerSl)
 
     TpslPrices tpsl{.take_profit_price = 130., .stop_loss_price = sl_price};
     Symbol test_symbol{.symbol_name = "TSTUSDT", .lot_size_filter = {.min_qty = 0.1, .max_qty = 10., .qty_step = 0.1}};
-    TpslRequestEvent ev{test_symbol, tpsl.take_profit_price, tpsl.stop_loss_price};
+    TpslRequestEvent ev{test_symbol, tpsl.take_profit_price, tpsl.stop_loss_price, xg::newGuid()};
     trgw.push_tpsl_request(ev);
 
     EXPECT_TRUE(tpsl_ack_responded);
@@ -313,7 +313,7 @@ TEST_F(BacktestTradingGatewayTest, TpslRemoveOnClosePos)
 
     TpslPrices tpsl{.take_profit_price = 130., .stop_loss_price = sl_price};
     Symbol test_symbol{.symbol_name = "TSTUSDT", .lot_size_filter = {.min_qty = 0.1, .max_qty = 10., .qty_step = 0.1}};
-    TpslRequestEvent ev{test_symbol, tpsl.take_profit_price, tpsl.stop_loss_price};
+    TpslRequestEvent ev{test_symbol, tpsl.take_profit_price, tpsl.stop_loss_price, xg::newGuid()};
     trgw.push_tpsl_request(ev);
 
     ASSERT_TRUE(tpsl_upd_response);

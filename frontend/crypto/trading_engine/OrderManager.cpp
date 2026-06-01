@@ -80,6 +80,7 @@ EventObjectChannel<std::shared_ptr<MarketOrder>> & OrderManager::send_market_ord
     const auto adj_vol_var = adjusted_volume(vol);
     if (std::holds_alternative<std::string>(adj_vol_var)) {
         m_error_channel.push(std::get<std::string>(adj_vol_var));
+        LOG_ERROR("ERROR: {}", std::get<std::string>(adj_vol_var));
         // TODO what to return here?
     }
     const auto adj_vol = std::get<SignedVolume>(adj_vol_var);
@@ -94,7 +95,7 @@ EventObjectChannel<std::shared_ptr<MarketOrder>> & OrderManager::send_market_ord
 
     const auto [it, success] = m_orders.try_emplace(
             order->guid(),
-            MarketOrderChannelWithAckInfo{std::make_unique<EventObjectChannel<std::shared_ptr<MarketOrder>>>()});
+            MarketOrderChannelWithAckInfo{.ch = std::make_unique<EventObjectChannel<std::shared_ptr<MarketOrder>>>()});
 
     assert(success); // TODO handle error. this won't work in release
 
@@ -357,6 +358,10 @@ void OrderManager::on_trade(const TradeEvent & ev)
         return;
     }
 
+    if (m_last_tpsl_guid == ev.trade.order_guid()) {
+        return;
+    }
+
     LOG_WARNING("unsolicited TradeEvent {}", ev.trade.order_guid());
     m_error_channel.push(fmt::format("unsolicited TradeEvent {}", ev.trade.order_guid().str()));
 }
@@ -400,10 +405,13 @@ EventObjectChannel<std::shared_ptr<TpslFullPos>> & OrderManager::send_tpsl(
                 ts);
     });
 
+    auto guid = tpsl_ch.get()->guid();
+
     TpslRequestEvent req(
             m_symbol,
             take_profit_price,
-            stop_loss_price);
+            stop_loss_price,
+            guid);
 
     m_tr_gateway.push_tpsl_request(req);
 
@@ -453,11 +461,12 @@ void OrderManager::on_tpsl_reposnse(const TpslUpdatedEvent & r)
 
         tpsl_ptr->m_reject_reason = r.reject_reason;
 
-        tpsl_ptr->m_set_up = r.set_up;
+        tpsl_ptr->m_suspended = r.set_up;
         tpsl_ptr->m_triggered = r.triggered;
     });
 
     if (!r.set_up && r.triggered) {
+        m_last_tpsl_guid = m_tpsl->get()->guid();
         m_tpsl.reset();
     }
 }

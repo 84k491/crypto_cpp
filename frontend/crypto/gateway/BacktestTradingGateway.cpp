@@ -107,7 +107,7 @@ std::optional<Trade> BacktestTradingGateway::try_trade_tpsl(std::chrono::millise
     Trade trade{
             ts,
             m_symbol,
-            {}, // TODO
+            m_tpsl->guid,
             trade_price.value(),
             pos_volume,
             opposite_side,

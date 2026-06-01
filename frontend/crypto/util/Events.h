@@ -207,11 +207,12 @@ struct TpslRequestEvent : public OneWayEvent
     TpslRequestEvent(
             Symbol symbol,
             double take_profit_price,
-            double stop_loss_price)
+            double stop_loss_price,
+            xg::Guid guid)
         : symbol(std::move(symbol))
         , take_profit_price(take_profit_price)
         , stop_loss_price(stop_loss_price)
-        , guid(xg::newGuid())
+        , guid(guid)
     {
     }
 

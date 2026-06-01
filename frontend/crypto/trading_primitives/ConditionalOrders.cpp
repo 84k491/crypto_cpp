@@ -76,7 +76,7 @@ OrderStatus TpslFullPos::status() const
         return OrderStatus::Filled;
     }
 
-    if (m_set_up) {
+    if (m_suspended) {
         return OrderStatus::Suspended;
     }
     else {
