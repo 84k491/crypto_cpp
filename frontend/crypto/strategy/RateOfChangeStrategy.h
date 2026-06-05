@@ -3,6 +3,7 @@
 #include "Candle.h"
 #include "DynamicTrailingStopLossStrategy.h"
 #include "JsonStrategyConfig.h"
+#include "NormalizedIndicator.h"
 #include "StrategyBase.h"
 #include "StrategyChannels.h"
 
@@ -27,7 +28,7 @@ public:
 
 class RateOfChangeStrategy : public StrategyBase
 {
-    static constexpr size_t s_roc_interval = 1;
+    static constexpr size_t s_roc_interval = 2;
 
 public:
     RateOfChangeStrategy(
@@ -44,6 +45,8 @@ private:
     void push_candle(const Candle &);
 
 private:
+    NormalizedIndicator m_roc_indicator;
+
     RateOfChangeStrategyConfig m_config;
     DynamicTrailingStopLossStrategy m_exit_strategy;
 

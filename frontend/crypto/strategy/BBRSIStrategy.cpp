@@ -69,6 +69,8 @@ BBRSIStrategy::BBRSIStrategy(
                       config.make_exit_strategy_config(),
                       event_loop,
                       channels)
+    , m_bb_indicator{"internal", "bollinger", true}
+    , m_rsi_indicator{"internal", "rsi", true}
     , m_bollinger_bands(config.m_timeframe * config.m_bb_interval, config.m_std_deviation_coefficient)
     , m_rsi_top_threshold(100 - config.m_margin)
     , m_rsi(config.m_rsi_interval)
@@ -95,14 +97,23 @@ void BBRSIStrategy::push_candle(const Candle & candle)
     m_strategy_internal_data_channel.push(ts, {.chart_name = "prices", .series_name = "upper_band", .value = bb_res.m_upper_band});
     m_strategy_internal_data_channel.push(ts, {.chart_name = "prices", .series_name = "trend", .value = bb_res.m_trend});
     m_strategy_internal_data_channel.push(ts, {.chart_name = "prices", .series_name = "lower_band", .value = bb_res.m_lower_band});
+    m_strategy_internal_data_channel.push(
+            ts,
+            m_bb_indicator.push(
+                    bb_res.m_upper_band,
+                    candle.close(),
+                    bb_res.m_lower_band));
 
     if (!rsi.has_value()) {
         return;
     }
 
-    m_strategy_internal_data_channel.push(ts, {.chart_name = "rsi", .series_name = "upper", .value = static_cast<double>(m_rsi_top_threshold)});
-    m_strategy_internal_data_channel.push(ts, {.chart_name = "rsi", .series_name = "rsi", .value = rsi.value()});
-    m_strategy_internal_data_channel.push(ts, {.chart_name = "rsi", .series_name = "lower", .value = static_cast<double>(m_rsi_bot_threshold)});
+    m_strategy_internal_data_channel.push(
+            ts,
+            m_rsi_indicator.push(
+                    m_rsi_top_threshold,
+                    rsi.value(),
+                    m_rsi_bot_threshold));
 
     if (m_last_signal_side) {
         const auto last_signal_side = m_last_signal_side.value();

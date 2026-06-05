@@ -60,6 +60,7 @@ RateOfChangeStrategy::RateOfChangeStrategy(
         StrategyChannelsRefs channels,
         OrderManager & orders)
     : StrategyBase(orders, event_loop, channels)
+    , m_roc_indicator{"rate_of_change", "rate_of_change", false}
     , m_config(config)
     , m_exit_strategy(orders,
                       config.make_exit_strategy_config(),
@@ -102,7 +103,6 @@ void RateOfChangeStrategy::push_candle(const Candle & c)
 {
     const auto close_ts = c.close_ts();
 
-    const double roc = (c.close() - m_prev_closing_prices.back()) / m_prev_closing_prices.back();
     {
         m_prev_closing_prices.push_front(c.close());
         while (m_prev_closing_prices.size() > s_roc_interval) {
@@ -110,21 +110,14 @@ void RateOfChangeStrategy::push_candle(const Candle & c)
         }
     }
 
+    const double roc = (c.close() - m_prev_closing_prices.back()) / m_prev_closing_prices.back();
+
     m_strategy_internal_data_channel.push(
             close_ts,
-            {"rate_of_change",
-             "upper_threshold",
-             m_config.m_signal_threshold});
-    m_strategy_internal_data_channel.push(
-            close_ts,
-            {"rate_of_change",
-             "lower_threshold",
-             -m_config.m_signal_threshold});
-    m_strategy_internal_data_channel.push(
-            close_ts,
-            {"rate_of_change",
-             "rate_of_change",
-             roc});
+            m_roc_indicator.push(
+                    m_config.m_signal_threshold,
+                    roc,
+                    -m_config.m_signal_threshold));
 
     const bool in_trigger_zone = roc >= m_config.m_signal_threshold || roc <= -m_config.m_signal_threshold;
     const bool signs_match = m_trigger_iter == 0 || sign(m_trigger_iter) == c.side().sign();

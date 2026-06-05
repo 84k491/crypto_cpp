@@ -3,6 +3,7 @@
 #include "BollingerBands.h"
 #include "DynamicTrailingStopLossStrategy.h"
 #include "JsonStrategyConfig.h"
+#include "NormalizedIndicator.h"
 #include "RelativeStrengthIndex.h"
 #include "StrategyBase.h"
 #include "StrategyChannels.h"
@@ -48,6 +49,9 @@ private:
 private:
     BBRSIStrategyConfig m_config;
     DynamicTrailingStopLossStrategy m_exit_strategy;
+
+    NormalizedIndicator m_bb_indicator;
+    NormalizedIndicator m_rsi_indicator;
 
     BollingerBands m_bollinger_bands;
     std::optional<Side> m_last_signal_side;
