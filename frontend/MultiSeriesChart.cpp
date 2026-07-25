@@ -156,7 +156,7 @@ void MultiSeriesChart::push_series_vector(
             continue;
         }
         last_point = ts;
-        push_series_value_dont_replot(series_name, ts, value, false);
+        push_series_value_dont_replot(series_name, ts, value, QCPGraph::LineStyle::lsStepLeft);
     }
     replot();
 }
@@ -164,12 +164,12 @@ void MultiSeriesChart::push_series_vector(
 void MultiSeriesChart::push_series_value_dont_replot(const std::string & series_name,
                                                      std::chrono::milliseconds ts,
                                                      double data,
-                                                     bool is_scatter)
+                                                     QCPGraph::LineStyle line_style)
 {
-    auto * graph = get_graph_for_series(series_name, is_scatter);
+    auto * graph = get_graph_for_series(series_name, line_style);
     // casting to seconds
     graph->addData(static_cast<double>(ts.count()) / 1000., data);
-    if (!is_scatter) {
+    if (line_style != QCPGraph::LineStyle::lsNone) {
         graph->rescaleAxes();
     }
 }
@@ -178,27 +178,27 @@ void MultiSeriesChart::push_series_value(const std::string & series_name,
                                          std::chrono::milliseconds ts,
                                          double data)
 {
-    push_series_value_dont_replot(series_name, ts, data, false);
+    push_series_value_dont_replot(series_name, ts, data, QCPGraph::LineStyle::lsLine);
     replot();
 }
 
 void MultiSeriesChart::push_trade(const Trade & trade)
 {
     const std::string & series_name = trade.side() == Side::buy() ? "buy_trade" : "sell_trade";
-    push_series_value_dont_replot(series_name, trade.ts(), trade.price(), true);
+    push_series_value_dont_replot(series_name, trade.ts(), trade.price(), QCPGraph::LineStyle::lsNone);
     replot();
 }
 
 void MultiSeriesChart::push_tpsl(std::chrono::milliseconds ts, TpslPrices tpsl)
 {
-    push_series_value_dont_replot("take_profit", ts, tpsl.take_profit_price, true);
-    push_series_value_dont_replot("stop_loss", ts, tpsl.stop_loss_price, true);
+    push_series_value_dont_replot("take_profit", ts, tpsl.take_profit_price, QCPGraph::LineStyle::lsNone);
+    push_series_value_dont_replot("stop_loss", ts, tpsl.stop_loss_price, QCPGraph::LineStyle::lsNone);
     replot();
 }
 
 void MultiSeriesChart::push_stop_loss(std::chrono::milliseconds ts, double stop_price)
 {
-    push_series_value_dont_replot("trailing_stop_loss", ts, stop_price, true);
+    push_series_value_dont_replot("trailing_stop_loss", ts, stop_price, QCPGraph::LineStyle::lsNone);
     replot();
 }
 
@@ -238,7 +238,7 @@ void MultiSeriesChart::override_depo_trend(
         std::pair<std::chrono::milliseconds, double> first_point,
         std::pair<std::chrono::milliseconds, double> last_point)
 {
-    QCPGraph * graph = get_graph_for_series("depo_trend", false);
+    QCPGraph * graph = get_graph_for_series("depo_trend", QCPGraph::lsLine);
     QSharedPointer<QCPGraphDataContainer> c{new QCPGraphDataContainer};
     QCPGraphData f{double(first_point.first.count()) / 1000., first_point.second};
     QCPGraphData l{double(last_point.first.count()) / 1000., last_point.second};
@@ -248,15 +248,15 @@ void MultiSeriesChart::override_depo_trend(
     replot();
 }
 
-QCPGraph * MultiSeriesChart::get_graph_for_series(std::string_view series_name, bool is_scatter)
+QCPGraph * MultiSeriesChart::get_graph_for_series(std::string_view series_name, QCPGraph::LineStyle line_style)
 {
     const auto & [it, inserted] = m_series_indexes.try_emplace(std::string(series_name), m_series_indexes.size());
     const auto idx = it->second;
     if (inserted) {
         addGraph();
         graph(idx)->setName(std::string{series_name}.c_str());
-        if (is_scatter) {
-            graph(idx)->setLineStyle(QCPGraph::lsNone);
+            graph(idx)->setLineStyle(line_style);
+        if (QCPGraph::LineStyle::lsNone == line_style) {
             const auto display_params_pair_it = scatter_series_display_params.find(std::string(series_name));
             if (display_params_pair_it != scatter_series_display_params.end()) {
                 const auto & [style, border, fill, size] = display_params_pair_it->second;
@@ -280,16 +280,17 @@ QCPGraph * MultiSeriesChart::get_graph_for_series(std::string_view series_name, 
             }
         }
     }
+
     return graph(idx);
 }
 
 MultiSeriesChart::ChannelGraphs MultiSeriesChart::get_channel_graphs(MarketState state)
 {
     const std::string upper_name = enumToString(state) + "Upper";
-    auto * upper = get_graph_for_series(upper_name, false);
+    auto * upper = get_graph_for_series(upper_name, QCPGraph::LineStyle::lsStepLeft);
 
     const std::string lower_name = enumToString(state) + "Lower";
-    auto * lower = get_graph_for_series(lower_name, false);
+    auto * lower = get_graph_for_series(lower_name, QCPGraph::LineStyle::lsStepLeft);
 
     if (upper->channelFillGraph() == nullptr) {
 
@@ -319,7 +320,8 @@ void MultiSeriesChart::push_scatter_series_vector(const std::string & series_nam
                                                           double>> & data)
 {
     for (const auto & [ts, value] : data) {
-        push_series_value_dont_replot(series_name, ts, value, true);
+        push_series_value_dont_replot(series_name, ts, value, QCPGraph::LineStyle::lsNone);
     }
+
     replot();
 }

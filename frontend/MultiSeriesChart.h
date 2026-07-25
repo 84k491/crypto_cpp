@@ -48,9 +48,9 @@ private:
     void push_series_value_dont_replot(const std::string & series_name,
                                        std::chrono::milliseconds ts,
                                        double data,
-                                       bool is_scatter);
+                                       QCPGraph::LineStyle line_style);
 
-    QCPGraph * get_graph_for_series(std::string_view series_name, bool is_scatter);
+    QCPGraph * get_graph_for_series(std::string_view series_name, QCPGraph::LineStyle line_style);
     ChannelGraphs get_channel_graphs(MarketState state);
 
 private:
