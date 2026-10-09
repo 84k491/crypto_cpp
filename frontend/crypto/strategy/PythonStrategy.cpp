@@ -56,6 +56,13 @@ PYBIND11_EMBEDDED_MODULE(crypto, m)
             .def("__eq__", [](const Side & lhs, const Side & rhs) { return lhs == rhs; })
             .def("__str__", &Side::to_string);
 
+    py::enum_<MarketState>(m, "MarketState")
+            .value("NONE", MarketState::None)
+            .value("NO_TREND", MarketState::NoTrend)
+            .value("UP_TREND", MarketState::UpTrend)
+            .value("DOWN_TREND", MarketState::DownTrend)
+            .value("HIGH_VOLATILITY", MarketState::HighVolatility);
+
     py::class_<Candle>(m, "Candle")
             .def_property_readonly("timeframe_ms", [](const Candle & c) { return c.timeframe().count(); })
             .def_property_readonly("ts_ms", [](const Candle & c) { return c.ts().count(); })
@@ -79,6 +86,10 @@ PYBIND11_EMBEDDED_MODULE(crypto, m)
             .def("plot",
                  [](PythonStrategy & s, int64_t ts_ms, const std::string & chart_name, const std::string & series_name, double value) {
                      s.push_internal_data(to_ms(ts_ms), chart_name, series_name, value);
+                 })
+            .def("push_market_state",
+                 [](PythonStrategy & s, int64_t candle_ts_ms, MarketState state) {
+                     s.push_market_state(to_ms(candle_ts_ms), state);
                  });
 }
 
@@ -147,12 +158,14 @@ PythonStrategy::PythonStrategy(
                     call_python_handler("on_price", ts.count(), price);
                 });
     }
+    m_has_on_finish = py::hasattr(m_py_strategy.get(), "on_finish");
     if (py::hasattr(m_py_strategy.get(), "on_candle")) {
         m_sub.subscribe(
                 channels.candle_channel,
                 [](const auto &) {},
                 [this](const auto &, const Candle & candle) {
-                    call_python_handler("on_candle", candle);
+                    // rvalue makes pybind move a copy to python, a reference would dangle if python keeps the candle
+                    call_python_handler("on_candle", Candle{candle});
                 });
     }
 }
@@ -191,4 +204,16 @@ void PythonStrategy::push_internal_data(
         double value)
 {
     m_strategy_internal_data_channel.push(ts, {intern_chart_name(chart_name), series_name, value});
+}
+
+void PythonStrategy::push_market_state(std::chrono::milliseconds candle_ts, MarketState state)
+{
+    m_market_state_channel.push(candle_ts, state);
+}
+
+void PythonStrategy::on_finish()
+{
+    if (m_has_on_finish) {
+        call_python_handler("on_finish");
+    }
 }

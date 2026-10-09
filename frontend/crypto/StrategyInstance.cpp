@@ -86,10 +86,10 @@ StrategyInstance::StrategyInstance(
 
     m_sub.subscribe(
             m_strategy->market_state_channel(),
-            [this](MarketState state) {
-                m_current_market_state = state;
-            },
-            Priority::Normal);
+            [](const auto &) {},
+            [this](std::chrono::milliseconds candle_ts, const MarketState & state) {
+                render_market_state(candle_ts, state);
+            });
 
     m_sub.subscribe(
             m_md_gateway.historical_prices_channel(),
@@ -309,7 +309,7 @@ EventTimeseriesChannel<MarketStateRenderObject> & StrategyInstance::market_state
     return m_market_state_channel;
 }
 
-void StrategyInstance::maybe_send_market_state_update(const Candle & candle)
+void StrategyInstance::enqueue_market_state_band(const Candle & candle)
 {
     const auto std_dev_opt = m_market_state_std_dev.push_value(candle.close_ts(), candle.close());
     if (!std_dev_opt.has_value()) {
@@ -319,13 +319,25 @@ void StrategyInstance::maybe_send_market_state_update(const Candle & candle)
     constexpr double coef = 2.0;
     const auto mean = m_market_state_std_dev.mean();
 
-    m_market_state_channel.push(
+    m_market_state_render_queue.emplace_back(
             candle.ts(),
             MarketStateRenderObject{
                     .upper_limit = mean + (*std_dev_opt * coef),
                     .lower_limit = mean - (*std_dev_opt * coef),
-                    .state = m_current_market_state,
+                    .state = MarketState::None,
             });
+}
+
+void StrategyInstance::render_market_state(std::chrono::milliseconds candle_ts, MarketState state)
+{
+    while (!m_market_state_render_queue.empty() && m_market_state_render_queue.front().first <= candle_ts) {
+        auto & [ts, render_object] = m_market_state_render_queue.front();
+        if (ts == candle_ts) {
+            render_object.state = state;
+        }
+        m_market_state_channel.push(ts, render_object);
+        m_market_state_render_queue.pop_front();
+    }
 }
 
 // TODO maybe make it more elegant?
@@ -403,7 +415,7 @@ void StrategyInstance::handle_event(const MDPriceEvent & response)
 
     for (const auto & candle : candles) {
         m_candle_channel.push(candle.ts(), candle);
-        maybe_send_market_state_update(candle);
+        enqueue_market_state_band(candle);
     }
 }
 
@@ -488,6 +500,9 @@ void StrategyInstance::handle_event(const StrategyStartRequest &)
 void StrategyInstance::handle_event(const StrategyStopRequest &)
 {
     LOG_STATUS("StrategyStopRequest");
+    if (!m_stop_request_handled) {
+        m_strategy->on_finish();
+    }
     close_position(m_last_ts_and_price.second, m_last_ts_and_price.first);
 
     m_live_md_requests.clear();

@@ -20,7 +20,9 @@ public:
     virtual ~IStrategy() = default;
 
     virtual EventTimeseriesChannel<StrategyInternalData> & strategy_internal_data_channel() = 0;
-    virtual EventObjectChannel<MarketState> & market_state_channel() = 0;
+    // Market state of a candle that starts at the timestamp. Pushed in time order, may lag behind candles.
+    // Skipped candles are rendered as MarketState::None
+    virtual EventTimeseriesChannel<MarketState> & market_state_channel() = 0;
 
     // TODO use custom error object
     virtual EventChannel<std::pair<std::string, bool>> & error_channel() = 0;
@@ -28,4 +30,7 @@ public:
     virtual bool is_valid() const = 0;
     virtual std::optional<std::chrono::milliseconds> timeframe() const = 0;
     virtual bool export_price_levels() const { return true; }
+
+    // Called on strategy instance's event loop when it is stopped
+    virtual void on_finish() {}
 };
