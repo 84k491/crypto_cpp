@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Candle.h"
-#include "DynamicTrailingStopLossStrategy.h"
+#include "ExitStrategyInterface.h"
 #include "JsonStrategyConfig.h"
 #include "StrategyBase.h"
 #include "StrategyChannels.h"
@@ -9,6 +9,7 @@
 #include <pybind11/pybind11.h>
 
 #include <chrono>
+#include <memory>
 #include <optional>
 #include <string>
 
@@ -38,7 +39,9 @@ private:
             def on_candle(self, candle: crypto.Candle): ...       # optional
             def on_finish(self): ...                              # optional
 
-    Exit is handled by DynamicTrailingStopLoss, config needs "risk" and "no_loss_coef".
+    Exit strategy is chosen by optional attribute of the python strategy:
+        exit_strategy = "DynamicTrailingStopLoss"  # default, config needs "risk" and "no_loss_coef"
+        exit_strategy = "Tpsl"                     # config needs "risk" and "risk_reward_ratio"
     Candle timeframe is taken from "timeframe_s" config field.
 */
 class PythonStrategy final : public StrategyBase
@@ -66,8 +69,14 @@ public:
     void push_market_state(std::chrono::milliseconds candle_ts, MarketState state);
 
 private:
-    static JsonStrategyConfig make_exit_strategy_config(const JsonStrategyConfig & config);
+    static JsonStrategyConfig make_dynamic_trailing_stop_loss_config(const JsonStrategyConfig & config);
     bool create_python_strategy(const std::string & module_name, const JsonStrategyConfig & config);
+    bool create_exit_strategy(
+            const std::string & exit_strategy_name,
+            const JsonStrategyConfig & config,
+            EventLoop & event_loop,
+            StrategyChannelsRefs channels,
+            OrderManager & orders);
 
     template <class... Args>
     void call_python_handler(const char * handler_name, Args &&... args);
@@ -77,7 +86,7 @@ private:
     std::optional<std::chrono::milliseconds> m_timeframe;
     bool m_has_on_finish = false;
 
-    DynamicTrailingStopLossStrategy m_exit_strategy;
+    std::unique_ptr<IExitStrategy> m_exit_strategy;
 
     GilSafePyObject m_py_strategy;
 
