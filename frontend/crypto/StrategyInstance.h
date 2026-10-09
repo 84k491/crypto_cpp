@@ -19,6 +19,7 @@
 
 #include <chrono>
 #include <future>
+#include <list>
 #include <memory>
 #include <optional>
 #include <set>
@@ -71,7 +72,8 @@ private:
     void handle_event(const StrategyStopRequest & response);
     void after_every_event();
 
-    void maybe_send_market_state_update(const Candle& candle);
+    void enqueue_market_state_band(const Candle & candle);
+    void render_market_state(std::chrono::milliseconds candle_ts, MarketState state);
 
     void process_position_result(const PositionResult & new_result,
                                  std::chrono::milliseconds ts);
@@ -138,7 +140,9 @@ private:
     EventChannel<BarrierEvent> m_barrier_channel;
 
     EventTimeseriesChannel<MarketStateRenderObject> m_market_state_channel;
-    MarketState m_current_market_state = MarketState::None;
+    // TODO calculating market states doesn't belong here in generic code, move it away
+    // Candles bands waiting for their market state from the strategy
+    std::list<std::pair<std::chrono::milliseconds, MarketStateRenderObject>> m_market_state_render_queue;
     StandardDeviation m_market_state_std_dev;
 
     OrderManager m_orders;

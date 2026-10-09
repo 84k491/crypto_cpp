@@ -36,6 +36,7 @@ private:
             def is_valid(self) -> bool: ...                       # optional
             def on_price(self, ts_ms: int, price: float): ...     # optional
             def on_candle(self, candle: crypto.Candle): ...       # optional
+            def on_finish(self): ...                              # optional
 
     Exit is handled by DynamicTrailingStopLoss, config needs "risk" and "no_loss_coef".
     Candle timeframe is taken from "timeframe_s" config field.
@@ -54,6 +55,7 @@ public:
 
     bool is_valid() const override { return m_is_valid; }
     std::optional<std::chrono::milliseconds> timeframe() const override { return m_timeframe; }
+    void on_finish() override;
 
     using StrategyBase::try_send_order;
     void push_internal_data(
@@ -61,6 +63,7 @@ public:
             const std::string & chart_name,
             const std::string & series_name,
             double value);
+    void push_market_state(std::chrono::milliseconds candle_ts, MarketState state);
 
 private:
     static JsonStrategyConfig make_exit_strategy_config(const JsonStrategyConfig & config);
@@ -72,6 +75,7 @@ private:
 private:
     bool m_is_valid = false;
     std::optional<std::chrono::milliseconds> m_timeframe;
+    bool m_has_on_finish = false;
 
     DynamicTrailingStopLossStrategy m_exit_strategy;
 
