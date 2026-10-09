@@ -29,6 +29,8 @@ UP_TREND = "UP_TREND"
 DOWN_TREND = "DOWN_TREND"
 NO_TREND = "NO_TREND"
 
+LABELS = (NO_TREND, UP_TREND, DOWN_TREND, HIGH_VOLATILITY)
+
 
 @dataclass
 class LabelingParams:
@@ -37,13 +39,30 @@ class LabelingParams:
     baseline: int
     vol_coef: float
 
+    @staticmethod
+    def from_strategy_config(config):
+        return LabelingParams(
+            reversal=config["reversal_perc"] / 100.0,
+            trend_coef=config["trend_coef"],
+            baseline=int(config["baseline"]),
+            vol_coef=config["vol_coef"],
+        )
+
+    def is_valid(self):
+        return self.reversal > 0 and self.trend_coef > 0 and self.baseline > 1
+
 
 @dataclass
 class SwingStats:
+    begin: int
+    end: int
     sigma_base: float
     sigma_swing: float
     swing_return: float
-    length: int
+
+    @property
+    def length(self):
+        return self.end - self.begin
 
     def volatility_ratio(self):
         return self.sigma_swing / self.sigma_base if self.sigma_base > 0 else 0.0
@@ -88,10 +107,11 @@ def find_swing_pivots(closes, reversal):
 
 def swing_stats(returns, closes, begin, end, baseline):
     return SwingStats(
+        begin=begin,
+        end=end,
         sigma_base=returns.std(begin - baseline + 1, begin + 1),
         sigma_swing=returns.std(begin + 1, end + 1),
         swing_return=math.log(closes[end] / closes[begin]),
-        length=end - begin,
     )
 
 

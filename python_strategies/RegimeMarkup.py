@@ -8,34 +8,21 @@ Doesn't trade. Collects candles, and when the run finishes:
 import csv
 import os
 
-import crypto
-
 from regime import features
 from regime.labeling import LabelingParams, markup
+from regime.market_states import TO_MARKET_STATE
 
 MARKUP_DIR = "markup"
-
-TO_MARKET_STATE = {
-    "HIGH_VOLATILITY": crypto.MarketState.HIGH_VOLATILITY,
-    "UP_TREND": crypto.MarketState.UP_TREND,
-    "DOWN_TREND": crypto.MarketState.DOWN_TREND,
-    "NO_TREND": crypto.MarketState.NO_TREND,
-}
 
 
 class Strategy:
     def __init__(self, ctx, config):
         self.ctx = ctx
-        self.params = LabelingParams(
-            reversal=config["reversal_perc"] / 100.0,
-            trend_coef=config["trend_coef"],
-            baseline=int(config["baseline"]),
-            vol_coef=config["vol_coef"],
-        )
+        self.params = LabelingParams.from_strategy_config(config)
         self.candles = []
 
     def is_valid(self):
-        return self.params.reversal > 0 and self.params.trend_coef > 0 and self.params.baseline >= features.max_window
+        return self.params.is_valid() and self.params.baseline >= features.max_window
 
     def on_candle(self, candle):
         self.candles.append(candle)
