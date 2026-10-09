@@ -10,6 +10,7 @@
 #include "DynamicGridStrategy.h"
 #include "Logger.h"
 #include "MockStrategy.h"
+#include "PythonStrategy.h"
 #include "RatchetStrategy.h"
 #include "RateOfChangeStrategy.h"
 #include "RelativeStrengthIndexStrategy.h"
@@ -18,6 +19,7 @@
 #include "TrendCatcherStrategy.h"
 #include "VolumeImbalanceTrendStrategy.h"
 
+#include <filesystem>
 #include <fstream>
 #include <optional>
 
@@ -47,6 +49,30 @@ StrategyFactory::StrategyFactory()
             BUILDER(VolumeImbalanceTrend),
             BUILDER(TrendCatcher),
     };
+    register_python_strategies();
+}
+
+void StrategyFactory::register_python_strategies()
+{
+    const std::filesystem::path dir{PythonStrategy::python_strategies_dir};
+    if (!std::filesystem::is_directory(dir)) {
+        return;
+    }
+
+    for (const auto & entry : std::filesystem::directory_iterator(dir)) {
+        if (entry.path().extension() != ".py") {
+            continue;
+        }
+        const std::string module_name = entry.path().stem().string();
+        m_builders.emplace(
+                module_name,
+                [module_name](const JsonStrategyConfig & c,
+                              EventLoop & el,
+                              StrategyChannelsRefs ch,
+                              OrderManager & om) {
+                    return std::make_shared<PythonStrategy>(module_name, c, el, ch, om);
+                });
+    }
 }
 
 StrategyFactory & StrategyFactory::i()

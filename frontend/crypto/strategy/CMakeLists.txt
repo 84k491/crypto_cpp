@@ -4,6 +4,8 @@ file(GLOB PROJECT_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
 )
 
+find_package(pybind11 REQUIRED)
+
 add_library(strategy STATIC ${PROJECT_SOURCES})
 
 target_include_directories(strategy
@@ -18,6 +20,7 @@ target_link_libraries(strategy PRIVATE
     util
     gateway # needed for exit strat. TODO remove
     ta
+    pybind11::embed
 )
 
 add_subdirectory(tests)

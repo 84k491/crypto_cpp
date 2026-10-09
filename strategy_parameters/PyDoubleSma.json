@@ -1,0 +1,35 @@
+{
+    "strategy_name": "PyDoubleSma",
+    "parameters": [
+        {
+            "name": "timeframe_s",
+            "min_value": 60,
+            "step": 60,
+            "max_value": 600
+        },
+        {
+            "name": "fast_interval",
+            "min_value": 5,
+            "step": 1,
+            "max_value": 100
+        },
+        {
+            "name": "slow_interval",
+            "min_value": 15,
+            "step": 1,
+            "max_value": 100
+        },
+        {
+            "name": "no_loss_coef",
+            "min_value": 0.1,
+            "step": 0.1,
+            "max_value": 0.9
+        },
+        {
+            "name": "risk",
+            "min_value": 0.01,
+            "step": 0.001,
+            "max_value": 0.030
+        }
+    ]
+}
