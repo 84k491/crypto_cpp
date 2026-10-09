@@ -1,6 +1,8 @@
 #include "PythonStrategy.h"
 
+#include "DynamicTrailingStopLossStrategy.h"
 #include "Logger.h"
+#include "TpslExitStrategy.h"
 
 #include <pybind11/embed.h>
 
@@ -133,10 +135,6 @@ PythonStrategy::PythonStrategy(
         StrategyChannelsRefs channels,
         OrderManager & orders)
     : StrategyBase(orders, event_loop, channels)
-    , m_exit_strategy(orders,
-                      make_exit_strategy_config(config),
-                      event_loop,
-                      channels)
     , m_sub{event_loop}
 {
     if (config.get().contains("timeframe_s")) {
@@ -147,6 +145,12 @@ PythonStrategy::PythonStrategy(
     py::gil_scoped_acquire gil;
 
     if (!create_python_strategy(module_name, config)) {
+        return;
+    }
+
+    const auto exit_strategy_name = py::getattr(m_py_strategy.get(), "exit_strategy", py::str("DynamicTrailingStopLoss")).cast<std::string>();
+    if (!create_exit_strategy(exit_strategy_name, config, event_loop, channels, orders)) {
+        m_is_valid = false;
         return;
     }
 
@@ -189,7 +193,36 @@ bool PythonStrategy::create_python_strategy(const std::string & module_name, con
     return m_is_valid;
 }
 
-JsonStrategyConfig PythonStrategy::make_exit_strategy_config(const JsonStrategyConfig & config)
+bool PythonStrategy::create_exit_strategy(
+        const std::string & exit_strategy_name,
+        const JsonStrategyConfig & config,
+        EventLoop & event_loop,
+        StrategyChannelsRefs channels,
+        OrderManager & orders)
+{
+    if (exit_strategy_name == "DynamicTrailingStopLoss") {
+        m_exit_strategy = std::make_unique<DynamicTrailingStopLossStrategy>(
+                orders,
+                make_dynamic_trailing_stop_loss_config(config),
+                event_loop,
+                channels);
+        return true;
+    }
+
+    if (exit_strategy_name == "Tpsl") {
+        if (!TpslExitStrategyConfig{config}.is_valid()) {
+            LOG_ERROR("Invalid Tpsl exit strategy config: {}", config.get().dump());
+            return false;
+        }
+        m_exit_strategy = std::make_unique<TpslExitStrategy>(orders, config, event_loop, channels);
+        return true;
+    }
+
+    LOG_ERROR("Unknown exit strategy: {}", exit_strategy_name);
+    return false;
+}
+
+JsonStrategyConfig PythonStrategy::make_dynamic_trailing_stop_loss_config(const JsonStrategyConfig & config)
 {
     nlohmann::json json;
     json["risk"] = config.get().value("risk", 0.);

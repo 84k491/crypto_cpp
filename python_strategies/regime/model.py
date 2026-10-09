@@ -3,6 +3,9 @@ LightGBM regime classifier and its walk-forward validation.
 Doesn't depend on the app, can be used from a notebook.
 """
 
+import glob
+import json
+import os
 from dataclasses import dataclass
 
 import lightgbm
@@ -112,3 +115,22 @@ def walk_forward(dataset, params):
         reports.append(evaluate(dataset.y[test_begin:test_end], fold_probabilities.argmax(axis=1), len(train_rows)))
 
     return probabilities, reports
+
+
+def latest_model_path(models_dir):
+    """The most recently saved model, without extension. None if there are no models."""
+    paths = glob.glob(os.path.join(models_dir, "RegimeModel_*.txt"))
+    if not paths:
+        return None
+    return os.path.splitext(max(paths, key=os.path.getmtime))[0]
+
+
+def load_model(path):
+    """Loads <path>.txt, checks that <path>.json matches current labels and features."""
+    with open(path + ".json") as f:
+        meta = json.load(f)
+    if tuple(meta["labels"]) != labeling.LABELS:
+        raise ValueError(f"{path}: labels {meta['labels']} differ from {labeling.LABELS}, retrain the model")
+    if meta["features"] != features.feature_names():
+        raise ValueError(f"{path}: features differ from regime/features.py, retrain the model")
+    return lightgbm.Booster(model_file=path + ".txt")
