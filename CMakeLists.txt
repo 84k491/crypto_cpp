@@ -47,6 +47,11 @@ endif()
 add_subdirectory(thirdparty/fmt)
 add_subdirectory(thirdparty/json)
 add_subdirectory(thirdparty/crossguid)
+
+# QCustomPlot looks for "Qt6 Qt5" and may pick Qt5, while the frontend uses Qt6.
+# Two Qt versions in one process break QWidget creation. Pin QT_DIR to Qt6.
+find_package(QT NAMES Qt6 REQUIRED COMPONENTS Core)
+
 add_subdirectory(thirdparty/QCustomPlot-library)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} \
