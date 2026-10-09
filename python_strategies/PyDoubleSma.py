@@ -18,8 +18,8 @@ class CandleAverage:
 class Strategy:
     def __init__(self, ctx, config):
         self.ctx = ctx
-        self.slow = CandleAverage(config["slow_interval"])
-        self.fast = CandleAverage(config["fast_interval"])
+        self.slow = CandleAverage(int(config["slow_interval"]))
+        self.fast = CandleAverage(int(config["fast_interval"]))
         self.prev_slow_above_fast = None
 
     def is_valid(self):

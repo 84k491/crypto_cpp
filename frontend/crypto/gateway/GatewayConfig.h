@@ -31,8 +31,8 @@ struct GatewayConfig
 
 class GatewayConfigLoader
 {
+public:
     static constexpr std::string_view s_config_env_var = "GATEWAY_CONFIG_DIR";
 
-public:
     static std::optional<GatewayConfig> load();
 };

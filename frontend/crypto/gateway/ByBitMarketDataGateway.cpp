@@ -11,6 +11,7 @@
 #include <crossguid/guid.hpp>
 #include <future>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -20,8 +21,9 @@ ByBitMarketDataGateway::ByBitMarketDataGateway(bool start)
 {
     const auto config_opt = GatewayConfigLoader::load();
     if (!config_opt) {
-        LOG_ERROR("Failed to load bybit trading gateway config");
-        return;
+        throw std::runtime_error{fmt::format(
+                "Failed to load bybit market data gateway config. Set {} to a dir with a config json file",
+                GatewayConfigLoader::s_config_env_var)};
     }
     m_config = config_opt.value().market_data;
 
