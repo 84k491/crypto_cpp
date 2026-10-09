@@ -26,6 +26,8 @@ public:
             OrderManager & orders) const;
 
 private:
+    void register_python_strategies();
+
     using BuilderFunction = std::function<
             std::optional<std::shared_ptr<IStrategy>>(
                     const JsonStrategyConfig &,
