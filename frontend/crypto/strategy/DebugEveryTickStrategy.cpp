@@ -49,7 +49,7 @@ DebugEveryTickStrategy::DebugEveryTickStrategy(
 {
     m_sub.subscribe(
             channels.price_channel,
-            [](const auto &) {},
+            {},
             [this](const auto & ts, const double & price) {
                 push_price({ts, price});
             });

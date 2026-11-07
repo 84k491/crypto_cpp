@@ -45,7 +45,7 @@ DynamicTrailingStopLossStrategy::DynamicTrailingStopLossStrategy(
 {
     m_sub.subscribe(
             channels.price_levels_channel,
-            [](const auto &) {},
+            {},
             [this](const auto &, const auto & price_levels) {
                 m_last_pos_price_levels = price_levels;
             });

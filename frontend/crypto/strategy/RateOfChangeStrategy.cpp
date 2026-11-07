@@ -70,7 +70,7 @@ RateOfChangeStrategy::RateOfChangeStrategy(
 {
     m_sub.subscribe(
             channels.candle_channel,
-            [](const auto &) {},
+            {},
             [this](const auto &, const Candle & candle) {
                 push_candle(candle);
             });

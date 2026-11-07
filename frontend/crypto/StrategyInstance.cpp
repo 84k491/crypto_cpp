@@ -86,7 +86,7 @@ StrategyInstance::StrategyInstance(
 
     m_sub.subscribe(
             m_strategy->market_state_channel(),
-            [](const auto &) {},
+            {},
             [this](std::chrono::milliseconds candle_ts, const MarketState & state) {
                 render_market_state(candle_ts, state);
             });

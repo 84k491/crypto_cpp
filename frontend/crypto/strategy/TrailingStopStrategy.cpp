@@ -31,7 +31,7 @@ TrailigStopLossStrategy::TrailigStopLossStrategy(
 {
     m_main_sub.subscribe(
             channels.price_channel,
-            [](const auto &) {},
+            {},
             [this](const auto & ts, const double & price) {
                 on_price_changed({ts, price});
             });
@@ -43,7 +43,7 @@ TrailigStopLossStrategy::TrailigStopLossStrategy(
 
     m_main_sub.subscribe(
             channels.trades_channel,
-            [](const auto &) {},
+            {},
             [this](const auto &, const auto & trade) {
                 on_trade(trade);
             });

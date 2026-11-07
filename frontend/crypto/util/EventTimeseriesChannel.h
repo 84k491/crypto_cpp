@@ -59,6 +59,7 @@ class EventTimeseriesChannel
 {
 public:
     using TimeT = std::chrono::milliseconds;
+    using SnapshotCallbackT = std::function<void(const std::deque<std::pair<TimeT, ObjectT>> &)>;
 
     EventTimeseriesChannel() = default;
     EventTimeseriesChannel(EventTimeseriesChannel &) = delete;
@@ -69,7 +70,7 @@ public:
     [[nodiscard]] std::shared_ptr<EventTimeseriesSubsription<ObjectT>> subscribe(
             ILambdaAcceptor & consumer,
             xg::Guid subcriber_guid,
-            std::function<void(const std::deque<std::pair<TimeT, ObjectT>> &)> && snapshot_callback,
+            SnapshotCallbackT && snapshot_callback,
             std::function<void(TimeT, const ObjectT &)> && increment_callback);
 
     // thread unsafe
@@ -124,7 +125,7 @@ template <typename ObjectT>
 std::shared_ptr<EventTimeseriesSubsription<ObjectT>> EventTimeseriesChannel<ObjectT>::subscribe(
         ILambdaAcceptor & consumer,
         xg::Guid subcriber_guid,
-        std::function<void(const std::deque<std::pair<TimeT, ObjectT>> &)> && snapshot_callback,
+        SnapshotCallbackT && snapshot_callback,
         std::function<void(TimeT, const ObjectT &)> && increment_callback)
 {
     const auto guid = xg::newGuid();

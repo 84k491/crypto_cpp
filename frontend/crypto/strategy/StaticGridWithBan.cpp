@@ -51,7 +51,7 @@ StaticGridWithBan::StaticGridWithBan(
 {
     m_sub.subscribe(
             channels.candle_channel,
-            [](const auto &) {},
+            {},
             [this](const auto & ts, const Candle & candle) {
                 push_candle(ts, candle);
             });

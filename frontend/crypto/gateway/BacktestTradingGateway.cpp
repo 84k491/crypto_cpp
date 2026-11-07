@@ -16,7 +16,7 @@ void BacktestTradingGateway::set_price_source(EventTimeseriesChannel<double> & c
 {
     m_sub.subscribe(
             channel,
-            [](auto &) {},
+            {},
             [this](std::chrono::milliseconds ts, const double & price) {
                 on_new_price(ts, price);
             });

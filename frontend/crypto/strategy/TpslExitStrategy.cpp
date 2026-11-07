@@ -53,7 +53,7 @@ TpslExitStrategy::TpslExitStrategy(
 {
     m_main_sub.subscribe(
             channels.price_channel,
-            [](const auto &) {},
+            {},
             [this](const auto & ts, const double & price) {
                 m_last_ts_and_price = {ts, price};
             });
@@ -66,7 +66,7 @@ TpslExitStrategy::TpslExitStrategy(
 
     m_main_sub.subscribe(
             channels.trades_channel,
-            [](const auto &) {},
+            {},
             [this](const auto &, const auto & trade) {
                 on_trade(trade);
             });

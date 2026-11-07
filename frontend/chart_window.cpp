@@ -411,7 +411,7 @@ void ChartWindow::subscribe_to_strategy()
 
     m_sub.subscribe(
             str_instance.market_state_channel(),
-            nullptr,
+            {},
             [this](std::chrono::milliseconds ts, const MarketStateRenderObject & state) {
                 handle_new_point(m_price_chart_name, ts, [&](MultiSeriesChart & plot) {
                     plot.push_market_state(ts, state);
@@ -420,7 +420,7 @@ void ChartWindow::subscribe_to_strategy()
 
     m_sub.subscribe(
             str_instance.candle_channel(),
-            nullptr,
+            {},
             [this](std::chrono::milliseconds ts, const Candle & candle) {
                 handle_new_point(m_price_chart_name, ts, [&](MultiSeriesChart & plot) {
                     plot.push_candle(candle);
@@ -429,7 +429,7 @@ void ChartWindow::subscribe_to_strategy()
 
     m_sub.subscribe(
             str_instance.price_levels_channel(),
-            nullptr,
+            {},
             [this](std::chrono::milliseconds ts, const ProfitPriceLevels & levels) {
                 handle_new_point(m_price_chart_name, ts, [&](MultiSeriesChart & plot) {
                     plot.push_marker_point("fee_profit_price", ts, levels.fee_profit_price);
@@ -439,7 +439,7 @@ void ChartWindow::subscribe_to_strategy()
 
     m_sub.subscribe(
             str_instance.tpsl_channel(),
-            nullptr,
+            {},
             [this](std::chrono::milliseconds ts, const TpslPrices & tpsl) {
                 handle_new_point(m_price_chart_name, ts, [&](MultiSeriesChart & plot) {
                     plot.push_tpsl(ts, tpsl);
@@ -448,7 +448,7 @@ void ChartWindow::subscribe_to_strategy()
 
     m_sub.subscribe(
             str_instance.trailing_stop_channel(),
-            nullptr,
+            {},
             [this](std::chrono::milliseconds ts, const StopLoss & stop_loss) {
                 handle_new_point(m_price_chart_name, ts, [&](MultiSeriesChart & plot) {
                     plot.push_stop_loss(ts, stop_loss.stop_price());
@@ -457,7 +457,7 @@ void ChartWindow::subscribe_to_strategy()
 
     m_sub.subscribe(
             str_instance.strategy_internal_data_channel(),
-            nullptr,
+            {},
             [this](std::chrono::milliseconds ts, const StrategyInternalData & data) {
                 const auto & [chart_name, series_name, value] = data;
                 handle_new_point(std::string{chart_name}, ts, [&](MultiSeriesChart & plot) {
@@ -467,7 +467,7 @@ void ChartWindow::subscribe_to_strategy()
 
     m_sub.subscribe(
             str_instance.trade_channel(),
-            nullptr,
+            {},
             [this](std::chrono::milliseconds ts, const Trade & trade) {
                 handle_new_point(m_price_chart_name, ts, [&](MultiSeriesChart & plot) {
                     plot.push_trade(trade);
@@ -480,7 +480,7 @@ void ChartWindow::subscribe_to_strategy()
 
     m_sub.subscribe(
             str_instance.depo_channel(),
-            nullptr,
+            {},
             [this](std::chrono::milliseconds ts, const double & depo) {
                 handle_new_point(m_depo_chart_name, ts, [&](MultiSeriesChart & plot) {
                     plot.push_line_point("depo", ts, depo);

@@ -157,7 +157,7 @@ PythonStrategy::PythonStrategy(
     if (py::hasattr(m_py_strategy.get(), "on_price")) {
         m_sub.subscribe(
                 channels.price_channel,
-                [](const auto &) {},
+                {},
                 [this](const auto & ts, const double & price) {
                     call_python_handler("on_price", ts.count(), price);
                 });
@@ -166,7 +166,7 @@ PythonStrategy::PythonStrategy(
     if (py::hasattr(m_py_strategy.get(), "on_candle")) {
         m_sub.subscribe(
                 channels.candle_channel,
-                [](const auto &) {},
+                {},
                 [this](const auto &, const Candle & candle) {
                     // rvalue makes pybind move a copy to python, a reference would dangle if python keeps the candle
                     call_python_handler("on_candle", Candle{candle});

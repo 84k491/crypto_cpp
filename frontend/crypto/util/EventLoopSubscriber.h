@@ -50,16 +50,16 @@ public:
         m_subscriptions.push_back(sub);
     }
 
-    template <class EventTimeseriesChannelT, class SnapshotCallbackT, class UpdateCallbackT>
+    template <class EventTimeseriesChannelT, class UpdateCallbackT>
     void subscribe(
             EventTimeseriesChannelT & channel,
-            SnapshotCallbackT && snapshot_callback,
+            typename EventTimeseriesChannelT::SnapshotCallbackT snapshot_callback,
             UpdateCallbackT && update_callback)
     {
         const auto sub = channel.subscribe(
                 m_event_loop,
                 m_guid,
-                std::forward<SnapshotCallbackT>(snapshot_callback),
+                std::move(snapshot_callback),
                 std::forward<UpdateCallbackT>(update_callback));
         m_subscriptions.push_back(sub);
     }
