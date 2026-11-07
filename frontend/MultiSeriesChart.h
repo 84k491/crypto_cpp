@@ -12,27 +12,21 @@ public:
     MultiSeriesChart(QWidget * parent = nullptr);
     ~MultiSeriesChart() override = default;
 
+    // none of the push methods replots or rescales
     void push_candle(const Candle & c);
-    void push_candle_vector(const std::list<Candle> & data);
-
-    void push_series_vector(
-            const std::string & series_name,
-            const std::list<std::pair<
-                    std::chrono::milliseconds,
-                    double>> & data);
-    void push_series_value(const std::string & series_name,
-                           std::chrono::milliseconds ts,
-                           double data);
-
-    void push_scatter_series_vector(const std::string & series_name,
-                                    const std::vector<std::pair<
-                                            std::chrono::milliseconds,
-                                            double>> & data);
+    void push_line_point(const std::string & series_name, std::chrono::milliseconds ts, double value);
+    void push_marker_point(const std::string & series_name, std::chrono::milliseconds ts, double value);
     void push_trade(const Trade & trade);
     void push_tpsl(std::chrono::milliseconds ts, TpslPrices tpsl);
     void push_stop_loss(std::chrono::milliseconds ts, double stop_price);
-
     void push_market_state(std::chrono::milliseconds ts, MarketStateRenderObject state);
+
+    void clear_all_points();
+    void drop_points_outside(std::chrono::milliseconds start, std::chrono::milliseconds end);
+    void extend_step_lines_to(std::chrono::milliseconds ts);
+
+    void set_time_range(std::chrono::milliseconds start, std::chrono::milliseconds end);
+    void rescale_value_axes();
 
     void set_title(const std::string & title); // TODO implement
 
@@ -45,15 +39,12 @@ private:
         QCPGraph * lower;
     };
 
-    void push_series_value_dont_replot(const std::string & series_name,
-                                       std::chrono::milliseconds ts,
-                                       double data,
-                                       QCPGraph::LineStyle line_style);
-
+    void create_candle_graphs(std::chrono::milliseconds timeframe);
     QCPGraph * get_graph_for_series(std::string_view series_name, QCPGraph::LineStyle line_style);
     ChannelGraphs get_channel_graphs(MarketState state);
 
 private:
+    static constexpr double value_margin_factor = 0.05;
     const std::chrono::milliseconds limit_interval = std::chrono::minutes{1};
     std::unordered_map<std::string, std::chrono::milliseconds> m_last_points; // to limit the rate
 
@@ -62,8 +53,10 @@ private:
     QCPBars * m_volume_long_bars = nullptr;
     QCPBars * m_volume_short_bars = nullptr;
     QCPMarginGroup * m_marginGroup = nullptr;
+    QCPGraph * m_depo_trend_graph = nullptr;
 
-    std::map<std::string, int> m_series_indexes;
+    std::map<std::string, QCPGraph *> m_series_graphs;
+    std::map<QCPGraph *, double> m_step_line_extension_keys;
 
     MarketState m_prev_market_state = MarketState::None;
 };

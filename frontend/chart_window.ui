@@ -15,6 +15,74 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_controls">
+     <item>
+      <widget class="QLabel" name="lb_window_size">
+       <property name="text">
+        <string>Window size</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="le_window_size">
+       <property name="maximumSize">
+        <size>
+         <width>120</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="toolTip">
+        <string>e.g. '1d 4h': h - hours, d - days, w - weeks</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="lb_right_border">
+       <property name="text">
+        <string>Right border</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QDateTimeEdit" name="dt_right_border">
+       <property name="displayFormat">
+        <string>yyyy/M/d h:mm</string>
+       </property>
+       <property name="timeSpec">
+        <enum>Qt::TimeSpec::LocalTime</enum>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QCheckBox" name="cb_live">
+       <property name="text">
+        <string>Live</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="horizontalSpacer_controls">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QScrollBar" name="sb_time">
+     <property name="orientation">
+      <enum>Qt::Orientation::Horizontal</enum>
+     </property>
+    </widget>
+   </item>
+   <item>
     <layout class="QVBoxLayout" name="verticalLayout_graph">
      <item>
       <widget class="QScrollArea" name="scrollArea">
@@ -27,7 +95,7 @@
           <x>0</x>
           <y>0</y>
           <width>987</width>
-          <height>709</height>
+          <height>650</height>
          </rect>
         </property>
        </widget>

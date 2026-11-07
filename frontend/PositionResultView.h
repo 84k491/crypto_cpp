@@ -26,11 +26,9 @@ private slots:
     void on_pb_chart_clicked();
 
 private:
-    static constexpr double width_factor = 0.5;
-
     Ui::PositionResultView * ui;
     PositionResult m_position_result;
-    ChartWindow* m_chart_window = nullptr;
+    ChartWindow * m_chart_window = nullptr;
 
     std::weak_ptr<StrategyInstance> m_strategy_instance;
 };

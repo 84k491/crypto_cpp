@@ -3,7 +3,9 @@
 #include "ConditionalOrders.h"
 #include "Logger.h"
 
+#include <algorithm>
 #include <cmath>
+#include <optional>
 
 namespace {
 // colors for series
@@ -16,6 +18,7 @@ std::vector<QColor> colors = {
 
 const auto long_bar_color = QColor(9, 121, 105);
 const auto short_bar_color = QColor(255, 87, 51);
+const auto depo_trend_color = QColor(140, 50, 80);
 
 std::map<std::string, QColor> line_series_colors = {
         {"price", QColor(0, 0, 0)},
@@ -44,167 +47,127 @@ std::map<std::string, std::tuple<QCPScatterStyle::ScatterShape, QColor, QColor, 
                 {"fee_loss_price", {QCPScatterStyle::ssCircle, Qt::black, Qt::red, 10}},
 };
 
-} // namespace
+double to_seconds(std::chrono::milliseconds ts)
+{
+    return static_cast<double>(ts.count()) / 1000.;
+}
 
-MultiSeriesChart::MultiSeriesChart(QWidget * parent)
-    : QCustomPlot(parent)
+QSharedPointer<QCPAxisTickerDateTime> make_date_ticker()
 {
     QSharedPointer<QCPAxisTickerDateTime> dateTicker(new QCPAxisTickerDateTime);
     dateTicker->setDateTimeFormat("hh:mm / dd.MM");
     dateTicker->setTickCount(11);
-    xAxis->setTicker(dateTicker);
+    return dateTicker;
+}
+
+} // namespace
+
+MultiSeriesChart::MultiSeriesChart(QWidget * parent)
+    : QCustomPlot(parent)
+    , m_marginGroup(new QCPMarginGroup(this))
+{
+    xAxis->setTicker(make_date_ticker());
     xAxis->setTickLabelRotation(30.);
     connect(xAxis, SIGNAL(rangeChanged(QCPRange)), xAxis2, SLOT(setRange(QCPRange)));
     connect(yAxis, SIGNAL(rangeChanged(QCPRange)), yAxis2, SLOT(setRange(QCPRange)));
-    setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
+    setInteractions(QCP::iRangeDrag);
+    axisRect()->setRangeDrag(Qt::Horizontal);
 
-    m_marginGroup = new QCPMarginGroup(this);
     axisRect()->setMarginGroup(QCP::msLeft | QCP::msRight, m_marginGroup);
 }
 
-void MultiSeriesChart::push_candle(const Candle &)
+void MultiSeriesChart::create_candle_graphs(std::chrono::milliseconds timeframe)
 {
-    // TODO implement
-    throw std::runtime_error("Not implemented");
-}
+    const double timeframe_sec = to_seconds(timeframe);
 
-void MultiSeriesChart::push_candle_vector(const std::list<Candle> & data)
-{
-    const auto timeframe = [&]() -> size_t {
-        if (data.empty()) {
-            return 10;
-        }
-        return std::chrono::duration_cast<std::chrono::seconds>(data.front().timeframe()).count();
-    }();
+    m_candle_graph = new QCPFinancial(xAxis, yAxis);
+    m_candle_graph->setChartStyle(QCPFinancial::csCandlestick);
+    m_candle_graph->setWidth(timeframe_sec * 0.9);
+    m_candle_graph->setTwoColored(true);
+    m_candle_graph->setBrushPositive(long_bar_color);
+    m_candle_graph->setBrushNegative(short_bar_color);
+    m_candle_graph->setPenPositive(QPen(QColor(0, 0, 0)));
+    m_candle_graph->setPenNegative(QPen(QColor(0, 0, 0)));
+    xAxis->setTickLabels(false);
+    xAxis->setTicks(false);
 
-    if (m_candle_graph == nullptr) {
-        m_candle_graph = new QCPFinancial(xAxis, yAxis);
-        m_candle_graph->setChartStyle(QCPFinancial::csCandlestick);
-        m_candle_graph->setWidth(timeframe * 0.9);
-        m_candle_graph->setTwoColored(true);
-        m_candle_graph->setBrushPositive(long_bar_color);
-        m_candle_graph->setBrushNegative(short_bar_color);
-        m_candle_graph->setPenPositive(QPen(QColor(0, 0, 0)));
-        m_candle_graph->setPenNegative(QPen(QColor(0, 0, 0)));
-        xAxis->setTickLabels(false);
-        xAxis->setTicks(false);
-    }
+    m_volumeAxisRect = new QCPAxisRect(this);
+    plotLayout()->addElement(1, 0, m_volumeAxisRect);
+    m_volumeAxisRect->setMaximumSize(QSize(QWIDGETSIZE_MAX, 100));
+    m_volumeAxisRect->axis(QCPAxis::atBottom)->setLayer("axes");
+    m_volumeAxisRect->axis(QCPAxis::atBottom)->grid()->setLayer("grid");
+    m_volumeAxisRect->axis(QCPAxis::atBottom)->setTicker(make_date_ticker());
+    m_volumeAxisRect->axis(QCPAxis::atBottom)->setTickLabelRotation(30.);
+    m_volumeAxisRect->setRangeDrag(Qt::Horizontal);
 
-    if (m_volumeAxisRect == nullptr) {
-        m_volumeAxisRect = new QCPAxisRect(this);
-        plotLayout()->addElement(1, 0, m_volumeAxisRect);
-        m_volumeAxisRect->setMaximumSize(QSize(QWIDGETSIZE_MAX, 100));
-        m_volumeAxisRect->axis(QCPAxis::atBottom)->setLayer("axes");
-        m_volumeAxisRect->axis(QCPAxis::atBottom)->grid()->setLayer("grid");
-        QSharedPointer<QCPAxisTickerDateTime> dateTicker(new QCPAxisTickerDateTime);
-        dateTicker->setDateTimeFormat("hh:mm / dd.MM");
-        dateTicker->setTickCount(11);
-        m_volumeAxisRect->axis(QCPAxis::atBottom)->setTicker(dateTicker);
-        m_volumeAxisRect->axis(QCPAxis::atBottom)->setTickLabelRotation(30.);
+    plotLayout()->setRowSpacing(0);
+    m_volumeAxisRect->setAutoMargins(QCP::msLeft | QCP::msRight | QCP::msBottom);
+    m_volumeAxisRect->setMargins(QMargins(0, 0, 0, 0));
+    m_volumeAxisRect->setMarginGroup(QCP::msLeft | QCP::msRight, m_marginGroup);
 
-        plotLayout()->setRowSpacing(0);
-        m_volumeAxisRect->setAutoMargins(QCP::msLeft | QCP::msRight | QCP::msBottom);
-        m_volumeAxisRect->setMargins(QMargins(0, 0, 0, 0));
-        m_volumeAxisRect->setMarginGroup(QCP::msLeft | QCP::msRight, m_marginGroup);
-
-        m_volume_long_bars = new QCPBars(m_volumeAxisRect->axis(QCPAxis::atBottom), m_volumeAxisRect->axis(QCPAxis::atLeft));
-        m_volume_short_bars = new QCPBars(m_volumeAxisRect->axis(QCPAxis::atBottom), m_volumeAxisRect->axis(QCPAxis::atLeft));
-        m_volume_long_bars->setWidth(timeframe * 0.9);
-        m_volume_long_bars->setPen(Qt::NoPen);
-        m_volume_long_bars->setBrush(long_bar_color);
-        m_volume_short_bars->setWidth(timeframe * 0.9);
-        m_volume_short_bars->setPen(Qt::NoPen);
-        m_volume_short_bars->setBrush(short_bar_color);
-    }
-
-    QVector<QCPFinancialData> fin_data;
-    QSharedPointer<QCPBarsDataContainer> long_volume_data(new QCPBarsDataContainer);
-    QSharedPointer<QCPBarsDataContainer> short_volume_data(new QCPBarsDataContainer);
-    for (const auto & candle : data) {
-        const double time = (static_cast<double>(candle.ts().count()) / 1000.) + (timeframe * 0.5); // QCP renders candle from the middle
-        fin_data.emplace_back(
-                time,
-                candle.open(),
-                candle.high(),
-                candle.low(),
-                candle.close());
-
-        auto & container = candle.side() == Side::buy() ? long_volume_data : short_volume_data;
-        QCPBarsData d{time, std::fabs(candle.volume())};
-        container->add(d);
-    }
-    m_candle_graph->data()->set(fin_data, true);
-    m_volume_long_bars->setData(long_volume_data);
-    m_volume_short_bars->setData(short_volume_data);
+    m_volume_long_bars = new QCPBars(m_volumeAxisRect->axis(QCPAxis::atBottom), m_volumeAxisRect->axis(QCPAxis::atLeft));
+    m_volume_short_bars = new QCPBars(m_volumeAxisRect->axis(QCPAxis::atBottom), m_volumeAxisRect->axis(QCPAxis::atLeft));
+    m_volume_long_bars->setWidth(timeframe_sec * 0.9);
+    m_volume_long_bars->setPen(Qt::NoPen);
+    m_volume_long_bars->setBrush(long_bar_color);
+    m_volume_short_bars->setWidth(timeframe_sec * 0.9);
+    m_volume_short_bars->setPen(Qt::NoPen);
+    m_volume_short_bars->setBrush(short_bar_color);
 
     connect(xAxis, SIGNAL(rangeChanged(QCPRange)), m_volumeAxisRect->axis(QCPAxis::atBottom), SLOT(setRange(QCPRange)));
     connect(m_volumeAxisRect->axis(QCPAxis::atBottom), SIGNAL(rangeChanged(QCPRange)), xAxis, SLOT(setRange(QCPRange)));
-
-    rescaleAxes();
-    replot();
+    m_volumeAxisRect->axis(QCPAxis::atBottom)->setRange(xAxis->range());
 }
 
-void MultiSeriesChart::push_series_vector(
-        const std::string & series_name,
-        const std::list<std::pair<
-                std::chrono::milliseconds,
-                double>> & data)
+void MultiSeriesChart::push_candle(const Candle & candle)
+{
+    if (m_candle_graph == nullptr) {
+        create_candle_graphs(candle.timeframe());
+    }
+
+    // CLAUDE, '*' has higher precedence than '+'; add parentheses to explicitly specify the order of operations (fix available) [readability-math-missing-parentheses]
+    const double time = to_seconds(candle.ts()) + to_seconds(candle.timeframe()) * 0.5; // QCP renders candle from the middle
+    m_candle_graph->addData(time, candle.open(), candle.high(), candle.low(), candle.close());
+
+    auto * bars = candle.side() == Side::buy() ? m_volume_long_bars : m_volume_short_bars;
+    bars->addData(time, std::fabs(candle.volume()));
+}
+
+void MultiSeriesChart::push_line_point(const std::string & series_name, std::chrono::milliseconds ts, double value)
 {
     auto & last_point = m_last_points[series_name];
-    for (const auto & [ts, value] : data) {
-        if (ts < last_point + limit_interval) {
-            continue;
-        }
-        last_point = ts;
-        push_series_value_dont_replot(series_name, ts, value, QCPGraph::LineStyle::lsStepLeft);
+    if (ts < last_point + limit_interval) {
+        return;
     }
-    replot();
+    last_point = ts;
+    get_graph_for_series(series_name, QCPGraph::LineStyle::lsStepLeft)->addData(to_seconds(ts), value);
 }
 
-void MultiSeriesChart::push_series_value_dont_replot(const std::string & series_name,
-                                                     std::chrono::milliseconds ts,
-                                                     double data,
-                                                     QCPGraph::LineStyle line_style)
+void MultiSeriesChart::push_marker_point(const std::string & series_name, std::chrono::milliseconds ts, double value)
 {
-    auto * graph = get_graph_for_series(series_name, line_style);
-    // casting to seconds
-    graph->addData(static_cast<double>(ts.count()) / 1000., data);
-    if (line_style != QCPGraph::LineStyle::lsNone) {
-        graph->rescaleAxes();
-    }
-}
-
-void MultiSeriesChart::push_series_value(const std::string & series_name,
-                                         std::chrono::milliseconds ts,
-                                         double data)
-{
-    push_series_value_dont_replot(series_name, ts, data, QCPGraph::LineStyle::lsLine);
-    replot();
+    get_graph_for_series(series_name, QCPGraph::LineStyle::lsNone)->addData(to_seconds(ts), value);
 }
 
 void MultiSeriesChart::push_trade(const Trade & trade)
 {
     const std::string & series_name = trade.side() == Side::buy() ? "buy_trade" : "sell_trade";
-    push_series_value_dont_replot(series_name, trade.ts(), trade.price(), QCPGraph::LineStyle::lsNone);
-    replot();
+    push_marker_point(series_name, trade.ts(), trade.price());
 }
 
 void MultiSeriesChart::push_tpsl(std::chrono::milliseconds ts, TpslPrices tpsl)
 {
-    push_series_value_dont_replot("take_profit", ts, tpsl.take_profit_price, QCPGraph::LineStyle::lsNone);
-    push_series_value_dont_replot("stop_loss", ts, tpsl.stop_loss_price, QCPGraph::LineStyle::lsNone);
-    replot();
+    push_marker_point("take_profit", ts, tpsl.take_profit_price);
+    push_marker_point("stop_loss", ts, tpsl.stop_loss_price);
 }
 
 void MultiSeriesChart::push_stop_loss(std::chrono::milliseconds ts, double stop_price)
 {
-    push_series_value_dont_replot("trailing_stop_loss", ts, stop_price, QCPGraph::LineStyle::lsNone);
-    replot();
+    push_marker_point("trailing_stop_loss", ts, stop_price);
 }
 
 void MultiSeriesChart::push_market_state(std::chrono::milliseconds ts, MarketStateRenderObject state)
 {
-    const auto ts_sec = static_cast<double>(ts.count()) / 1000.;
+    const auto ts_sec = to_seconds(ts);
 
     if (state.state != m_prev_market_state && m_prev_market_state != MarketState::None) {
         const auto graphs = get_channel_graphs(m_prev_market_state);
@@ -225,8 +188,118 @@ void MultiSeriesChart::push_market_state(std::chrono::milliseconds ts, MarketSta
     }
 
     m_prev_market_state = state.state;
+}
 
-    replot();
+void MultiSeriesChart::clear_all_points()
+{
+    for (auto & [name, graph] : m_series_graphs) {
+        graph->data()->clear();
+    }
+    if (m_candle_graph != nullptr) {
+        m_candle_graph->data()->clear();
+        m_volume_long_bars->data()->clear();
+        m_volume_short_bars->data()->clear();
+    }
+    m_last_points.clear();
+    m_step_line_extension_keys.clear();
+    m_prev_market_state = MarketState::None;
+}
+
+void MultiSeriesChart::extend_step_lines_to(std::chrono::milliseconds ts)
+{
+    const double ts_sec = to_seconds(ts);
+
+    for (auto & [name, graph] : m_series_graphs) {
+        if (graph->lineStyle() != QCPGraph::LineStyle::lsStepLeft) {
+            continue;
+        }
+        auto data = graph->data();
+        if (const auto it = m_step_line_extension_keys.find(graph); it != m_step_line_extension_keys.end()) {
+            data->remove(it->second);
+            m_step_line_extension_keys.erase(it);
+        }
+        if (data->isEmpty()) {
+            continue;
+        }
+        const auto last_point = *(data->constEnd() - 1);
+        if (last_point.key >= ts_sec) {
+            continue;
+        }
+        data->add(QCPGraphData(ts_sec, last_point.value));
+        m_step_line_extension_keys[graph] = ts_sec;
+    }
+}
+
+void MultiSeriesChart::drop_points_outside(std::chrono::milliseconds start, std::chrono::milliseconds end)
+{
+    const double start_sec = to_seconds(start);
+    const double end_sec = to_seconds(end);
+
+    for (auto & [name, graph] : m_series_graphs) {
+        graph->data()->removeBefore(start_sec);
+        graph->data()->removeAfter(end_sec);
+    }
+    if (m_candle_graph != nullptr) {
+        m_candle_graph->data()->removeBefore(start_sec);
+        m_candle_graph->data()->removeAfter(end_sec);
+        m_volume_long_bars->data()->removeBefore(start_sec);
+        m_volume_long_bars->data()->removeAfter(end_sec);
+        m_volume_short_bars->data()->removeBefore(start_sec);
+        m_volume_short_bars->data()->removeAfter(end_sec);
+    }
+}
+
+void MultiSeriesChart::set_time_range(std::chrono::milliseconds start, std::chrono::milliseconds end)
+{
+    xAxis->setRange(to_seconds(start), to_seconds(end));
+}
+
+void MultiSeriesChart::rescale_value_axes()
+{
+    const auto value_range_of_axis = [&](QCPAxis * value_axis) -> std::optional<QCPRange> {
+        std::optional<QCPRange> result;
+        for (int i = 0; i < plottableCount(); ++i) {
+            auto * p = plottable(i);
+
+            if (p->valueAxis() != value_axis || p == m_depo_trend_graph) {
+                continue;
+            }
+
+            bool found = false;
+            const QCPRange range = p->getValueRange(found, QCP::sdBoth);
+            if (!found) {
+                continue;
+            }
+
+            if (!result.has_value()) {
+                result = range;
+                continue;
+            }
+
+            result->lower = std::min(result->lower, range.lower);
+            result->upper = std::max(result->upper, range.upper);
+        }
+
+        return result;
+    };
+
+    if (const auto range = value_range_of_axis(yAxis); range.has_value()) {
+        double margin = range->size() * value_margin_factor;
+
+        if (margin <= 0.) {
+            margin = std::fabs(range->lower) * value_margin_factor + 1e-9;
+        }
+
+        yAxis->setRange(range->lower - margin, range->upper + margin);
+    }
+
+    if (m_volumeAxisRect == nullptr) {
+        return;
+    }
+    auto * volume_axis = m_volumeAxisRect->axis(QCPAxis::atLeft);
+    if (const auto range = value_range_of_axis(volume_axis); range.has_value()) {
+        volume_axis->setRange(0., range->upper * (1. + value_margin_factor));
+    }
 }
 
 void MultiSeriesChart::set_title(const std::string &)
@@ -238,50 +311,63 @@ void MultiSeriesChart::override_depo_trend(
         std::pair<std::chrono::milliseconds, double> first_point,
         std::pair<std::chrono::milliseconds, double> last_point)
 {
-    QCPGraph * graph = get_graph_for_series("depo_trend", QCPGraph::lsLine);
+    if (m_depo_trend_graph == nullptr) {
+        m_depo_trend_graph = addGraph();
+        m_depo_trend_graph->setName("depo_trend");
+        m_depo_trend_graph->setLineStyle(QCPGraph::lsLine);
+        auto pen = QPen(depo_trend_color);
+        pen.setWidthF(2);
+        m_depo_trend_graph->setPen(pen);
+    }
+
     QSharedPointer<QCPGraphDataContainer> c{new QCPGraphDataContainer};
-    QCPGraphData f{double(first_point.first.count()) / 1000., first_point.second};
-    QCPGraphData l{double(last_point.first.count()) / 1000., last_point.second};
+    QCPGraphData f{to_seconds(first_point.first), first_point.second};
+    QCPGraphData l{to_seconds(last_point.first), last_point.second};
+
     c->add(f);
     c->add(l);
-    graph->setData(c);
-    replot();
+
+    m_depo_trend_graph->setData(c);
 }
 
 QCPGraph * MultiSeriesChart::get_graph_for_series(std::string_view series_name, QCPGraph::LineStyle line_style)
 {
-    const auto & [it, inserted] = m_series_indexes.try_emplace(std::string(series_name), m_series_indexes.size());
-    const auto idx = it->second;
-    if (inserted) {
-        addGraph();
-        graph(idx)->setName(std::string{series_name}.c_str());
-            graph(idx)->setLineStyle(line_style);
-        if (QCPGraph::LineStyle::lsNone == line_style) {
-            const auto display_params_pair_it = scatter_series_display_params.find(std::string(series_name));
-            if (display_params_pair_it != scatter_series_display_params.end()) {
-                const auto & [style, border, fill, size] = display_params_pair_it->second;
-                graph(idx)->setScatterStyle(QCPScatterStyle(style, border, fill, size));
-            }
-            else {
-                graph(idx)->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCircle, Qt::red, Qt::yellow, 15));
-            }
+    const auto it = m_series_graphs.find(std::string(series_name));
+    if (it != m_series_graphs.end()) {
+        return it->second;
+    }
+
+    const auto idx = m_series_graphs.size();
+    auto * graph = addGraph();
+    m_series_graphs.emplace(std::string(series_name), graph);
+
+    graph->setName(std::string{series_name}.c_str());
+    graph->setLineStyle(line_style);
+    if (QCPGraph::LineStyle::lsNone == line_style) {
+        const auto display_params_pair_it = scatter_series_display_params.find(std::string(series_name));
+        if (display_params_pair_it != scatter_series_display_params.end()) {
+            const auto & [style, border, fill, size] = display_params_pair_it->second;
+            graph->setScatterStyle(QCPScatterStyle(style, border, fill, size));
         }
         else {
-            const auto color_it = line_series_colors.find(std::string(series_name));
-            if (color_it != line_series_colors.end()) {
-                auto pen = QPen(color_it->second);
-                pen.setWidthF(2);
-                graph(idx)->setPen(pen);
-            }
-            else {
-                auto pen = QPen(colors[idx % colors.size()]);
-                pen.setWidthF(2);
-                graph(idx)->setPen(pen);
-            }
+            graph->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssCircle, Qt::red, Qt::yellow, 15));
+        }
+    }
+    else {
+        const auto color_it = line_series_colors.find(std::string(series_name));
+        if (color_it != line_series_colors.end()) {
+            auto pen = QPen(color_it->second);
+            pen.setWidthF(2);
+            graph->setPen(pen);
+        }
+        else {
+            auto pen = QPen(colors[idx % colors.size()]);
+            pen.setWidthF(2);
+            graph->setPen(pen);
         }
     }
 
-    return graph(idx);
+    return graph;
 }
 
 MultiSeriesChart::ChannelGraphs MultiSeriesChart::get_channel_graphs(MarketState state)
@@ -312,16 +398,4 @@ MultiSeriesChart::ChannelGraphs MultiSeriesChart::get_channel_graphs(MarketState
     }
 
     return {.upper = upper, .lower = lower};
-}
-
-void MultiSeriesChart::push_scatter_series_vector(const std::string & series_name,
-                                                  const std::vector<std::pair<
-                                                          std::chrono::milliseconds,
-                                                          double>> & data)
-{
-    for (const auto & [ts, value] : data) {
-        push_series_value_dont_replot(series_name, ts, value, QCPGraph::LineStyle::lsNone);
-    }
-
-    replot();
 }

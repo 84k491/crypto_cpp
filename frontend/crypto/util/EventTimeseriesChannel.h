@@ -6,11 +6,14 @@
 #include "ISubsription.h"
 #include "Macros.h"
 
+#include <algorithm>
 #include <chrono>
 #include <crossguid/guid.hpp>
+#include <deque>
 #include <functional>
 #include <list>
 #include <memory>
+#include <optional>
 
 template <typename ObjectT>
 class EventTimeseriesChannel;
@@ -62,21 +65,24 @@ public:
     ~EventTimeseriesChannel();
 
     void push(TimeT timestamp, const ObjectT & object);
+
     [[nodiscard]] std::shared_ptr<EventTimeseriesSubsription<ObjectT>> subscribe(
             ILambdaAcceptor & consumer,
             xg::Guid subcriber_guid,
-            std::function<void(const std::list<std::pair<TimeT, ObjectT>> &)> && snapshot_callback,
+            std::function<void(const std::deque<std::pair<TimeT, ObjectT>> &)> && snapshot_callback,
             std::function<void(TimeT, const ObjectT &)> && increment_callback);
 
     // thread unsafe
     void set_capacity(std::optional<std::chrono::milliseconds> capacity) { m_capacity = capacity; }
 
-    std::list<std::pair<TimeT, ObjectT>> data_copy() { return m_data.lock().get(); }
+    std::deque<std::pair<TimeT, ObjectT>> data_copy() { return m_data.lock().get(); }
+    std::deque<std::pair<TimeT, ObjectT>> data_copy_in_range(TimeT start, TimeT end, bool with_last_point_before_start = false);
+    std::optional<std::pair<TimeT, TimeT>> first_and_last_timestamps();
 
     void unsubscribe(xg::Guid guid);
 
 private:
-    Guarded<std::list<std::pair<TimeT, ObjectT>>> m_data;
+    Guarded<std::deque<std::pair<TimeT, ObjectT>>> m_data;
 
     using SubWPtr = std::weak_ptr<EventTimeseriesSubsription<ObjectT>>;
     // Guid is here because wptr will be null on unsub on dtor
@@ -88,6 +94,8 @@ private:
 template <typename ObjectT>
 void EventTimeseriesChannel<ObjectT>::push(EventTimeseriesChannel::TimeT timestamp, const ObjectT & object)
 {
+    // same lock order as in subscribe, so a push can't interleave with a snapshot
+    auto subs_lref = m_subscriptions.lock();
     {
         auto data_lref = m_data.lock();
         auto & data = data_lref.get();
@@ -97,7 +105,6 @@ void EventTimeseriesChannel<ObjectT>::push(EventTimeseriesChannel::TimeT timesta
         data.emplace_back(timestamp, object);
     }
 
-    auto subs_lref = m_subscriptions.lock();
     for (const auto & [_, sub_wptr] : subs_lref.get()) {
 
         // TODO nodiscard on sub
@@ -117,7 +124,7 @@ template <typename ObjectT>
 std::shared_ptr<EventTimeseriesSubsription<ObjectT>> EventTimeseriesChannel<ObjectT>::subscribe(
         ILambdaAcceptor & consumer,
         xg::Guid subcriber_guid,
-        std::function<void(const std::list<std::pair<TimeT, ObjectT>> &)> && snapshot_callback,
+        std::function<void(const std::deque<std::pair<TimeT, ObjectT>> &)> && snapshot_callback,
         std::function<void(TimeT, const ObjectT &)> && increment_callback)
 {
     const auto guid = xg::newGuid();
@@ -130,6 +137,12 @@ std::shared_ptr<EventTimeseriesSubsription<ObjectT>> EventTimeseriesChannel<Obje
 
     auto subs_lref = m_subscriptions.lock();
     subs_lref.get().emplace_back(std::make_pair(guid, std::weak_ptr{sptr}));
+
+    // don't copy snapshot data if there is no snapshot callback
+    if (!snapshot_callback) {
+        return sptr;
+    }
+
     auto data_lref = m_data.lock();
 
     consumer.push(LambdaEvent{
@@ -139,6 +152,35 @@ std::shared_ptr<EventTimeseriesSubsription<ObjectT>> EventTimeseriesChannel<Obje
             Priority::Normal});
 
     return sptr;
+}
+
+template <typename ObjectT>
+std::deque<std::pair<std::chrono::milliseconds, ObjectT>> EventTimeseriesChannel<ObjectT>::data_copy_in_range(TimeT start, TimeT end, bool with_last_point_before_start)
+{
+    auto data_lref = m_data.lock();
+    const auto & data = data_lref.get();
+
+    const auto ts_less = [](const std::pair<TimeT, ObjectT> & point, TimeT ts) { return point.first < ts; };
+    const auto less_ts = [](TimeT ts, const std::pair<TimeT, ObjectT> & point) { return ts < point.first; };
+
+    auto begin = std::lower_bound(data.begin(), data.end(), start, ts_less);
+    if (with_last_point_before_start && begin != data.begin()) {
+        --begin;
+    }
+    const auto finish = std::upper_bound(begin, data.end(), end, less_ts);
+
+    return std::deque<std::pair<TimeT, ObjectT>>(begin, finish);
+}
+
+template <typename ObjectT>
+std::optional<std::pair<std::chrono::milliseconds, std::chrono::milliseconds>> EventTimeseriesChannel<ObjectT>::first_and_last_timestamps()
+{
+    auto data_lref = m_data.lock();
+    const auto & data = data_lref.get();
+    if (data.empty()) {
+        return std::nullopt;
+    }
+    return std::make_pair(data.front().first, data.back().first);
 }
 
 template <typename ObjectT>

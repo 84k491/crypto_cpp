@@ -231,10 +231,10 @@ void StrategyInstance::process_position_result(const PositionResult & new_result
 
     m_depo_channel.push(ts, m_strategy_result.get().final_profit);
 
-    const std::list<std::pair<std::chrono::milliseconds, double>> depo_series_list = m_depo_channel.data_copy();
+    const std::deque<std::pair<std::chrono::milliseconds, double>> depo_series_deque = m_depo_channel.data_copy();
     const std::vector<std::pair<std::chrono::milliseconds, double>> depo_series{
-            depo_series_list.begin(),
-            depo_series_list.end()};
+            depo_series_deque.begin(),
+            depo_series_deque.end()};
     m_strategy_result.update([&](StrategyResult & res) {
         res.set_trend_info(depo_series);
     });

@@ -40,18 +40,11 @@ void PositionResultView::on_pb_chart_clicked()
         return;
     }
 
-    const auto opened_time = m_position_result.opened_time().has_value() ? m_position_result.opened_time()->count() : 0;
-    const long delta = long(opened_time * width_factor);
-    const auto start_ts = std::chrono::milliseconds{m_position_result.open_ts.count() - opened_time};
-
-    const auto close_ts = m_position_result.close_ts.has_value() ? m_position_result.close_ts->count() : 0;
-    const auto end_ts = std::chrono::milliseconds{close_ts + delta};
-
     m_chart_window = new ChartWindow(
             m_position_result.guid,
             si,
-            start_ts,
-            end_ts,
+            m_position_result.close_ts,
+            false,
             false,
             nullptr);
     m_chart_window->setAttribute(Qt::WA_DeleteOnClose);

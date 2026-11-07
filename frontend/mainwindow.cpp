@@ -232,7 +232,7 @@ void MainWindow::subscribe_for_positions()
 
     m_sub->subscribe(
             m_strategy_instance->positions_channel(),
-            [&](const std::list<std::pair<std::chrono::milliseconds, PositionResult>> & list) {
+            [&](const std::deque<std::pair<std::chrono::milliseconds, PositionResult>> & list) {
                 for (const auto & [_, position_result] : list) {
                     auto * view = new PositionResultView();
                     view->update(position_result);
@@ -368,11 +368,13 @@ void MainWindow::on_lambda(std::function<void()> lambda)
 
 void MainWindow::on_pb_charts_clicked()
 {
+    const auto status = m_strategy_instance->status_channel().get();
+    const bool strategy_runs = status == WorkStatus::Backtesting || status == WorkStatus::Live;
     m_chart_window = new ChartWindow(
             "Whole run",
             m_strategy_instance,
-            {},
-            {},
+            std::nullopt,
+            strategy_runs,
             true,
             nullptr);
     m_chart_window->setAttribute(Qt::WA_DeleteOnClose);
