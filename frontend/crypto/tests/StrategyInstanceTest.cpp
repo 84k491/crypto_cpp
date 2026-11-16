@@ -178,8 +178,8 @@ public:
         m_symbol.lot_size_filter.qty_step = 0.001;
 
         strategy_instance = std::make_unique<StrategyInstance>(
+                event_loop,
                 m_symbol,
-                std::nullopt,
                 "Mock",
                 JsonStrategyConfig{nlohmann::json{}},
                 md_gateway,
@@ -197,6 +197,7 @@ public:
     }
 
 protected:
+    EventLoop event_loop;
     MockEventConsumer event_consumer;
     Symbol m_symbol;
 
@@ -211,9 +212,9 @@ protected:
 };
 
 // strategy starts in stopped state
-// strategy sends MD request at start and goes to Live state
+// strategy sends MD request at start and goes to Running state
 // gateway sends price, strategy gets it
-// strategy still in Live state
+// strategy still in Running state
 // strategy stops
 // strategy unsubscribes from gateway
 // strategy goes to Stopped state
@@ -223,7 +224,7 @@ TEST_F(StrategyInstanceTest, SubForLiveMarketData_GetPrice_GracefullStop)
     strategy_instance->run_async();
     strategy_instance->wait_event_barrier();
     ASSERT_EQ(md_gateway.live_requests_count(), 1);
-    ASSERT_EQ(strategy_status, WorkStatus::Live);
+    ASSERT_EQ(strategy_status, WorkStatus::Running);
 
     const auto live_req = md_gateway.m_last_live_request.value();
 
@@ -245,9 +246,9 @@ TEST_F(StrategyInstanceTest, SubForLiveMarketData_GetPrice_GracefullStop)
     strategy_instance->wait_event_barrier();
     ASSERT_EQ(prices_received, 1);
 
-    ASSERT_EQ(strategy_status, WorkStatus::Live);
+    ASSERT_EQ(strategy_status, WorkStatus::Running);
     strategy_instance->stop_async();
-    ASSERT_EQ(strategy_status, WorkStatus::Live);
+    ASSERT_EQ(strategy_status, WorkStatus::Running);
     ASSERT_EQ(md_gateway.unsubscribed_count(), 1) << "Must unsubscribe on stop";
     strategy_instance->wait_event_barrier();
     ASSERT_EQ(strategy_status, WorkStatus::Stopped);
@@ -272,7 +273,7 @@ TEST_F(StrategyInstanceTest, OpenAndClosePos_GetResult_DontCloseTwiceOnStop)
     strategy_instance->run_async();
     strategy_instance->wait_event_barrier();
     ASSERT_EQ(md_gateway.live_requests_count(), 1);
-    ASSERT_EQ(strategy_status, WorkStatus::Live);
+    ASSERT_EQ(strategy_status, WorkStatus::Running);
     const auto live_req = md_gateway.m_last_live_request.value();
 
     size_t prices_received = 0;
@@ -397,7 +398,7 @@ TEST_F(StrategyInstanceTest, OpenAndClosePos_GetResult_DontCloseTwiceOnStop)
 //     strategy_instance->run_async();
 //     strategy_instance->wait_event_barrier();
 //     ASSERT_EQ(md_gateway.live_requests_count(), 1);
-//     ASSERT_EQ(strategy_status, WorkStatus::Live);
+//     ASSERT_EQ(strategy_status, WorkStatus::Running);
 //     const auto live_req = md_gateway.m_last_live_request.value();
 //
 //     size_t prices_received = 0;
@@ -470,7 +471,7 @@ TEST_F(StrategyInstanceTest, OpenAndClosePos_GetResult_DontCloseTwiceOnStop)
 //
 //     strategy_instance->stop_async();
 //     strategy_instance->wait_event_barrier();
-//     ASSERT_EQ(strategy_status, WorkStatus::Live) << "It won't stop right away";
+//     ASSERT_EQ(strategy_status, WorkStatus::Running) << "It won't stop right away";
 //     ASSERT_DOUBLE_EQ(result.final_profit, 0.);
 //     ASSERT_EQ(result.trades_count, 1) << "Closing trade is not happened yet";
 //
@@ -518,7 +519,7 @@ TEST_F(StrategyInstanceTest, ManyPricesReceivedWhileOrderIsPending_NoAdditionalO
     strategy_instance->run_async();
     strategy_instance->wait_event_barrier();
     ASSERT_EQ(md_gateway.live_requests_count(), 1);
-    ASSERT_EQ(strategy_status, WorkStatus::Live);
+    ASSERT_EQ(strategy_status, WorkStatus::Running);
     const auto live_req = md_gateway.m_last_live_request.value();
 
     size_t prices_received = 0;
@@ -572,7 +573,7 @@ TEST_F(StrategyInstanceTest, ManyPricesReceivedWhileOrderIsPending_NoAdditionalO
 //     strategy_instance->run_async();
 //     strategy_instance->wait_event_barrier();
 //     ASSERT_EQ(md_gateway.live_requests_count(), 1);
-//     ASSERT_EQ(strategy_status, WorkStatus::Live);
+//     ASSERT_EQ(strategy_status, WorkStatus::Running);
 //
 //     strategy_ptr->signal_on_next_tick(Side::buy());
 //     {
@@ -610,7 +611,7 @@ TEST_F(StrategyInstanceTest, OpenPos_TpslReject_ClosePosAndPanic)
     strategy_instance->run_async();
     strategy_instance->wait_event_barrier();
     ASSERT_EQ(md_gateway.live_requests_count(), 1);
-    ASSERT_EQ(strategy_status, WorkStatus::Live);
+    ASSERT_EQ(strategy_status, WorkStatus::Running);
     const auto live_req = md_gateway.m_last_live_request.value();
 
     strategy_ptr->signal_on_next_tick(Side::buy());

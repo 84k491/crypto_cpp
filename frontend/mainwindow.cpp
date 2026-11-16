@@ -70,11 +70,11 @@ void MainWindow::handle_status_changed(WorkStatus status)
 {
     LOG_STATUS("Work status: {}", to_string(status));
     ui->lb_work_status->setText(to_string(status).c_str());
-    if (status == WorkStatus::Backtesting || status == WorkStatus::Live) {
+    if (status == WorkStatus::Running) {
         ui->pb_run->setEnabled(false);
         ui->pb_stop->setEnabled(true);
     }
-    if (status == WorkStatus::Stopped || status == WorkStatus::Live || status == WorkStatus::Backtesting) {
+    if (status == WorkStatus::Stopped || status == WorkStatus::Running) {
         subscribe_to_strategy();
     }
     if (status == WorkStatus::Stopped || status == WorkStatus::Panic) {
@@ -82,14 +82,8 @@ void MainWindow::handle_status_changed(WorkStatus status)
         ui->pb_stop->setEnabled(false);
         m_sub = std::make_unique<EventSubcriber>(m_event_consumer);
     }
-    switch (status) {
-    case WorkStatus::Backtesting: break;
-    default: {
-        render_result(m_strategy_instance->strategy_result_channel().get());
-        subscribe_for_positions();
-        break;
-    }
-    }
+    render_result(m_strategy_instance->strategy_result_channel().get());
+    subscribe_for_positions();
 }
 
 void MainWindow::subscribe_to_strategy()
@@ -123,14 +117,6 @@ void MainWindow::on_pb_run_clicked()
     const auto strategy_name = ui->cb_strategy->currentText().toStdString();
     const auto entry_config = ui->wt_entry_params->get_config();
 
-    const auto md_request = [&]() {
-        std::optional<HistoricalMDRequestData> req_data;
-        if (!ui->cb_live->isChecked()) {
-            req_data = {.start = timerange.start(), .end = timerange.end()};
-        }
-        return req_data;
-    }();
-
     const auto symbol = [&]() -> std::optional<Symbol> {
         const auto symbols = m_gateway.get_symbols("USDT");
         for (const auto & s : symbols) {
@@ -148,34 +134,35 @@ void MainWindow::on_pb_run_clicked()
     }
 
     m_strategy_instance.reset();
-    auto & tr_gateway = [&]() -> ITradingGateway & {
+    const auto launchpad = [&]() {
+
         if (ui->cb_live->isChecked()) {
             if (!m_trading_gateway) {
                 m_trading_gateway = std::make_unique<ByBitTradingGateway>();
             }
-            return *m_trading_gateway;
+            return std::make_shared<Launchpad>(
+                    symbol.value(),
+                    strategy_name,
+                    entry_config,
+                    m_gateway,
+                    *m_trading_gateway);
         }
-        else {
-            m_backtest_tr_gateway = std::make_unique<BacktestTradingGateway>();
-            return *m_backtest_tr_gateway;
-        }
+
+        return std::make_shared<Launchpad>(
+                symbol.value(),
+                HistoricalMDRequestData{.start = timerange.start(), .end = timerange.end()},
+                strategy_name,
+                entry_config,
+                m_gateway);
     }();
 
-    m_strategy_instance = std::make_shared<StrategyInstance>(
-            symbol.value(),
-            md_request,
-            strategy_name,
-            entry_config,
-            m_gateway,
-            tr_gateway);
+    m_strategy_instance = Launchpad::share_strategy_instance(launchpad);
+
     if (ui->sb_channel_capacity_h->value() >= 0) {
         m_strategy_instance->set_channel_capacity(std::chrono::hours{ui->sb_channel_capacity_h->value()});
     }
-    ui->pb_charts->setEnabled(true);
 
-    if (auto * ptr = dynamic_cast<BacktestTradingGateway *>(&tr_gateway); ptr != nullptr) {
-        ptr->set_price_source(m_strategy_instance->price_channel());
-    }
+    ui->pb_charts->setEnabled(true);
 
     m_sub->subscribe(
             m_strategy_instance->status_channel(),
@@ -343,7 +330,7 @@ void MainWindow::on_pb_optimize_clicked()
 
 std::optional<JsonStrategyMetaInfo> MainWindow::get_entry_strategy_parameters() const
 {
-    const auto json_data = StrategyFactory::i().get_meta_info(ui->cb_strategy->currentText().toStdString());
+    const auto json_data = StrategyFactory::get_meta_info(ui->cb_strategy->currentText().toStdString());
     return json_data;
 }
 
@@ -369,7 +356,7 @@ void MainWindow::on_lambda(std::function<void()> lambda)
 void MainWindow::on_pb_charts_clicked()
 {
     const auto status = m_strategy_instance->status_channel().get();
-    const bool strategy_runs = status == WorkStatus::Backtesting || status == WorkStatus::Live;
+    const bool strategy_runs = status == WorkStatus::Running;
     m_chart_window = new ChartWindow(
             "Whole run",
             m_strategy_instance,

@@ -1,11 +1,10 @@
 #include "Optimizer.h"
 
-#include "BacktestTradingGateway.h"
 #include "Collector.h"
 #include "JsonStrategyConfig.h"
+#include "Launchpad.h"
 #include "Logger.h"
 #include "ScopeExit.h"
-#include "StrategyInstance.h"
 
 #include <vector>
 
@@ -61,15 +60,13 @@ std::optional<JsonStrategyConfig> Optimizer::optimize()
 
             HistoricalMDRequestData md_request_data = {.start = m_timerange.start(), .end = m_timerange.end()};
 
-            BacktestTradingGateway tr_gateway;
-            StrategyInstance strategy_instance(
+            Launchpad launchpad(
                     m_symbol,
                     md_request_data,
                     m_strategy_name,
                     entry_config,
-                    m_gateway,
-                    tr_gateway);
-            tr_gateway.set_price_source(strategy_instance.price_channel());
+                    m_gateway);
+            auto & strategy_instance = launchpad.strategy_instance();
             strategy_instance.set_channel_capacity(std::chrono::milliseconds{});
             strategy_instance.run_async();
             strategy_instance.wait_event_barrier(); // use future to wait

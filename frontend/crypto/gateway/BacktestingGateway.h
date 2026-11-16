@@ -1,20 +1,17 @@
 #pragma once
 
 #include "ConditionalOrders.h"
-#include "EventTimeseriesChannel.h"
+#include "EventChannel.h"
+#include "EventLoopSubscriber.h"
+#include "EventObjectChannel.h"
 #include "Events.h"
+#include "IMarketDataGateway.h"
 #include "ITradingGateway.h"
 #include "Volume.h"
+#include "WorkStatus.h"
 
 #include <optional>
 #include <variant>
-
-class BacktestEventConsumer final : public ILambdaAcceptor
-{
-    void push(LambdaEvent value) override;
-    void push_delayed(std::chrono::milliseconds delay, LambdaEvent value) override;
-    void discard_subscriber_events(xg::Guid) override{};
-};
 
 class BacktestTrailingStopLoss
 {
@@ -34,13 +31,30 @@ private:
     TrailingStopLoss m_trailing_stop;
 };
 
-class BacktestTradingGateway : public ITradingGateway
+class BacktestingGateway
+    : public IMarketDataGateway
+    , public ITradingGateway
 {
+    struct NextTickRequest
+    {
+    };
+
 public:
     static constexpr double taker_fee_rate = 0.001;
-    BacktestTradingGateway();
+    BacktestingGateway(
+            ILambdaAcceptor & event_loop,
+            IMarketDataGateway & source_md_gateway,
+            HistoricalMDRequestData timerange);
 
-    void set_price_source(EventTimeseriesChannel<double> & channel);
+    void push_async_request(HistoricalMDRequest && request) override;
+    void push_async_request(LiveMDRequest && request) override;
+
+    EventChannel<HistoricalMDGeneratorEvent> & historical_prices_channel() override;
+    EventChannel<MDPriceEvent> & live_prices_channel() override;
+
+    void unsubscribe_from_live(xg::Guid guid) override;
+
+    EventObjectChannel<WorkStatus> & status_channel() override;
 
     void push_order_request(const OrderRequestEvent & order) override;
     void push_tpsl_request(const TpslRequestEvent & tpsl_ev) override;
@@ -59,19 +73,35 @@ public:
 
     SignedVolume pos_volume() const;
 
-private:
     void on_new_price(std::chrono::milliseconds ts, const double & price);
+
+private:
+    void handle_source_historical_md(const HistoricalMDGeneratorEvent & ev);
+    void send_next_tick();
+    void stop_sending_ticks(xg::Guid live_request_guid);
+
     std::optional<Trade> try_trade_tpsl(std::chrono::milliseconds ts, double price);
     void try_trigger_conditionals(std::chrono::milliseconds ts, double price);
 
 private:
-    BacktestEventConsumer m_event_consumer;
+    IMarketDataGateway & m_source_md_gateway;
+    const HistoricalMDRequestData m_timerange;
+
+    std::optional<LiveMDRequest> m_live_request;
+    std::optional<xg::Guid> m_historical_request_guid;
+    std::optional<HistoricalMDGeneratorEvent> m_historical_md_generator;
+    bool m_any_tick_sent = false;
+
+    EventChannel<HistoricalMDGeneratorEvent> m_historical_prices_channel;
+    EventChannel<MDPriceEvent> m_live_prices_channel;
+    EventObjectChannel<WorkStatus> m_status;
+    EventChannel<NextTickRequest> m_next_tick_channel;
+    EventChannel<xg::Guid> m_unsubscribe_from_live_channel;
 
     std::string m_symbol; // backtest GW can only trade a single symbol now
     std::optional<TpslRequestEvent> m_tpsl;
     double m_last_price = 0.;
     std::chrono::milliseconds m_last_ts = {};
-    EventSubcriber m_sub;
     std::optional<BacktestTrailingStopLoss> m_trailing_stop;
 
     std::shared_ptr<SignedVolume> m_pos_volume;
@@ -85,4 +115,6 @@ private:
 
     std::list<StopLossMarketOrder> m_stop_losses;
     std::list<TakeProfitMarketOrder> m_take_profits;
+
+    EventSubcriber m_sub;
 };

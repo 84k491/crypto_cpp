@@ -41,10 +41,10 @@ set(UNIT_TEST strategy_instance_test)
 add_test(NAME ${UNIT_TEST} COMMAND ${UNIT_TEST})
 
 ####################################################################################################
-add_executable(backtest_trading_gateway_test
-    BacktestTradingGatewayTest.cpp
+add_executable(backtesting_gateway_test
+    BacktestingGatewayTest.cpp
 )
-target_link_libraries(backtest_trading_gateway_test
+target_link_libraries(backtesting_gateway_test
     ${GTEST_BOTH_LIBRARIES}
     trading_primitives
     trading_engine
@@ -52,7 +52,7 @@ target_link_libraries(backtest_trading_gateway_test
     gateway
     nlohmann_json
 )
-set(UNIT_TEST backtest_trading_gateway_test) # TODO remove it?
+set(UNIT_TEST backtesting_gateway_test) # TODO remove it?
 add_test(NAME ${UNIT_TEST} COMMAND ${UNIT_TEST})
 
 ####################################################################################################

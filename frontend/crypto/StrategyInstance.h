@@ -28,8 +28,8 @@ class StrategyInstance
 {
 public:
     StrategyInstance(
+            EventLoop & event_loop,
             const Symbol & symbol,
-            const std::optional<HistoricalMDRequestData> & historical_md_request,
             const std::string & entry_strategy_name,
             const JsonStrategyConfig & entry_strategy_config,
             IMarketDataGateway & md_gateway,
@@ -63,8 +63,6 @@ private:
     template <class T>
     void handle_event_generic(const T & ev);
 
-    void handle_event(const HistoricalMDGeneratorEvent & response);
-    void handle_event(const HistoricalMDPriceEvent & response);
     void handle_event(const MDPriceEvent & response);
     void handle_event(const OrderResponseEvent & response);
     void handle_event(const TradeEvent & response);
@@ -84,7 +82,7 @@ private:
     void finish_if_needed_and_ready();
 
 private:
-    EventLoop m_event_loop;
+    EventLoop & m_event_loop;
 
     const xg::Guid m_strategy_guid;
     CandleBuilder m_candle_builder;
@@ -112,8 +110,6 @@ private:
     static constexpr double m_pos_currency_amount = 100.;
     PositionManager m_position_manager;
 
-    const std::optional<HistoricalMDRequestData> m_historical_md_request;
-
     std::shared_ptr<EventObjectSubscription<WorkStatus>> m_gw_status_sub;
     bool first_price_received = false;
 
@@ -123,7 +119,6 @@ private:
     EventObjectChannel<WorkStatus> m_status;
 
     std::set<xg::Guid> m_live_md_requests;
-    std::set<xg::Guid> m_pending_requests;
     std::map<xg::Guid, MarketOrder> m_pending_orders;
 
     bool m_stop_request_handled = false;
@@ -131,10 +126,6 @@ private:
     bool m_stopped = false;
     std::promise<void> m_finish_promise;
 
-    std::optional<HistoricalMDGeneratorEvent> m_historical_md_generator;
-    bool m_backtest_in_progress = false;
-
-    EventChannel<HistoricalMDPriceEvent> m_historical_md_channel;
     EventChannel<StrategyStartRequest> m_start_ev_channel;
     EventChannel<StrategyStopRequest> m_stop_ev_channel;
     EventChannel<BarrierEvent> m_barrier_channel;

@@ -1,10 +1,10 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-#include "BacktestTradingGateway.h"
 #include "ByBitMarketDataGateway.h"
 #include "ByBitTradingGateway.h"
 #include "JsonStrategyConfig.h"
+#include "Launchpad.h"
 #include "Logger.h"
 #include "StrategyFactory.h"
 #include "StrategyInstance.h"
@@ -135,10 +135,10 @@ private:
     MainWindowEventConsumer m_event_consumer;
 
     ByBitMarketDataGateway m_gateway;
-    std::unique_ptr<BacktestTradingGateway> m_backtest_tr_gateway;
     std::unique_ptr<ByBitTradingGateway> m_trading_gateway;
 
     std::shared_ptr<StrategyInstance> m_strategy_instance;
+
     std::unique_ptr<EventSubcriber> m_sub;
 
     std::optional<JsonStrategyMetaInfo> m_last_set_strategy_parameters;

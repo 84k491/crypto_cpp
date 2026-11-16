@@ -1,7 +1,6 @@
-#include "BacktestTradingGateway.h"
+#include "BacktestingGateway.h"
 
 #include "ConditionalOrders.h"
-#include "EventTimeseriesChannel.h"
 #include "Events.h"
 #include "crossguid/guid.hpp"
 
@@ -26,26 +25,56 @@ class MockEventLoop : public ILambdaAcceptor
     void discard_subscriber_events(xg::Guid) override {}
 };
 
-class BacktestTradingGatewayTest : public Test
+class MockSourceMDGateway : public IMarketDataGateway
 {
 public:
-    BacktestTradingGatewayTest() = default;
+    void push_async_request(HistoricalMDRequest &&) override {}
+    void push_async_request(LiveMDRequest &&) override {}
+
+    EventChannel<HistoricalMDGeneratorEvent> & historical_prices_channel() override
+    {
+        return m_historical_prices_channel;
+    }
+
+    EventChannel<MDPriceEvent> & live_prices_channel() override
+    {
+        return m_live_prices_channel;
+    }
+
+    void unsubscribe_from_live(xg::Guid) override {}
+
+    EventObjectChannel<WorkStatus> & status_channel() override
+    {
+        return m_status;
+    }
+
+private:
+    EventChannel<HistoricalMDGeneratorEvent> m_historical_prices_channel;
+    EventChannel<MDPriceEvent> m_live_prices_channel;
+    EventObjectChannel<WorkStatus> m_status;
+};
+
+class BacktestingGatewayTest : public Test
+{
+public:
+    BacktestingGatewayTest()
+        : trgw(el, source_md_gateway, {})
+    {
+    }
 
 protected:
-    EventTimeseriesChannel<double> price_source_ch;
-    BacktestTradingGateway trgw;
-
     MockEventLoop el;
+    MockSourceMDGateway source_md_gateway;
+    BacktestingGateway trgw;
 };
 
 // push some price
 // open pos
 // push some more prices
 // close pos
-TEST_F(BacktestTradingGatewayTest, MarketOrderOpenClosePos)
+TEST_F(BacktestingGatewayTest, MarketOrderOpenClosePos)
 {
-    trgw.set_price_source(price_source_ch);
-    price_source_ch.push(std::chrono::milliseconds{1}, 100.);
+    trgw.on_new_price(std::chrono::milliseconds{1}, 100.);
 
     {
         MarketOrder mo{
@@ -84,8 +113,8 @@ TEST_F(BacktestTradingGatewayTest, MarketOrderOpenClosePos)
         ASSERT_EQ(trgw.pos_volume().value(), 1);
     }
 
-    price_source_ch.push(std::chrono::milliseconds{10}, 111.);
-    price_source_ch.push(std::chrono::milliseconds{20}, 222.);
+    trgw.on_new_price(std::chrono::milliseconds{10}, 111.);
+    trgw.on_new_price(std::chrono::milliseconds{20}, 222.);
 
     {
         MarketOrder mo{
@@ -126,10 +155,9 @@ TEST_F(BacktestTradingGatewayTest, MarketOrderOpenClosePos)
     }
 }
 
-TEST_F(BacktestTradingGatewayTest, TpslRejectIfNoPos)
+TEST_F(BacktestingGatewayTest, TpslRejectIfNoPos)
 {
-    trgw.set_price_source(price_source_ch);
-    price_source_ch.push(std::chrono::milliseconds{1}, 100.);
+    trgw.on_new_price(std::chrono::milliseconds{1}, 100.);
 
     bool tpsl_ack_responded = false;
     EventSubcriber tpsl_ack_sub{el};
@@ -153,10 +181,9 @@ TEST_F(BacktestTradingGatewayTest, TpslRejectIfNoPos)
     ASSERT_EQ(trgw.pos_volume().value(), 0);
 }
 
-TEST_F(BacktestTradingGatewayTest, TpslTriggerTp)
+TEST_F(BacktestingGatewayTest, TpslTriggerTp)
 {
-    trgw.set_price_source(price_source_ch);
-    price_source_ch.push(std::chrono::milliseconds{1}, 100.);
+    trgw.on_new_price(std::chrono::milliseconds{1}, 100.);
 
     // open pos
     {
@@ -208,7 +235,7 @@ TEST_F(BacktestTradingGatewayTest, TpslTriggerTp)
     tpsl_upd_response = {};
 
     // triggering TP
-    price_source_ch.push(std::chrono::milliseconds{2}, 130.);
+    trgw.on_new_price(std::chrono::milliseconds{2}, 130.);
 
     ASSERT_TRUE(tpsl_upd_response.has_value());
     EXPECT_FALSE(tpsl_upd_response->set_up);
@@ -217,10 +244,9 @@ TEST_F(BacktestTradingGatewayTest, TpslTriggerTp)
     ASSERT_EQ(trgw.pos_volume().value(), 0);
 }
 
-TEST_F(BacktestTradingGatewayTest, TpslTriggerSl)
+TEST_F(BacktestingGatewayTest, TpslTriggerSl)
 {
-    trgw.set_price_source(price_source_ch);
-    price_source_ch.push(std::chrono::milliseconds{1}, 100.);
+    trgw.on_new_price(std::chrono::milliseconds{1}, 100.);
 
     // open pos
     {
@@ -272,7 +298,7 @@ TEST_F(BacktestTradingGatewayTest, TpslTriggerSl)
     tpsl_upd_response = {};
 
     // triggering SL
-    price_source_ch.push(std::chrono::milliseconds{2}, 40.);
+    trgw.on_new_price(std::chrono::milliseconds{2}, 40.);
 
     ASSERT_EQ(trgw.pos_volume().value(), 0);
     EXPECT_TRUE(tpsl_upd_response);
@@ -280,10 +306,9 @@ TEST_F(BacktestTradingGatewayTest, TpslTriggerSl)
     EXPECT_TRUE(tp_trade_responded);
 }
 
-TEST_F(BacktestTradingGatewayTest, TpslRemoveOnClosePos)
+TEST_F(BacktestingGatewayTest, TpslRemoveOnClosePos)
 {
-    trgw.set_price_source(price_source_ch);
-    price_source_ch.push(std::chrono::milliseconds{1}, 100.);
+    trgw.on_new_price(std::chrono::milliseconds{1}, 100.);
 
     {
         MarketOrder mo{
@@ -299,7 +324,7 @@ TEST_F(BacktestTradingGatewayTest, TpslRemoveOnClosePos)
         ASSERT_EQ(trgw.pos_volume().value(), 1);
     }
 
-    price_source_ch.push(std::chrono::milliseconds{20}, 222.);
+    trgw.on_new_price(std::chrono::milliseconds{20}, 222.);
 
     std::optional<TpslUpdatedEvent> tpsl_upd_response;
     constexpr int sl_price = 120;
@@ -339,10 +364,9 @@ TEST_F(BacktestTradingGatewayTest, TpslRemoveOnClosePos)
     ASSERT_EQ(trgw.pos_volume().value(), 0);
 }
 
-TEST_F(BacktestTradingGatewayTest, StopLossSellTriggerLater)
+TEST_F(BacktestingGatewayTest, StopLossSellTriggerLater)
 {
-    trgw.set_price_source(price_source_ch);
-    price_source_ch.push(std::chrono::milliseconds{1}, 100.);
+    trgw.on_new_price(std::chrono::milliseconds{1}, 100.);
 
     std::optional<StopLossUpdatedEvent> sl_updated_response;
 
@@ -380,14 +404,14 @@ TEST_F(BacktestTradingGatewayTest, StopLossSellTriggerLater)
     ASSERT_FALSE(trade_msg.has_value());
 
     // this must not trigger sell stop loss
-    price_source_ch.push(std::chrono::milliseconds{20}, 222.);
+    trgw.on_new_price(std::chrono::milliseconds{20}, 222.);
 
     ASSERT_EQ(trgw.pos_volume().value(), 0);
     ASSERT_FALSE(sl_updated_response.has_value());
     ASSERT_FALSE(trade_msg.has_value());
 
     // exact price, must trigger and open pos
-    price_source_ch.push(std::chrono::milliseconds{30}, 90.);
+    trgw.on_new_price(std::chrono::milliseconds{30}, 90.);
 
     ASSERT_TRUE(sl_updated_response.has_value());
     ASSERT_FALSE(sl_updated_response->active);
@@ -396,10 +420,9 @@ TEST_F(BacktestTradingGatewayTest, StopLossSellTriggerLater)
     ASSERT_EQ(trgw.pos_volume().value(), -1);
 }
 
-TEST_F(BacktestTradingGatewayTest, StopLossBuyTriggerLater)
+TEST_F(BacktestingGatewayTest, StopLossBuyTriggerLater)
 {
-    trgw.set_price_source(price_source_ch);
-    price_source_ch.push(std::chrono::milliseconds{1}, 90.);
+    trgw.on_new_price(std::chrono::milliseconds{1}, 90.);
 
     std::optional<StopLossUpdatedEvent> sl_updated_response;
 
@@ -437,13 +460,13 @@ TEST_F(BacktestTradingGatewayTest, StopLossBuyTriggerLater)
     ASSERT_FALSE(trade_msg.has_value());
 
     // this must not trigger sell stop loss
-    price_source_ch.push(std::chrono::milliseconds{20}, 88.);
+    trgw.on_new_price(std::chrono::milliseconds{20}, 88.);
 
     ASSERT_FALSE(sl_updated_response.has_value());
     ASSERT_FALSE(trade_msg.has_value());
 
     // exact price, must trigger
-    price_source_ch.push(std::chrono::milliseconds{30}, 100.);
+    trgw.on_new_price(std::chrono::milliseconds{30}, 100.);
 
     ASSERT_TRUE(sl_updated_response.has_value());
     ASSERT_FALSE(sl_updated_response->active);
@@ -452,10 +475,9 @@ TEST_F(BacktestTradingGatewayTest, StopLossBuyTriggerLater)
     ASSERT_EQ(trgw.pos_volume().value(), 1);
 }
 
-TEST_F(BacktestTradingGatewayTest, TakeProfitSellTriggerLater)
+TEST_F(BacktestingGatewayTest, TakeProfitSellTriggerLater)
 {
-    trgw.set_price_source(price_source_ch);
-    price_source_ch.push(std::chrono::milliseconds{1}, 100.);
+    trgw.on_new_price(std::chrono::milliseconds{1}, 100.);
 
     std::optional<TakeProfitUpdatedEvent> sl_updated_response;
     EventSubcriber sl_updated_sub{el};
@@ -492,14 +514,14 @@ TEST_F(BacktestTradingGatewayTest, TakeProfitSellTriggerLater)
     ASSERT_FALSE(trade_msg.has_value());
 
     // this must not trigger sell stop loss
-    price_source_ch.push(std::chrono::milliseconds{20}, 90.);
+    trgw.on_new_price(std::chrono::milliseconds{20}, 90.);
 
     ASSERT_EQ(trgw.pos_volume().value(), 0);
     ASSERT_FALSE(sl_updated_response.has_value());
     ASSERT_FALSE(trade_msg.has_value());
 
     // exact price, must trigger
-    price_source_ch.push(std::chrono::milliseconds{30}, 110.);
+    trgw.on_new_price(std::chrono::milliseconds{30}, 110.);
 
     ASSERT_TRUE(sl_updated_response.has_value());
     ASSERT_FALSE(sl_updated_response->active);
@@ -508,10 +530,9 @@ TEST_F(BacktestTradingGatewayTest, TakeProfitSellTriggerLater)
     ASSERT_EQ(trgw.pos_volume().value(), -1);
 }
 
-TEST_F(BacktestTradingGatewayTest, TakeProfitBuyTriggerLater)
+TEST_F(BacktestingGatewayTest, TakeProfitBuyTriggerLater)
 {
-    trgw.set_price_source(price_source_ch);
-    price_source_ch.push(std::chrono::milliseconds{1}, 100.);
+    trgw.on_new_price(std::chrono::milliseconds{1}, 100.);
 
     std::optional<TakeProfitUpdatedEvent> sl_updated_response;
     EventSubcriber sl_updated_sub{el};
@@ -548,14 +569,14 @@ TEST_F(BacktestTradingGatewayTest, TakeProfitBuyTriggerLater)
     ASSERT_FALSE(trade_msg.has_value());
 
     // this must not trigger sell stop loss
-    price_source_ch.push(std::chrono::milliseconds{20}, 110.);
+    trgw.on_new_price(std::chrono::milliseconds{20}, 110.);
 
     ASSERT_EQ(trgw.pos_volume().value(), 0);
     ASSERT_FALSE(sl_updated_response.has_value());
     ASSERT_FALSE(trade_msg.has_value());
 
     // exact price, must trigger
-    price_source_ch.push(std::chrono::milliseconds{30}, 90.);
+    trgw.on_new_price(std::chrono::milliseconds{30}, 90.);
 
     ASSERT_TRUE(sl_updated_response.has_value());
     ASSERT_FALSE(sl_updated_response->active);
@@ -564,10 +585,9 @@ TEST_F(BacktestTradingGatewayTest, TakeProfitBuyTriggerLater)
     ASSERT_EQ(trgw.pos_volume().value(), 1);
 }
 
-TEST_F(BacktestTradingGatewayTest, StopLossCancel)
+TEST_F(BacktestingGatewayTest, StopLossCancel)
 {
-    trgw.set_price_source(price_source_ch);
-    price_source_ch.push(std::chrono::milliseconds{1}, 100.);
+    trgw.on_new_price(std::chrono::milliseconds{1}, 100.);
 
     std::optional<StopLossUpdatedEvent> sl_updated_response;
     EventSubcriber sl_updated_sub{el};
@@ -597,7 +617,7 @@ TEST_F(BacktestTradingGatewayTest, StopLossCancel)
     sl_updated_response.reset();
 
     // this must not trigger sell stop loss
-    price_source_ch.push(std::chrono::milliseconds{20}, 222.);
+    trgw.on_new_price(std::chrono::milliseconds{20}, 222.);
 
     {
         trgw.cancel_stop_loss_request(guid);
@@ -609,17 +629,16 @@ TEST_F(BacktestTradingGatewayTest, StopLossCancel)
     sl_updated_response.reset();
 
     // exact price, must trigger and open pos
-    price_source_ch.push(std::chrono::milliseconds{30}, 90.);
+    trgw.on_new_price(std::chrono::milliseconds{30}, 90.);
 
     ASSERT_FALSE(sl_updated_response.has_value());
 
     ASSERT_EQ(trgw.pos_volume().value(), 0);
 }
 
-TEST_F(BacktestTradingGatewayTest, TakeProfitCancel)
+TEST_F(BacktestingGatewayTest, TakeProfitCancel)
 {
-    trgw.set_price_source(price_source_ch);
-    price_source_ch.push(std::chrono::milliseconds{1}, 100.);
+    trgw.on_new_price(std::chrono::milliseconds{1}, 100.);
 
     std::optional<TakeProfitUpdatedEvent> sl_updated_response;
     EventSubcriber sl_updated_sub{el};
@@ -649,7 +668,7 @@ TEST_F(BacktestTradingGatewayTest, TakeProfitCancel)
     sl_updated_response.reset();
 
     // this must not trigger sell stop loss
-    price_source_ch.push(std::chrono::milliseconds{20}, 90.);
+    trgw.on_new_price(std::chrono::milliseconds{20}, 90.);
 
     // cancel
     {
@@ -662,17 +681,16 @@ TEST_F(BacktestTradingGatewayTest, TakeProfitCancel)
     sl_updated_response.reset();
 
     // exact price, must trigger
-    price_source_ch.push(std::chrono::milliseconds{30}, 110.);
+    trgw.on_new_price(std::chrono::milliseconds{30}, 110.);
 
     ASSERT_FALSE(sl_updated_response.has_value());
 
     ASSERT_EQ(trgw.pos_volume().value(), 0);
 }
 
-TEST_F(BacktestTradingGatewayTest, StopLossSellTriggerImmediately)
+TEST_F(BacktestingGatewayTest, StopLossSellTriggerImmediately)
 {
-    trgw.set_price_source(price_source_ch);
-    price_source_ch.push(std::chrono::milliseconds{1}, 89.);
+    trgw.on_new_price(std::chrono::milliseconds{1}, 89.);
 
     std::optional<StopLossUpdatedEvent> sl_updated_response;
     EventSubcriber sl_updated_sub{el};
@@ -709,10 +727,9 @@ TEST_F(BacktestTradingGatewayTest, StopLossSellTriggerImmediately)
     ASSERT_EQ(trgw.pos_volume().value(), -1);
 }
 
-TEST_F(BacktestTradingGatewayTest, StopLossBuyTriggerImmediately)
+TEST_F(BacktestingGatewayTest, StopLossBuyTriggerImmediately)
 {
-    trgw.set_price_source(price_source_ch);
-    price_source_ch.push(std::chrono::milliseconds{1}, 111.);
+    trgw.on_new_price(std::chrono::milliseconds{1}, 111.);
 
     std::optional<StopLossUpdatedEvent> sl_updated_response;
 
@@ -750,10 +767,9 @@ TEST_F(BacktestTradingGatewayTest, StopLossBuyTriggerImmediately)
     ASSERT_EQ(trgw.pos_volume().value(), 1);
 }
 
-TEST_F(BacktestTradingGatewayTest, TakeProfitSellTriggerImmediately)
+TEST_F(BacktestingGatewayTest, TakeProfitSellTriggerImmediately)
 {
-    trgw.set_price_source(price_source_ch);
-    price_source_ch.push(std::chrono::milliseconds{1}, 100.);
+    trgw.on_new_price(std::chrono::milliseconds{1}, 100.);
 
     std::optional<TakeProfitUpdatedEvent> tp_updated_response;
 
@@ -791,10 +807,9 @@ TEST_F(BacktestTradingGatewayTest, TakeProfitSellTriggerImmediately)
     ASSERT_EQ(trgw.pos_volume().value(), -1);
 }
 
-TEST_F(BacktestTradingGatewayTest, TakeProfitBuyTriggerImmediately)
+TEST_F(BacktestingGatewayTest, TakeProfitBuyTriggerImmediately)
 {
-    trgw.set_price_source(price_source_ch);
-    price_source_ch.push(std::chrono::milliseconds{1}, 99.);
+    trgw.on_new_price(std::chrono::milliseconds{1}, 99.);
 
     std::optional<TakeProfitUpdatedEvent> tp_updated_response;
     EventSubcriber tp_updated_sub{el};
@@ -832,8 +847,8 @@ TEST_F(BacktestTradingGatewayTest, TakeProfitBuyTriggerImmediately)
 }
 
 // TODO
-// TEST_F(BacktestTradingGatewayTest, TrailingStopRejectIfNoPos)
-// TEST_F(BacktestTradingGatewayTest, TrailingStopPullUpAndTrigger)
-// TEST_F(BacktestTradingGatewayTest, TrailingStopRemoveOnClosePos)
+// TEST_F(BacktestingGatewayTest, TrailingStopRejectIfNoPos)
+// TEST_F(BacktestingGatewayTest, TrailingStopPullUpAndTrigger)
+// TEST_F(BacktestingGatewayTest, TrailingStopRemoveOnClosePos)
 
 } // namespace test

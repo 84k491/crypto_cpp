@@ -1,11 +1,11 @@
 #pragma once
 
 #include <ostream>
-enum class WorkStatus
+
+enum class WorkStatus : uint8_t
 {
     Stopped,
-    Backtesting,
-    Live,
+    Running,
     Panic,
 };
 
@@ -13,8 +13,7 @@ inline std::string to_string(WorkStatus status)
 {
     switch (status) {
     case WorkStatus::Stopped: return "Stopped";
-    case WorkStatus::Backtesting: return "Backtesting";
-    case WorkStatus::Live: return "Live";
+    case WorkStatus::Running: return "Running";
     case WorkStatus::Panic: return "Panic";
     }
 }

@@ -29,13 +29,14 @@ std::optional<std::chrono::milliseconds> get_timeframe(const JsonStrategyConfig 
 } // namespace
 
 StrategyInstance::StrategyInstance(
+        EventLoop & event_loop,
         const Symbol & symbol,
-        const std::optional<HistoricalMDRequestData> & historical_md_request,
         const std::string & entry_strategy_name,
         const JsonStrategyConfig & entry_strategy_config,
         IMarketDataGateway & md_gateway,
         ITradingGateway & tr_gateway)
-    : m_strategy_guid(xg::newGuid())
+    : m_event_loop(event_loop)
+    , m_strategy_guid(xg::newGuid())
     , m_candle_builder{get_timeframe(entry_strategy_config).value_or(std::chrono::minutes{5})}
     , m_md_gateway(md_gateway)
     , m_tr_gateway(tr_gateway)
@@ -49,7 +50,6 @@ StrategyInstance::StrategyInstance(
               m_tpsl_channel)
     , m_symbol(symbol)
     , m_position_manager(symbol)
-    , m_historical_md_request(historical_md_request)
     , m_market_state_std_dev(std::chrono::seconds{600})
     , m_orders(symbol, m_event_loop, tr_gateway)
     , m_sub(m_event_loop)
@@ -92,20 +92,8 @@ StrategyInstance::StrategyInstance(
             });
 
     m_sub.subscribe(
-            m_md_gateway.historical_prices_channel(),
-            [this](const HistoricalMDGeneratorEvent & e) {
-                handle_event_generic(e);
-            },
-            Priority::Low);
-    m_sub.subscribe(
             m_md_gateway.live_prices_channel(),
             [this](const MDPriceEvent & e) {
-                handle_event_generic(e);
-            },
-            Priority::Low);
-    m_sub.subscribe(
-            m_historical_md_channel,
-            [this](const HistoricalMDPriceEvent & e) {
                 handle_event_generic(e);
             },
             Priority::Low);
@@ -131,18 +119,16 @@ StrategyInstance::StrategyInstance(
         res.position_currency_amount = m_pos_currency_amount;
     });
 
-    if (!historical_md_request.has_value()) {
-        m_sub.subscribe(m_md_gateway.status_channel(),
-                        [this](const WorkStatus & status) {
-                            if (status == WorkStatus::Stopped || status == WorkStatus::Panic) {
-                                if (m_position_manager.opened() != nullptr) {
-                                    close_position(
-                                            m_last_ts_and_price.second,
-                                            m_last_ts_and_price.first);
-                                }
-                            }
-                        });
-    }
+    m_sub.subscribe(
+            m_md_gateway.status_channel(),
+            [this](const WorkStatus & status) {
+                if (status == WorkStatus::Stopped) {
+                    stop_async();
+                }
+                if (status == WorkStatus::Panic) {
+                    stop_async(true);
+                }
+            });
 }
 
 StrategyInstance::~StrategyInstance()
@@ -358,42 +344,6 @@ void StrategyInstance::handle_event_generic(const T & ev)
     after_every_event();
 }
 
-void StrategyInstance::handle_event(const HistoricalMDGeneratorEvent & response)
-{
-    if (m_historical_md_generator) {
-        return;
-    }
-
-    const size_t erased_cnt = m_pending_requests.erase(response.request_guid());
-    if (erased_cnt == 0) {
-        LOG_DEBUG("unsolicited HistoricalMDPackEvent: {}, this->guid: {}", response.request_guid(), m_strategy_guid);
-        return;
-    }
-
-    m_historical_md_generator = response;
-    const auto ev_opt = m_historical_md_generator->get_next();
-    if (!ev_opt.has_value()) {
-        LOG_ERROR("no event in HistoricalMDGeneratorEvent: {}", response.request_guid());
-        return;
-    }
-
-    m_backtest_in_progress = true;
-    m_historical_md_channel.push(ev_opt.value());
-}
-
-void StrategyInstance::handle_event(const HistoricalMDPriceEvent & response)
-{
-    handle_event(static_cast<const MDPriceEvent &>(response));
-    auto ev_opt = m_historical_md_generator->get_next();
-    if (!ev_opt.has_value()) {
-        m_stop_ev_channel.push({});
-        m_historical_md_generator.reset();
-        return;
-    }
-    const auto & ev = ev_opt.value();
-    m_historical_md_channel.push(ev);
-}
-
 void StrategyInstance::handle_event(const MDPriceEvent & response)
 {
     const auto & public_trade = response.public_trade;
@@ -480,21 +430,10 @@ void StrategyInstance::handle_event(const TradeEvent & response)
 
 void StrategyInstance::handle_event(const StrategyStartRequest &)
 {
-    if (m_historical_md_request.has_value()) {
-        m_status.push(WorkStatus::Backtesting);
-
-        HistoricalMDRequest historical_request(
-                m_symbol,
-                m_historical_md_request.value());
-        m_pending_requests.emplace(historical_request.guid);
-        m_md_gateway.push_async_request(std::move(historical_request));
-    }
-    else {
-        m_status.push(WorkStatus::Live);
-        LiveMDRequest live_request(m_symbol);
-        m_live_md_requests.emplace(live_request.guid);
-        m_md_gateway.push_async_request(std::move(live_request));
-    }
+    m_status.push(WorkStatus::Running);
+    LiveMDRequest live_request(m_symbol);
+    m_live_md_requests.emplace(live_request.guid);
+    m_md_gateway.push_async_request(std::move(live_request));
 }
 
 void StrategyInstance::handle_event(const StrategyStopRequest &)
@@ -507,8 +446,6 @@ void StrategyInstance::handle_event(const StrategyStopRequest &)
 
     m_live_md_requests.clear();
 
-    m_backtest_in_progress = false;
-    m_historical_md_generator.reset();
     m_stop_request_handled = true;
 }
 
@@ -529,9 +466,8 @@ void StrategyInstance::close_position(double price, std::chrono::milliseconds ts
 bool StrategyInstance::ready_to_finish() const
 {
     const bool pos_closed = m_position_manager.opened() == nullptr;
-    const bool got_active_requests = m_pending_requests.empty() && m_live_md_requests.empty();
-    const bool historical_md_finished = !m_historical_md_generator.has_value();
-    const bool res = pos_closed && got_active_requests && !m_backtest_in_progress && historical_md_finished;
+    const bool got_active_requests = m_live_md_requests.empty();
+    const bool res = pos_closed && got_active_requests;
     if (res) {
         LOG_STATUS("StrategyInstance is ready to finish");
     }
