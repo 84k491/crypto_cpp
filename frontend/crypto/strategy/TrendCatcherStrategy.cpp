@@ -143,11 +143,11 @@ void TrendCatcherStrategy::push_candle(const Candle & candle)
     double slow_std_dev_p = (100 * *slow_std_dev_opt) / m_slow_std_dev.mean();
     double fast_std_dev_p = (100 * *fast_std_dev_opt) / m_fast_std_dev.mean();
 
-    m_strategy_internal_data_channel.push(ts, {.chart_name = "price_diff", .series_name = "slow_diff,%", .value = slow_diff_p});
-    m_strategy_internal_data_channel.push(ts, {.chart_name = "price_diff", .series_name = "fast_diff,%", .value = fast_diff_p});
+    m_strategy_internal_data_channel.push({.ts = ts, .chart_name = "price_diff", .series_name = "slow_diff,%", .value = slow_diff_p});
+    m_strategy_internal_data_channel.push({.ts = ts, .chart_name = "price_diff", .series_name = "fast_diff,%", .value = fast_diff_p});
 
-    m_strategy_internal_data_channel.push(ts, {.chart_name = "std_dev", .series_name = "slow_std_dev,%", .value = slow_std_dev_p});
-    m_strategy_internal_data_channel.push(ts, {.chart_name = "std_dev", .series_name = "fast_std_dev,%", .value = fast_std_dev_p});
+    m_strategy_internal_data_channel.push({.ts = ts, .chart_name = "std_dev", .series_name = "slow_std_dev,%", .value = slow_std_dev_p});
+    m_strategy_internal_data_channel.push({.ts = ts, .chart_name = "std_dev", .series_name = "fast_std_dev,%", .value = fast_std_dev_p});
 
     if (slow_std_dev_p > m_config.m_max_std_dev_perc || fast_std_dev_p > m_config.m_max_std_dev_perc) {
         push_market_state(candle.ts(), MarketState::HighVolatility);

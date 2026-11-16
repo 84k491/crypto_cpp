@@ -114,13 +114,13 @@ void VolumeImbalanceTrendStrategy::push_candle(const Candle & candle)
     const auto imbalance = candle.volume_imbalance_coef();
     const auto price_diff_perc = candle.price_diff_coef() * 100;
 
-    m_strategy_internal_data_channel.push(candle.close_ts(), {"trade_rate", "trade_rate", static_cast<double>(trade_rate)});
+    m_strategy_internal_data_channel.push({candle.close_ts(), "trade_rate", "trade_rate", static_cast<double>(trade_rate)});
 
-    m_strategy_internal_data_channel.push(candle.close_ts(), {"price_diff", "price_diff", price_diff_perc});
-    m_strategy_internal_data_channel.push(candle.close_ts(), {"price_diff", "lower_limit", static_cast<double>(m_config.m_min_price_change_perc)});
+    m_strategy_internal_data_channel.push({candle.close_ts(), "price_diff", "price_diff", price_diff_perc});
+    m_strategy_internal_data_channel.push({candle.close_ts(), "price_diff", "lower_limit", static_cast<double>(m_config.m_min_price_change_perc)});
 
-    m_strategy_internal_data_channel.push(candle.close_ts(), {"volume_imbalance", "volume_imbalance", imbalance.unsigned_coef * 100});
-    m_strategy_internal_data_channel.push(candle.close_ts(), {"volume_imbalance", "lower_limit", static_cast<double>(m_config.m_min_volume_imbalance_perc)});
+    m_strategy_internal_data_channel.push({candle.close_ts(), "volume_imbalance", "volume_imbalance", imbalance.unsigned_coef * 100});
+    m_strategy_internal_data_channel.push({candle.close_ts(), "volume_imbalance", "lower_limit", static_cast<double>(m_config.m_min_volume_imbalance_perc)});
 
     {
         if (!rel_volatility_opt.has_value()) {
@@ -136,11 +136,11 @@ void VolumeImbalanceTrendStrategy::push_candle(const Candle & candle)
 
     const double trade_rate_lower_limit = *m_prev_trade_rate_avg_opt * (double)m_config.m_min_trade_rate_threshold_perc / 100;
 
-    m_strategy_internal_data_channel.push(candle.close_ts(), {"volatitily", "volatitily", *rel_volatility_opt * 100});
-    m_strategy_internal_data_channel.push(candle.close_ts(), {"volatitily", "upper_limit", m_config.m_max_relative_volatility_perc});
+    m_strategy_internal_data_channel.push({candle.close_ts(), "volatitily", "volatitily", *rel_volatility_opt * 100});
+    m_strategy_internal_data_channel.push({candle.close_ts(), "volatitily", "upper_limit", m_config.m_max_relative_volatility_perc});
 
-    m_strategy_internal_data_channel.push(candle.close_ts(), {"trade_rate", "trade_rate_avg", *trade_rate_avg_opt});
-    m_strategy_internal_data_channel.push(candle.close_ts(), {"trade_rate", "lower_limit", trade_rate_lower_limit});
+    m_strategy_internal_data_channel.push({candle.close_ts(), "trade_rate", "trade_rate_avg", *trade_rate_avg_opt});
+    m_strategy_internal_data_channel.push({candle.close_ts(), "trade_rate", "lower_limit", trade_rate_lower_limit});
 
     {
         const bool volatility_ok = *rel_volatility_opt * 100 < m_config.m_max_relative_volatility_perc;

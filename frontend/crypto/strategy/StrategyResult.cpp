@@ -13,12 +13,16 @@ nlohmann::json StrategyResult::to_json() const
 {
     return {
             {"position_currency_amount", position_currency_amount},
+            {"strategy_start_ts", strategy_start_ts.count()},
+            {"apr", apr()},
+            {"win_rate", win_rate()},
+            {"trades_per_month", trades_per_month()},
             {"final_profit", final_profit},
             {"depo_standard_deviation", depo_standard_deviation},
             {"trades_count", trades_count},
             {"last_trade_date", last_trade_date},
-            {"profit_poitions_count", profit_positions_cnt},
-            {"loss_poitions_count", loss_positions_cnt},
+            {"profit_positions_count", profit_positions_cnt},
+            {"loss_positions_count", loss_positions_cnt},
             {"fees_paid", fees_paid},
             {"profit_per_trade", profit_per_trade()},
             {"best_profit_trade", best_profit_trade.value_or(0.)},

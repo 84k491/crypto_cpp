@@ -1,10 +1,12 @@
 #pragma once
 
 #include "CandleBuiler.h"
+#include "ChartSeriesList.h"
 #include "ConditionalOrders.h"
 #include "EventLoop.h"
 #include "EventLoopSubscriber.h"
 #include "EventTimeseriesChannel.h"
+#include "Guarded.h"
 #include "IMarketDataGateway.h"
 #include "ITradingGateway.h"
 #include "JsonStrategyConfig.h"
@@ -40,7 +42,8 @@ public:
     void set_channel_capacity(std::optional<std::chrono::milliseconds> capacity);
     EventTimeseriesChannel<Trade> & trade_channel();
     EventTimeseriesChannel<ProfitPriceLevels> & price_levels_channel();
-    EventTimeseriesChannel<StrategyInternalData> & strategy_internal_data_channel();
+    EventObjectChannel<ChartSeriesList> & chart_series_list_channel();
+    EventTimeseriesChannel<double> * find_own_series_channel(const ChartSeriesName & name);
     EventTimeseriesChannel<double> & price_channel();
     EventTimeseriesChannel<Candle> & candle_channel();
     EventTimeseriesChannel<double> & depo_channel();
@@ -69,6 +72,9 @@ private:
     void handle_event(const StrategyStartRequest & ev);
     void handle_event(const StrategyStopRequest & response);
     void after_every_event();
+
+    void store_own_series_point(const StrategyInternalData & point);
+    EventTimeseriesChannel<double> & create_own_series_channel(const ChartSeriesName & name);
 
     void enqueue_market_state_band(const Candle & candle);
     void render_market_state(std::chrono::milliseconds candle_ts, MarketState state);
@@ -103,6 +109,10 @@ private:
 
     EventTimeseriesChannel<TpslPrices> m_tpsl_channel;
     EventTimeseriesChannel<StopLoss> m_trailing_stop_channel;
+
+    EventObjectChannel<ChartSeriesList> m_chart_series_list_channel;
+    Guarded<std::map<ChartSeriesName, std::unique_ptr<EventTimeseriesChannel<double>>>> m_own_series_channels;
+    std::optional<std::chrono::milliseconds> m_own_series_capacity;
 
     StrategyChannelsRefs m_strategy_channels;
 

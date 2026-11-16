@@ -75,13 +75,13 @@ void DoubleSmaStrategy::push_price(std::pair<std::chrono::milliseconds, double> 
         return;
     }
     const auto current_average_fast = fast_avg.value();
-    m_strategy_internal_data_channel.push(ts_and_price.first, {"prices", "fast_avg_history", current_average_fast});
+    m_strategy_internal_data_channel.push({ts_and_price.first, "prices", "fast_avg_history", current_average_fast});
 
     if (!slow_avg.has_value()) {
         return;
     }
     const auto current_average_slow = slow_avg.value();
-    m_strategy_internal_data_channel.push(ts_and_price.first, {"prices", "slow_avg_history", current_average_slow});
+    m_strategy_internal_data_channel.push({ts_and_price.first, "prices", "slow_avg_history", current_average_slow});
 
     ScopeExit scope_exit([&] {
         m_prev_slow_avg = current_average_slow;

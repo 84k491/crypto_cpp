@@ -57,6 +57,7 @@ private slots:
 
 private:
     void subscribe_to_strategy();
+    void subscribe_to_own_series(StrategyInstance & strategy_instance, const ChartSeriesName & name, bool draw_existing_points);
     void load_window();
     void update_depo_trend();
 
@@ -113,6 +114,7 @@ private:
     std::map<std::string, MultiSeriesChart *> m_charts;
 
     std::weak_ptr<StrategyInstance> m_strategy_instance;
+    std::set<ChartSeriesName> m_subscribed_own_series;
     EventSubcriber m_sub;
 };
 

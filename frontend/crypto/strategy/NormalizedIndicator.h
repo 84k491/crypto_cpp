@@ -21,7 +21,7 @@ public:
     NormalizedIndicator(std::string chart_name, std::string series_name, bool inverted);
 
     [[nodiscard]]
-    StrategyInternalData push(double upper_threshold, double value, double lower_threshold) const;
+    StrategyInternalData push(std::chrono::milliseconds ts, double upper_threshold, double value, double lower_threshold) const;
 
 private:
     std::string m_chart_name;

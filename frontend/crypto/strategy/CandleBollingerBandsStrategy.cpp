@@ -95,9 +95,9 @@ void CandleBollingerBandsStrategy::push_candle(const Candle & candle)
 
     UNWRAP_RET_VOID(bb_res, m_bollinger_bands.push_value({ts, price}));
 
-    m_strategy_internal_data_channel.push(ts, {"prices", "upper_band", bb_res.m_upper_band});
-    m_strategy_internal_data_channel.push(ts, {"prices", "trend", bb_res.m_trend});
-    m_strategy_internal_data_channel.push(ts, {"prices", "lower_band", bb_res.m_lower_band});
+    m_strategy_internal_data_channel.push({.ts = ts, .chart_name = "prices", .series_name = "upper_band", .value = bb_res.m_upper_band});
+    m_strategy_internal_data_channel.push({.ts = ts, .chart_name = "prices", .series_name = "trend", .value = bb_res.m_trend});
+    m_strategy_internal_data_channel.push({.ts = ts, .chart_name = "prices", .series_name = "lower_band", .value = bb_res.m_lower_band});
 
     if (m_last_signal_side) {
         const auto last_signal_side = m_last_signal_side.value();

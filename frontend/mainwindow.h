@@ -1,14 +1,13 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-#include "ByBitMarketDataGateway.h"
-#include "ByBitTradingGateway.h"
+#include "Backend.h"
 #include "JsonStrategyConfig.h"
-#include "Launchpad.h"
 #include "Logger.h"
 #include "StrategyFactory.h"
 #include "StrategyInstance.h"
 #include "StrategyResult.h"
+#include "Timerange.h"
 #include "WorkStatus.h"
 #include "chart_window.h"
 
@@ -99,7 +98,7 @@ class MainWindow final
     Q_OBJECT
 
 public:
-    MainWindow(QWidget * parent = nullptr);
+    MainWindow(Backend & backend, QWidget * parent = nullptr);
     ~MainWindow() override;
 
     void closeEvent(QCloseEvent * event) override;
@@ -116,20 +115,20 @@ private slots:
     void on_pb_charts_clicked();
     void render_result(StrategyResult result);
     void subscribe_for_positions();
-    void optimized_config_slot(const JsonStrategyConfig & entry_config);
 
     void on_lambda(std::function<void()> lambda);
 
 signals:
-    void signal_optimized_config(JsonStrategyConfig entry_config);
-    void signal_optimizer_passed_check(int passed_checks, int total_checks);
     void signal_lambda(std::function<void()> lambda);
 
 private:
+    void subscribe_to_backend();
+    void handle_current_run_changed(const CurrentRun & run);
     void handle_status_changed(WorkStatus status);
+    void handle_optimizer_progress(const OptimizerProgress & progress);
     void construct_optimizer_ui();
-    void subscribe_to_strategy();
-    std::optional<Timerange> get_timerange() const;
+    Timerange get_timerange() const;
+    std::optional<std::chrono::milliseconds> get_channel_capacity() const;
 
     PlaybackSettingsEvent get_playback_settings() const;
     void push_playback_settings();
@@ -141,13 +140,12 @@ private:
     Ui::MainWindow * ui;
     MainWindowEventConsumer m_event_consumer;
 
-    ByBitMarketDataGateway m_gateway;
-    std::unique_ptr<ByBitTradingGateway> m_trading_gateway;
+    Backend & m_backend;
+    CurrentRun m_current_run;
 
-    std::shared_ptr<Launchpad> m_launchpad;
-    std::shared_ptr<StrategyInstance> m_strategy_instance;
-
-    std::unique_ptr<EventSubcriber> m_sub;
+    EventSubcriber m_backend_sub;
+    std::unique_ptr<EventSubcriber> m_run_sub;
+    std::unique_ptr<EventSubcriber> m_positions_sub;
 
     std::optional<JsonStrategyMetaInfo> m_last_set_strategy_parameters;
     std::map<std::string, QDoubleSpinBox *> m_strategy_parameters_spinboxes;

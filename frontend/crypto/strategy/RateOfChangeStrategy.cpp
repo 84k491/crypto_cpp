@@ -113,8 +113,8 @@ void RateOfChangeStrategy::push_candle(const Candle & c)
     const double roc = (c.close() - m_prev_closing_prices.back()) / m_prev_closing_prices.back();
 
     m_strategy_internal_data_channel.push(
-            close_ts,
             m_roc_indicator.push(
+                    close_ts,
                     m_config.m_signal_threshold,
                     roc,
                     -m_config.m_signal_threshold));

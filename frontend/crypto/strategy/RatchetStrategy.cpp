@@ -76,7 +76,7 @@ std::optional<std::chrono::milliseconds> RatchetStrategy::timeframe() const
 void RatchetStrategy::push_candle(const Candle & c)
 {
     const auto [value, flip] = m_ratchet.push_price_for_value(c.close());
-    m_strategy_internal_data_channel.push(c.close_ts(), {"prices", "ratchet", value});
+    m_strategy_internal_data_channel.push({.ts = c.close_ts(), .chart_name = "prices", .series_name = "ratchet", .value = value});
 
     if (!flip) {
         return;

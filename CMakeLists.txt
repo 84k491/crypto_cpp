@@ -79,4 +79,5 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} \
     ")
 
 add_subdirectory(frontend)
+add_subdirectory(cli)
 set(JSON_BuildTests OFF CACHE INTERNAL "")

@@ -202,8 +202,14 @@ void ChartWindow::for_each_channel(StrategyInstance & strategy_instance, F && f)
     f(strategy_instance.price_levels_channel());
     f(strategy_instance.tpsl_channel());
     f(strategy_instance.trailing_stop_channel());
-    f(strategy_instance.strategy_internal_data_channel());
+
+    for (const auto & name : strategy_instance.chart_series_list_channel().get().series_names) {
+        UNWRAP_CONTINUE(own_series_channel, strategy_instance.find_own_series_channel(name));
+        f(own_series_channel);
+    }
+
     f(strategy_instance.trade_channel());
+
     if (m_render_depo) {
         f(strategy_instance.depo_channel());
     }
@@ -336,9 +342,12 @@ void ChartWindow::load_window()
     for (const auto & [ts, stop_loss] : str_instance.trailing_stop_channel().data_copy_in_range(start, end)) {
         price_plot.push_stop_loss(ts, stop_loss.stop_price());
     }
-    for (const auto & [ts, data] : str_instance.strategy_internal_data_channel().data_copy_in_range(start, end, true)) {
-        const auto & [chart_name, series_name, value] = data;
-        get_or_create_chart(std::string{chart_name}).push_line_point(std::string{series_name}, ts, value);
+    for (const auto & name : str_instance.chart_series_list_channel().get().series_names) {
+        UNWRAP_CONTINUE(own_series_channel, str_instance.find_own_series_channel(name));
+        auto & own_series_plot = get_or_create_chart(name.chart_name);
+        for (const auto & [ts, value] : own_series_channel.data_copy_in_range(start, end, true)) {
+            own_series_plot.push_line_point(name.series_name, ts, value);
+        }
     }
     for (const auto & [ts, trade] : str_instance.trade_channel().data_copy_in_range(start, end)) {
         price_plot.push_trade(trade);
@@ -456,14 +465,16 @@ void ChartWindow::subscribe_to_strategy()
             });
 
     m_sub.subscribe(
-            str_instance.strategy_internal_data_channel(),
-            {},
-            [this](std::chrono::milliseconds ts, const StrategyInternalData & data) {
-                const auto & [chart_name, series_name, value] = data;
-                handle_new_point(std::string{chart_name}, ts, [&](MultiSeriesChart & plot) {
-                    plot.push_line_point(std::string{series_name}, ts, value);
-                });
+            str_instance.chart_series_list_channel(),
+            [this](const ChartSeriesList & list) {
+                UNWRAP_RET_VOID(strategy_instance, m_strategy_instance.lock());
+                for (const auto & name : list.series_names) {
+                    subscribe_to_own_series(strategy_instance, name, true);
+                }
             });
+    for (const auto & name : str_instance.chart_series_list_channel().get().series_names) {
+        subscribe_to_own_series(str_instance, name, false);
+    }
 
     m_sub.subscribe(
             str_instance.trade_channel(),
@@ -493,6 +504,31 @@ void ChartWindow::subscribe_to_strategy()
                 update_depo_trend();
                 get_or_create_chart(m_depo_chart_name).replot(QCustomPlot::rpQueuedReplot);
             });
+}
+
+void ChartWindow::subscribe_to_own_series(StrategyInstance & strategy_instance, const ChartSeriesName & name, bool draw_existing_points)
+{
+    UNWRAP_RET_VOID(own_series_channel, strategy_instance.find_own_series_channel(name));
+    if (!m_subscribed_own_series.insert(name).second) {
+        return;
+    }
+
+    const auto draw_point = [this, name](std::chrono::milliseconds ts, const double & value) {
+        handle_new_point(name.chart_name, ts, [&](MultiSeriesChart & plot) {
+            plot.push_line_point(name.series_name, ts, value);
+        });
+    };
+
+    EventTimeseriesChannel<double>::SnapshotCallbackT draw_existing_points_callback;
+    if (draw_existing_points) {
+        draw_existing_points_callback = [draw_point](const std::deque<std::pair<std::chrono::milliseconds, double>> & points) {
+            for (const auto & [ts, value] : points) {
+                draw_point(ts, value);
+            }
+        };
+    }
+
+    m_sub.subscribe(own_series_channel, std::move(draw_existing_points_callback), draw_point);
 }
 
 void ChartWindow::handle_plot_range_changed(MultiSeriesChart & source, const QCPRange & range)

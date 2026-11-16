@@ -67,11 +67,11 @@ bool DynamicGridAdxStrategy::is_banned(std::chrono::milliseconds ts, const Candl
         return true;
     }
     const auto & adx = adx_opt.value();
-    m_strategy_internal_data_channel.push(ts, {.chart_name = "adx", .series_name = "adx", .value = adx.adx});
+    m_strategy_internal_data_channel.push({.ts = ts, .chart_name = "adx", .series_name = "adx", .value = adx.adx});
 
     if (adx.adx > m_config.m_adx_threshold) {
         m_ban_until = ts + m_config.m_timeframe * m_config.m_interval; // for trend interval
-        m_strategy_internal_data_channel.push(ts, {.chart_name = "adx", .series_name = "threshold", .value = m_config.m_adx_threshold});
+        m_strategy_internal_data_channel.push({.ts = ts, .chart_name = "adx", .series_name = "threshold", .value = m_config.m_adx_threshold});
     }
 
     return m_ban_until > ts;

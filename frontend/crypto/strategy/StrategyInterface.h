@@ -9,6 +9,7 @@
 
 struct StrategyInternalData
 {
+    std::chrono::milliseconds ts;
     std::string_view chart_name;
     std::string series_name;
     double value;
@@ -19,7 +20,7 @@ class IStrategy
 public:
     virtual ~IStrategy() = default;
 
-    virtual EventTimeseriesChannel<StrategyInternalData> & strategy_internal_data_channel() = 0;
+    virtual EventChannel<StrategyInternalData> & strategy_internal_data_channel() = 0;
     // Market state of a candle that starts at the timestamp. Pushed in time order, may lag behind candles.
     // Skipped candles are rendered as MarketState::None
     virtual EventTimeseriesChannel<MarketState> & market_state_channel() = 0;

@@ -103,7 +103,7 @@ void DynamicGridWithBan::push_candle(std::chrono::milliseconds ts, const Candle 
     if (v_opt.has_value()) {
         const auto & v = v_opt.value();
         m_last_trend_value = v;
-        m_strategy_internal_data_channel.push(ts, {.chart_name = "prices", .series_name = "trend", .value = v});
+        m_strategy_internal_data_channel.push({.ts = ts, .chart_name = "prices", .series_name = "trend", .value = v});
     }
 
     if (!v_opt.has_value()) {
@@ -293,7 +293,7 @@ void DynamicGridWithBan::report_levels(std::chrono::milliseconds ts)
 
     for (int i = int(m_config.m_levels_per_side) * -1; i < int(m_config.m_levels_per_side) + 1; ++i) {
         const auto p = get_price_from_level_number(i);
-        m_strategy_internal_data_channel.push(ts, {.chart_name = "prices", .series_name = std::to_string(i), .value = p});
+        m_strategy_internal_data_channel.push({.ts = ts, .chart_name = "prices", .series_name = std::to_string(i), .value = p});
     }
 
     last_reported_ts = ts;
@@ -302,7 +302,7 @@ void DynamicGridWithBan::report_levels(std::chrono::milliseconds ts)
 void DynamicGridWithBan::clear_levels(std::chrono::milliseconds ts)
 {
     for (int i = int(m_config.m_levels_per_side) * -1; i < int(m_config.m_levels_per_side) + 1; ++i) {
-        m_strategy_internal_data_channel.push(ts, {"prices", std::to_string(i), NAN});
+        m_strategy_internal_data_channel.push({ts, "prices", std::to_string(i), NAN});
     }
 }
 

@@ -1,10 +1,9 @@
 #include "mainwindow.h"
 
 #include "./ui_mainwindow.h"
-#include "ITradingGateway.h"
 #include "JsonStrategyConfig.h"
 #include "Logger.h"
-#include "Optimizer.h"
+#include "Macros.h"
 #include "OrdinaryLeastSquares.h"
 #include "PositionResultView.h"
 #include "StrategyInstance.h"
@@ -15,13 +14,14 @@
 
 #include <nlohmann/json.hpp>
 
-#include <thread>
-
-MainWindow::MainWindow(QWidget * parent)
+MainWindow::MainWindow(Backend & backend, QWidget * parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
     , m_event_consumer(*this)
-    , m_sub(std::make_unique<EventSubcriber>(m_event_consumer))
+    , m_backend(backend)
+    , m_backend_sub(m_event_consumer)
+    , m_run_sub(std::make_unique<EventSubcriber>(m_event_consumer))
+    , m_positions_sub(std::make_unique<EventSubcriber>(m_event_consumer))
 
 {
     ui->setupUi(this);
@@ -29,91 +29,112 @@ MainWindow::MainWindow(QWidget * parent)
 
     connect(this, &MainWindow::signal_lambda, this, &MainWindow::on_lambda);
 
-    connect(this, &MainWindow::signal_optimizer_passed_check, this, [this](int passed_checks, int total_checks) {
-        if (passed_checks == total_checks) {
-            ui->pb_optimize->setEnabled(true);
-            ui->pb_optimize->setText("Optimize");
-        }
-        else {
-            ui->pb_optimize->setEnabled(false);
-            ui->pb_optimize->setText((std::to_string(passed_checks) + std::string(" / ") + std::to_string(total_checks)).c_str());
-        }
-    });
-
     ui->pb_stop->setEnabled(false);
-    connect(this,
-            &MainWindow::signal_optimized_config,
-            this,
-            &MainWindow::optimized_config_slot);
 
     ui->sb_work_hours->setValue(saved_state.m_work_hours);
     if (saved_state.m_start_ts_unix_time != 0) {
         ui->dt_from->setDateTime(QDateTime::fromMSecsSinceEpoch(static_cast<qint64>(saved_state.m_start_ts_unix_time)));
     }
 
-    const auto names = StrategyFactory::i().get_all_strategy_names();
+    const auto names = m_backend.strategy_names_channel().get();
     for (const auto & name : names) {
         ui->cb_strategy->addItem(name.c_str());
     }
     ui->cb_strategy->setCurrentText(saved_state.m_strategy_name.c_str());
 
-    const auto symbols = m_gateway.get_symbols("USDT");
+    const auto symbols = m_backend.symbols_channel().get();
     for (const auto & symbol : symbols) {
         ui->cb_symbol->addItem(symbol.symbol_name.c_str());
     }
     ui->cb_symbol->setCurrentText(saved_state.m_symbol.c_str());
 
     update_playback_controls();
+    subscribe_to_backend();
 
     LOG_STATUS("End of mainwindow constructor");
 }
 
+void MainWindow::subscribe_to_backend()
+{
+    m_backend_sub.subscribe(
+            m_backend.current_run_channel(),
+            [this](const CurrentRun & run) { handle_current_run_changed(run); });
+    m_backend_sub.subscribe(
+            m_backend.optimizer_progress_channel(),
+            [this](const OptimizerProgress & progress) { handle_optimizer_progress(progress); });
+    m_backend_sub.subscribe(
+            m_backend.optimized_config_channel(),
+            [this](const JsonStrategyConfig & entry_config) { ui->wt_entry_params->setup_values(entry_config); });
+    handle_current_run_changed(m_backend.current_run_channel().get());
+}
+
+void MainWindow::handle_current_run_changed(const CurrentRun & run)
+{
+    m_current_run = run;
+    m_run_sub = std::make_unique<EventSubcriber>(m_event_consumer);
+    m_positions_sub = std::make_unique<EventSubcriber>(m_event_consumer);
+
+    const auto strategy_instance_ptr = run.strategy_instance.lock();
+    ui->pb_charts->setEnabled(strategy_instance_ptr != nullptr);
+    if (!strategy_instance_ptr) {
+        update_playback_controls();
+        return;
+    }
+    auto & strategy_instance = *strategy_instance_ptr;
+
+    m_run_sub->subscribe(
+            strategy_instance.status_channel(),
+            [this](const WorkStatus & status) { handle_status_changed(status); });
+    m_run_sub->subscribe(
+            strategy_instance.strategy_result_channel(),
+            [this](const StrategyResult & result) {
+                render_result(result);
+            });
+    handle_status_changed(strategy_instance.status_channel().get());
+}
+
 void MainWindow::handle_status_changed(WorkStatus status)
 {
+    UNWRAP_RET_VOID(strategy_instance, m_current_run.strategy_instance.lock());
+
     LOG_STATUS("Work status: {}", to_string(status));
     ui->lb_work_status->setText(to_string(status).c_str());
     if (status == WorkStatus::Running) {
         ui->pb_run->setEnabled(false);
         ui->pb_stop->setEnabled(true);
     }
-    if (status == WorkStatus::Stopped || status == WorkStatus::Running) {
-        subscribe_to_strategy();
-    }
     if (status == WorkStatus::Stopped || status == WorkStatus::Panic) {
         ui->pb_run->setEnabled(true);
         ui->pb_stop->setEnabled(false);
-        m_sub = std::make_unique<EventSubcriber>(m_event_consumer);
     }
 
-    render_result(m_strategy_instance->strategy_result_channel().get());
+    render_result(strategy_instance.strategy_result_channel().get());
 
     subscribe_for_positions();
 
     update_playback_controls();
 }
 
-void MainWindow::subscribe_to_strategy()
+void MainWindow::handle_optimizer_progress(const OptimizerProgress & progress)
 {
-    LOG_STATUS("mainwindow subscribe_to_strategy");
-    m_sub->subscribe(
-            m_strategy_instance->strategy_result_channel(),
-            [&](const StrategyResult & result) {
-                render_result(result);
-            });
+    if (progress.passed_checks == progress.total_checks) {
+        ui->pb_optimize->setEnabled(true);
+        ui->pb_optimize->setText("Optimize");
+    }
+    else {
+        ui->pb_optimize->setEnabled(false);
+        ui->pb_optimize->setText((std::to_string(progress.passed_checks) + std::string(" / ") + std::to_string(progress.total_checks)).c_str());
+    }
 }
 
 void MainWindow::on_pb_stop_clicked()
 {
-    m_strategy_instance->stop_async();
-    m_strategy_instance->finish_future().wait();
-    LOG_STATUS("Strategy stopped");
+    m_backend.stop_channel().push({xg::newGuid()});
 }
 
 void MainWindow::on_pb_step_clicked()
 {
-    UNWRAP_RET_VOID(launchpad, m_launchpad);
-    UNWRAP_RET_VOID(backtesting_gateway, launchpad.backtesting_gateway());
-    backtesting_gateway.push_playback_step({});
+    m_backend.playback_step_channel().push({});
 }
 
 void MainWindow::on_cb_playback_mode_currentIndexChanged(int)
@@ -136,18 +157,17 @@ PlaybackSettingsEvent MainWindow::get_playback_settings() const
 
 void MainWindow::push_playback_settings()
 {
-    UNWRAP_RET_VOID(launchpad, m_launchpad);
-    UNWRAP_RET_VOID(backtesting_gateway, launchpad.backtesting_gateway());
-    backtesting_gateway.push_playback_settings(get_playback_settings());
+    m_backend.playback_settings_channel().push(get_playback_settings());
 }
 
 void MainWindow::update_playback_controls()
 {
     const auto mode = get_playback_settings().mode;
+    const auto strategy_instance = m_current_run.strategy_instance.lock();
     const bool backtest_runs =
-            m_launchpad &&
-            m_launchpad->backtesting_gateway() != nullptr &&
-            m_strategy_instance->status_channel().get() == WorkStatus::Running;
+            strategy_instance &&
+            m_current_run.is_backtest &&
+            strategy_instance->status_channel().get() == WorkStatus::Running;
 
     ui->sb_playback_delta_min->setEnabled(mode != PlaybackMode::Rapid);
     ui->pb_step->setEnabled(mode == PlaybackMode::Step && backtest_runs);
@@ -155,73 +175,32 @@ void MainWindow::update_playback_controls()
 
 void MainWindow::on_pb_run_clicked()
 {
-    m_sub = std::make_unique<EventSubcriber>(m_event_consumer);
-
-    const auto timerange_opt = get_timerange();
-    if (!timerange_opt) {
-        LOG_ERROR("Invalid timerange");
-        return;
-    }
-    const auto & timerange = *timerange_opt;
-
+    const auto symbol_name = ui->cb_symbol->currentText().toStdString();
     const auto strategy_name = ui->cb_strategy->currentText().toStdString();
     const auto entry_config = ui->wt_entry_params->get_config();
 
-    const auto symbol = [&]() -> std::optional<Symbol> {
-        const auto symbols = m_gateway.get_symbols("USDT");
-        for (const auto & s : symbols) {
-            if (s.symbol_name == ui->cb_symbol->currentText().toStdString()) {
-                return s;
-            }
-        }
-        return std::nullopt;
-    }();
-    if (!symbol.has_value()) {
-        LOG_ERROR(
-                "Invalid symbol on starting strategy: {}",
-                ui->cb_symbol->currentText().toStdString());
+    if (ui->cb_live->isChecked()) {
+        m_backend.start_live_run_channel().push({
+                .command_guid = xg::newGuid(),
+                .symbol_name = symbol_name,
+                .strategy_name = strategy_name,
+                .strategy_config = entry_config,
+                .channel_capacity = get_channel_capacity(),
+        });
         return;
     }
 
-    m_strategy_instance.reset();
-    m_launchpad.reset();
-    m_launchpad = [&]() {
-
-        if (ui->cb_live->isChecked()) {
-            if (!m_trading_gateway) {
-                m_trading_gateway = std::make_unique<ByBitTradingGateway>();
-            }
-            return std::make_shared<Launchpad>(
-                    symbol.value(),
-                    strategy_name,
-                    entry_config,
-                    m_gateway,
-                    *m_trading_gateway);
-        }
-
-        return std::make_shared<Launchpad>(
-                symbol.value(),
-                HistoricalMDRequestData{.start = timerange.start(), .end = timerange.end()},
-                strategy_name,
-                entry_config,
-                m_gateway);
-    }();
-
-    m_strategy_instance = Launchpad::share_strategy_instance(m_launchpad);
-
-    if (ui->sb_channel_capacity_h->value() >= 0) {
-        m_strategy_instance->set_channel_capacity(std::chrono::hours{ui->sb_channel_capacity_h->value()});
-    }
-
-    ui->pb_charts->setEnabled(true);
-
-    m_sub->subscribe(
-            m_strategy_instance->status_channel(),
-            [&](const WorkStatus & status) { handle_status_changed(status); });
-
-    push_playback_settings();
-    m_strategy_instance->run_async();
-    LOG_STATUS("Strategy started");
+    const auto timerange = get_timerange();
+    m_backend.start_backtest_channel().push({
+            .command_guid = xg::newGuid(),
+            .symbol_name = symbol_name,
+            .strategy_name = strategy_name,
+            .strategy_config = entry_config,
+            .start = timerange.start(),
+            .end = timerange.end(),
+            .channel_capacity = get_channel_capacity(),
+            .playback_settings = get_playback_settings(),
+    });
 }
 
 MainWindow::~MainWindow()
@@ -269,13 +248,15 @@ void MainWindow::subscribe_for_positions()
     ui->sa_positions->setWidget(holder_widget);
     ui->sa_positions->setWidgetResizable(true);
 
-    m_sub->subscribe(
-            m_strategy_instance->positions_channel(),
-            [&](const std::deque<std::pair<std::chrono::milliseconds, PositionResult>> & list) {
+    UNWRAP_RET_VOID(strategy_instance, m_current_run.strategy_instance.lock());
+    m_positions_sub = std::make_unique<EventSubcriber>(m_event_consumer);
+    m_positions_sub->subscribe(
+            strategy_instance.positions_channel(),
+            [this, lo](const std::deque<std::pair<std::chrono::milliseconds, PositionResult>> & list) {
                 for (const auto & [_, position_result] : list) {
                     auto * view = new PositionResultView();
                     view->update(position_result);
-                    view->set_strategy_instance(m_strategy_instance);
+                    view->set_strategy_instance(m_current_run.strategy_instance);
                     lo->addWidget(view);
                 }
             },
@@ -286,99 +267,43 @@ void MainWindow::subscribe_for_positions()
             });
 }
 
-void MainWindow::optimized_config_slot(const JsonStrategyConfig & entry_config)
-{
-    ui->wt_entry_params->setup_values(entry_config);
-}
-
-std::optional<Timerange> MainWindow::get_timerange() const
+Timerange MainWindow::get_timerange() const
 {
     const auto start = std::chrono::milliseconds{ui->dt_from->dateTime().toMSecsSinceEpoch()};
     const auto work_hours = std::chrono::hours{ui->sb_work_hours->value()};
-    const auto end = std::chrono::milliseconds{start + work_hours};
+    return {start, start + work_hours};
+}
 
-    if (start >= end) {
-        LOG_ERROR("Invalid timerange");
-        return {};
+std::optional<std::chrono::milliseconds> MainWindow::get_channel_capacity() const
+{
+    if (ui->sb_channel_capacity_h->value() < 0) {
+        return std::nullopt;
     }
-    if (start.count() < 0 || end.count() < 0) {
-        LOG_ERROR("Invalid timerange");
-        return {};
-    }
-    return {{start, end}};
+    return std::chrono::hours{ui->sb_channel_capacity_h->value()};
 }
 
 void MainWindow::on_pb_optimize_clicked()
 {
-    if (m_strategy_instance) {
-        if (m_strategy_instance->status_channel().get() != WorkStatus::Stopped) {
-            LOG_ERROR("Strategy is not stopped");
-            return;
-        }
-        m_strategy_instance.reset();
-        m_launchpad.reset();
-    }
-
     const auto entry_strategy_meta_info = get_entry_strategy_parameters();
-    const auto timerange_opt = get_timerange();
-    if (!timerange_opt || !entry_strategy_meta_info) {
+    if (!entry_strategy_meta_info) {
         LOG_ERROR("No value in required optional");
         return;
     }
-    const std::string entry_strategy_name = ui->cb_strategy->currentText().toStdString();
 
-    OptimizerInputs optimizer_inputs = {
-            .entry_strategy = {
-                    .meta = entry_strategy_meta_info.value(),
-                    .current_config = ui->wt_entry_params->get_config(),
-                    .optimizable_parameters = ui->wt_optimizer_parameters->optimizable_parameters(),
-            }};
-
-    const auto & timerange = *timerange_opt;
-
-    const auto symbol = [&]() -> std::optional<Symbol> {
-        const auto symbols = m_gateway.get_symbols("USDT");
-        for (const auto & s : symbols) {
-            if (s.symbol_name == ui->cb_symbol->currentText().toStdString()) {
-                return s;
-            }
-        }
-        return std::nullopt;
-    }();
-
-    if (!symbol.has_value()) {
-        LOG_ERROR(
-                "Invalid symbol on starting optimizer: {}",
-                ui->cb_symbol->currentText().toStdString());
-        return;
-    }
-
-    std::thread t([this,
-                   timerange,
-                   optimizer_inputs,
-                   symbol,
-                   entry_strategy_name]() {
-        Optimizer optimizer(
-                m_gateway,
-                symbol.value(),
-                timerange,
-                entry_strategy_name,
-                optimizer_inputs,
-                ui->sb_optimizer_threads->value());
-
-        optimizer.subscribe_for_passed_check([this](int passed_checks, int total_checks) {
-            emit signal_optimizer_passed_check(passed_checks, total_checks);
-        });
-
-        const auto best_config = optimizer.optimize();
-        if (!best_config.has_value()) {
-            LOG_INFO("No best config");
-            return;
-        }
-        emit signal_optimized_config(best_config.value());
-        LOG_INFO("Best config: {}", best_config.value());
+    const auto timerange = get_timerange();
+    m_backend.start_optimizer_channel().push({
+            .symbol_name = ui->cb_symbol->currentText().toStdString(),
+            .strategy_name = ui->cb_strategy->currentText().toStdString(),
+            .start = timerange.start(),
+            .end = timerange.end(),
+            .optimizer_inputs = {
+                    .entry_strategy = {
+                            .meta = entry_strategy_meta_info.value(),
+                            .current_config = ui->wt_entry_params->get_config(),
+                            .optimizable_parameters = ui->wt_optimizer_parameters->optimizable_parameters(),
+                    }},
+            .thread_count = static_cast<size_t>(ui->sb_optimizer_threads->value()),
     });
-    t.detach();
 }
 
 std::optional<JsonStrategyMetaInfo> MainWindow::get_entry_strategy_parameters() const
@@ -408,11 +333,12 @@ void MainWindow::on_lambda(std::function<void()> lambda)
 
 void MainWindow::on_pb_charts_clicked()
 {
-    const auto status = m_strategy_instance->status_channel().get();
+    UNWRAP_RET_VOID(strategy_instance, m_current_run.strategy_instance.lock());
+    const auto status = strategy_instance.status_channel().get();
     const bool strategy_runs = status == WorkStatus::Running;
     m_chart_window = new ChartWindow(
             "Whole run",
-            m_strategy_instance,
+            m_current_run.strategy_instance,
             std::nullopt,
             strategy_runs,
             true,

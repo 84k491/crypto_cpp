@@ -94,12 +94,12 @@ void BBRSIStrategy::push_candle(const Candle & candle)
 
     UNWRAP_RET_VOID(bb_res, m_bollinger_bands.push_value({ts, price}));
 
-    m_strategy_internal_data_channel.push(ts, {.chart_name = "prices", .series_name = "upper_band", .value = bb_res.m_upper_band});
-    m_strategy_internal_data_channel.push(ts, {.chart_name = "prices", .series_name = "trend", .value = bb_res.m_trend});
-    m_strategy_internal_data_channel.push(ts, {.chart_name = "prices", .series_name = "lower_band", .value = bb_res.m_lower_band});
+    m_strategy_internal_data_channel.push({.ts = ts, .chart_name = "prices", .series_name = "upper_band", .value = bb_res.m_upper_band});
+    m_strategy_internal_data_channel.push({.ts = ts, .chart_name = "prices", .series_name = "trend", .value = bb_res.m_trend});
+    m_strategy_internal_data_channel.push({.ts = ts, .chart_name = "prices", .series_name = "lower_band", .value = bb_res.m_lower_band});
     m_strategy_internal_data_channel.push(
-            ts,
             m_bb_indicator.push(
+                    ts,
                     bb_res.m_upper_band,
                     candle.close(),
                     bb_res.m_lower_band));
@@ -109,8 +109,8 @@ void BBRSIStrategy::push_candle(const Candle & candle)
     }
 
     m_strategy_internal_data_channel.push(
-            ts,
             m_rsi_indicator.push(
+                    ts,
                     m_rsi_top_threshold,
                     rsi.value(),
                     m_rsi_bot_threshold));

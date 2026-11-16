@@ -9,14 +9,14 @@ NormalizedIndicator::NormalizedIndicator(std::string chart_name, std::string ser
 {
 }
 
-StrategyInternalData NormalizedIndicator::push(double upper_threshold, double value, double lower_threshold) const
+StrategyInternalData NormalizedIndicator::push(std::chrono::milliseconds ts, double upper_threshold, double value, double lower_threshold) const
 {
     if (upper_threshold < lower_threshold) {
         LOG_ERROR(
                 "Upper threshold must be greater than lower threshold. chart_name: {}, series_name: {}",
                 m_chart_name,
                 m_series_name);
-        return {.chart_name = m_chart_name, .series_name = m_series_name, .value = 0.0};
+        return {.ts = ts, .chart_name = m_chart_name, .series_name = m_series_name, .value = 0.0};
     }
 
     const auto half_interval = (upper_threshold - lower_threshold) / 2;
@@ -35,5 +35,5 @@ StrategyInternalData NormalizedIndicator::push(double upper_threshold, double va
         value_normalized *= -1;
     }
 
-    return {.chart_name = m_chart_name, .series_name = m_series_name, .value = value_normalized};
+    return {.ts = ts, .chart_name = m_chart_name, .series_name = m_series_name, .value = value_normalized};
 }

@@ -236,7 +236,7 @@ void PythonStrategy::push_internal_data(
         const std::string & series_name,
         double value)
 {
-    m_strategy_internal_data_channel.push(ts, {intern_chart_name(chart_name), series_name, value});
+    m_strategy_internal_data_channel.push({ts, intern_chart_name(chart_name), series_name, value});
 }
 
 void PythonStrategy::push_market_state(std::chrono::milliseconds candle_ts, MarketState state)

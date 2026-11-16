@@ -326,6 +326,6 @@ void StaticGridWithBan::report_levels(std::chrono::milliseconds ts)
 
     for (int i = m_max_levels_per_side * -1; i < m_max_levels_per_side + 1; ++i) {
         const auto p = (std::abs(i) > levels_per_side) ? NAN : get_price_from_level_number(i);
-        m_strategy_internal_data_channel.push(ts, {.chart_name = "prices", .series_name = std::to_string(i), .value = p});
+        m_strategy_internal_data_channel.push({.ts = ts, .chart_name = "prices", .series_name = std::to_string(i), .value = p});
     }
 }

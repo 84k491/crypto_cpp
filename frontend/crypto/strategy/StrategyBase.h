@@ -13,7 +13,7 @@ public:
             EventLoop & event_loop,
             StrategyChannelsRefs channels);
 
-    EventTimeseriesChannel<StrategyInternalData> & strategy_internal_data_channel() override
+    EventChannel<StrategyInternalData> & strategy_internal_data_channel() override
     {
         return m_strategy_internal_data_channel;
     }
@@ -31,7 +31,7 @@ protected:
 protected:
     const double m_pos_currency_amount = 100.;
 
-    EventTimeseriesChannel<StrategyInternalData> m_strategy_internal_data_channel;
+    EventChannel<StrategyInternalData> m_strategy_internal_data_channel;
     EventTimeseriesChannel<MarketState> m_market_state_channel;
 
     OrderManager & m_order_manager;

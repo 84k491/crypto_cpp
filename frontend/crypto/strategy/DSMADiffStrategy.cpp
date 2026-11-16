@@ -79,18 +79,18 @@ void DSMADiffStrategy::push_price(std::pair<std::chrono::milliseconds, double> t
         return;
     }
     const auto current_average_fast = fast_avg.value();
-    m_strategy_internal_data_channel.push(ts_and_price.first, {"prices", "fast_avg_history", current_average_fast});
+    m_strategy_internal_data_channel.push({ts_and_price.first, "prices", "fast_avg_history", current_average_fast});
 
     if (!slow_avg.has_value()) {
         return;
     }
     const auto current_average_slow = slow_avg.value();
-    m_strategy_internal_data_channel.push(ts_and_price.first, {"prices", "slow_avg_history", current_average_slow});
+    m_strategy_internal_data_channel.push({ts_and_price.first, "prices", "slow_avg_history", current_average_slow});
 
     const double diff = current_average_fast - current_average_slow;
     const double diff_coef = diff / current_average_slow;
     const double diff_percent = diff_coef * 100.;
-    m_strategy_internal_data_channel.push(ts_and_price.first, {"dsma_diff", "diff", diff_percent});
+    m_strategy_internal_data_channel.push({ts_and_price.first, "dsma_diff", "diff", diff_percent});
 
     if (diff_coef > m_diff_threshold) {
         try_send_order(Side::buy(), ts_and_price.second, ts_and_price.first);

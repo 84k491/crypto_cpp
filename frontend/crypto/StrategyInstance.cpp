@@ -54,6 +54,16 @@ StrategyInstance::StrategyInstance(
     , m_orders(symbol, m_event_loop, tr_gateway)
     , m_sub(m_event_loop)
 {
+    m_chart_series_list_channel.push({{
+            FixedChartSeries::candles,
+            FixedChartSeries::trades,
+            FixedChartSeries::price_levels,
+            FixedChartSeries::tpsl,
+            FixedChartSeries::trailing_stop,
+            FixedChartSeries::market_states,
+            FixedChartSeries::depo,
+    }});
+
     const auto strategy_ptr_opt = StrategyFactory::i().build_strategy(
             entry_strategy_name,
             entry_strategy_config,
@@ -83,6 +93,12 @@ StrategyInstance::StrategyInstance(
                 stop_async(do_panic);
             },
             Priority::High);
+
+    m_sub.subscribe(
+            m_strategy->strategy_internal_data_channel(),
+            [this](const StrategyInternalData & point) {
+                store_own_series_point(point);
+            });
 
     m_sub.subscribe(
             m_strategy->market_state_channel(),
@@ -144,13 +160,16 @@ void StrategyInstance::run_async()
 void StrategyInstance::stop_async(bool panic)
 {
     LOG_STATUS("stop_async");
+
     for (const auto & req : m_live_md_requests) {
         m_md_gateway.unsubscribe_from_live(req);
     }
+
     if (panic) {
         m_status.push(WorkStatus::Panic);
         m_status_on_stop = WorkStatus::Panic;
     }
+
     m_stop_ev_channel.push({});
 }
 
@@ -229,7 +248,7 @@ void StrategyInstance::process_position_result(const PositionResult & new_result
 void StrategyInstance::set_channel_capacity(std::optional<std::chrono::milliseconds> capacity)
 {
     trade_channel().set_capacity(capacity);
-    strategy_internal_data_channel().set_capacity(capacity);
+    m_own_series_capacity = capacity;
     candle_channel().set_capacity(capacity);
     // depo_channel().set_capacity(capacity); // don't touch depo
     price_channel().set_capacity(capacity);
@@ -245,9 +264,49 @@ EventTimeseriesChannel<Trade> & StrategyInstance::trade_channel()
     return m_trade_channel;
 }
 
-EventTimeseriesChannel<StrategyInternalData> & StrategyInstance::strategy_internal_data_channel()
+EventObjectChannel<ChartSeriesList> & StrategyInstance::chart_series_list_channel()
 {
-    return m_strategy->strategy_internal_data_channel();
+    return m_chart_series_list_channel;
+}
+
+EventTimeseriesChannel<double> * StrategyInstance::find_own_series_channel(const ChartSeriesName & name)
+{
+    auto channels_lref = m_own_series_channels.lock();
+    const auto it = channels_lref.get().find(name);
+
+    if (it == channels_lref.get().end()) {
+        return nullptr;
+    }
+
+    return it->second.get();
+}
+
+EventTimeseriesChannel<double> & StrategyInstance::create_own_series_channel(const ChartSeriesName & name)
+{
+    auto * channel = [&] {
+        auto channels_lref = m_own_series_channels.lock();
+        auto & channel_ptr = channels_lref.get()[name];
+        channel_ptr = std::make_unique<EventTimeseriesChannel<double>>();
+        channel_ptr->set_capacity(m_own_series_capacity);
+        return channel_ptr.get();
+    }();
+
+    m_chart_series_list_channel.update([&](ChartSeriesList & list) {
+        list.series_names.push_back(name);
+    });
+    return *channel;
+}
+
+void StrategyInstance::store_own_series_point(const StrategyInternalData & point)
+{
+    const ChartSeriesName name{.chart_name = std::string{point.chart_name}, .series_name = point.series_name};
+    auto * channel = find_own_series_channel(name);
+
+    if (channel == nullptr) {
+        channel = &create_own_series_channel(name);
+    }
+
+    channel->push(point.ts, point.value);
 }
 
 EventTimeseriesChannel<double> & StrategyInstance::price_channel()

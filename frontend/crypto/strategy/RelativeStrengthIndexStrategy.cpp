@@ -73,9 +73,9 @@ void RelativeStrengthIndexStrategy::push_candle(const Candle & c)
     const double upper_trigger = 100 - m_config.m_margin;
     const double lower_trigger = m_config.m_margin;
 
-    m_strategy_internal_data_channel.push(c.close_ts(), {"rsi", "upper", upper_trigger});
-    m_strategy_internal_data_channel.push(c.close_ts(), {"rsi", "rsi", rsi.value()});
-    m_strategy_internal_data_channel.push(c.close_ts(), {"rsi", "lower", lower_trigger});
+    m_strategy_internal_data_channel.push({c.close_ts(), "rsi", "upper", upper_trigger});
+    m_strategy_internal_data_channel.push({c.close_ts(), "rsi", "rsi", rsi.value()});
+    m_strategy_internal_data_channel.push({c.close_ts(), "rsi", "lower", lower_trigger});
 
     if (upper_trigger > rsi && rsi > lower_trigger) {
         return;
