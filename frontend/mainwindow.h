@@ -108,6 +108,9 @@ private slots:
     void on_pb_run_clicked();
     void on_pb_optimize_clicked();
     void on_pb_stop_clicked();
+    void on_pb_step_clicked();
+    void on_cb_playback_mode_currentIndexChanged(int);
+    void on_sb_playback_delta_min_valueChanged(int);
     void on_cb_strategy_currentTextChanged(const QString &);
 
     void on_pb_charts_clicked();
@@ -128,6 +131,10 @@ private:
     void subscribe_to_strategy();
     std::optional<Timerange> get_timerange() const;
 
+    PlaybackSettingsEvent get_playback_settings() const;
+    void push_playback_settings();
+    void update_playback_controls();
+
     std::optional<JsonStrategyMetaInfo> get_entry_strategy_parameters() const;
 
 private:
@@ -137,6 +144,7 @@ private:
     ByBitMarketDataGateway m_gateway;
     std::unique_ptr<ByBitTradingGateway> m_trading_gateway;
 
+    std::shared_ptr<Launchpad> m_launchpad;
     std::shared_ptr<StrategyInstance> m_strategy_instance;
 
     std::unique_ptr<EventSubcriber> m_sub;

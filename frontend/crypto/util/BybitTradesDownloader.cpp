@@ -112,10 +112,23 @@ std::optional<PublicTrade> FileReader::get_next()
 
 SequentialMarketDataReader::SequentialMarketDataReader(std::list<std::string> files)
     : m_files(std::move(files))
+    , m_next(read_next())
 {
 }
 
 std::optional<PublicTrade> SequentialMarketDataReader::get_next()
+{
+    const auto res = m_next;
+    m_next = read_next();
+    return res;
+}
+
+std::optional<PublicTrade> SequentialMarketDataReader::peek() const
+{
+    return m_next;
+}
+
+std::optional<PublicTrade> SequentialMarketDataReader::read_next()
 {
     if (!m_public_trades.empty()) {
         auto res = m_public_trades.front();
@@ -134,7 +147,7 @@ std::optional<PublicTrade> SequentialMarketDataReader::get_next()
         m_public_trades.push_back(line.value());
     }
 
-    return get_next();
+    return read_next();
 }
 
 std::list<std::string> BybitTradesDownloader::download(const HistoricalMDRequest & req)

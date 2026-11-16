@@ -28,6 +28,7 @@ public:
             IMarketDataGateway & source_md_gateway);
 
     StrategyInstance & strategy_instance();
+    BacktestingGateway * backtesting_gateway();
 
     static std::shared_ptr<StrategyInstance> share_strategy_instance(const std::shared_ptr<Launchpad> & launchpad);
 

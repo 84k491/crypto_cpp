@@ -23,10 +23,15 @@ public:
     SequentialMarketDataReader(std::list<std::string> files);
 
     std::optional<PublicTrade> get_next();
+    std::optional<PublicTrade> peek() const;
+
+private:
+    std::optional<PublicTrade> read_next();
 
 private:
     std::list<std::string> m_files;
     std::list<PublicTrade> m_public_trades;
+    std::optional<PublicTrade> m_next;
 };
 
 class BybitTradesDownloader

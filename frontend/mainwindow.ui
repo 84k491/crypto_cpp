@@ -24,157 +24,243 @@
     <item>
      <layout class="QVBoxLayout" name="verticalLayout" stretch="4,1">
       <item>
-       <widget class="QGroupBox" name="groupBox">
-        <property name="title">
-         <string>Strategy</string>
+       <widget class="QTabWidget" name="tw_left">
+        <property name="currentIndex">
+         <number>0</number>
         </property>
-        <layout class="QVBoxLayout" name="verticalLayout_4">
-         <item>
-          <widget class="QGroupBox" name="groupBox_3">
-           <property name="title">
-            <string>General parameters</string>
-           </property>
-           <property name="checkable">
-            <bool>false</bool>
-           </property>
-           <layout class="QVBoxLayout" name="verticalLayout_3">
+        <widget class="QWidget" name="tab_strategy">
+         <attribute name="title">
+          <string>Strategy</string>
+         </attribute>
+         <layout class="QVBoxLayout" name="verticalLayout_4">
+          <item>
+           <widget class="QGroupBox" name="groupBox_3">
+            <property name="title">
+             <string>General parameters</string>
+            </property>
+            <property name="checkable">
+             <bool>false</bool>
+            </property>
+            <layout class="QVBoxLayout" name="verticalLayout_3">
+             <item>
+              <layout class="QHBoxLayout" name="horizontalLayout_2">
+               <item>
+                <widget class="QLabel" name="label">
+                 <property name="text">
+                  <string>Symbol:</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QComboBox" name="cb_symbol">
+                 <property name="editable">
+                  <bool>false</bool>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item>
+              <layout class="QHBoxLayout" name="horizontalLayout_5">
+               <item>
+                <widget class="QLabel" name="label_4">
+                 <property name="text">
+                  <string>Entry strategy:</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QComboBox" name="cb_strategy"/>
+               </item>
+              </layout>
+             </item>
+             <item>
+              <widget class="QCheckBox" name="cb_live">
+               <property name="text">
+                <string>Live trading</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <layout class="QHBoxLayout" name="horizontalLayout_3">
+               <item>
+                <widget class="QLabel" name="label_2">
+                 <property name="text">
+                  <string>From datetime</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QDateTimeEdit" name="dt_from">
+                 <property name="dateTime">
+                  <datetime>
+                   <hour>0</hour>
+                   <minute>0</minute>
+                   <second>0</second>
+                   <year>2023</year>
+                   <month>11</month>
+                   <day>21</day>
+                  </datetime>
+                 </property>
+                 <property name="date">
+                  <date>
+                   <year>2023</year>
+                   <month>11</month>
+                   <day>21</day>
+                  </date>
+                 </property>
+                 <property name="displayFormat">
+                  <string>yyyy/M/d h:mm</string>
+                 </property>
+                 <property name="timeSpec">
+                  <enum>Qt::TimeSpec::LocalTime</enum>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item>
+              <layout class="QHBoxLayout" name="horizontalLayout_4">
+               <item>
+                <widget class="QLabel" name="label_3">
+                 <property name="text">
+                  <string>Hours to work:</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QSpinBox" name="sb_work_hours">
+                 <property name="minimum">
+                  <number>1</number>
+                 </property>
+                 <property name="maximum">
+                  <number>9000</number>
+                 </property>
+                 <property name="value">
+                  <number>24</number>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item>
+              <layout class="QHBoxLayout" name="horizontalLayout_19">
+               <item>
+                <widget class="QLabel" name="label_17">
+                 <property name="text">
+                  <string>Channel capacity (hours):</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QSpinBox" name="sb_channel_capacity_h">
+                 <property name="minimum">
+                  <number>-1</number>
+                 </property>
+                 <property name="maximum">
+                  <number>200</number>
+                 </property>
+                 <property name="singleStep">
+                  <number>1</number>
+                 </property>
+                 <property name="value">
+                  <number>-1</number>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <widget class="StrategyParametersWidget" name="wt_entry_params">
+            <layout class="QVBoxLayout" name="lo_entry_params"/>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="tab_environment">
+         <attribute name="title">
+          <string>Environment</string>
+         </attribute>
+         <layout class="QVBoxLayout" name="verticalLayout_environment">
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_playback_mode">
             <item>
-             <layout class="QHBoxLayout" name="horizontalLayout_2">
-              <item>
-               <widget class="QLabel" name="label">
-                <property name="text">
-                 <string>Symbol:</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QComboBox" name="cb_symbol">
-                <property name="editable">
-                 <bool>false</bool>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </item>
-            <item>
-             <layout class="QHBoxLayout" name="horizontalLayout_5">
-              <item>
-               <widget class="QLabel" name="label_4">
-                <property name="text">
-                 <string>Entry strategy:</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QComboBox" name="cb_strategy"/>
-              </item>
-             </layout>
-            </item>
-            <item>
-             <widget class="QCheckBox" name="cb_live">
+             <widget class="QLabel" name="lb_playback_mode">
               <property name="text">
-               <string>Live trading</string>
+               <string>Playback mode:</string>
               </property>
              </widget>
             </item>
             <item>
-             <layout class="QHBoxLayout" name="horizontalLayout_3">
+             <widget class="QComboBox" name="cb_playback_mode">
               <item>
-               <widget class="QLabel" name="label_2">
-                <property name="text">
-                 <string>From datetime</string>
-                </property>
-               </widget>
+               <property name="text">
+                <string>Rapid</string>
+               </property>
               </item>
               <item>
-               <widget class="QDateTimeEdit" name="dt_from">
-                <property name="dateTime">
-                 <datetime>
-                  <hour>0</hour>
-                  <minute>0</minute>
-                  <second>0</second>
-                  <year>2023</year>
-                  <month>11</month>
-                  <day>21</day>
-                 </datetime>
-                </property>
-                <property name="date">
-                 <date>
-                  <year>2023</year>
-                  <month>11</month>
-                  <day>21</day>
-                 </date>
-                </property>
-                <property name="displayFormat">
-                 <string>yyyy/M/d h:mm</string>
-                </property>
-                <property name="timeSpec">
-                 <enum>Qt::TimeSpec::LocalTime</enum>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </item>
-            <item>
-             <layout class="QHBoxLayout" name="horizontalLayout_4">
-              <item>
-               <widget class="QLabel" name="label_3">
-                <property name="text">
-                 <string>Hours to work:</string>
-                </property>
-               </widget>
+               <property name="text">
+                <string>Playback</string>
+               </property>
               </item>
               <item>
-               <widget class="QSpinBox" name="sb_work_hours">
-                <property name="minimum">
-                 <number>1</number>
-                </property>
-                <property name="maximum">
-                 <number>9000</number>
-                </property>
-                <property name="value">
-                 <number>24</number>
-                </property>
-               </widget>
+               <property name="text">
+                <string>Step</string>
+               </property>
               </item>
-             </layout>
-            </item>
-            <item>
-             <layout class="QHBoxLayout" name="horizontalLayout_19">
-              <item>
-               <widget class="QLabel" name="label_17">
-                <property name="text">
-                 <string>Channel capacity (hours):</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QSpinBox" name="sb_channel_capacity_h">
-                <property name="minimum">
-                 <number>-1</number>
-                </property>
-                <property name="maximum">
-                 <number>200</number>
-                </property>
-                <property name="singleStep">
-                 <number>1</number>
-                </property>
-                <property name="value">
-                 <number>-1</number>
-                </property>
-               </widget>
-              </item>
-             </layout>
+             </widget>
             </item>
            </layout>
-          </widget>
-         </item>
-         <item>
-          <widget class="StrategyParametersWidget" name="wt_entry_params">
-           <layout class="QVBoxLayout" name="lo_entry_params"/>
-          </widget>
-         </item>
-        </layout>
+          </item>
+          <item>
+           <layout class="QHBoxLayout" name="horizontalLayout_playback_delta">
+            <item>
+             <widget class="QLabel" name="lb_playback_delta">
+              <property name="text">
+               <string>Delta window (minutes):</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QSpinBox" name="sb_playback_delta_min">
+              <property name="minimum">
+               <number>1</number>
+              </property>
+              <property name="maximum">
+               <number>10080</number>
+              </property>
+              <property name="value">
+               <number>1</number>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <widget class="QPushButton" name="pb_step">
+            <property name="text">
+             <string>Step</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="verticalSpacer_environment">
+            <property name="orientation">
+             <enum>Qt::Orientation::Vertical</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>20</width>
+              <height>40</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </widget>
        </widget>
       </item>
       <item>

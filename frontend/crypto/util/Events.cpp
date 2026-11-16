@@ -35,3 +35,14 @@ std::optional<HistoricalMDPriceEvent> HistoricalMDGeneratorEvent::get_next()
     }
     return HistoricalMDPriceEvent{price_opt.value()};
 }
+
+std::optional<HistoricalMDPriceEvent> HistoricalMDGeneratorEvent::peek() const
+{
+    const auto price_opt = m_reader->peek();
+
+    if (!price_opt.has_value()) {
+        return std::nullopt;
+    }
+
+    return HistoricalMDPriceEvent{price_opt.value()};
+}

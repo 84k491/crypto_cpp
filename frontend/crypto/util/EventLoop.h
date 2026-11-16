@@ -85,7 +85,7 @@ public:
 
     void push(LambdaEvent event) override
     {
-        return m_ev.push(std::move(event));
+        m_ev.push(std::move(event));
     }
 
     void push_delayed(std::chrono::milliseconds delay, LambdaEvent value) override
@@ -99,7 +99,7 @@ public:
     }
 
 private:
-    xg::Guid m_guid;
+    xg::Guid m_guid = xg::newGuid();
 
     BasicEventLoop m_ev;
     EventSubcriber m_sub;

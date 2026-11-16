@@ -51,6 +51,7 @@ public:
 
     EventChannel<LambdaEvent> & delayed_channel(xg::Guid guid)
     {
+        std::lock_guard<std::mutex> lock(m_mutex);
         return m_channels[guid];
     }
 

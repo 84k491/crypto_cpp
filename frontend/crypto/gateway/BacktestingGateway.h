@@ -10,6 +10,7 @@
 #include "Volume.h"
 #include "WorkStatus.h"
 
+#include <chrono>
 #include <optional>
 #include <variant>
 
@@ -39,8 +40,17 @@ class BacktestingGateway
     {
     };
 
+    struct PlaybackWakeUp
+    {
+        // A delayed event can't be cancelled, so a wake-up planned before a playback restart is still delivered.
+        // It carries the generation it was planned with and is dropped if the gateway has a newer one.
+        size_t playback_generation;
+    };
+
 public:
     static constexpr double taker_fee_rate = 0.001;
+    static constexpr std::chrono::milliseconds playback_wake_up_interval{100};
+
     BacktestingGateway(
             ILambdaAcceptor & event_loop,
             IMarketDataGateway & source_md_gateway,
@@ -55,6 +65,9 @@ public:
     void unsubscribe_from_live(xg::Guid guid) override;
 
     EventObjectChannel<WorkStatus> & status_channel() override;
+
+    void push_playback_settings(const PlaybackSettingsEvent & settings);
+    void push_playback_step(const PlaybackStepEvent & step);
 
     void push_order_request(const OrderRequestEvent & order) override;
     void push_tpsl_request(const TpslRequestEvent & tpsl_ev) override;
@@ -77,8 +90,15 @@ public:
 
 private:
     void handle_source_historical_md(const HistoricalMDGeneratorEvent & ev);
+    void request_next_tick();
     void send_next_tick();
     void stop_sending_ticks(xg::Guid live_request_guid);
+
+    void apply_playback_settings(const PlaybackSettingsEvent & settings);
+    void restart_playback();
+    void step_playback();
+    void handle_playback_wake_up(const PlaybackWakeUp & wake_up);
+    std::chrono::milliseconds playback_position() const;
 
     std::optional<Trade> try_trade_tpsl(std::chrono::milliseconds ts, double price);
     void try_trigger_conditionals(std::chrono::milliseconds ts, double price);
@@ -90,13 +110,24 @@ private:
     std::optional<LiveMDRequest> m_live_request;
     std::optional<xg::Guid> m_historical_request_guid;
     std::optional<HistoricalMDGeneratorEvent> m_historical_md_generator;
-    bool m_any_tick_sent = false;
+    bool m_next_tick_requested = false;
+
+    PlaybackMode m_playback_mode = PlaybackMode::Rapid;
+    std::chrono::milliseconds m_playback_delta = std::chrono::minutes{1};
+    std::optional<std::chrono::milliseconds> m_playback_limit;
+    std::chrono::milliseconds m_playback_clock_start_position = {};
+    std::chrono::steady_clock::time_point m_playback_clock_start;
+    size_t m_playback_generation = 0;
 
     EventChannel<HistoricalMDGeneratorEvent> m_historical_prices_channel;
     EventChannel<MDPriceEvent> m_live_prices_channel;
     EventObjectChannel<WorkStatus> m_status;
     EventChannel<NextTickRequest> m_next_tick_channel;
     EventChannel<xg::Guid> m_unsubscribe_from_live_channel;
+
+    EventChannel<PlaybackSettingsEvent> m_playback_settings_channel;
+    EventChannel<PlaybackStepEvent> m_playback_step_channel;
+    EventChannel<PlaybackWakeUp> m_playback_wake_up_channel;
 
     std::string m_symbol; // backtest GW can only trade a single symbol now
     std::optional<TpslRequestEvent> m_tpsl;

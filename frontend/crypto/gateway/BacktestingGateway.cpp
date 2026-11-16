@@ -32,6 +32,21 @@ BacktestingGateway::BacktestingGateway(
             [this](const xg::Guid & guid) {
                 stop_sending_ticks(guid);
             });
+    m_sub.subscribe(
+            m_playback_settings_channel,
+            [this](const PlaybackSettingsEvent & settings) {
+                apply_playback_settings(settings);
+            });
+    m_sub.subscribe(
+            m_playback_step_channel,
+            [this](const PlaybackStepEvent &) {
+                step_playback();
+            });
+    m_sub.subscribe(
+            m_playback_wake_up_channel,
+            [this](const PlaybackWakeUp & wake_up) {
+                handle_playback_wake_up(wake_up);
+            });
 }
 
 void BacktestingGateway::push_async_request(HistoricalMDRequest &&)
@@ -59,33 +74,138 @@ void BacktestingGateway::handle_source_historical_md(const HistoricalMDGenerator
     }
     m_historical_request_guid.reset();
 
+    if (!ev.peek().has_value()) {
+        LOG_ERROR("Empty historical market data");
+        m_status.push(WorkStatus::Panic);
+        return;
+    }
+
     m_historical_md_generator = ev;
+    restart_playback();
+}
+
+void BacktestingGateway::request_next_tick()
+{
+    if (m_next_tick_requested) {
+        return;
+    }
+    m_next_tick_requested = true;
     m_next_tick_channel.push({});
 }
 
 void BacktestingGateway::send_next_tick()
 {
+    m_next_tick_requested = false;
+
     if (!m_historical_md_generator.has_value()) {
         return;
     }
 
-    const auto ev_opt = m_historical_md_generator->get_next();
+    const auto ev_opt = m_historical_md_generator->peek();
     if (!ev_opt.has_value()) {
         m_historical_md_generator.reset();
-        if (!m_any_tick_sent) {
-            LOG_ERROR("Empty historical market data");
-            m_status.push(WorkStatus::Panic);
-            return;
-        }
         m_status.push(WorkStatus::Stopped);
         return;
     }
 
-    m_any_tick_sent = true;
     const auto & public_trade = ev_opt->public_trade;
+
+    if (m_playback_limit.has_value() && public_trade.ts() >= m_playback_limit.value()) {
+        return;
+    }
+
+    m_historical_md_generator->get_next();
+
     on_new_price(public_trade.ts(), public_trade.price());
     m_live_prices_channel.push(MDPriceEvent{public_trade});
-    m_next_tick_channel.push({});
+    request_next_tick();
+}
+
+void BacktestingGateway::push_playback_settings(const PlaybackSettingsEvent & settings)
+{
+    m_playback_settings_channel.push(settings);
+}
+
+void BacktestingGateway::push_playback_step(const PlaybackStepEvent & step)
+{
+    m_playback_step_channel.push(step);
+}
+
+void BacktestingGateway::apply_playback_settings(const PlaybackSettingsEvent & settings)
+{
+    m_playback_mode = settings.mode;
+    m_playback_delta = settings.delta;
+
+    if (!m_historical_md_generator.has_value()) {
+        return;
+    }
+    restart_playback();
+}
+
+void BacktestingGateway::restart_playback()
+{
+    const auto position = playback_position();
+    ++m_playback_generation;
+
+    switch (m_playback_mode) {
+    case PlaybackMode::Rapid: {
+        m_playback_limit.reset();
+        break;
+    }
+    case PlaybackMode::Step: {
+        m_playback_limit = position;
+        break;
+    }
+    case PlaybackMode::Playback: {
+        m_playback_limit = position;
+        m_playback_clock_start_position = position;
+        m_playback_clock_start = std::chrono::steady_clock::now();
+        m_playback_wake_up_channel.push_delayed(PlaybackWakeUp{m_playback_generation}, playback_wake_up_interval);
+        break;
+    }
+    }
+
+    request_next_tick();
+}
+
+void BacktestingGateway::step_playback()
+{
+    if (m_playback_mode != PlaybackMode::Step || !m_playback_limit.has_value()) {
+        return;
+    }
+    m_playback_limit = m_playback_limit.value() + m_playback_delta;
+    request_next_tick();
+}
+
+void BacktestingGateway::handle_playback_wake_up(const PlaybackWakeUp & wake_up)
+{
+    if (wake_up.playback_generation != m_playback_generation) {
+        return;
+    }
+    if (!m_historical_md_generator.has_value()) {
+        return;
+    }
+
+    const auto real_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - m_playback_clock_start);
+    const std::chrono::milliseconds historical_elapsed{real_elapsed.count() * m_playback_delta.count() / 1000};
+    m_playback_limit = m_playback_clock_start_position + historical_elapsed;
+
+    m_playback_wake_up_channel.push_delayed(wake_up, playback_wake_up_interval);
+    request_next_tick();
+}
+
+std::chrono::milliseconds BacktestingGateway::playback_position() const
+{
+    if (m_playback_limit.has_value()) {
+        return m_playback_limit.value();
+    }
+
+    const auto next_tick = m_historical_md_generator->peek();
+    if (!next_tick.has_value()) {
+        return {};
+    }
+    return next_tick->public_trade.ts();
 }
 
 void BacktestingGateway::unsubscribe_from_live(xg::Guid guid)

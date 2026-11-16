@@ -83,6 +83,7 @@ public:
     }
 
     std::optional<HistoricalMDPriceEvent> get_next();
+    std::optional<HistoricalMDPriceEvent> peek() const;
 
     auto request_guid() const { return m_request_guid; }
 
@@ -124,6 +125,29 @@ struct LiveMDRequest : public OneWayEvent
 
     Symbol symbol;
     xg::Guid guid;
+};
+
+enum class PlaybackMode : uint8_t
+{
+    Rapid,
+    Playback,
+    Step,
+};
+
+struct PlaybackSettingsEvent : public OneWayEvent
+{
+    PlaybackSettingsEvent(PlaybackMode mode, std::chrono::milliseconds delta)
+        : mode(mode)
+        , delta(delta)
+    {
+    }
+
+    PlaybackMode mode;
+    std::chrono::milliseconds delta;
+};
+
+struct PlaybackStepEvent : public OneWayEvent
+{
 };
 
 struct OrderResponseEvent : public OneWayEvent

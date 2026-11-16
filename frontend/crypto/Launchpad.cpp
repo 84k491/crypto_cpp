@@ -42,6 +42,15 @@ StrategyInstance & Launchpad::strategy_instance()
     return m_strategy_instance;
 }
 
+BacktestingGateway * Launchpad::backtesting_gateway()
+{
+    if (!m_backtesting_gateway.has_value()) {
+        return nullptr;
+    }
+
+    return &m_backtesting_gateway.value();
+}
+
 std::shared_ptr<StrategyInstance> Launchpad::share_strategy_instance(const std::shared_ptr<Launchpad> & launchpad)
 {
     return {launchpad, &launchpad->m_strategy_instance};

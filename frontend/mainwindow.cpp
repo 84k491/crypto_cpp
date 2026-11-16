@@ -63,6 +63,8 @@ MainWindow::MainWindow(QWidget * parent)
     }
     ui->cb_symbol->setCurrentText(saved_state.m_symbol.c_str());
 
+    update_playback_controls();
+
     LOG_STATUS("End of mainwindow constructor");
 }
 
@@ -82,8 +84,12 @@ void MainWindow::handle_status_changed(WorkStatus status)
         ui->pb_stop->setEnabled(false);
         m_sub = std::make_unique<EventSubcriber>(m_event_consumer);
     }
+
     render_result(m_strategy_instance->strategy_result_channel().get());
+
     subscribe_for_positions();
+
+    update_playback_controls();
 }
 
 void MainWindow::subscribe_to_strategy()
@@ -101,6 +107,50 @@ void MainWindow::on_pb_stop_clicked()
     m_strategy_instance->stop_async();
     m_strategy_instance->finish_future().wait();
     LOG_STATUS("Strategy stopped");
+}
+
+void MainWindow::on_pb_step_clicked()
+{
+    UNWRAP_RET_VOID(launchpad, m_launchpad);
+    UNWRAP_RET_VOID(backtesting_gateway, launchpad.backtesting_gateway());
+    backtesting_gateway.push_playback_step({});
+}
+
+void MainWindow::on_cb_playback_mode_currentIndexChanged(int)
+{
+    push_playback_settings();
+    update_playback_controls();
+}
+
+void MainWindow::on_sb_playback_delta_min_valueChanged(int)
+{
+    push_playback_settings();
+}
+
+PlaybackSettingsEvent MainWindow::get_playback_settings() const
+{
+    return {
+            static_cast<PlaybackMode>(ui->cb_playback_mode->currentIndex()),
+            std::chrono::minutes{ui->sb_playback_delta_min->value()}};
+}
+
+void MainWindow::push_playback_settings()
+{
+    UNWRAP_RET_VOID(launchpad, m_launchpad);
+    UNWRAP_RET_VOID(backtesting_gateway, launchpad.backtesting_gateway());
+    backtesting_gateway.push_playback_settings(get_playback_settings());
+}
+
+void MainWindow::update_playback_controls()
+{
+    const auto mode = get_playback_settings().mode;
+    const bool backtest_runs =
+            m_launchpad &&
+            m_launchpad->backtesting_gateway() != nullptr &&
+            m_strategy_instance->status_channel().get() == WorkStatus::Running;
+
+    ui->sb_playback_delta_min->setEnabled(mode != PlaybackMode::Rapid);
+    ui->pb_step->setEnabled(mode == PlaybackMode::Step && backtest_runs);
 }
 
 void MainWindow::on_pb_run_clicked()
@@ -134,7 +184,8 @@ void MainWindow::on_pb_run_clicked()
     }
 
     m_strategy_instance.reset();
-    const auto launchpad = [&]() {
+    m_launchpad.reset();
+    m_launchpad = [&]() {
 
         if (ui->cb_live->isChecked()) {
             if (!m_trading_gateway) {
@@ -156,7 +207,7 @@ void MainWindow::on_pb_run_clicked()
                 m_gateway);
     }();
 
-    m_strategy_instance = Launchpad::share_strategy_instance(launchpad);
+    m_strategy_instance = Launchpad::share_strategy_instance(m_launchpad);
 
     if (ui->sb_channel_capacity_h->value() >= 0) {
         m_strategy_instance->set_channel_capacity(std::chrono::hours{ui->sb_channel_capacity_h->value()});
@@ -168,6 +219,7 @@ void MainWindow::on_pb_run_clicked()
             m_strategy_instance->status_channel(),
             [&](const WorkStatus & status) { handle_status_changed(status); });
 
+    push_playback_settings();
     m_strategy_instance->run_async();
     LOG_STATUS("Strategy started");
 }
@@ -264,6 +316,7 @@ void MainWindow::on_pb_optimize_clicked()
             return;
         }
         m_strategy_instance.reset();
+        m_launchpad.reset();
     }
 
     const auto entry_strategy_meta_info = get_entry_strategy_parameters();
